@@ -1,0 +1,47 @@
+
+* Introduction
+
+  This software is an implementation of the Precision Time Protocol
+  (PTP) according to IEEE standard 1588 for Linux. The dual design
+  goals are to provide a robust implementation of the standard and to
+  use the most relevant and modern Application Programming Interfaces
+  (API) offered by the Linux kernel. Supporting legacy APIs and other
+  platforms is not a goal.
+
+* License
+
+  The software is copyrighted by the authors and is licensed under the
+  GNU General Public License. See the file, COPYING, for details of
+  the license terms.
+
+* Goals and Features
+
+  - Supports hardware and software time stamping via the Linux
+    SO_TIMESTAMPING socket option.
+
+  - Supports the Linux PTP Hardware Clock (PHC) subsystem by using the
+    clock_gettime family of calls, including the new clock_adjtimex
+    system call.
+
+  - Implements Boundary Clock (BC) and Ordinary Clock (OC).
+
+  - Transport over UDP/IPv4, UDP/IPv6, and raw Ethernet (Layer 2).
+
+  - Modular design allowing painless addition of new transports and
+    clock servos.
+
+* Getting Involved
+
+  The software development is hosted at Source Forge.
+
+  https://sourceforge.net/projects/linuxptp/
+
+** Reporting Bugs
+
+   Please report any bugs or other issues with the software to the
+   linuxptp-users mailing list.
+
+** Development
+
+   If you would like to get involved in improving the software, please
+   join the linuxptp-devel mailing list.
