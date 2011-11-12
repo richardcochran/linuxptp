@@ -24,7 +24,7 @@ CFLAGS	= -Wall $(INC) $(DEBUG)
 LDFLAGS	=
 LDLIBS	= -lm -lrt
 PRG	= linuxptp
-OBJ	= bmc.o fsm.o msg.o phc.o print.o transport.o udp.o util.o
+OBJ	= bmc.o fsm.o msg.o phc.o pi.o print.o servo.o transport.o udp.o util.o
 
 SRC	= $(OBJ:.o=.c)
 DEPEND	= $(OBJ:.o=.d)
