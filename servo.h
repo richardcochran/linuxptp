@@ -20,7 +20,8 @@
 #ifndef HAVE_SERVO_H
 #define HAVE_SERVO_H
 
-struct servo; /** Opaque type */
+/** Opaque type */
+struct servo;
 
 /**
  * Defines the caller visible states of a clock servo.
