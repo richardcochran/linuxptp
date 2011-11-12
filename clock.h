@@ -1,5 +1,6 @@
 /**
  * @file clock.h
+ * @brief Implements a PTP clock.
  * @note Copyright (C) 2011 Richard Cochran <richardcochran@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
