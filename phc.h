@@ -37,4 +37,13 @@ clockid_t phc_open(char *phc);
  */
 void phc_close(clockid_t clkid);
 
+/**
+ * Query the maximum frequency adjustment of a PTP hardware clock device.
+ *
+ * @param clkid A clock ID obtained using phc_open().
+ *
+ * @return The clock's maximum frequency adjustment in parts per billion.
+ */
+int phc_max_adj(clockid_t clkid);
+
 #endif

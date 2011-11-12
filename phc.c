@@ -16,10 +16,14 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <stdio.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include <linux/ptp_clock.h>
 
 #include "phc.h"
 
@@ -36,4 +40,17 @@ void phc_close(clockid_t clkid)
 		return;
 
 	close(CLOCKID_TO_FD(clkid));
+}
+
+int phc_max_adj(clockid_t clkid)
+{
+	int fd = CLOCKID_TO_FD(clkid);
+	struct ptp_clock_caps caps;
+
+	if (ioctl(fd, PTP_CLOCK_GETCAPS, &caps)) {
+		perror("PTP_CLOCK_GETCAPS");
+		return 0;
+	}
+
+	return caps.max_adj;
 }
