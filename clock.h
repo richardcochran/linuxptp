@@ -20,6 +20,16 @@
 #define HAVE_CLOCK_H
 
 #include "ds.h"
+#include "transport.h"
+
+#define MAX_PORTS 8
+
+/** Defines a network interface, with PTP options. */
+struct interface {
+	char *name;
+	enum transport_type transport;
+	enum timestamp_type timestamping;
+};
 
 /** Opaque type. */
 struct clock;
@@ -48,10 +58,31 @@ struct port *clock_best_port(struct clock *c);
 UInteger8 clock_class(struct clock *c);
 
 /**
+ * Create a clock instance. There can only be one clock in any system,
+ * so subsequent calls will destroy the previous clock instance.
+ *
+ * @param phc         PTP hardware clock device to use.
+ *                    Pass NULL to select CLOCK_REALTIME.
+ * @param interface   An array of network interfaces.
+ * @param count       The number of elements in @a interfaces.
+ * @param ds          A pointer to a default data set for the clock.
+ * @return            A pointer to the single global clock instance.
+ */
+struct clock *clock_create(char *phc, struct interface *iface, int count,
+			   struct defaultDS *ds);
+
+/**
  * Obtains a clock's default data set.
  * @param c  The clock instance.
  * @return   A pointer to the data set of the clock.
  */
 struct dataset *clock_default_ds(struct clock *c);
+
+/**
+ * Poll for events and dispatch them.
+ * @param c A pointer to a clock instance obtained with clock_create().
+ * @return  Zero on success, non-zero otherwise.
+ */
+int clock_poll(struct clock *c);
 
 #endif
