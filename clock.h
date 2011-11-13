@@ -80,10 +80,62 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 struct dataset *clock_default_ds(struct clock *c);
 
 /**
+ * Obtain the domain number from a clock's default data set.
+ * @param c  The clock instance.
+ * @return   The PTP domain number.
+ */
+UInteger8 clock_domain_number(struct clock *c);
+
+/**
+ * Obtain a clock's identity from its default data set.
+ * @param c  The clock instance.
+ * @return   The clock's identity.
+ */
+struct ClockIdentity clock_identity(struct clock *c);
+
+/**
+ * Install a port's file descriptor array into its controlling clock.
+ * @param c    The clock instance.
+ * @param p    The port installing the array.
+ * @param fda  The port's open file decriptors for its sockets and timers.
+ */
+void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda);
+
+/**
+ * Obtain the parent port identity from a clock's parent data set.
+ * @param c  The clock instance.
+ * @return   The parent port identity.
+ */
+struct PortIdentity clock_parent_identity(struct clock *c);
+
+/**
+ * Provide a data point to estimate the path delay.
+ * @param c           The clock instance.
+ * @param req         The transmission time of the delay request message.
+ * @param rx          The reception time of the delay request message,
+ *                    as reported in the delay response message.
+ * @param correction  The correction field from the delay response message.
+ */
+void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
+		      Integer64 correction);
+
+/**
  * Poll for events and dispatch them.
  * @param c A pointer to a clock instance obtained with clock_create().
  * @return  Zero on success, non-zero otherwise.
  */
 int clock_poll(struct clock *c);
 
+/**
+ * Provide a data point to synchronize the clock.
+ * @param c            The clock instance to synchronize.
+ * @param ingress_ts   The ingress time stamp on the sync message.
+ * @param origin_ts    The reported transmission time of the sync message.
+ * @param correction1  The correction field of the sync message.
+ * @param correction2  The correction field of the follow up message.
+ *                     Pass zero in the case of one step operation.
+ */
+void clock_synchronize(struct clock *c,
+		       struct timespec ingress_ts, struct timestamp origin_ts,
+		       Integer64 correction1, Integer64 correction2);
 #endif
