@@ -584,7 +584,8 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 void port_dispatch(struct port *p, enum fsm_event event)
 {
-	enum port_state next = ptp_fsm(p->state, event);
+	enum port_state next = clock_slave_only(p->clock) ?
+		ptp_slave_fsm(p->state, event) : ptp_fsm(p->state, event);
 
 	if (PS_INITIALIZING == next) {
 		/*

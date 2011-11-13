@@ -334,6 +334,11 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	pr_debug("path delay    %10lld", c->path_delay);
 }
 
+int clock_slave_only(struct clock *c)
+{
+	return c->dds.slaveOnly;
+}
+
 void clock_synchronize(struct clock *c,
 		       struct timespec ingress_ts, struct timestamp origin_ts,
 		       Integer64 correction1, Integer64 correction2)

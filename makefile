@@ -32,7 +32,7 @@ DEPEND	= $(OBJ:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 VPATH	= $(srcdir)
 
-all: $(OBJ)
+all: linuxptp
 
 linuxptp: $(OBJ)
 

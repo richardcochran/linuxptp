@@ -127,6 +127,13 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 int clock_poll(struct clock *c);
 
 /**
+ * Obtain the slave-only flag from a clock's default data set.
+ * @param c  The clock instance.
+ * @return   The value of the clock's slave-only flag.
+ */
+int clock_slave_only(struct clock *c);
+
+/**
  * Provide a data point to synchronize the clock.
  * @param c            The clock instance to synchronize.
  * @param ingress_ts   The ingress time stamp on the sync message.
