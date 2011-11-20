@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 
 	ds.slaveOnly = TRUE; // TODO - make this programmable.
 	ds.priority1 = 128;
-	ds.clockQuality.clockClass = 248;
+	ds.clockQuality.clockClass = 255;
 	ds.clockQuality.clockAccuracy = 0xfe;
 	ds.clockQuality.offsetScaledLogVariance = 0xffff;
 	ds.priority2 = 128;
