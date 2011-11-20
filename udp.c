@@ -113,6 +113,20 @@ static int interface_index(int fd, char *name)
 	return ifreq.ifr_ifindex;
 }
 
+static int mcast_bind(int fd, int index)
+{
+	int err;
+	struct ip_mreqn req;
+	memset(&req, 0, sizeof(req));
+	req.imr_ifindex = index;
+	err = setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, &req, sizeof(req));
+	if (err) {
+		perror("setsockopt IP_MULTICAST_IF");
+		return -1;
+	}
+	return 0;
+}
+
 static int mcast_join(int fd, int index, const struct sockaddr *grp,
 		      socklen_t grplen)
 {
@@ -167,6 +181,9 @@ static int open_socket(char *name, struct in_addr *mc_addr, short port)
 	addr.sin_addr = *mc_addr;
 	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
 		perror("mcast_join");
+		goto no_option;
+	}
+	if (mcast_bind(fd, index)) {
 		goto no_option;
 	}
 	return fd;
