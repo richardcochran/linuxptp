@@ -25,7 +25,7 @@ LDFLAGS	=
 LDLIBS	= -lm -lrt
 PRG	= linuxptp
 OBJ	= bmc.o clock.o fsm.o linuxptp.o msg.o phc.o pi.o port.o print.o \
- servo.o transport.o udp.o util.o
+ servo.o tmtab.o transport.o udp.o util.o
 
 SRC	= $(OBJ:.o=.c)
 DEPEND	= $(OBJ:.o=.d)
