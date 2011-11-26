@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -28,6 +29,7 @@
 #include "msg.h"
 #include "port.h"
 #include "print.h"
+#include "tmtab.h"
 #include "util.h"
 
 #define PTP_VERSION 2
@@ -49,6 +51,7 @@ struct port {
 	struct ptp_message *last_sync;
 	struct ptp_message *delay_req;
 	UInteger16 seqnum;
+	struct tmtab tmtab;
 	/* portDS */
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
@@ -232,9 +235,8 @@ static int port_set_delay_tmo(struct port *p)
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
 	};
-
-	tmo.it_value.tv_sec = 1 << (p->logMinDelayReqInterval + 1);
-
+	int index = random() % TMTAB_MAX;
+	tmo.it_value = p->tmtab.ts[index];
 	return timerfd_settime(p->fda.fd[FD_DELAY_TIMER], 0, &tmo, NULL);
 }
 
@@ -287,6 +289,8 @@ static int port_initialize(struct port *p)
 	p->announceReceiptTimeout  = ANNOUNCE_RECEIPT_TIMEOUT;
 	p->logSyncInterval         = LOG_SYNC_INTERVAL;
 	p->logMinPdelayReqInterval = LOG_MIN_PDELAY_REQ_INTERVAL;
+
+	tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
 
 	fd1 = timerfd_create(CLOCK_MONOTONIC, 0);
 	if (fd1 < 0) {
@@ -447,6 +451,7 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 		p->logMinDelayReqInterval = rsp->hdr.logMessageInterval;
 		pr_info("port %hu: minimum delay request interval 2^%d",
 			portnum(p), p->logMinDelayReqInterval);
+		tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
 	}
 }
 

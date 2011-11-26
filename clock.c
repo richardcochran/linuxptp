@@ -18,6 +18,7 @@
  */
 #include <errno.h>
 #include <poll.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -155,6 +156,8 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 {
 	int i, max_adj;
 	struct clock *c = &the_clock;
+
+	srandom(time(NULL));
 
 	if (c->nports)
 		clock_destroy(c);
