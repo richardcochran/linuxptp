@@ -30,6 +30,140 @@
   - Modular design allowing painless addition of new transports and
     clock servos.
 
+* System Requirements
+
+  In order to run this software, you need to run a recent Linux kernel
+  version 3.0 or newer, and the kernel header files must available at
+  compile time.
+
+  In addition, you will also need to have either:
+
+  1. A supported Ethernet MAC device.
+
+  2. A supported PHY device paired with a MAC that allows time
+     stamping in the PHY (indicated by PHY=Y in the table below).
+
+** Linux Kernel Support
+
+   In order to support PTP, the operating system needs to provide two
+   services: network packet time stamping and clock control. In 2009,
+   Patrick Ohly added a new socket option called SO_TIMESTAMPING for
+   packet time stamping, especially for PTP. This work appeared in
+   Linux version 2.6.30.
+
+   In July of 2011, the PTP Hardware Clock (PHC) subsystem was merged
+   into Linux version 3.0. The PHC code provides a driver framework and
+   the user space API for clock control.
+
+** Driver Support Matrix
+
+   The table below shows the Linux drivers that support the new
+   API. The meaning of the column abbreviations is as follows.
+
+   - SOTS: SO_TIMESTAMPING support. This comes in three flavors.
+
+     1. RAW: Supports time stamping using the PHC time values.
+     2. SW:  Supports software time stamping using the system time.
+     3. SYS: Supports time stamping using PHC time values scaled to
+             the system time. This is a legacy mode and its use in new
+             drivers is discouraged.
+
+   - PHC: PTP Hardware Clock support.  These drivers will offer a
+     character device that allows direct control of the hardware
+     clock.
+
+   - PHY: Supports time stamping in the PHY. This indicates an
+     Ethernet MAC driver supporting SO_TIMESTAMPING and PHC in the
+     PHY. If you have or build a computer that combines this MAC with
+     a PTP capable PHY, then it will work with the Linux PHC
+     subsystem.
+
+   - VER: Linux kernel version when the PTP API support was added.
+
+*** Hardware Timestamping
+
+    |------------+-------------------------+------+-----+-----+---------|
+    | Driver     | Hardware                | SOTS | PHC | PHY |     VER |
+    |------------+-------------------------+------+-----+-----+---------|
+    | bfin_mac   | Analog Blackfin         | SYS  | N   | NA  | pre 3.0 |
+    | igb        | Intel 82576, 82580      | SYS  | N   | NA  | pre 3.0 |
+    | dp83640    | Nat Semi PHYTER         | RAW  | Y   | NA  |     3.0 |
+    | gianfar    | Freescale eTSEC PowerPC | RAW  | Y   | NA  |     3.0 |
+    | ptp_ixp46x | Intel IXP465            | RAW  | Y   | NA  |     3.0 |
+    |------------+-------------------------+------+-----+-----+---------|
+
+*** Software Timestamping
+
+    |--------------+--------------------------+------+-----+-----+-----|
+    | Driver       | Hardware                 | SOTS | PHC | PHY | VER |
+    |--------------+--------------------------+------+-----+-----+-----|
+    | davinci_emac | TI DaVinci, Sitara       | SW   | N   | Y   | 3.1 |
+    | dnet         | Dave Ethernet MAC        | SW   | N   | Y   | 3.1 |
+    | emaclite     | Xilinx Ethernet Lite     | SW   | N   | Y   | 3.1 |
+    | ethoc        | OpenCores 10/100 MAC     | SW   | N   | Y   | 3.1 |
+    | fec          | Freescale Coldfire       | SW   | N   | Y   | 3.1 |
+    | fec_mpc52xx  | Freescale MPC5200        | SW   | N   | Y   | 3.1 |
+    | fs_enet      | Freescale MPC512x        | SW   | N   | Y   | 3.1 |
+    | ixp4xx_eth   | Intel IXP4xx             | SW   | N   | Y   | 3.0 |
+    | lib8390      | Asix AX88796             | SW   | N   | Y   | 3.1 |
+    | lib8390      | Various 8390 based HW    | SW   | N   | N   | 3.1 |
+    | ll_temac     | Xilinx LL TEMAC          | SW   | N   | Y   | 3.1 |
+    | macb         | Atmel AT32, AT91         | SW   | N   | Y   | 3.1 |
+    | mv643xx_eth  | Marvell Discovery, Orion | SW   | N   | Y   | 3.1 |
+    | pxa168_eth   | Marvell pxa168           | SW   | N   | Y   | 3.1 |
+    | r6040        | RDC Ethernet MAC         | SW   | N   | Y   | 3.1 |
+    | smsc911x     | SMSC LAN911x, LAN921x    | SW   | N   | Y   | 3.1 |
+    | smsc9420     | SMSC LAN9420 PCI         | SW   | N   | Y   | 3.1 |
+    | stmmac       | STM Synopsys IP Core     | SW   | N   | Y   | 3.1 |
+    | tg3          | Broadcom Tigon3 PCI      | SW   | N   | Y   | 3.1 |
+    | ucc_geth     | Freescale QE Gigabit     | SW   | N   | Y   | 3.1 |
+    |--------------+--------------------------+------+-----+-----+-----|
+
+* Installation
+
+** Linux kernel
+
+   There are many ways of getting a precompiled Linux kernel or
+   compiling your own, so this section is only meant as an example. It
+   is important to have the kernel headers available when compiling
+   the Linux PTP stack.
+
+#+BEGIN_EXAMPLE
+   export ARCH=x86
+   export CROSS_COMPILE=
+   export KBUILD_OUTPUT=/home/richard/kernel/ptp_debian
+   mkdir -p $KBUILD_OUTPUT
+   cp /boot/config-2.6.38-bpo.2-686 $KBUILD_OUTPUT/.config
+   make oldnoconfig
+   make menuconfig
+   time make -j4
+   make headers_install
+#+END_EXAMPLE
+
+   Here is a table of kernel configuration options needed for PTP
+   support. In addtion to these, you should enable the specific
+   Ethernet MAC and PHY drivers for your hardware.
+
+   |---------------------------------+-----------------------------|
+   | Option                          | Description                 |
+   |---------------------------------+-----------------------------|
+   | CONFIG_EXPERIMENTAL             | Required                    |
+   | CONFIG_PPS                      | Required                    |
+   | CONFIG_NETWORK_PHY_TIMESTAMPING | Timestamping in PHY devices |
+   | PTP_1588_CLOCK                  | PTP clock support           |
+   |---------------------------------+-----------------------------|
+
+** PTP stack
+
+   1. Just type 'make'
+
+   2. If you compiled your own kernel (and the headers are not
+      installed into the system path), then you should set the
+      KBUILD_OUTPUT environment variable as in the example, above.
+
+   3. There is no install target. You can run the program in place or
+      copy it into the system path, like /usr/local/bin.
+
 * Getting Involved
 
   The software development is hosted at Source Forge.
@@ -41,7 +175,26 @@
    Please report any bugs or other issues with the software to the
    linuxptp-users mailing list.
 
+   https://lists.sourceforge.net/lists/listinfo/linuxptp-users
+
 ** Development
 
    If you would like to get involved in improving the software, please
    join the linuxptp-devel mailing list.
+
+   https://lists.sourceforge.net/lists/listinfo/linuxptp-devel
+
+* Other PTP Applications
+
+  As of yet there are no other open source applications making use of
+  the new Linux APIs for PTP. However, patches are available for the
+  *ptpd* program adapting it to the new calls. These patches do not
+  really turn the *ptpd* into a perfect solution for hardware time
+  stamping under Linux. Instead, they merely illustrate how the newer
+  APIs work.
+
+  You can get the patches over at github. There are two branches,
+  *phc1* and *phc2*, for PTP versions 1 and 2, respectively.
+
+  - git://github.com/richardcochran/ptpd-phc.git
+  - https://github.com/richardcochran/ptpd-phc
