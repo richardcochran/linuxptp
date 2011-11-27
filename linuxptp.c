@@ -64,7 +64,7 @@ static void usage(char *progname)
 		" -i [dev]  interface device to use, for example 'eth0'\n"
 		"           (may be specified multiple times)\n"
 		" -p [dev]  PTP hardware clock device to use, default '%s'\n"
-		"           (ignored when SOFTWARE time stamping is selected)\n\n",
+		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n\n",
 		progname, DEFAULT_PHC);
 }
 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 		iface[i].transport = transport;
 		iface[i].timestamping = timestamping;
 	}
-	if (timestamping == TS_SOFTWARE) {
+	if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
 		phc = NULL;
 	}
 
