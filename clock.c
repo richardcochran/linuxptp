@@ -25,6 +25,7 @@
 #include "bmc.h"
 #include "clock.h"
 #include "foreign.h"
+#include "mave.h"
 #include "missing.h"
 #include "msg.h"
 #include "phc.h"
@@ -33,6 +34,8 @@
 #include "print.h"
 #include "tmv.h"
 #include "util.h"
+
+#define MAVE_LENGTH 10
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -50,6 +53,7 @@ struct clock {
 	int nports;
 	tmv_t master_offset;
 	tmv_t path_delay;
+	struct mave *avg_delay;
 	tmv_t c1;
 	tmv_t c2;
 	tmv_t t1;
@@ -181,6 +185,11 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 	c->servo = servo_create("pi", max_adj);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
+		return NULL;
+	}
+	c->avg_delay = mave_create(MAVE_LENGTH);
+	if (!c->avg_delay) {
+		pr_err("Failed to create moving average");
 		return NULL;
 	}
 
@@ -315,7 +324,7 @@ int clock_poll(struct clock *c)
 void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 		      Integer64 correction)
 {
-	tmv_t c1, c2, c3, t1, t2, t3, t4;
+	tmv_t c1, c2, c3, pd, t1, t2, t3, t4;
 
 	c1 = c->c1;
 	c2 = c->c2;
@@ -330,11 +339,13 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	 * c->path_delay -= c_sync + c_fup + c_delay_resp;
 	 * c->path_delay /= 2.0;
 	 */
-	c->path_delay = tmv_add(tmv_sub(t2, t3), tmv_sub(t4, t1));
-	c->path_delay = tmv_sub(c->path_delay, tmv_add(c1, tmv_add(c2, c3)));
-	c->path_delay = tmv_div(c->path_delay, 2);
+	pd = tmv_add(tmv_sub(t2, t3), tmv_sub(t4, t1));
+	pd = tmv_sub(pd, tmv_add(c1, tmv_add(c2, c3)));
+	pd = tmv_div(pd, 2);
 
-	pr_debug("path delay    %10lld", c->path_delay);
+	c->path_delay = mave_accumulate(c->avg_delay, pd);
+
+	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
 }
 
 int clock_slave_only(struct clock *c)
@@ -403,6 +414,9 @@ static void handle_state_decision_event(struct clock *c)
 
 	pr_info("selected best master clock %s",
 		cid2str(&best->dataset.identity));
+
+	if (c->best != best)
+		mave_reset(c->avg_delay);
 
 	c->best = best;
 

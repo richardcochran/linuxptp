@@ -20,6 +20,8 @@
 #ifndef HAVE_TMV_H
 #define HAVE_TMV_H
 
+#include <time.h>
+
 #include "ddt.h"
 #include "pdt.h"
 
