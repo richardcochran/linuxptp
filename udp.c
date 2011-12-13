@@ -230,7 +230,7 @@ static int receive(int fd, void *buf, int buflen,
 		   struct hw_timestamp *hwts, int flags)
 {
 	char control[256];
-	int cnt, level, type;
+	int cnt, level, try_again, type;
 	struct cmsghdr *cm;
 	struct iovec iov = { buf, buflen };
 	struct msghdr msg;
@@ -241,11 +241,21 @@ static int receive(int fd, void *buf, int buflen,
 	msg.msg_iovlen = 1;
 	msg.msg_control = control;
 	msg.msg_controllen = sizeof(control);
-again:
-	cnt = recvmsg(fd, &msg, flags);
-	if (cnt < 0) {
-		if (EINTR == errno)
-			goto again;
+
+	try_again = flags == MSG_ERRQUEUE ? 2 : 1;
+
+	for ( ; try_again; try_again--) {
+		cnt = recvmsg(fd, &msg, flags);
+		if (cnt >= 0) {
+			break;
+		}
+		if (errno == EINTR) {
+			try_again++;
+		} else if (errno == EAGAIN) {
+			usleep(1);
+		} else {
+			break;
+		}
 	}
 
 	for (cm = CMSG_FIRSTHDR(&msg); cm != NULL; cm = CMSG_NXTHDR(&msg, cm)) {
@@ -298,8 +308,10 @@ int udp_send(struct fdarray *fda, int event,
 	addr.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
 
 	cnt = sendto(fd, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
-	if (cnt < 1)
+	if (cnt < 1) {
+		perror("sendto");
 		return cnt;
+	}
 	/*
 	 * Get the time stamp right away.
 	 */
