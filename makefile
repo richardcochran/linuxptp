@@ -23,8 +23,8 @@ INC	= -I$(KBUILD_OUTPUT)/usr/include
 CFLAGS	= -Wall $(INC) $(DEBUG)
 LDFLAGS	=
 LDLIBS	= -lm -lrt
-PRG	= linuxptp
-OBJ	= bmc.o clock.o fsm.o linuxptp.o mave.o msg.o phc.o pi.o port.o \
+PRG	= ptp4l
+OBJ	= bmc.o clock.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o servo.o tmtab.o transport.o udp.o util.o
 
 SRC	= $(OBJ:.o=.c)
@@ -32,9 +32,9 @@ DEPEND	= $(OBJ:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 VPATH	= $(srcdir)
 
-all: linuxptp
+all: ptp4l
 
-linuxptp: $(OBJ)
+ptp4l: $(OBJ)
 
 clean:
 	rm -f $(OBJ) $(DEPEND)
