@@ -158,7 +158,7 @@ UInteger8 clock_class(struct clock *c)
 struct clock *clock_create(char *phc, struct interface *iface, int count,
 			   struct defaultDS *ds)
 {
-	int i, max_adj;
+	int i, max_adj, sw_ts = 0;
 	struct clock *c = &the_clock;
 
 	srandom(time(NULL));
@@ -182,7 +182,14 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 		max_adj = 512000;
 	}
 
-	c->servo = servo_create("pi", max_adj);
+	for (i = 0; i < count; i++) {
+		if (iface[i].timestamping == TS_SOFTWARE) {
+			sw_ts = 1;
+			break;
+		}
+	}
+
+	c->servo = servo_create("pi", max_adj, sw_ts);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
 		return NULL;

@@ -51,9 +51,11 @@ enum servo_state {
  * @param max_ppb The absolute maxinum adjustment allowed by the clock
  *                in parts per billion. The clock servo will clamp its
  *                output according to this limit.
+ * @param sw_ts   Indicates that software time stamping will be used,
+ *                and the servo should use more aggressive filtering.
  * @return A pointer to a new servo on success, NULL otherwise.
  */
-struct servo *servo_create(char *name, int max_ppb);
+struct servo *servo_create(char *name, int max_ppb, int sw_ts);
 
 /**
  * Destroy an instance of a clock servo.

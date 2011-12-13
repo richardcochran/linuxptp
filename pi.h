@@ -21,6 +21,6 @@
 
 #include "servo.h"
 
-struct servo *pi_servo_create(int max_ppb);
+struct servo *pi_servo_create(int max_ppb, int sw_ts);
 
 #endif

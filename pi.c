@@ -22,8 +22,11 @@
 #include "pi.h"
 #include "servo_private.h"
 
-#define KP 0.7
-#define KI 0.3
+#define HWTS_KP 0.7
+#define HWTS_KI 0.3
+
+#define SWTS_KP 0.1
+#define SWTS_KI 0.001
 
 struct pi_servo {
 	struct servo servo;
@@ -31,6 +34,8 @@ struct pi_servo {
 	double local[2];
 	double drift;
 	double maxppb;
+	double kp;
+	double ki;
 	int count;
 };
 
@@ -72,8 +77,8 @@ static double pi_sample(struct servo *servo,
 		s->count = 4;
 		break;
 	case 4:
-		ki_term = KI * offset;
-		ppb = KP * offset + s->drift + ki_term;
+		ki_term = s->ki * offset;
+		ppb = s->kp * offset + s->drift + ki_term;
 		if (ppb < -s->maxppb) {
 			ppb = -s->maxppb;
 		} else if (ppb > s->maxppb) {
@@ -88,7 +93,7 @@ static double pi_sample(struct servo *servo,
 	return ppb;
 }
 
-struct servo *pi_servo_create(int max_ppb)
+struct servo *pi_servo_create(int max_ppb, int sw_ts)
 {
 	struct pi_servo *s;
 
@@ -99,6 +104,14 @@ struct servo *pi_servo_create(int max_ppb)
 	s->servo.destroy = pi_destroy;
 	s->servo.sample  = pi_sample;
 	s->maxppb        = max_ppb;
+
+	if (sw_ts) {
+		s->kp = SWTS_KP;
+		s->ki = SWTS_KI;
+	} else {
+		s->kp = HWTS_KP;
+		s->ki = HWTS_KI;
+	}
 
 	return &s->servo;
 }
