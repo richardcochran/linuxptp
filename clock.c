@@ -350,6 +350,17 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	pd = tmv_sub(pd, tmv_add(c1, tmv_add(c2, c3)));
 	pd = tmv_div(pd, 2);
 
+	if (pd < 0) {
+		pr_debug("negative path delay %10lld", pd);
+		pr_debug("path_delay = (t2 - t3) + (t4 - t1)");
+		pr_debug("t2 - t3 = %+10lld", t2 - t3);
+		pr_debug("t4 - t1 = %+10lld", t4 - t1);
+		pr_debug("c1 %10lld", c1);
+		pr_debug("c2 %10lld", c2);
+		pr_debug("c3 %10lld", c3);
+		return;
+	}
+
 	c->path_delay = mave_accumulate(c->avg_delay, pd);
 
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
