@@ -240,6 +240,26 @@ static int port_set_delay_tmo(struct port *p)
 	return timerfd_settime(p->fda.fd[FD_DELAY_TIMER], 0, &tmo, NULL);
 }
 
+static void port_synchronize(struct port *p,
+			     struct timespec ingress_ts,
+			     struct timestamp origin_ts,
+			     Integer64 correction1, Integer64 correction2)
+{
+	enum servo_state state;
+
+	state = clock_synchronize(p->clock, ingress_ts, origin_ts,
+				  correction1, correction2);
+	switch (state) {
+	case SERVO_UNLOCKED:
+	case SERVO_JUMP:
+		port_dispatch(p, EV_SYNCHRONIZATION_FAULT);
+		break;
+	case SERVO_LOCKED:
+		port_dispatch(p, EV_MASTER_CLOCK_SELECTED);
+		break;
+	}
+}
+
 static int port_delay_request(struct port *p)
 {
 	struct ptp_message *msg;
@@ -495,8 +515,8 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 	if (memcmp(pid, &m->header.sourcePortIdentity, sizeof(*pid)))
 		return;
 
-	clock_synchronize(p->clock, syn->hwts.ts, m->ts.pdu,
-			  syn->header.correction, m->header.correction);
+	port_synchronize(p, syn->hwts.ts, m->ts.pdu,
+			 syn->header.correction, m->header.correction);
 }
 
 static void process_sync(struct port *p, struct ptp_message *m)
@@ -525,8 +545,8 @@ static void process_sync(struct port *p, struct ptp_message *m)
 	// TODO - add asymmetry value to correctionField.
 
 	if (one_step(m)) {
-		clock_synchronize(p->clock, m->hwts.ts, m->ts.pdu,
-				  m->header.correction, 0);
+		port_synchronize(p, m->hwts.ts, m->ts.pdu,
+				 m->header.correction, 0);
 		return;
 	}
 	/*
@@ -534,8 +554,8 @@ static void process_sync(struct port *p, struct ptp_message *m)
 	 */
 	fup = p->last_follow_up;
 	if (fup && fup->header.sequenceId == m->header.sequenceId) {
-		clock_synchronize(p->clock, m->hwts.ts, fup->ts.pdu,
-				  m->header.correction, fup->header.correction);
+		port_synchronize(p, m->hwts.ts, fup->ts.pdu,
+				 m->header.correction, fup->header.correction);
 		return;
 	}
 	/*

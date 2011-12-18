@@ -21,6 +21,7 @@
 #define HAVE_CLOCK_H
 
 #include "ds.h"
+#include "servo.h"
 #include "transport.h"
 
 #define MAX_PORTS 8
@@ -141,8 +142,12 @@ int clock_slave_only(struct clock *c);
  * @param correction1  The correction field of the sync message.
  * @param correction2  The correction field of the follow up message.
  *                     Pass zero in the case of one step operation.
+ * @return             The state of the clock's servo.
  */
-void clock_synchronize(struct clock *c,
-		       struct timespec ingress_ts, struct timestamp origin_ts,
-		       Integer64 correction1, Integer64 correction2);
+enum servo_state clock_synchronize(struct clock *c,
+				   struct timespec ingress_ts,
+				   struct timestamp origin_ts,
+				   Integer64 correction1,
+				   Integer64 correction2);
+
 #endif

@@ -371,13 +371,15 @@ int clock_slave_only(struct clock *c)
 	return c->dds.slaveOnly;
 }
 
-void clock_synchronize(struct clock *c,
-		       struct timespec ingress_ts, struct timestamp origin_ts,
-		       Integer64 correction1, Integer64 correction2)
+enum servo_state clock_synchronize(struct clock *c,
+				   struct timespec ingress_ts,
+				   struct timestamp origin_ts,
+				   Integer64 correction1,
+				   Integer64 correction2)
 {
 	double adj;
 	tmv_t ingress, origin;
-	enum servo_state state;
+	enum servo_state state = SERVO_UNLOCKED;
 
 	ingress = timespec_to_tmv(ingress_ts);
 	origin  = timestamp_to_tmv(origin_ts);
@@ -395,7 +397,7 @@ void clock_synchronize(struct clock *c,
 		tmv_add(origin, tmv_add(c->path_delay, tmv_add(c->c1, c->c2))));
 
 	if (!c->path_delay)
-		return;
+		return state;
 
 	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
 
@@ -412,6 +414,7 @@ void clock_synchronize(struct clock *c,
 		clock_ppb(c->clkid, -adj);
 		break;
 	}
+	return state;
 }
 
 static void handle_state_decision_event(struct clock *c)
