@@ -42,7 +42,7 @@
 static int hwts_init(int fd, char *device)
 {
 	struct ifreq ifreq;
-	struct hwtstamp_config cfg;
+	struct hwtstamp_config cfg, req;
 	int err;
 
 	memset(&ifreq, 0, sizeof(ifreq));
@@ -54,11 +54,22 @@ static int hwts_init(int fd, char *device)
 	cfg.tx_type    = HWTSTAMP_TX_ON;
 	cfg.rx_filter  = HWTSTAMP_FILTER_PTP_V2_EVENT;
 
+	req = cfg;
 	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
 	if (err < 0)
 		pr_err("ioctl SIOCSHWTSTAMP failed: %m");
 
-	printf("tx_type %d\n" "rx_filter %d\n", cfg.tx_type, cfg.rx_filter);
+	if (memcmp(&cfg, &req, sizeof(cfg))) {
+
+		pr_warning("driver changed our HWTSTAMP options");
+		pr_warning("tx_type   %d not %d", cfg.tx_type, req.tx_type);
+		pr_warning("rx_filter %d not %d", cfg.rx_filter, req.rx_filter);
+
+		if (cfg.tx_type != HWTSTAMP_TX_ON ||
+		    cfg.rx_filter != HWTSTAMP_FILTER_ALL) {
+			return -1;
+		}
+	}
 
 	return err ? errno : 0;
 }
