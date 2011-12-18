@@ -32,6 +32,7 @@
 #include <linux/net_tstamp.h>
 #include <linux/sockios.h>
 
+#include "print.h"
 #include "udp.h"
 
 #define EVENT_PORT        319
@@ -55,7 +56,7 @@ static int hwts_init(int fd, char *device)
 
 	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
 	if (err < 0)
-		perror("SIOCSHWTSTAMP failed");
+		pr_err("ioctl SIOCSHWTSTAMP failed: %m");
 
 	printf("tx_type %d\n" "rx_filter %d\n", cfg.tx_type, cfg.rx_filter);
 
@@ -91,7 +92,7 @@ static int timestamping_init(int fd, char *device, enum timestamp_type type)
 
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPING,
 		       &flags, sizeof(flags)) < 0) {
-		perror("SO_TIMESTAMPING");
+		pr_err("ioctl SO_TIMESTAMPING failed: %m");
 		return -1;
 	}
 
@@ -107,7 +108,7 @@ static int interface_index(int fd, char *name)
 	strcpy(ifreq.ifr_name, name);
 	err = ioctl(fd, SIOCGIFINDEX, &ifreq);
 	if (err < 0) {
-		perror("ioctl SIOCGIFINDEX");
+		pr_err("ioctl SIOCGIFINDEX failed: %m");
 		return err;
 	}
 	return ifreq.ifr_ifindex;
@@ -121,7 +122,7 @@ static int mcast_bind(int fd, int index)
 	req.imr_ifindex = index;
 	err = setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, &req, sizeof(req));
 	if (err) {
-		perror("setsockopt IP_MULTICAST_IF");
+		pr_err("setsockopt IP_MULTICAST_IF failed: %m");
 		return -1;
 	}
 	return 0;
@@ -139,7 +140,7 @@ static int mcast_join(int fd, int index, const struct sockaddr *grp,
 	memcpy(&req.gr_group, grp, grplen);
 	err = setsockopt(fd, IPPROTO_IP, MCAST_JOIN_GROUP, &req, sizeof(req));
 	if (err) {
-		perror("setsockopt MCAST_JOIN_GROUP");
+		pr_err("setsockopt MCAST_JOIN_GROUP failed: %m");
 		return -1;
 	}
 	return 0;
@@ -163,7 +164,7 @@ static int open_socket(char *name, struct in_addr *mc_addr, short port)
 
 	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (fd < 0) {
-		perror("socket");
+		pr_err("socket failed: %m");
 		goto no_socket;
 	}
 	index = interface_index(fd, name);
@@ -171,16 +172,16 @@ static int open_socket(char *name, struct in_addr *mc_addr, short port)
 		goto no_option;
 
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) {
-		perror("setsockopt SO_REUSEADDR");
+		pr_err("setsockopt SO_REUSEADDR failed: %m");
 		goto no_option;
 	}
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr))) {
-		perror("bind");
+		pr_err("bind failed: %m");
 		goto no_option;
 	}
 	addr.sin_addr = *mc_addr;
 	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
-		perror("mcast_join");
+		pr_err("mcast_join failed");
 		goto no_option;
 	}
 	if (mcast_bind(fd, index)) {
@@ -263,7 +264,7 @@ static int receive(int fd, void *buf, int buflen,
 		type  = cm->cmsg_type;
 		if (SOL_SOCKET == level && SO_TIMESTAMPING == type) {
 			if (cm->cmsg_len < sizeof(*ts) * 3) {
-				fprintf(stderr, "short SO_TIMESTAMPING\n");
+				pr_warning("short SO_TIMESTAMPING message");
 				return -1;
 			}
 			ts = (struct timespec *) CMSG_DATA(cm);
@@ -309,7 +310,7 @@ int udp_send(struct fdarray *fda, int event,
 
 	cnt = sendto(fd, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
 	if (cnt < 1) {
-		perror("sendto");
+		pr_err("sendto failed: %m");
 		return cnt;
 	}
 	/*
@@ -328,13 +329,13 @@ int udp_interface_macaddr(char *name, unsigned char *mac, int len)
 
 	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (fd < 0) {
-		perror("socket");
+		pr_err("socket failed: %m");
 		return -1;
 	}
 
 	err = ioctl(fd, SIOCGIFHWADDR, &ifreq);
 	if (err < 0) {
-		perror("ioctl SIOCGIFHWADDR");
+		pr_err("ioctl SIOCGIFHWADDR failed: %m");
 		close(fd);
 		return -1;
 	}
