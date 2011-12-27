@@ -53,6 +53,7 @@ struct port {
 	struct {
 		UInteger16 announce;
 		UInteger16 delayreq;
+		UInteger16 sync;
 	} seqnum;
 	struct tmtab tmtab;
 	/* portDS */
@@ -271,6 +272,15 @@ static int port_set_qualification_tmo(struct port *p)
 	return timerfd_settime(p->fda.fd[FD_QUALIFICATION_TIMER], 0, &tmo, NULL);
 }
 
+static int port_set_sync_tmo(struct port *p)
+{
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+	tmo.it_value.tv_sec = (1 << p->logSyncInterval);
+	return timerfd_settime(p->fda.fd[FD_SYNC_TIMER], 0, &tmo, NULL);
+}
+
 static void port_synchronize(struct port *p,
 			     struct timespec ingress_ts,
 			     struct timestamp origin_ts,
@@ -384,6 +394,76 @@ static int port_tx_announce(struct port *p)
 		err = -1;
 out:
 	msg_put(msg);
+	return err;
+}
+
+static int port_tx_sync(struct port *p)
+{
+	struct ptp_message *msg, *fup;
+	int cnt, err = 0, pdulen;
+
+	msg = msg_allocate();
+	if (!msg)
+		return -1;
+	fup = msg_allocate();
+	if (!fup) {
+		msg_put(msg);
+		return -1;
+	}
+	memset(msg, 0, sizeof(*msg));
+	memset(fup, 0, sizeof(*fup));
+
+	pdulen = sizeof(struct sync_msg);
+	msg->hwts.type = p->timestamping;
+
+	msg->header.tsmt               = SYNC;
+	msg->header.ver                = PTP_VERSION;
+	msg->header.messageLength      = pdulen;
+	msg->header.domainNumber       = clock_domain_number(p->clock);
+	msg->header.sourcePortIdentity = p->portIdentity;
+	msg->header.sequenceId         = p->seqnum.sync++;
+	msg->header.control            = CTL_SYNC;
+	msg->header.logMessageInterval = p->logSyncInterval;
+
+	msg->header.flagField[0] |= TWO_STEP;
+
+	if (msg_pre_send(msg)) {
+		err = -1;
+		goto out;
+	}
+	cnt = p->transport->send(&p->fda, 1, msg, pdulen, &msg->hwts);
+	if (cnt <= 0) {
+		err = -1;
+		goto out;
+	}
+
+	/*
+	 * Send the follow up message right away.
+	 */
+	pdulen = sizeof(struct follow_up_msg);
+	fup->hwts.type = p->timestamping;
+
+	fup->header.tsmt               = FOLLOW_UP;
+	fup->header.ver                = PTP_VERSION;
+	fup->header.messageLength      = pdulen;
+	fup->header.domainNumber       = clock_domain_number(p->clock);
+	fup->header.sourcePortIdentity = p->portIdentity;
+	fup->header.sequenceId         = p->seqnum.sync - 1;
+	fup->header.control            = CTL_FOLLOW_UP;
+	fup->header.logMessageInterval = p->logSyncInterval;
+
+	ts_to_timestamp(&msg->hwts.ts, &fup->follow_up.preciseOriginTimestamp);
+
+	if (msg_pre_send(fup)) {
+		err = -1;
+		goto out;
+	}
+	cnt = p->transport->send(&p->fda, 0, fup, pdulen, &fup->hwts);
+	if (cnt <= 0)
+		err = -1;
+out:
+	msg_put(msg);
+	msg_put(fup);
 	return err;
 }
 
@@ -721,6 +801,7 @@ void port_dispatch(struct port *p, enum fsm_event event)
 	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -736,6 +817,7 @@ void port_dispatch(struct port *p, enum fsm_event event)
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
 		port_set_manno_tmo(p);
+		port_set_sync_tmo(p);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -776,6 +858,11 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		pr_debug("port %hu: master tx announce timeout", portnum(p));
 		port_set_manno_tmo(p);
 		return port_tx_announce(p) ? EV_FAULT_DETECTED : EV_NONE;
+
+	case FD_SYNC_TIMER:
+		pr_debug("port %hu: master sync timeout", portnum(p));
+		port_set_sync_tmo(p);
+		return port_tx_sync(p) ? EV_FAULT_DETECTED : EV_NONE;
 	}
 
 	msg = msg_allocate();

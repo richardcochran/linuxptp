@@ -205,7 +205,7 @@ int msg_pre_send(struct ptp_message *m)
 
 	switch (type) {
 	case SYNC:
-		return -1;
+		break;
 	case DELAY_REQ:
 		break;
 	case PDELAY_REQ:

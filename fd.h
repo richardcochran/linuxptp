@@ -20,7 +20,7 @@
 #ifndef HAVE_FD_H
 #define HAVE_FD_H
 
-#define N_TIMER_FDS 4
+#define N_TIMER_FDS 5
 
 enum {
 	FD_EVENT,
@@ -29,6 +29,7 @@ enum {
 	FD_DELAY_TIMER,
 	FD_QUALIFICATION_TIMER,
 	FD_MANNO_TIMER,
+	FD_SYNC_TIMER,
 	N_POLLFD,
 };
 
