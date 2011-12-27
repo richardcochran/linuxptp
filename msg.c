@@ -29,6 +29,14 @@
 
 static TAILQ_HEAD(msg_pool, ptp_message) msg_pool;
 
+static void announce_pre_send(struct announce_msg *m)
+{
+	m->currentUtcOffset = htons(m->currentUtcOffset);
+	m->grandmasterClockQuality.offsetScaledLogVariance =
+		htons(m->grandmasterClockQuality.offsetScaledLogVariance);
+	m->stepsRemoved = htons(m->stepsRemoved);
+}
+
 static void announce_post_recv(struct announce_msg *m)
 {
 	m->currentUtcOffset = ntohs(m->currentUtcOffset);
@@ -206,7 +214,10 @@ int msg_pre_send(struct ptp_message *m)
 	case FOLLOW_UP:
 	case DELAY_RESP:
 	case PDELAY_RESP_FOLLOW_UP:
+		return -1;
 	case ANNOUNCE:
+		announce_pre_send(&m->announce);
+		break;
 	case SIGNALING:
 	case MANAGEMENT:
 	default:

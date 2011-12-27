@@ -50,7 +50,8 @@ struct port {
 	struct ptp_message *last_follow_up;
 	struct ptp_message *last_sync;
 	struct ptp_message *delay_req;
-	UInteger16 seqnum;
+	UInteger16 announce_seqnum;
+	UInteger16 delayreq_seqnum;
 	struct tmtab tmtab;
 	/* portDS */
 	struct PortIdentity portIdentity;
@@ -240,6 +241,15 @@ static int port_set_delay_tmo(struct port *p)
 	return timerfd_settime(p->fda.fd[FD_DELAY_TIMER], 0, &tmo, NULL);
 }
 
+static int port_set_manno_tmo(struct port *p)
+{
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+	tmo.it_value.tv_sec = (1 << p->logAnnounceInterval);
+	return timerfd_settime(p->fda.fd[FD_MANNO_TIMER], 0, &tmo, NULL);
+}
+
 static int port_set_qualification_tmo(struct port *p)
 {
 	struct itimerspec tmo = {
@@ -290,7 +300,7 @@ static int port_delay_request(struct port *p)
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
-	msg->header.sequenceId         = p->seqnum++;
+	msg->header.sequenceId         = p->delayreq_seqnum++;
 	msg->header.control            = CTL_DELAY_REQ;
 	msg->header.logMessageInterval = 0x7f;
 
@@ -311,9 +321,66 @@ out:
 	return -1;
 }
 
+static int port_tx_announce(struct port *p)
+{
+	struct parentDS *dad = clock_parent_ds(p->clock);
+	struct timePropertiesDS *tp = clock_time_properties(p->clock);
+	struct ptp_message *msg;
+	int cnt, err = 0, pdulen;
+
+	msg = msg_allocate();
+	if (!msg)
+		return -1;
+	memset(msg, 0, sizeof(*msg));
+
+	pdulen = sizeof(struct announce_msg);
+	msg->hwts.type = p->timestamping;
+
+	msg->header.tsmt               = ANNOUNCE;
+	msg->header.ver                = PTP_VERSION;
+	msg->header.messageLength      = pdulen;
+	msg->header.domainNumber       = clock_domain_number(p->clock);
+	msg->header.sourcePortIdentity = p->portIdentity;
+	msg->header.sequenceId         = p->announce_seqnum++;
+	msg->header.control            = CTL_OTHER;
+	msg->header.logMessageInterval = p->logAnnounceInterval;
+
+	if (tp->leap61)
+		msg->header.flagField[1] |= LEAP_61;
+	if (tp->leap59)
+		msg->header.flagField[1] |= LEAP_59;
+	if (tp->currentUtcOffsetValid)
+		msg->header.flagField[1] |= UTC_OFF_VALID;
+	if (tp->ptpTimescale)
+		msg->header.flagField[1] |= PTP_TIMESCALE;
+	if (tp->timeTraceable)
+		msg->header.flagField[1] |= TIME_TRACEABLE;
+	if (tp->frequencyTraceable)
+		msg->header.flagField[1] |= FREQ_TRACEABLE;
+
+	msg->announce.currentUtcOffset        = tp->currentUtcOffset;
+	msg->announce.grandmasterPriority1    = dad->grandmasterPriority1;
+	msg->announce.grandmasterClockQuality = dad->grandmasterClockQuality;
+	msg->announce.grandmasterPriority2    = dad->grandmasterPriority2;
+	msg->announce.grandmasterIdentity     = dad->grandmasterIdentity;
+	msg->announce.stepsRemoved            = clock_steps_removed(p->clock);
+	msg->announce.timeSource              = tp->timeSource;
+
+	if (msg_pre_send(msg)) {
+		err = -1;
+		goto out;
+	}
+	cnt = p->transport->send(&p->fda, 0, msg, pdulen, &msg->hwts);
+	if (cnt <= 0)
+		err = -1;
+out:
+	msg_put(msg);
+	return err;
+}
+
 static int port_initialize(struct port *p)
 {
-	int fd1, fd2, fd3;
+	int fd[N_TIMER_FDS], i;
 
 	p->logMinDelayReqInterval  = LOG_MIN_DELAY_REQ_INTERVAL;
 	p->peerMeanPathDelay       = 0;
@@ -324,30 +391,23 @@ static int port_initialize(struct port *p)
 
 	tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
 
-	fd1 = timerfd_create(CLOCK_MONOTONIC, 0);
-	if (fd1 < 0) {
-		pr_err("timerfd_create: %s", strerror(errno));
-		goto no_timer1;
+	for (i = 0; i < N_TIMER_FDS; i++) {
+		fd[i] = -1;
 	}
-	fd2 = timerfd_create(CLOCK_MONOTONIC, 0);
-	if (fd2 < 0) {
-		pr_err("timerfd_create: %s", strerror(errno));
-		goto no_timer2;
-	}
-	fd3 = timerfd_create(CLOCK_MONOTONIC, 0);
-	if (fd3 < 0) {
-		pr_err("timerfd_create: %s", strerror(errno));
-		goto no_timer3;
+	for (i = 0; i < N_TIMER_FDS; i++) {
+		fd[i] = timerfd_create(CLOCK_MONOTONIC, 0);
+		if (fd[i] < 0) {
+			pr_err("timerfd_create: %s", strerror(errno));
+			goto no_timers;
+		}
 	}
 	if (p->transport->open(p->name, &p->fda, p->timestamping))
 		goto no_tropen;
 
-	p->fda.fd[FD_ANNOUNCE_TIMER] = fd1;
-	p->fda.cnt++;
-	p->fda.fd[FD_DELAY_TIMER] = fd2;
-	p->fda.cnt++;
-	p->fda.fd[FD_QUALIFICATION_TIMER] = fd3;
-	p->fda.cnt++;
+	for (i = 0; i < N_TIMER_FDS; i++) {
+		p->fda.fd[FD_ANNOUNCE_TIMER + i] = fd[i];
+		p->fda.cnt++;
+	}
 
 	if (port_set_announce_tmo(p))
 		goto no_tmo;
@@ -358,11 +418,11 @@ static int port_initialize(struct port *p)
 no_tmo:
 	p->transport->close(&p->fda);
 no_tropen:
-no_timer3:
-	close(fd2);
-no_timer2:
-	close(fd1);
-no_timer1:
+no_timers:
+	for (i = 0; i < N_TIMER_FDS; i++) {
+		if (fd[i] >= 0)
+			close(fd[i]);
+	}
 	return -1;
 }
 
@@ -591,10 +651,11 @@ static void process_sync(struct port *p, struct ptp_message *m)
 
 void port_close(struct port *p)
 {
+	int i;
 	p->transport->close(&p->fda);
-	close(p->fda.fd[FD_ANNOUNCE_TIMER]);
-	close(p->fda.fd[FD_DELAY_TIMER]);
-	close(p->fda.fd[FD_QUALIFICATION_TIMER]);
+	for (i = 0; i < N_TIMER_FDS; i++) {
+		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
+	}
 	free(p);
 }
 
@@ -652,6 +713,7 @@ void port_dispatch(struct port *p, enum fsm_event event)
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -666,6 +728,7 @@ void port_dispatch(struct port *p, enum fsm_event event)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
+		port_set_manno_tmo(p);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -701,6 +764,11 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_QUALIFICATION_TIMER:
 		pr_debug("port %hu: qualification timeout", portnum(p));
 		return EV_QUALIFICATION_TIMEOUT_EXPIRES;
+
+	case FD_MANNO_TIMER:
+		pr_debug("port %hu: master tx announce timeout", portnum(p));
+		port_set_manno_tmo(p);
+		return port_tx_announce(p) ? EV_FAULT_DETECTED : EV_NONE;
 	}
 
 	msg = msg_allocate();
