@@ -63,6 +63,7 @@ static void usage(char *progname)
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, for example 'eth0'\n"
 		"           (may be specified multiple times)\n"
+		" -m        slave only mode\n"
 		" -p [dev]  PTP hardware clock device to use, default '%s'\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n\n",
 		progname, DEFAULT_PHC);
@@ -71,7 +72,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *phc = DEFAULT_PHC, *progname;
-	int c, i, nports = 0;
+	int c, i, nports = 0, slaveonly = 0;
 	struct interface iface[MAX_PORTS];
 	enum transport_type transport = TRANS_UDP_IPV4;
 	enum timestamp_type timestamping = TS_HARDWARE;
@@ -80,7 +81,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246hi:p:rsz"))) {
+	while (EOF != (c = getopt(argc, argv, "246hi:mp:rsz"))) {
 		switch (c) {
 		case '2':
 			transport = TRANS_IEEE_802_3;
@@ -98,6 +99,9 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "too many interfaces\n");
 				return -1;
 			}
+			break;
+		case 'm':
+			slaveonly = 1;
 			break;
 		case 'p':
 			phc = optarg;
@@ -135,9 +139,9 @@ int main(int argc, char *argv[])
 		phc = NULL;
 	}
 
-	ds.slaveOnly = TRUE; // TODO - make this programmable.
+	ds.slaveOnly = slaveonly ? TRUE : FALSE;
 	ds.priority1 = 128;
-	ds.clockQuality.clockClass = 255;
+	ds.clockQuality.clockClass = slaveonly ? 255 : 248;
 	ds.clockQuality.clockAccuracy = 0xfe;
 	ds.clockQuality.offsetScaledLogVariance = 0xffff;
 	ds.priority2 = 128;
