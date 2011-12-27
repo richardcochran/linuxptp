@@ -50,8 +50,10 @@ struct port {
 	struct ptp_message *last_follow_up;
 	struct ptp_message *last_sync;
 	struct ptp_message *delay_req;
-	UInteger16 announce_seqnum;
-	UInteger16 delayreq_seqnum;
+	struct {
+		UInteger16 announce;
+		UInteger16 delayreq;
+	} seqnum;
 	struct tmtab tmtab;
 	/* portDS */
 	struct PortIdentity portIdentity;
@@ -300,7 +302,7 @@ static int port_delay_request(struct port *p)
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
-	msg->header.sequenceId         = p->delayreq_seqnum++;
+	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_DELAY_REQ;
 	msg->header.logMessageInterval = 0x7f;
 
@@ -341,7 +343,7 @@ static int port_tx_announce(struct port *p)
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
-	msg->header.sequenceId         = p->announce_seqnum++;
+	msg->header.sequenceId         = p->seqnum.announce++;
 	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = p->logAnnounceInterval;
 
