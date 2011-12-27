@@ -62,6 +62,9 @@ enum port_state ptp_fsm(enum port_state state, enum fsm_event event)
 		case EV_RS_MASTER:
 			next = PS_PRE_MASTER;
 			break;
+		case EV_RS_GRAND_MASTER:
+			next = PS_GRAND_MASTER;
+			break;
 		case EV_RS_SLAVE:
 			next = PS_UNCALIBRATED;
 			break;
@@ -129,6 +132,9 @@ enum port_state ptp_fsm(enum port_state state, enum fsm_event event)
 		case EV_RS_MASTER:
 			next = PS_PRE_MASTER;
 			break;
+		case EV_RS_GRAND_MASTER:
+			next = PS_GRAND_MASTER;
+			break;
 		case EV_RS_SLAVE:
 			next = PS_UNCALIBRATED;
 			break;
@@ -153,6 +159,9 @@ enum port_state ptp_fsm(enum port_state state, enum fsm_event event)
 			break;
 		case EV_RS_MASTER:
 			next = PS_PRE_MASTER;
+			break;
+		case EV_RS_GRAND_MASTER:
+			next = PS_GRAND_MASTER;
 			break;
 		case EV_RS_SLAVE:
 			next = PS_UNCALIBRATED;
@@ -181,6 +190,9 @@ enum port_state ptp_fsm(enum port_state state, enum fsm_event event)
 			break;
 		case EV_RS_MASTER:
 			next = PS_PRE_MASTER;
+			break;
+		case EV_RS_GRAND_MASTER:
+			next = PS_GRAND_MASTER;
 			break;
 		case EV_RS_SLAVE:
 			next = PS_UNCALIBRATED;
@@ -237,6 +249,7 @@ enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event)
 			break;
 		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
 		case EV_RS_MASTER:
+		case EV_RS_GRAND_MASTER:
 		case EV_RS_PASSIVE:
 			next = PS_LISTENING;
 			break;
@@ -258,6 +271,7 @@ enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event)
 			break;
 		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
 		case EV_RS_MASTER:
+		case EV_RS_GRAND_MASTER:
 		case EV_RS_PASSIVE:
 			next = PS_LISTENING;
 			break;
@@ -279,6 +293,7 @@ enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event)
 			break;
 		case EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES:
 		case EV_RS_MASTER:
+		case EV_RS_GRAND_MASTER:
 		case EV_RS_PASSIVE:
 			next = PS_LISTENING;
 			break;

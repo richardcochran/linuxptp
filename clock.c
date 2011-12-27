@@ -451,7 +451,8 @@ static void handle_state_decision_event(struct clock *c)
 			break;
 		case PS_GRAND_MASTER:
 			clock_update_grandmaster(c);
-			/*fall through*/
+			event = EV_RS_GRAND_MASTER;
+			break;
 		case PS_MASTER:
 			event = EV_RS_MASTER;
 			break;
