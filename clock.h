@@ -103,6 +103,13 @@ struct ClockIdentity clock_identity(struct clock *c);
 void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda);
 
 /**
+ * Obtain a clock's parent data set.
+ * @param c  The clock instance.
+ * @return   A pointer to the parent data set of the clock.
+ */
+struct parentDS *clock_parent_ds(struct clock *c);
+
+/**
  * Obtain the parent port identity from a clock's parent data set.
  * @param c  The clock instance.
  * @return   The parent port identity.
@@ -156,5 +163,12 @@ enum servo_state clock_synchronize(struct clock *c,
 				   struct timestamp origin_ts,
 				   Integer64 correction1,
 				   Integer64 correction2);
+
+/**
+ * Obtain a clock's time properties data set.
+ * @param c  The clock instance.
+ * @return   A pointer to the time properties data set of the clock.
+ */
+struct timePropertiesDS *clock_time_properties(struct clock *c);
 
 #endif

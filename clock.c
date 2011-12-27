@@ -287,6 +287,11 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 	}
 }
 
+struct parentDS *clock_parent_ds(struct clock *c)
+{
+	return &c->dad;
+}
+
 struct PortIdentity clock_parent_identity(struct clock *c)
 {
 	return c->dad.parentPortIdentity;
@@ -420,6 +425,11 @@ enum servo_state clock_synchronize(struct clock *c,
 		break;
 	}
 	return state;
+}
+
+struct timePropertiesDS *clock_time_properties(struct clock *c)
+{
+	return &c->tds;
 }
 
 static void handle_state_decision_event(struct clock *c)
