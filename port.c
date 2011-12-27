@@ -628,26 +628,24 @@ void port_dispatch(struct port *p, enum fsm_event event)
 	pr_info("port %hu: %s to %s on %s", portnum(p),
 		ps_str[p->state], ps_str[next], ev_str[event]);
 
+	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
+
 	switch (next) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
 	case PS_DISABLED:
-		port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
-		port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 		break;
 	case PS_LISTENING:
 		port_set_announce_tmo(p);
-		port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 		break;
 	case PS_PRE_MASTER:
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
-		port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
-		port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 		break;
 	case PS_UNCALIBRATED:
 	case PS_SLAVE:
