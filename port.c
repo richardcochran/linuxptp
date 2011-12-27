@@ -240,6 +240,18 @@ static int port_set_delay_tmo(struct port *p)
 	return timerfd_settime(p->fda.fd[FD_DELAY_TIMER], 0, &tmo, NULL);
 }
 
+static int port_set_qualification_tmo(struct port *p)
+{
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+
+	tmo.it_value.tv_sec = (1 + clock_steps_removed(p->clock)) *
+		(1 << p->logAnnounceInterval);
+
+	return timerfd_settime(p->fda.fd[FD_QUALIFICATION_TIMER], 0, &tmo, NULL);
+}
+
 static void port_synchronize(struct port *p,
 			     struct timespec ingress_ts,
 			     struct timestamp origin_ts,
@@ -301,7 +313,7 @@ out:
 
 static int port_initialize(struct port *p)
 {
-	int fd1, fd2;
+	int fd1, fd2, fd3;
 
 	p->logMinDelayReqInterval  = LOG_MIN_DELAY_REQ_INTERVAL;
 	p->peerMeanPathDelay       = 0;
@@ -322,12 +334,19 @@ static int port_initialize(struct port *p)
 		pr_err("timerfd_create: %s", strerror(errno));
 		goto no_timer2;
 	}
+	fd3 = timerfd_create(CLOCK_MONOTONIC, 0);
+	if (fd3 < 0) {
+		pr_err("timerfd_create: %s", strerror(errno));
+		goto no_timer3;
+	}
 	if (p->transport->open(p->name, &p->fda, p->timestamping))
 		goto no_tropen;
 
 	p->fda.fd[FD_ANNOUNCE_TIMER] = fd1;
 	p->fda.cnt++;
 	p->fda.fd[FD_DELAY_TIMER] = fd2;
+	p->fda.cnt++;
+	p->fda.fd[FD_QUALIFICATION_TIMER] = fd3;
 	p->fda.cnt++;
 
 	if (port_set_announce_tmo(p))
@@ -339,6 +358,7 @@ static int port_initialize(struct port *p)
 no_tmo:
 	p->transport->close(&p->fda);
 no_tropen:
+no_timer3:
 	close(fd2);
 no_timer2:
 	close(fd1);
@@ -574,6 +594,7 @@ void port_close(struct port *p)
 	p->transport->close(&p->fda);
 	close(p->fda.fd[FD_ANNOUNCE_TIMER]);
 	close(p->fda.fd[FD_DELAY_TIMER]);
+	close(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	free(p);
 }
 
@@ -641,6 +662,8 @@ void port_dispatch(struct port *p, enum fsm_event event)
 		port_set_announce_tmo(p);
 		break;
 	case PS_PRE_MASTER:
+		port_set_qualification_tmo(p);
+		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
 		break;
@@ -674,6 +697,10 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		pr_debug("port %hu: delay timeout", portnum(p));
 		port_set_delay_tmo(p);
 		return port_delay_request(p) ? EV_FAULT_DETECTED : EV_NONE;
+
+	case FD_QUALIFICATION_TIMER:
+		pr_debug("port %hu: qualification timeout", portnum(p));
+		return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 	}
 
 	msg = msg_allocate();
