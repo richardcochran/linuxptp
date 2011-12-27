@@ -371,6 +371,11 @@ int clock_slave_only(struct clock *c)
 	return c->dds.slaveOnly;
 }
 
+UInteger16 clock_steps_removed(struct clock *c)
+{
+	return c->cur.stepsRemoved;
+}
+
 enum servo_state clock_synchronize(struct clock *c,
 				   struct timespec ingress_ts,
 				   struct timestamp origin_ts,
