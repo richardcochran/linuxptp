@@ -111,11 +111,11 @@ static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
 	m->ts.pdu.nsec = ntohl(ts->nanoseconds);
 }
 
-static void timestamp_pre_send(struct ptp_message *m, struct Timestamp *ts)
+static void timestamp_pre_send(struct Timestamp *ts)
 {
-	ts->seconds_lsb = htonl(m->ts.pdu.sec);
-	ts->seconds_msb = htons(0);
-	ts->nanoseconds = htonl(m->ts.pdu.nsec);
+	ts->seconds_lsb = htonl(ts->seconds_lsb);
+	ts->seconds_msb = htons(ts->seconds_msb);
+	ts->nanoseconds = htonl(ts->nanoseconds);
 }
 
 /* public methods */
@@ -207,12 +207,18 @@ int msg_pre_send(struct ptp_message *m)
 	case SYNC:
 		return -1;
 	case DELAY_REQ:
-		timestamp_pre_send(m, &m->delay_req.originTimestamp);
 		break;
 	case PDELAY_REQ:
 	case PDELAY_RESP:
+		return -1;
 	case FOLLOW_UP:
+		timestamp_pre_send(&m->follow_up.preciseOriginTimestamp);
+		break;
 	case DELAY_RESP:
+		timestamp_pre_send(&m->delay_resp.receiveTimestamp);
+		m->delay_resp.requestingPortIdentity.portNumber =
+			htons(m->delay_resp.requestingPortIdentity.portNumber);
+		break;
 	case PDELAY_RESP_FOLLOW_UP:
 		return -1;
 	case ANNOUNCE:

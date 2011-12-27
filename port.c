@@ -158,6 +158,13 @@ static void fc_prune(struct foreign_clock *fc)
 	}
 }
 
+static void ts_to_timestamp(struct timespec *src, struct Timestamp *dst)
+{
+	dst->seconds_lsb = src->tv_sec;
+	dst->seconds_msb = 0;
+	dst->nanoseconds = src->tv_nsec;
+}
+
 /*
  * Returns non-zero if the announce message is different than last.
  */
@@ -510,9 +517,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.control            = CTL_DELAY_RESP;
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
-	msg->delay_resp.receiveTimestamp.seconds_lsb = htonl(m->hwts.ts.tv_sec);
-	msg->delay_resp.receiveTimestamp.seconds_msb = htons(0);
-	msg->delay_resp.receiveTimestamp.nanoseconds = htonl(m->hwts.ts.tv_nsec);
+	ts_to_timestamp(&m->hwts.ts, &msg->delay_resp.receiveTimestamp);
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
