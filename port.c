@@ -229,6 +229,26 @@ static int port_clr_tmo(int fd)
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
+static int port_ignore(struct port *p, struct ptp_message *m)
+{
+	struct ClockIdentity c1, c2;
+
+	if (pid_eq(&m->header.sourcePortIdentity, &p->portIdentity)) {
+		return 1;
+	}
+	if (m->header.domainNumber != clock_domain_number(p->clock)) {
+		return 1;
+	}
+
+	c1 = clock_identity(p->clock);
+	c2 = m->header.sourcePortIdentity.clockIdentity;
+
+	if (0 == memcmp(&c1, &c2, sizeof(c1))) {
+		return 1;
+	}
+	return 0;
+}
+
 static int port_set_announce_tmo(struct port *p)
 {
 	struct itimerspec tmo = {
@@ -876,9 +896,12 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
 	}
-
 	if (msg_post_recv(msg, cnt)) {
 		pr_err("port %hu: bad message", portnum(p));
+		msg_put(msg);
+		return EV_NONE;
+	}
+	if (port_ignore(p, msg)) {
 		msg_put(msg);
 		return EV_NONE;
 	}
