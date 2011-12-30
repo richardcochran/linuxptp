@@ -188,6 +188,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	case SIGNALING:
 	case MANAGEMENT:
+		break;
 	default:
 		return -1;
 	}
