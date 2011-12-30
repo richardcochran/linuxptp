@@ -24,6 +24,8 @@
 
 void print(int level, char const *format, ...);
 
+void print_set_level(int level);
+
 #define pr_emerg(x...)   print(LOG_EMERG, x)
 #define pr_alert(x...)   print(LOG_ALERT, x)
 #define pr_crit(x...)    print(LOG_CRIT, x)

@@ -26,6 +26,11 @@
 static int verbose = 1;
 static int print_level = LOG_INFO;
 
+void print_set_level(int level)
+{
+	print_level = level;
+}
+
 void print(int level, char const *format, ...)
 {
 	pid_t pid;

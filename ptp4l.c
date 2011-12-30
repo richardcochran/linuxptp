@@ -63,6 +63,7 @@ static void usage(char *progname)
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, for example 'eth0'\n"
 		"           (may be specified multiple times)\n"
+		" -l [num]  set the logging level to 'num'\n"
 		" -m        slave only mode\n"
 		" -p [dev]  PTP hardware clock device to use, default '%s'\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n\n",
@@ -81,7 +82,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246hi:mp:rsz"))) {
+	while (EOF != (c = getopt(argc, argv, "246hi:l:mp:rsz"))) {
 		switch (c) {
 		case '2':
 			transport = TRANS_IEEE_802_3;
@@ -99,6 +100,9 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "too many interfaces\n");
 				return -1;
 			}
+			break;
+		case 'l':
+			print_set_level(atoi(optarg));
 			break;
 		case 'm':
 			slaveonly = 1;
