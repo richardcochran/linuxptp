@@ -411,8 +411,8 @@ enum servo_state clock_synchronize(struct clock *c,
 
 	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
 
-	pr_debug("master offset %10lld s%d adj %+7.0f",
-		 c->master_offset, state, adj);
+	pr_info("master offset %10lld s%d adj %+7.0f path delay %10lld",
+		c->master_offset, state, adj, c->path_delay);
 
 	switch (state) {
 	case SERVO_UNLOCKED:
