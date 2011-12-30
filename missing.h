@@ -49,4 +49,20 @@ static inline int clock_adjtime(clockid_t id, struct timex *tx)
 	return syscall(__NR_clock_adjtime, id, tx);
 }
 
+#ifdef __uClinux__
+
+static inline int timerfd_create(int clockid, int flags)
+{
+	return syscall(__NR_timerfd_create, clockid, flags);
+}
+
+static inline int timerfd_settime(int fd, int flags,
+				  const struct itimerspec *new_value,
+				  struct itimerspec *old_value)
+{
+	return syscall(__NR_timerfd_settime, fd, flags, new_value, old_value);
+}
+
+#endif
+
 #endif

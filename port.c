@@ -26,6 +26,7 @@
 
 #include "bmc.h"
 #include "clock.h"
+#include "missing.h"
 #include "msg.h"
 #include "port.h"
 #include "print.h"
