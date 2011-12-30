@@ -21,19 +21,27 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "print.h"
+
 static int verbose = 1;
+static int print_level = LOG_INFO;
 
 void print(int level, char const *format, ...)
 {
-	pid_t pid = getpid();
+	pid_t pid;
 	va_list ap;
 	char buf[1024];
+
+	if (level > print_level)
+		return;
+
+	pid = getpid();
 
 	va_start(ap, format);
 	vsnprintf(buf, sizeof(buf), format, ap);
 	va_end(ap);
 
 	if (verbose) {
-		fprintf(stdout, "linuxptp[%d]: %s\n", pid, buf);
+		fprintf(stdout, "ptp4l[%d]: %s\n", pid, buf);
 	}
 }
