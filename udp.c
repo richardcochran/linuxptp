@@ -143,15 +143,15 @@ static int mcast_join(int fd, int index, const struct sockaddr *grp,
 		      socklen_t grplen)
 {
 	int err;
-	struct group_req req;
-	req.gr_interface = index;
-	if (grplen > sizeof(req.gr_group)) {
-		return -1;
-	}
-	memcpy(&req.gr_group, grp, grplen);
-	err = setsockopt(fd, IPPROTO_IP, MCAST_JOIN_GROUP, &req, sizeof(req));
+	struct ip_mreqn req;
+	struct sockaddr_in *sa = (struct sockaddr_in *) grp;
+
+	memset(&req, 0, sizeof(req));
+	memcpy(&req.imr_multiaddr, &sa->sin_addr, sizeof(struct in_addr));
+	req.imr_ifindex = index;
+	err = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &req, sizeof(req));
 	if (err) {
-		pr_err("setsockopt MCAST_JOIN_GROUP failed: %m");
+		pr_err("setsockopt IP_ADD_MEMBERSHIP failed: %m");
 		return -1;
 	}
 	return 0;
