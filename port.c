@@ -872,11 +872,14 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	msg->hwts.type = p->timestamping;
 
 	cnt = p->transport->recv(fd, msg, sizeof(*msg), &msg->hwts);
-	if (cnt <= 0)
+	if (cnt <= 0) {
+		msg_put(msg);
 		return EV_FAULT_DETECTED;
+	}
 
 	if (msg_post_recv(msg, cnt)) {
 		pr_err("port %hu: bad message", portnum(p));
+		msg_put(msg);
 		return EV_NONE;
 	}
 
