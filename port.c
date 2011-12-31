@@ -34,10 +34,6 @@
 
 #define PTP_VERSION 2
 
-#define LOG_MIN_DELAY_REQ_INTERVAL      0 /* allow Delay_Req every 1 sec */
-#define LOG_ANNOUNCE_INTERVAL           1 /* every 2 sec */
-#define ANNOUNCE_RECEIPT_TIMEOUT        3 /* wait for 3 missing announce */
-#define LOG_SYNC_INTERVAL               0 /* every 1 sec */
 #define LOG_MIN_PDELAY_REQ_INTERVAL     2 /* allow PDelay_Req every 4 sec */
 
 struct port {
@@ -57,6 +53,7 @@ struct port {
 	} seqnum;
 	struct tmtab tmtab;
 	/* portDS */
+	struct port_defaults pod;
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
 	Integer8            logMinDelayReqInterval;
@@ -491,11 +488,11 @@ static int port_initialize(struct port *p)
 {
 	int fd[N_TIMER_FDS], i;
 
-	p->logMinDelayReqInterval  = LOG_MIN_DELAY_REQ_INTERVAL;
+	p->logMinDelayReqInterval  = p->pod.logMinDelayReqInterval;
 	p->peerMeanPathDelay       = 0;
-	p->logAnnounceInterval     = LOG_ANNOUNCE_INTERVAL;
-	p->announceReceiptTimeout  = ANNOUNCE_RECEIPT_TIMEOUT;
-	p->logSyncInterval         = LOG_SYNC_INTERVAL;
+	p->logAnnounceInterval     = p->pod.logAnnounceInterval;
+	p->announceReceiptTimeout  = p->pod.announceReceiptTimeout;
+	p->logSyncInterval         = p->pod.logSyncInterval;
 	p->logMinPdelayReqInterval = LOG_MIN_PDELAY_REQ_INTERVAL;
 
 	tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
@@ -937,7 +934,8 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	return event;
 }
 
-struct port *port_open(char *name,
+struct port *port_open(struct port_defaults *pod,
+		       char *name,
 		       enum transport_type transport,
 		       enum timestamp_type timestamping,
 		       int number,
@@ -950,6 +948,7 @@ struct port *port_open(char *name,
 
 	memset(p, 0, sizeof(*p));
 
+	p->pod = *pod;
 	p->name = name;
 	p->clock = clock;
 	p->transport = transport_find(transport);

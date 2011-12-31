@@ -156,6 +156,11 @@ int main(int argc, char *argv[])
 	ds.clockQuality.offsetScaledLogVariance = 0xffff;
 	ds.priority2 = 128;
 
+	pod.logAnnounceInterval = 1;
+	pod.logSyncInterval = 0;
+	pod.logMinDelayReqInterval = 0;
+	pod.announceReceiptTimeout = 3;
+
 	if (generate_clock_identity(&ds.clockIdentity, iface[0].name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");
 		return -1;
@@ -171,7 +176,7 @@ int main(int argc, char *argv[])
 		ds.clockQuality.clockClass = 255;
 	}
 
-	clock = clock_create(phc, iface, nports, &ds);
+	clock = clock_create(phc, iface, nports, &ds, &pod);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

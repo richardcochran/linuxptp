@@ -156,7 +156,7 @@ UInteger8 clock_class(struct clock *c)
 }
 
 struct clock *clock_create(char *phc, struct interface *iface, int count,
-			   struct defaultDS *ds)
+			   struct defaultDS *ds, struct port_defaults *pod)
 {
 	int i, max_adj, sw_ts = 0;
 	struct clock *c = &the_clock;
@@ -219,7 +219,7 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 	}
 
 	for (i = 0; i < count; i++) {
-		c->port[i] = port_open(iface[i].name, iface[i].transport,
+		c->port[i] = port_open(pod, iface[i].name, iface[i].transport,
 				       iface[i].timestamping, 1+i, DM_E2E, c);
 		if (!c->port[i]) {
 			pr_err("failed to open port %s", iface[i].name);

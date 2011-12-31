@@ -68,10 +68,11 @@ UInteger8 clock_class(struct clock *c);
  * @param interface   An array of network interfaces.
  * @param count       The number of elements in @a interfaces.
  * @param ds          A pointer to a default data set for the clock.
+ * @param pod         A pointer to a default port data set for the clock.
  * @return            A pointer to the single global clock instance.
  */
 struct clock *clock_create(char *phc, struct interface *iface, int count,
-			   struct defaultDS *ds);
+			   struct defaultDS *ds, struct port_defaults *pod);
 
 /**
  * Obtains a clock's default data set.
