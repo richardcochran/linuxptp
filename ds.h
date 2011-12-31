@@ -76,4 +76,11 @@ struct timePropertiesDS {
 	Enumeration8 timeSource;
 };
 
+struct port_defaults {
+	Integer8 logAnnounceInterval;
+	Integer8 logSyncInterval;
+	Integer8 logMinDelayReqInterval;
+	UInteger8 announceReceiptTimeout;
+};
+
 #endif

@@ -24,7 +24,7 @@ CFLAGS	= -Wall $(INC) $(DEBUG)
 LDFLAGS	=
 LDLIBS	= -lm -lrt
 PRG	= ptp4l
-OBJ	= bmc.o clock.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
+OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o servo.o tmtab.o transport.o udp.o util.o
 
 SRC	= $(OBJ:.o=.c)
