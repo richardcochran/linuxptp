@@ -210,7 +210,7 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 	c->dad.observedParentClockPhaseChangeRate    = 0x7fffffff;
 	c->dad.grandmasterPriority1                  = c->dds.priority1;
 	c->dad.grandmasterClockQuality               = c->dds.clockQuality;
-	c->dad.grandmasterPriority2                  = c->dds.priority1;
+	c->dad.grandmasterPriority2                  = c->dds.priority2;
 	c->dad.grandmasterIdentity                   = c->dds.clockIdentity;
 
 	for (i = 0; i < ARRAY_SIZE(c->pollfd); i++) {
