@@ -142,7 +142,7 @@ static int mcast_bind(int fd, int index)
 static int mcast_join(int fd, int index, const struct sockaddr *grp,
 		      socklen_t grplen)
 {
-	int err;
+	int err, off = 0;
 	struct ip_mreqn req;
 	struct sockaddr_in *sa = (struct sockaddr_in *) grp;
 
@@ -152,6 +152,11 @@ static int mcast_join(int fd, int index, const struct sockaddr *grp,
 	err = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &req, sizeof(req));
 	if (err) {
 		pr_err("setsockopt IP_ADD_MEMBERSHIP failed: %m");
+		return -1;
+	}
+	err = setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &off, sizeof(off));
+	if (err) {
+		pr_err("setsockopt IP_MULTICAST_LOOP failed: %m");
 		return -1;
 	}
 	return 0;
