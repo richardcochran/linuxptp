@@ -178,7 +178,7 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 			break;
 	}
 	if (!fc) {
-		pr_info("port %hu: new foreign master %s", portnum(p),
+		pr_notice("port %hu: new foreign master %s", portnum(p),
 			pid2str(&m->header.sourcePortIdentity));
 
 		fc = malloc(sizeof(*fc));
@@ -654,7 +654,7 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	if (p->logMinDelayReqInterval != rsp->hdr.logMessageInterval) {
 		// TODO - validate the input.
 		p->logMinDelayReqInterval = rsp->hdr.logMessageInterval;
-		pr_info("port %hu: minimum delay request interval 2^%d",
+		pr_notice("port %hu: minimum delay request interval 2^%d",
 			portnum(p), p->logMinDelayReqInterval);
 		tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
 	}
@@ -812,7 +812,7 @@ void port_dispatch(struct port *p, enum fsm_event event)
 	if (next == p->state)
 		return;
 
-	pr_info("port %hu: %s to %s on %s", portnum(p),
+	pr_notice("port %hu: %s to %s on %s", portnum(p),
 		ps_str[p->state], ps_str[next], ev_str[event]);
 
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);

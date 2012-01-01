@@ -448,7 +448,7 @@ static void handle_state_decision_event(struct clock *c)
 	if (!best)
 		return;
 
-	pr_info("selected best master clock %s",
+	pr_notice("selected best master clock %s",
 		cid2str(&best->dataset.identity));
 
 	if (c->best != best)
