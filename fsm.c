@@ -18,7 +18,7 @@
  */
 #include "fsm.h"
 
-enum port_state ptp_fsm(enum port_state state, enum fsm_event event)
+enum port_state ptp_fsm(enum port_state state, enum fsm_event event, int mdiff)
 {
 	enum port_state next = state;
 
@@ -195,7 +195,8 @@ enum port_state ptp_fsm(enum port_state state, enum fsm_event event)
 			next = PS_GRAND_MASTER;
 			break;
 		case EV_RS_SLAVE:
-			next = PS_UNCALIBRATED;
+			if (mdiff)
+				next = PS_UNCALIBRATED;
 			break;
 		case EV_RS_PASSIVE:
 			next = PS_PASSIVE;
@@ -209,7 +210,8 @@ enum port_state ptp_fsm(enum port_state state, enum fsm_event event)
 	return next;
 }
 
-enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event)
+enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event,
+			      int mdiff)
 {
 	enum port_state next = state;
 
@@ -301,7 +303,8 @@ enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event)
 			next = PS_UNCALIBRATED;
 			break;
 		case EV_RS_SLAVE:
-			next = PS_UNCALIBRATED;
+			if (mdiff)
+				next = PS_UNCALIBRATED;
 			break;
 		default:
 			break;

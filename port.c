@@ -311,10 +311,10 @@ static void port_synchronize(struct port *p,
 	switch (state) {
 	case SERVO_UNLOCKED:
 	case SERVO_JUMP:
-		port_dispatch(p, EV_SYNCHRONIZATION_FAULT);
+		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
 		break;
 	case SERVO_LOCKED:
-		port_dispatch(p, EV_MASTER_CLOCK_SELECTED);
+		port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
 		break;
 	}
 }
@@ -794,10 +794,11 @@ struct foreign_clock *port_compute_best(struct port *p)
 	return p->best;
 }
 
-void port_dispatch(struct port *p, enum fsm_event event)
+void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next = clock_slave_only(p->clock) ?
-		ptp_slave_fsm(p->state, event) : ptp_fsm(p->state, event);
+		ptp_slave_fsm(p->state, event, mdiff) :
+		ptp_fsm(p->state, event, mdiff);
 
 	if (PS_INITIALIZING == next) {
 		/*

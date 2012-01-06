@@ -69,8 +69,9 @@ struct foreign_clock *port_compute_best(struct port *port);
  *
  * @param port A pointer previously obtained via port_open().
  * @param event One of the @a fsm_event codes.
+ * @param mdiff Whether a new master has been selected.
  */
-void port_dispatch(struct port *port, enum fsm_event event);
+void port_dispatch(struct port *p, enum fsm_event event, int mdiff);
 
 /**
  * Generates state machine events based on activity on a port's file

@@ -58,16 +58,19 @@ enum fsm_event {
  * Run the state machine for a BC or OC port.
  * @param state  The current state of the port.
  * @param event  The event to be processed.
+ * @param mdiff  Whether a new master has been selected.
  * @return       The new state for the port.
  */
-enum port_state ptp_fsm(enum port_state state, enum fsm_event event);
+enum port_state ptp_fsm(enum port_state state, enum fsm_event event, int mdiff);
 
 /**
  * Run the state machine for a slave only clock.
  * @param state  The current state of the port.
  * @param event  The event to be processed.
+ * @param mdiff  Whether a new master has been selected.
  * @return       The new state for the port.
  */
-enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event);
+enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event,
+			      int mdiff);
 
 #endif

@@ -230,7 +230,7 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 	c->dds.numberPorts = c->nports = count;
 
 	for (i = 0; i < c->nports; i++)
-		port_dispatch(c->port[i], EV_INITIALIZE);
+		port_dispatch(c->port[i], EV_INITIALIZE, 0);
 
 	return c;
 }
@@ -322,7 +322,7 @@ int clock_poll(struct clock *c)
 				if (EV_STATE_DECISION_EVENT == event)
 					sde = 1;
 				else
-					port_dispatch(c->port[i], event);
+					port_dispatch(c->port[i], event, 0);
 			}
 		}
 	}
@@ -435,7 +435,7 @@ struct timePropertiesDS *clock_time_properties(struct clock *c)
 static void handle_state_decision_event(struct clock *c)
 {
 	struct foreign_clock *best = NULL, *fc;
-	int i;
+	int fresh_best = 0, i;
 
 	for (i = 0; i < c->nports; i++) {
 		fc = port_compute_best(c->port[i]);
@@ -451,8 +451,10 @@ static void handle_state_decision_event(struct clock *c)
 	pr_notice("selected best master clock %s",
 		cid2str(&best->dataset.identity));
 
-	if (c->best != best)
+	if (c->best != best) {
 		mave_reset(c->avg_delay);
+		fresh_best = 1;
+	}
 
 	c->best = best;
 
@@ -482,6 +484,6 @@ static void handle_state_decision_event(struct clock *c)
 			event = EV_INITIALIZE;
 			break;
 		}
-		port_dispatch(c->port[i], event);
+		port_dispatch(c->port[i], event, fresh_best);
 	}
 }
