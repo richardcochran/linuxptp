@@ -21,8 +21,10 @@
 #include "bmc.h"
 #include "ds.h"
 
-#define A_BETTER  1
-#define B_BETTER -1
+#define A_BETTER_TOPO  2
+#define A_BETTER       1
+#define B_BETTER      -1
+#define B_BETTER_TOPO -2
 
 static int dscmp2(struct dataset *a, struct dataset *b)
 {
@@ -37,21 +39,35 @@ static int dscmp2(struct dataset *a, struct dataset *b)
 	 * We ignore the "error-1" conditions mentioned in the
 	 * standard, since there is nothing we can do about it anyway.
 	 */
-	if (A < B)
-		return A_BETTER;
-	if (A > B)
-		return B_BETTER;
+	if (A < B) {
+		diff = memcmp(&b->receiver, &b->sender, sizeof(b->receiver));
+		if (diff < 0)
+			return A_BETTER;
+		if (diff > 0)
+			return A_BETTER_TOPO;
+		/* error-1 */
+		return 0;
+	}
+	if (A > B) {
+		diff = memcmp(&a->receiver, &a->sender, sizeof(a->receiver));
+		if (diff < 0)
+			return B_BETTER;
+		if (diff > 0)
+			return B_BETTER_TOPO;
+		/* error-1 */
+		return 0;
+	}
 
 	diff = memcmp(&a->sender, &b->sender, sizeof(a->sender));
 	if (diff < 0)
-		return A_BETTER;
+		return A_BETTER_TOPO;
 	if (diff > 0)
-		return B_BETTER;
+		return B_BETTER_TOPO;
 
 	if (a->receiver.portNumber < b->receiver.portNumber)
-		return A_BETTER;
+		return A_BETTER_TOPO;
 	if (a->receiver.portNumber > b->receiver.portNumber)
-		return B_BETTER;
+		return B_BETTER_TOPO;
 	/*
 	 * If we got this far, it means "error-2" has occured.
 	 */
@@ -136,7 +152,7 @@ enum port_state bmc_state_decision(struct clock *c, struct port *r)
 		return PS_SLAVE; /*S1*/
 	}
 
-	if (dscmp(clock_best, port_best) > 0) {
+	if (dscmp(clock_best, port_best) == A_BETTER_TOPO) {
 		return PS_PASSIVE; /*P2*/
 	} else {
 		return PS_MASTER; /*M3*/
