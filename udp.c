@@ -195,6 +195,10 @@ static int open_socket(char *name, struct in_addr *mc_addr, short port)
 		pr_err("bind failed: %m");
 		goto no_option;
 	}
+	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, name, strlen(name))) {
+		pr_err("setsockopt SO_BINDTODEVICE failed: %m");
+		goto no_option;
+	}
 	addr.sin_addr = *mc_addr;
 	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
 		pr_err("mcast_join failed");
