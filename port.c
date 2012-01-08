@@ -31,6 +31,7 @@
 #include "port.h"
 #include "print.h"
 #include "tmtab.h"
+#include "tmv.h"
 #include "util.h"
 
 #define PTP_VERSION 2
@@ -119,6 +120,33 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 static int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
 {
 	return 0 == memcmp(a, b, sizeof(*a));
+}
+
+static int set_tmo(int fd, unsigned int scale, int log_seconds)
+{
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+	uint64_t ns;
+	int i;
+
+	if (log_seconds < 0) {
+
+		log_seconds *= -1;
+		for (i = 1, ns = scale * 500000000ULL; i < log_seconds; i++) {
+			ns >>= 1;
+		}
+		tmo.it_value.tv_nsec = ns;
+
+		while (tmo.it_value.tv_nsec >= NS_PER_SEC) {
+			tmo.it_value.tv_nsec -= NS_PER_SEC;
+			tmo.it_value.tv_sec++;
+		}
+
+	} else
+		tmo.it_value.tv_sec = scale * (1 << log_seconds);
+
+	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
 static void fc_clear(struct foreign_clock *fc)
@@ -249,14 +277,8 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 
 static int port_set_announce_tmo(struct port *p)
 {
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
-
-	tmo.it_value.tv_sec =
-		p->announceReceiptTimeout * (1 << p->logAnnounceInterval);
-
-	return timerfd_settime(p->fda.fd[FD_ANNOUNCE_TIMER], 0, &tmo, NULL);
+	return set_tmo(p->fda.fd[FD_ANNOUNCE_TIMER],
+		       p->announceReceiptTimeout, p->logAnnounceInterval);
 }
 
 static int port_set_delay_tmo(struct port *p)
@@ -271,32 +293,18 @@ static int port_set_delay_tmo(struct port *p)
 
 static int port_set_manno_tmo(struct port *p)
 {
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
-	tmo.it_value.tv_sec = (1 << p->logAnnounceInterval);
-	return timerfd_settime(p->fda.fd[FD_MANNO_TIMER], 0, &tmo, NULL);
+	return set_tmo(p->fda.fd[FD_MANNO_TIMER], 1, p->logAnnounceInterval);
 }
 
 static int port_set_qualification_tmo(struct port *p)
 {
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
-
-	tmo.it_value.tv_sec = (1 + clock_steps_removed(p->clock)) *
-		(1 << p->logAnnounceInterval);
-
-	return timerfd_settime(p->fda.fd[FD_QUALIFICATION_TIMER], 0, &tmo, NULL);
+	return set_tmo(p->fda.fd[FD_QUALIFICATION_TIMER],
+		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
 }
 
 static int port_set_sync_tmo(struct port *p)
 {
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
-	tmo.it_value.tv_sec = (1 << p->logSyncInterval);
-	return timerfd_settime(p->fda.fd[FD_SYNC_TIMER], 0, &tmo, NULL);
+	return set_tmo(p->fda.fd[FD_SYNC_TIMER], 1, p->logSyncInterval);
 }
 
 static void port_synchronize(struct port *p,
