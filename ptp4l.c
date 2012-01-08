@@ -69,7 +69,10 @@ static void usage(char *progname)
 		" -l [num]  set the logging level to 'num'\n"
 		" -m        slave only mode (overrides configuration file)\n"
 		" -p [dev]  PTP hardware clock device to use, default '%s'\n"
-		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n\n",
+		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
+		" -q        quiet mode, do not use syslog(3)\n"
+		" -v        verbose mode, print messages to stdout\n"
+		"\n",
 		progname, DEFAULT_PHC);
 }
 
@@ -85,7 +88,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246f:hi:l:mp:rsz"))) {
+	while (EOF != (c = getopt(argc, argv, "246f:hi:l:mp:qrsvz"))) {
 		switch (c) {
 		case '2':
 			transport = TRANS_IEEE_802_3;
@@ -116,11 +119,17 @@ int main(int argc, char *argv[])
 		case 'p':
 			phc = optarg;
 			break;
+		case 'q':
+			print_no_syslog();
+			break;
 		case 'r':
 			timestamping = TS_HARDWARE;
 			break;
 		case 's':
 			timestamping = TS_SOFTWARE;
+			break;
+		case 'v':
+			print_verbose();
 			break;
 		case 'z':
 			timestamping = TS_LEGACY_HW;
