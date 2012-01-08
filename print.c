@@ -19,16 +19,28 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #include "print.h"
 
-static int verbose = 1;
+static int verbose;
 static int print_level = LOG_INFO;
+static int use_syslog = 1;
+
+void print_no_syslog(void)
+{
+	use_syslog = 0;
+}
 
 void print_set_level(int level)
 {
 	print_level = level;
+}
+
+void print_verbose(void)
+{
+	verbose = 1;
 }
 
 void print(int level, char const *format, ...)
@@ -48,5 +60,9 @@ void print(int level, char const *format, ...)
 
 	if (verbose) {
 		fprintf(stdout, "ptp4l[%d]: %s\n", pid, buf);
+		fflush(stdout);
+	}
+	if (use_syslog) {
+		syslog(level, "[%d] %s", pid, buf);
 	}
 }
