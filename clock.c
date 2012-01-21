@@ -363,7 +363,6 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 		pr_warning("c1 %10lld", c1);
 		pr_warning("c2 %10lld", c2);
 		pr_warning("c3 %10lld", c3);
-		return;
 	}
 
 	c->path_delay = mave_accumulate(c->avg_delay, pd);
