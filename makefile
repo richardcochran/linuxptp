@@ -23,21 +23,24 @@ INC	= -I$(KBUILD_OUTPUT)/usr/include
 CFLAGS	= -Wall $(INC) $(DEBUG)
 LDFLAGS	=
 LDLIBS	= -lm -lrt
-PRG	= ptp4l
+PRG	= ptp4l phc2sys
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o servo.o tmtab.o transport.o udp.o util.o
 
-SRC	= $(OBJ:.o=.c)
-DEPEND	= $(OBJ:.o=.d)
+OBJECTS	= $(OBJ) phc2sys.o
+SRC	= $(OBJECTS:.o=.c)
+DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 VPATH	= $(srcdir)
 
-all: ptp4l
+all: ptp4l phc2sys
 
 ptp4l: $(OBJ)
 
+phc2sys: phc2sys.o
+
 clean:
-	rm -f $(OBJ) $(DEPEND)
+	rm -f $(OBJECTS) $(DEPEND)
 
 distclean: clean
 	rm -f $(PRG)
