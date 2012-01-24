@@ -27,17 +27,19 @@ PRG	= ptp4l phc2sys
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o servo.o tmtab.o transport.o udp.o util.o
 
-OBJECTS	= $(OBJ) phc2sys.o
+OBJECTS	= $(OBJ) phc2sys.o hwstamp_ctl.o
 SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 VPATH	= $(srcdir)
 
-all: ptp4l phc2sys
+all: ptp4l phc2sys hwstamp_ctl
 
 ptp4l: $(OBJ)
 
 phc2sys: phc2sys.o
+
+hwstamp_ctl: hwstamp_ctl.o
 
 clean:
 	rm -f $(OBJECTS) $(DEPEND)
