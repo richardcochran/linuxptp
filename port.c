@@ -21,7 +21,6 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/timerfd.h>
 #include <unistd.h>
 
 #include "bmc.h"

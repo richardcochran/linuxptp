@@ -49,7 +49,11 @@ static inline int clock_adjtime(clockid_t id, struct timex *tx)
 	return syscall(__NR_clock_adjtime, id, tx);
 }
 
-#ifdef __uClinux__
+#ifndef __uClinux__
+
+#include <sys/timerfd.h>
+
+#else
 
 static inline int timerfd_create(int clockid, int flags)
 {
