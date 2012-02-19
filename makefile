@@ -23,7 +23,7 @@ INC	= -I$(KBUILD_OUTPUT)/usr/include
 CFLAGS	= -Wall $(INC) $(DEBUG)
 LDFLAGS	=
 LDLIBS	= -lm -lrt
-PRG	= ptp4l phc2sys
+PRG	= ptp4l phc2sys hwstamp_ctl
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o servo.o tmtab.o transport.o udp.o util.o
 
@@ -33,7 +33,7 @@ DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 VPATH	= $(srcdir)
 
-all: ptp4l phc2sys hwstamp_ctl
+all: $(PRG)
 
 ptp4l: $(OBJ)
 
