@@ -203,15 +203,10 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 	c->dds = *ds;
 
 	/* Initialize the parentDS. */
-	c->dad.parentPortIdentity.clockIdentity      = c->dds.clockIdentity;
-	c->dad.parentPortIdentity.portNumber         = 0;
+	clock_update_grandmaster(c);
 	c->dad.parentStats                           = 0;
 	c->dad.observedParentOffsetScaledLogVariance = 0xffff;
 	c->dad.observedParentClockPhaseChangeRate    = 0x7fffffff;
-	c->dad.grandmasterPriority1                  = c->dds.priority1;
-	c->dad.grandmasterClockQuality               = c->dds.clockQuality;
-	c->dad.grandmasterPriority2                  = c->dds.priority2;
-	c->dad.grandmasterIdentity                   = c->dds.clockIdentity;
 
 	for (i = 0; i < ARRAY_SIZE(c->pollfd); i++) {
 		c->pollfd[i].fd = -1;
