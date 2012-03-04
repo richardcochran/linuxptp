@@ -298,8 +298,6 @@ static int receive(int fd, void *buf, int buflen,
 
 	if (!ts) {
 		memset(&hwts->ts, 0, sizeof(hwts->ts));
-		if (cnt > 0)
-			pr_err("missing SO_TIMESTAMPING message");
 		return cnt;
 	}
 
