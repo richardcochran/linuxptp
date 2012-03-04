@@ -275,6 +275,10 @@ static int receive(int fd, void *buf, int buflen,
 		} else if (errno == EAGAIN) {
 			usleep(1);
 		} else {
+			if (flags == MSG_ERRQUEUE)
+				pr_err("recvmsg tx timestamp failed: %m");
+			else
+				pr_err("recvmsg failed: %m");
 			break;
 		}
 	}
@@ -294,6 +298,8 @@ static int receive(int fd, void *buf, int buflen,
 
 	if (!ts) {
 		memset(&hwts->ts, 0, sizeof(hwts->ts));
+		if (cnt > 0)
+			pr_err("missing SO_TIMESTAMPING message");
 		return cnt;
 	}
 
