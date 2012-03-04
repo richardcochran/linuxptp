@@ -352,8 +352,10 @@ static int port_delay_request(struct port *p)
 		goto out;
 
 	cnt = p->transport->send(&p->fda, 1, msg, pdulen, &msg->hwts);
-	if (cnt <= 0)
+	if (cnt <= 0) {
+		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
+	}
 
 	if (p->delay_req)
 		msg_put(p->delay_req);
@@ -415,8 +417,10 @@ static int port_tx_announce(struct port *p)
 		goto out;
 	}
 	cnt = p->transport->send(&p->fda, 0, msg, pdulen, &msg->hwts);
-	if (cnt <= 0)
+	if (cnt <= 0) {
+		pr_err("port %hu: send announce failed", portnum(p));
 		err = -1;
+	}
 out:
 	msg_put(msg);
 	return err;
@@ -458,6 +462,7 @@ static int port_tx_sync(struct port *p)
 	}
 	cnt = p->transport->send(&p->fda, 1, msg, pdulen, &msg->hwts);
 	if (cnt <= 0) {
+		pr_err("port %hu: send sync failed", portnum(p));
 		err = -1;
 		goto out;
 	}
@@ -484,8 +489,10 @@ static int port_tx_sync(struct port *p)
 		goto out;
 	}
 	cnt = p->transport->send(&p->fda, 0, fup, pdulen, &fup->hwts);
-	if (cnt <= 0)
+	if (cnt <= 0) {
+		pr_err("port %hu: send follow up failed", portnum(p));
 		err = -1;
+	}
 out:
 	msg_put(msg);
 	msg_put(fup);
@@ -631,8 +638,10 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		goto out;
 	}
 	cnt = p->transport->send(&p->fda, 0, msg, pdulen, NULL);
-	if (cnt <= 0)
+	if (cnt <= 0) {
+		pr_err("port %hu: send delay response failed", portnum(p));
 		err = -1;
+	}
 out:
 	msg_put(msg);
 	return err;
@@ -899,6 +908,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 
 	cnt = p->transport->recv(fd, msg, sizeof(*msg), &msg->hwts);
 	if (cnt <= 0) {
+		pr_err("port %hu: recv message failed", portnum(p));
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
 	}
