@@ -23,6 +23,7 @@
 #include <asm/byteorder.h>
 
 #include "msg.h"
+#include "print.h"
 
 #define VERSION_MASK 0x0f
 #define VERSION      0x02
@@ -192,6 +193,12 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	default:
 		return -1;
 	}
+
+	if (msg_sots_missing(m)) {
+		pr_err("received %s without timestamp", msg_type_string(type));
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -272,4 +279,25 @@ void msg_put(struct ptp_message *m)
 	m->refcnt--;
 	if (!m)
 		TAILQ_INSERT_HEAD(&msg_pool, m, list);
+}
+
+int msg_sots_missing(struct ptp_message *m)
+{
+	int type = msg_type(m);
+	switch (type) {
+	case SYNC:
+	case DELAY_REQ:
+	case PDELAY_REQ:
+	case PDELAY_RESP:
+		break;
+	case FOLLOW_UP:
+	case DELAY_RESP:
+	case PDELAY_RESP_FOLLOW_UP:
+	case ANNOUNCE:
+	case SIGNALING:
+	case MANAGEMENT:
+	default:
+		return 0;
+	}
+	return (!m->hwts.ts.tv_sec && !m->hwts.ts.tv_nsec) ? 1 : 0;
 }

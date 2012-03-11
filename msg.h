@@ -237,6 +237,13 @@ void msg_print(struct ptp_message *m, FILE *fp);
 void msg_put(struct ptp_message *m);
 
 /**
+ * Test whether an event message received a valid SO_TIMESTAMPING time stamp.
+ * @param m  Message to test.
+ * @return   One if the message is an event without a time stamp, zero otherwise.
+ */
+int msg_sots_missing(struct ptp_message *m);
+
+/**
  * Test whether a message is one-step message.
  * @param m  Message to test.
  * @return   One if the message is a one-step, zero otherwise.
