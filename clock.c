@@ -333,6 +333,9 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 {
 	tmv_t c1, c2, c3, pd, t1, t2, t3, t4;
 
+	if (tmv_is_zero(c->t1))
+		return;
+
 	c1 = c->c1;
 	c2 = c->c2;
 	c3 = correction_to_tmv(correction);
