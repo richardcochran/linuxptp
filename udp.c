@@ -257,6 +257,7 @@ static int receive(int fd, void *buf, int buflen,
 	struct msghdr msg;
 	struct timespec *ts = NULL;
 
+	memset(control, 0, sizeof(control));
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
