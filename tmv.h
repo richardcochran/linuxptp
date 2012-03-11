@@ -51,9 +51,19 @@ static inline tmv_t tmv_div(tmv_t a, int divisor)
 	return a / divisor;
 }
 
+static inline int tmv_is_zero(tmv_t x)
+{
+	return x == ((tmv_t) 0) ? 1 : 0;
+}
+
 static inline tmv_t tmv_sub(tmv_t a, tmv_t b)
 {
 	return a - b;
+}
+
+static inline tmv_t tmv_zero(void)
+{
+	return (tmv_t) 0;
 }
 
 static inline tmv_t correction_to_tmv(Integer64 c)
