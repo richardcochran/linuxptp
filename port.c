@@ -356,6 +356,10 @@ static int port_delay_request(struct port *p)
 		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
 	}
+	if (msg_sots_missing(msg)) {
+		pr_err("missing timestamp on transmitted delay request");
+		goto out;
+	}
 
 	if (p->delay_req)
 		msg_put(p->delay_req);
@@ -463,6 +467,11 @@ static int port_tx_sync(struct port *p)
 	cnt = p->transport->send(&p->fda, 1, msg, pdulen, &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send sync failed", portnum(p));
+		err = -1;
+		goto out;
+	}
+	if (msg_sots_missing(msg)) {
+		pr_err("missing timestamp on transmitted sync");
 		err = -1;
 		goto out;
 	}
