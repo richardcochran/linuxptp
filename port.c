@@ -40,7 +40,7 @@
 struct port {
 	char *name;
 	struct clock *clock;
-	struct transport *transport;
+	struct transport *trp;
 	enum timestamp_type timestamping;
 	struct fdarray fda;
 	struct foreign_clock *best;
@@ -351,7 +351,7 @@ static int port_delay_request(struct port *p)
 	if (msg_pre_send(msg))
 		goto out;
 
-	cnt = p->transport->send(&p->fda, 1, msg, pdulen, &msg->hwts);
+	cnt = transport_send(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
@@ -420,7 +420,7 @@ static int port_tx_announce(struct port *p)
 		err = -1;
 		goto out;
 	}
-	cnt = p->transport->send(&p->fda, 0, msg, pdulen, &msg->hwts);
+	cnt = transport_send(p->trp, &p->fda, 0, msg, pdulen, &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send announce failed", portnum(p));
 		err = -1;
@@ -464,7 +464,7 @@ static int port_tx_sync(struct port *p)
 		err = -1;
 		goto out;
 	}
-	cnt = p->transport->send(&p->fda, 1, msg, pdulen, &msg->hwts);
+	cnt = transport_send(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send sync failed", portnum(p));
 		err = -1;
@@ -497,7 +497,7 @@ static int port_tx_sync(struct port *p)
 		err = -1;
 		goto out;
 	}
-	cnt = p->transport->send(&p->fda, 0, fup, pdulen, &fup->hwts);
+	cnt = transport_send(p->trp, &p->fda, 0, fup, pdulen, &fup->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send follow up failed", portnum(p));
 		err = -1;
@@ -531,7 +531,7 @@ static int port_initialize(struct port *p)
 			goto no_timers;
 		}
 	}
-	if (p->transport->open(p->name, &p->fda, p->timestamping))
+	if (transport_open(p->trp, p->name, &p->fda, p->timestamping))
 		goto no_tropen;
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
@@ -546,7 +546,7 @@ static int port_initialize(struct port *p)
 	return 0;
 
 no_tmo:
-	p->transport->close(&p->fda);
+	transport_close(p->trp, &p->fda);
 no_tropen:
 no_timers:
 	for (i = 0; i < N_TIMER_FDS; i++) {
@@ -646,7 +646,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		err = -1;
 		goto out;
 	}
-	cnt = p->transport->send(&p->fda, 0, msg, pdulen, NULL);
+	cnt = transport_send(p->trp, &p->fda, 0, msg, pdulen, NULL);
 	if (cnt <= 0) {
 		pr_err("port %hu: send delay response failed", portnum(p));
 		err = -1;
@@ -782,7 +782,8 @@ static void process_sync(struct port *p, struct ptp_message *m)
 void port_close(struct port *p)
 {
 	int i;
-	p->transport->close(&p->fda);
+	transport_close(p->trp, &p->fda);
+	transport_destroy(p->trp);
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
 	}
@@ -915,7 +916,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 
 	msg->hwts.type = p->timestamping;
 
-	cnt = p->transport->recv(fd, msg, sizeof(*msg), &msg->hwts);
+	cnt = transport_recv(p->trp, fd, msg, sizeof(*msg), &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: recv message failed", portnum(p));
 		msg_put(msg);
@@ -979,8 +980,8 @@ struct port *port_open(struct port_defaults *pod,
 	p->pod = *pod;
 	p->name = name;
 	p->clock = clock;
-	p->transport = transport_find(transport);
-	if (!p->transport) {
+	p->trp = transport_create(transport);
+	if (!p->trp) {
 		free(p);
 		return NULL;
 	}

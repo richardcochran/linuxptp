@@ -33,6 +33,7 @@
 #include <linux/sockios.h>
 
 #include "print.h"
+#include "transport_private.h"
 #include "udp.h"
 
 #define EVENT_PORT        319
@@ -162,7 +163,7 @@ static int mcast_join(int fd, int index, const struct sockaddr *grp,
 	return 0;
 }
 
-int udp_close(struct fdarray *fda)
+static int udp_close(struct transport *t, struct fdarray *fda)
 {
 	close(fda->fd[0]);
 	close(fda->fd[1]);
@@ -216,7 +217,8 @@ no_socket:
 
 static struct in_addr mc_addr;
 
-int udp_open(char *name, struct fdarray *fda, enum timestamp_type ts_type)
+static int udp_open(struct transport *t, char *name, struct fdarray *fda,
+		    enum timestamp_type ts_type)
 {
 	int efd, gfd;
 
@@ -316,13 +318,14 @@ static int receive(int fd, void *buf, int buflen,
 	return cnt;
 }
 
-int udp_recv(int fd, void *buf, int buflen, struct hw_timestamp *hwts)
+static int udp_recv(struct transport *t, int fd, void *buf, int buflen,
+		    struct hw_timestamp *hwts)
 {
 	return receive(fd, buf, buflen, hwts, 0);
 }
 
-int udp_send(struct fdarray *fda, int event,
-	     void *buf, int len, struct hw_timestamp *hwts)
+static int udp_send(struct transport *t, struct fdarray *fda, int event,
+		    void *buf, int len, struct hw_timestamp *hwts)
 {
 	ssize_t cnt;
 	int fd = event ? fda->fd[FD_EVENT] : fda->fd[FD_GENERAL];
@@ -342,6 +345,24 @@ int udp_send(struct fdarray *fda, int event,
 	 * Get the time stamp right away.
 	 */
 	return event ? receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
+}
+
+static struct transport the_udp_transport = {
+	.close = udp_close,
+	.open  = udp_open,
+	.recv  = udp_recv,
+	.send  = udp_send,
+};
+
+struct transport *udp_transport_create(void)
+{
+	/* No need for any per-instance allocation. */
+	return &the_udp_transport;
+}
+
+void udp_transport_destroy(struct transport *t)
+{
+	/* No need for any per-instance deallocation. */
 }
 
 int udp_interface_macaddr(char *name, unsigned char *mac, int len)

@@ -18,20 +18,37 @@
  */
 
 #include "transport.h"
+#include "transport_private.h"
 #include "udp.h"
 
-static struct transport udp = {
-	.close = udp_close,
-	.open  = udp_open,
-	.recv  = udp_recv,
-	.send  = udp_send,
-};
+int transport_close(struct transport *t, struct fdarray *fda)
+{
+	return t->close(t, fda);
+}
 
-struct transport *transport_find(enum transport_type type)
+int transport_open(struct transport *t, char *name,
+		   struct fdarray *fda, enum timestamp_type tt)
+{
+	return t->open(t, name, fda, tt);
+}
+
+int transport_recv(struct transport *t, int fd,
+		   void *buf, int buflen, struct hw_timestamp *hwts)
+{
+	return t->recv(t, fd, buf, buflen, hwts);
+}
+
+int transport_send(struct transport *t, struct fdarray *fda, int event,
+		   void *buf, int buflen, struct hw_timestamp *hwts)
+{
+	return t->send(t, fda, event, buf, buflen, hwts);
+}
+
+struct transport *transport_create(enum transport_type type)
 {
 	switch (type) {
 	case TRANS_UDP_IPV4:
-		return &udp;
+		return udp_transport_create();
 	case TRANS_UDP_IPV6:
 	case TRANS_IEEE_802_3:
 	case TRANS_DEVICENET:
@@ -40,4 +57,9 @@ struct transport *transport_find(enum transport_type type)
 		break;
 	}
 	return NULL;
+}
+
+void transport_destroy(struct transport *t)
+{
+	t->release(t);
 }

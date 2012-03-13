@@ -44,19 +44,30 @@ struct hw_timestamp {
 	struct timespec ts;
 };
 
-struct transport {
-	int (*close)(struct fdarray *fda);
-	int (*open)(char *name, struct fdarray *fda, enum timestamp_type tt);
-	int (*recv)(int fd, void *buf, int buflen, struct hw_timestamp *hwts);
-	int (*send)(struct fdarray *fda, int event,
-		    void *buf, int buflen, struct hw_timestamp *hwts);
-};
+struct transport;
+
+int transport_close(struct transport *t, struct fdarray *fda);
+
+int transport_open(struct transport *t, char *name,
+		   struct fdarray *fda, enum timestamp_type tt);
+
+int transport_recv(struct transport *t, int fd,
+		   void *buf, int buflen, struct hw_timestamp *hwts);
+
+int transport_send(struct transport *t, struct fdarray *fda, int event,
+		   void *buf, int buflen, struct hw_timestamp *hwts);
 
 /**
- * Obtain a pointer to the specified transport.
+ * Allocate an instance of the specified transport.
  * @param type  Which transport to obtain.
- * @return      Pointer to a static global.
+ * @return      Pointer to a transport instance on success, NULL otherwise.
  */
-struct transport *transport_find(enum transport_type type);
+struct transport *transport_create(enum transport_type type);
+
+/**
+ * Free an instance of a transport.
+ * @param t Pointer obtained by calling transport_create().
+ */
+void transport_destroy(struct transport *t);
 
 #endif

@@ -23,12 +23,6 @@
 #include "fd.h"
 #include "transport.h"
 
-int udp_close(struct fdarray *fda);
-int udp_open(char *name, struct fdarray *fda, enum timestamp_type ts_type);
-int udp_recv(int fd, void *buf, int buflen, struct hw_timestamp *hwts);
-int udp_send(struct fdarray *fda, int event,
-	     void *buf, int buflen, struct hw_timestamp *hwts);
-
 /**
  * Obtain the MAC address of a network interface.
  * @param name  The name of the interface
@@ -37,5 +31,17 @@ int udp_send(struct fdarray *fda, int event,
  * @return      Zero on success, non-zero otherwise.
  */
 int udp_interface_macaddr(char *name, unsigned char *mac, int len);
+
+/**
+ * Allocate an instance of a UDP/IPv4 transport.
+ * @return Pointer to a new transport instance on success, NULL otherwise.
+ */
+struct transport *udp_transport_create(void);
+
+/**
+ * Free an instance of a UDP/IPv4 transport.
+ * @param t Pointer obtained by calling udp_transport_create().
+ */
+void udp_transport_destroy(struct transport *t);
 
 #endif
