@@ -246,6 +246,16 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	return broke_threshold || diff;
 }
 
+static void free_foreign_masters(struct port *p)
+{
+	struct foreign_clock *fc;
+	while ((fc = LIST_FIRST(&p->foreign_masters)) != NULL) {
+		LIST_REMOVE(fc, list);
+		fc_clear(fc);
+		free(fc);
+	}
+}
+
 static int port_clr_tmo(int fd)
 {
 	struct itimerspec tmo = {
@@ -782,6 +792,15 @@ static void process_sync(struct port *p, struct ptp_message *m)
 void port_close(struct port *p)
 {
 	int i;
+
+	if (p->last_follow_up)
+		msg_put(p->last_follow_up);
+	if (p->last_sync)
+		msg_put(p->last_sync);
+	if (p->delay_req)
+		msg_put(p->delay_req);
+
+	free_foreign_masters(p);
 	transport_close(p->trp, &p->fda);
 	transport_destroy(p->trp);
 	for (i = 0; i < N_TIMER_FDS; i++) {
