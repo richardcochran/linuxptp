@@ -28,103 +28,14 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <linux/errqueue.h>
-#include <linux/net_tstamp.h>
-#include <linux/sockios.h>
-
 #include "print.h"
+#include "sk.h"
 #include "transport_private.h"
 #include "udp.h"
 
 #define EVENT_PORT        319
 #define GENERAL_PORT      320
 #define MULTICAST_IP_ADDR "224.0.1.129"
-
-static int hwts_init(int fd, char *device)
-{
-	struct ifreq ifreq;
-	struct hwtstamp_config cfg, req;
-	int err;
-
-	memset(&ifreq, 0, sizeof(ifreq));
-	memset(&cfg, 0, sizeof(cfg));
-
-	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name));
-
-	ifreq.ifr_data = (void *) &cfg;
-	cfg.tx_type    = HWTSTAMP_TX_ON;
-	cfg.rx_filter  = HWTSTAMP_FILTER_PTP_V2_EVENT;
-
-	req = cfg;
-	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
-	if (err < 0)
-		pr_err("ioctl SIOCSHWTSTAMP failed: %m");
-
-	if (memcmp(&cfg, &req, sizeof(cfg))) {
-
-		pr_warning("driver changed our HWTSTAMP options");
-		pr_warning("tx_type   %d not %d", cfg.tx_type, req.tx_type);
-		pr_warning("rx_filter %d not %d", cfg.rx_filter, req.rx_filter);
-
-		if (cfg.tx_type != HWTSTAMP_TX_ON ||
-		    cfg.rx_filter != HWTSTAMP_FILTER_ALL) {
-			return -1;
-		}
-	}
-
-	return err ? errno : 0;
-}
-
-static int timestamping_init(int fd, char *device, enum timestamp_type type)
-{
-	int flags;
-
-	switch (type) {
-	case TS_SOFTWARE:
-		flags = SOF_TIMESTAMPING_TX_SOFTWARE |
-			SOF_TIMESTAMPING_RX_SOFTWARE |
-			SOF_TIMESTAMPING_SOFTWARE;
-		break;
-	case TS_HARDWARE:
-		flags = SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_RAW_HARDWARE;
-		break;
-	case TS_LEGACY_HW:
-		flags = SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_SYS_HARDWARE;
-		break;
-	default:
-		return -1;
-	}
-
-	if (type != TS_SOFTWARE && hwts_init(fd, device))
-		return -1;
-
-	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPING,
-		       &flags, sizeof(flags)) < 0) {
-		pr_err("ioctl SO_TIMESTAMPING failed: %m");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int interface_index(int fd, char *name)
-{
-	struct ifreq ifreq;
-	int err;
-
-	memset(&ifreq, 0, sizeof(ifreq));
-	strcpy(ifreq.ifr_name, name);
-	err = ioctl(fd, SIOCGIFINDEX, &ifreq);
-	if (err < 0) {
-		pr_err("ioctl SIOCGIFINDEX failed: %m");
-		return err;
-	}
-	return ifreq.ifr_ifindex;
-}
 
 static int mcast_bind(int fd, int index)
 {
@@ -184,7 +95,7 @@ static int open_socket(char *name, struct in_addr *mc_addr, short port)
 		pr_err("socket failed: %m");
 		goto no_socket;
 	}
-	index = interface_index(fd, name);
+	index = sk_interface_index(fd, name);
 	if (index < 0)
 		goto no_option;
 
@@ -233,7 +144,7 @@ static int udp_open(struct transport *t, char *name, struct fdarray *fda,
 	if (gfd < 0)
 		goto no_general;
 
-	if (timestamping_init(efd, name, ts_type))
+	if (sk_timestamping_init(efd, name, ts_type))
 		goto no_timestamping;
 
 	fda->fd[FD_EVENT] = efd;
@@ -249,79 +160,10 @@ no_event:
 	return -1;
 }
 
-static int receive(int fd, void *buf, int buflen,
-		   struct hw_timestamp *hwts, int flags)
-{
-	char control[256];
-	int cnt, level, try_again, type;
-	struct cmsghdr *cm;
-	struct iovec iov = { buf, buflen };
-	struct msghdr msg;
-	struct timespec *ts = NULL;
-
-	memset(control, 0, sizeof(control));
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-	msg.msg_control = control;
-	msg.msg_controllen = sizeof(control);
-
-	try_again = flags == MSG_ERRQUEUE ? 2 : 1;
-
-	for ( ; try_again; try_again--) {
-		cnt = recvmsg(fd, &msg, flags);
-		if (cnt >= 0) {
-			break;
-		}
-		if (errno == EINTR) {
-			try_again++;
-		} else if (errno == EAGAIN) {
-			usleep(1);
-		} else {
-			if (flags == MSG_ERRQUEUE)
-				pr_err("recvmsg tx timestamp failed: %m");
-			else
-				pr_err("recvmsg failed: %m");
-			break;
-		}
-	}
-
-	for (cm = CMSG_FIRSTHDR(&msg); cm != NULL; cm = CMSG_NXTHDR(&msg, cm)) {
-		level = cm->cmsg_level;
-		type  = cm->cmsg_type;
-		if (SOL_SOCKET == level && SO_TIMESTAMPING == type) {
-			if (cm->cmsg_len < sizeof(*ts) * 3) {
-				pr_warning("short SO_TIMESTAMPING message");
-				return -1;
-			}
-			ts = (struct timespec *) CMSG_DATA(cm);
-			break;
-		}
-	}
-
-	if (!ts) {
-		memset(&hwts->ts, 0, sizeof(hwts->ts));
-		return cnt;
-	}
-
-	switch (hwts->type) {
-	case TS_SOFTWARE:
-		hwts->ts = ts[0];
-		break;
-	case TS_HARDWARE:
-		hwts->ts = ts[2];
-		break;
-	case TS_LEGACY_HW:
-		hwts->ts = ts[1];
-		break;
-	}
-	return cnt;
-}
-
 static int udp_recv(struct transport *t, int fd, void *buf, int buflen,
 		    struct hw_timestamp *hwts)
 {
-	return receive(fd, buf, buflen, hwts, 0);
+	return sk_receive(fd, buf, buflen, hwts, 0);
 }
 
 static int udp_send(struct transport *t, struct fdarray *fda, int event,
@@ -344,7 +186,7 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event,
 	/*
 	 * Get the time stamp right away.
 	 */
-	return event ? receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
+	return event ? sk_receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static struct transport the_udp_transport = {
@@ -363,30 +205,4 @@ struct transport *udp_transport_create(void)
 void udp_transport_destroy(struct transport *t)
 {
 	/* No need for any per-instance deallocation. */
-}
-
-int udp_interface_macaddr(char *name, unsigned char *mac, int len)
-{
-	struct ifreq ifreq;
-	int err, fd;
-
-	memset(&ifreq, 0, sizeof(ifreq));
-	strcpy(ifreq.ifr_name, name);
-
-	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (fd < 0) {
-		pr_err("socket failed: %m");
-		return -1;
-	}
-
-	err = ioctl(fd, SIOCGIFHWADDR, &ifreq);
-	if (err < 0) {
-		pr_err("ioctl SIOCGIFHWADDR failed: %m");
-		close(fd);
-		return -1;
-	}
-
-	memcpy(mac, ifreq.ifr_hwaddr.sa_data, len);
-	close(fd);
-	return 0;
 }

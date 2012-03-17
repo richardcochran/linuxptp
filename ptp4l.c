@@ -24,8 +24,8 @@
 #include "clock.h"
 #include "config.h"
 #include "print.h"
+#include "sk.h"
 #include "transport.h"
-#include "udp.h"
 
 #define DEFAULT_PHC "/dev/ptp0"
 
@@ -36,7 +36,7 @@ static struct port_defaults pod;
 static int generate_clock_identity(struct ClockIdentity *ci, char *name)
 {
 	unsigned char mac[6];
-	if (udp_interface_macaddr(name, mac, sizeof(mac)))
+	if (sk_interface_macaddr(name, mac, sizeof(mac)))
 		return -1;
 	ci->id[0] = mac[0];
 	ci->id[1] = mac[1];

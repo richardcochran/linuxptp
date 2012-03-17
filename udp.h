@@ -24,15 +24,6 @@
 #include "transport.h"
 
 /**
- * Obtain the MAC address of a network interface.
- * @param name  The name of the interface
- * @param mac   Buffer to hold the result
- * @param len   Length of 'mac'
- * @return      Zero on success, non-zero otherwise.
- */
-int udp_interface_macaddr(char *name, unsigned char *mac, int len);
-
-/**
  * Allocate an instance of a UDP/IPv4 transport.
  * @return Pointer to a new transport instance on success, NULL otherwise.
  */
