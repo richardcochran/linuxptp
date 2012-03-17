@@ -28,6 +28,16 @@
 #define VERSION_MASK 0x0f
 #define VERSION      0x02
 
+/*
+ * Head room fits a VLAN Ethernet header, and 'msg' is 32 bit aligned.
+ */
+#define MSG_HEADROOM 20
+
+struct message_storage {
+	unsigned char reserved[MSG_HEADROOM];
+	struct ptp_message msg;
+} PACKED;
+
 static TAILQ_HEAD(msg_pool, ptp_message) msg_pool;
 
 static void announce_pre_send(struct announce_msg *m)
@@ -123,11 +133,15 @@ static void timestamp_pre_send(struct Timestamp *ts)
 
 struct ptp_message *msg_allocate(void)
 {
+	struct message_storage *s;
 	struct ptp_message *m = TAILQ_FIRST(&msg_pool);
-	if (!m)
-		m = malloc(sizeof(*m));
-	if (m)
-		m->refcnt = 1;
+	if (!m) {
+		s = malloc(sizeof(*s));
+		if (s) {
+			m = &s->msg;
+			m->refcnt = 1;
+		}
+	}
 	return m;
 }
 
