@@ -29,10 +29,4 @@
  */
 struct transport *udp_transport_create(void);
 
-/**
- * Free an instance of a UDP/IPv4 transport.
- * @param t Pointer obtained by calling udp_transport_create().
- */
-void udp_transport_destroy(struct transport *t);
-
 #endif

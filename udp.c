@@ -189,20 +189,21 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event,
 	return event ? sk_receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
 }
 
+static void udp_release(struct transport *t)
+{
+	/* No need for any per-instance deallocation. */
+}
+
 static struct transport the_udp_transport = {
 	.close = udp_close,
 	.open  = udp_open,
 	.recv  = udp_recv,
 	.send  = udp_send,
+	.release = udp_release,
 };
 
 struct transport *udp_transport_create(void)
 {
 	/* No need for any per-instance allocation. */
 	return &the_udp_transport;
-}
-
-void udp_transport_destroy(struct transport *t)
-{
-	/* No need for any per-instance deallocation. */
 }
