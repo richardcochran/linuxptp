@@ -25,7 +25,7 @@ LDFLAGS	=
 LDLIBS	= -lm -lrt
 PRG	= ptp4l phc2sys hwstamp_ctl
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
- print.o servo.o sk.o tmtab.o transport.o udp.o util.o
+ print.o raw.o servo.o sk.o tmtab.o transport.o udp.o util.o
 
 OBJECTS	= $(OBJ) phc2sys.o hwstamp_ctl.o
 SRC	= $(OBJECTS:.o=.c)
