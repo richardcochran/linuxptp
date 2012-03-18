@@ -138,12 +138,15 @@ int sk_receive(int fd, void *buf, int buflen,
 		} else if (errno == EAGAIN) {
 			usleep(1);
 		} else {
-			if (flags == MSG_ERRQUEUE)
-				pr_err("recvmsg tx timestamp failed: %m");
-			else
-				pr_err("recvmsg failed: %m");
 			break;
 		}
+	}
+
+	if (cnt < 1) {
+		if (flags == MSG_ERRQUEUE)
+			pr_err("recvmsg tx timestamp failed: %m");
+		else
+			pr_err("recvmsg failed: %m");
 	}
 
 	for (cm = CMSG_FIRSTHDR(&msg); cm != NULL; cm = CMSG_NXTHDR(&msg, cm)) {
