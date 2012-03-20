@@ -29,6 +29,8 @@
 
 #define DEFAULT_PHC "/dev/ptp0"
 
+int sk_tx_retries = 2; /*see sk.c*/
+
 static int running = 1;
 static struct defaultDS ds;
 static struct port_defaults pod;
@@ -178,6 +180,7 @@ int main(int argc, char *argv[])
 
 	cfg_settings.dds = &ds;
 	cfg_settings.pod = &pod;
+	cfg_settings.tx_timestamp_retries = &sk_tx_retries;
 
 	if (config && config_read(config, &cfg_settings)) {
 		fprintf(stderr, "failed to read configuration file\n");

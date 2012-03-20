@@ -79,6 +79,11 @@ static void scan_line(char *s, struct config *cfg)
 	} else if (1 == sscanf(s, " announceReceiptTimeout %hhu", &u8)) {
 
 		pod->announceReceiptTimeout = u8;
+
+	} else if (1 == sscanf(s, " tx_timestamp_retries %u", &val)) {
+
+		if (val > 0)
+			*cfg->tx_timestamp_retries = val;
 	}
 }
 

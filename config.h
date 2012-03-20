@@ -25,6 +25,7 @@
 struct config {
 	struct defaultDS *dds;
 	struct port_defaults *pod;
+	int *tx_timestamp_retries;
 };
 
 int config_read(char *name, struct config *cfg);

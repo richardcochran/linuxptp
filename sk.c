@@ -126,7 +126,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	msg.msg_control = control;
 	msg.msg_controllen = sizeof(control);
 
-	try_again = flags == MSG_ERRQUEUE ? 2 : 1;
+	try_again = flags == MSG_ERRQUEUE ? sk_tx_retries : 1;
 
 	for ( ; try_again; try_again--) {
 		cnt = recvmsg(fd, &msg, flags);

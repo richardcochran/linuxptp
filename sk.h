@@ -60,4 +60,10 @@ int sk_receive(int fd, void *buf, int buflen,
  */
 int sk_timestamping_init(int fd, char *device, enum timestamp_type type);
 
+/**
+ * Limits the number of RECVMSG(2) calls when attempting to obtain a
+ * transmit time stamp on an event message.
+ */
+extern int sk_tx_retries;
+
 #endif
