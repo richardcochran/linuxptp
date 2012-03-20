@@ -20,12 +20,15 @@
 #include <string.h>
 #include "config.h"
 
-static void scan_line(char *s, struct defaultDS *dds, struct port_defaults *pod)
+static void scan_line(char *s, struct config *cfg)
 {
 	int val;
 	Integer8 i8;
 	UInteger16 u16;
 	UInteger8 u8;
+
+	struct defaultDS *dds = cfg->dds;
+	struct port_defaults *pod = cfg->pod;
 
 	if (1 == sscanf(s, " twoStepFlag %d", &val)) {
 
@@ -79,7 +82,7 @@ static void scan_line(char *s, struct defaultDS *dds, struct port_defaults *pod)
 	}
 }
 
-int config_read(char *name, struct defaultDS *dds, struct port_defaults *pod)
+int config_read(char *name, struct config *cfg)
 {
 	FILE *fp;
 	char line[1024];
@@ -92,7 +95,7 @@ int config_read(char *name, struct defaultDS *dds, struct port_defaults *pod)
 	}
 
 	while (fgets(line, sizeof(line), fp)) {
-		scan_line(line, dds, pod);
+		scan_line(line, cfg);
 	}
 
 	fclose(fp);

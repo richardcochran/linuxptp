@@ -22,6 +22,11 @@
 
 #include "ds.h"
 
-int config_read(char *name, struct defaultDS *dds, struct port_defaults *pod);
+struct config {
+	struct defaultDS *dds;
+	struct port_defaults *pod;
+};
+
+int config_read(char *name, struct config *cfg);
 
 #endif

@@ -32,6 +32,7 @@
 static int running = 1;
 static struct defaultDS ds;
 static struct port_defaults pod;
+static struct config cfg_settings;
 
 static int generate_clock_identity(struct ClockIdentity *ci, char *name)
 {
@@ -175,7 +176,10 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (config && config_read(config, &ds, &pod)) {
+	cfg_settings.dds = &ds;
+	cfg_settings.pod = &pod;
+
+	if (config && config_read(config, &cfg_settings)) {
 		fprintf(stderr, "failed to read configuration file\n");
 		return -1;
 	}
