@@ -518,6 +518,54 @@ out:
 	return err;
 }
 
+/*
+ * port initialize and disable
+ */
+static int port_is_enabled(struct port *p)
+{
+	switch (p->state) {
+	case PS_INITIALIZING:
+	case PS_FAULTY:
+	case PS_DISABLED:
+		return 0;
+	case PS_LISTENING:
+	case PS_PRE_MASTER:
+	case PS_MASTER:
+	case PS_GRAND_MASTER:
+	case PS_PASSIVE:
+	case PS_UNCALIBRATED:
+	case PS_SLAVE:
+		break;
+	}
+	return 1;
+}
+
+static void port_disable(struct port *p)
+{
+	int i;
+
+	if (p->last_follow_up) {
+		msg_put(p->last_follow_up);
+		p->last_follow_up = NULL;
+	}
+	if (p->last_sync) {
+		msg_put(p->last_sync);
+		p->last_sync = NULL;
+	}
+	if (p->delay_req) {
+		msg_put(p->delay_req);
+		p->delay_req = NULL;
+	}
+
+	free_foreign_masters(p);
+	clock_remove_fda(p->clock, p, p->fda);
+	transport_close(p->trp, &p->fda);
+
+	for (i = 0; i < N_TIMER_FDS; i++) {
+		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
+	}
+}
+
 static int port_initialize(struct port *p)
 {
 	int fd[N_TIMER_FDS], i;
@@ -790,21 +838,10 @@ static void process_sync(struct port *p, struct ptp_message *m)
 
 void port_close(struct port *p)
 {
-	int i;
-
-	if (p->last_follow_up)
-		msg_put(p->last_follow_up);
-	if (p->last_sync)
-		msg_put(p->last_sync);
-	if (p->delay_req)
-		msg_put(p->delay_req);
-
-	free_foreign_masters(p);
-	transport_close(p->trp, &p->fda);
-	transport_destroy(p->trp);
-	for (i = 0; i < N_TIMER_FDS; i++) {
-		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
+	if (port_is_enabled(p)) {
+		port_disable(p);
 	}
+	transport_destroy(p->trp);
 	free(p);
 }
 
@@ -850,6 +887,9 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		 * port immediately, we can skip right to listening
 		 * state if all goes well.
 		 */
+		if (port_is_enabled(p)) {
+			port_disable(p);
+		}
 		p->state = port_initialize(p) ? PS_FAULTY : PS_LISTENING;
 		return;
 	}
@@ -868,8 +908,10 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 
 	switch (next) {
 	case PS_INITIALIZING:
+		break;
 	case PS_FAULTY:
 	case PS_DISABLED:
+		port_disable(p);
 		break;
 	case PS_LISTENING:
 		port_set_announce_tmo(p);
