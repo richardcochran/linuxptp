@@ -546,7 +546,6 @@ static int port_initialize(struct port *p)
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		p->fda.fd[FD_ANNOUNCE_TIMER + i] = fd[i];
-		p->fda.cnt++;
 	}
 
 	if (port_set_announce_tmo(p))

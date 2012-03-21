@@ -35,7 +35,6 @@ enum {
 
 struct fdarray {
 	int fd[N_POLLFD];
-	int cnt;
 };
 
 #endif

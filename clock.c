@@ -275,7 +275,7 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 		if (p == c->port[i])
 			break;
 	}
-	for (j = 0; j < fda.cnt; j++) {
+	for (j = 0; j < N_POLLFD; j++) {
 		k = N_POLLFD * i + j;
 		c->pollfd[k].fd = fda.fd[j];
 		c->pollfd[k].events = POLLIN|POLLPRI;
@@ -375,7 +375,7 @@ void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
 		if (p == c->port[i])
 			break;
 	}
-	for (j = 0; j < fda.cnt; j++) {
+	for (j = 0; j < N_POLLFD; j++) {
 		k = N_POLLFD * i + j;
 		c->pollfd[k].fd = -1;
 		c->pollfd[k].events = 0;
