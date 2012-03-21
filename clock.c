@@ -480,7 +480,7 @@ static void handle_state_decision_event(struct clock *c)
 			event = EV_RS_SLAVE;
 			break;
 		default:
-			event = EV_INITIALIZE;
+			event = EV_FAULT_DETECTED;
 			break;
 		}
 		port_dispatch(c->port[i], event, fresh_best);
