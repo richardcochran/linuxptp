@@ -1,5 +1,6 @@
 /**
- * @file
+ * @file ptp4l.c
+ * @brief PTP Boundary Clock main program
  * @note Copyright (C) 2011 Richard Cochran <richardcochran@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
