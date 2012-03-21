@@ -368,6 +368,20 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
 }
 
+void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
+{
+	int i, j, k;
+	for (i = 0; i < c->nports; i++) {
+		if (p == c->port[i])
+			break;
+	}
+	for (j = 0; j < fda.cnt; j++) {
+		k = N_POLLFD * i + j;
+		c->pollfd[k].fd = -1;
+		c->pollfd[k].events = 0;
+	}
+}
+
 int clock_slave_only(struct clock *c)
 {
 	return c->dds.slaveOnly;

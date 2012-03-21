@@ -136,6 +136,14 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 int clock_poll(struct clock *c);
 
 /**
+ * Remove a port's file descriptor array from its controlling clock.
+ * @param c    The clock instance.
+ * @param p    The port removing the array.
+ * @param fda  The port's file decriptor array.
+ */
+void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda);
+
+/**
  * Obtain the slave-only flag from a clock's default data set.
  * @param c  The clock instance.
  * @return   The value of the clock's slave-only flag.
