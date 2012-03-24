@@ -35,6 +35,8 @@
 #include "tmv.h"
 #include "util.h"
 
+#define FAULT_RESET_SECONDS 15
+#define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define MAVE_LENGTH 10
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -49,7 +51,9 @@ struct clock {
 	struct timePropertiesDS tds;
 	struct foreign_clock *best;
 	struct port *port[MAX_PORTS];
-	struct pollfd pollfd[MAX_PORTS*N_POLLFD];
+	struct pollfd pollfd[MAX_PORTS*N_CLOCK_PFD];
+	int fault_fd[MAX_PORTS];
+	time_t fault_timeout;
 	int nports;
 	tmv_t master_offset;
 	tmv_t path_delay;
@@ -69,11 +73,27 @@ static void clock_destroy(struct clock *c)
 	int i;
 	for (i = 0; i < c->nports; i++) {
 		port_close(c->port[i]);
+		close(c->fault_fd[i]);
 	}
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
 	}
 	memset(c, 0, sizeof(*c));
+}
+
+static int clock_fault_timeout(struct clock *c, int index, int set)
+{
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+	if (set) {
+		pr_debug("waiting %d seconds to clear fault on port %d",
+			 c->fault_timeout, index);
+		tmo.it_value.tv_sec = c->fault_timeout;
+	} else {
+		pr_debug("clearing fault on port %d", index);
+	}
+	return timerfd_settime(c->fault_fd[index], 0, &tmo, NULL);
 }
 
 static void clock_ppb(clockid_t clkid, double ppb)
@@ -213,6 +233,8 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 		c->pollfd[i].events = 0;
 	}
 
+	c->fault_timeout = FAULT_RESET_SECONDS;
+
 	for (i = 0; i < count; i++) {
 		c->port[i] = port_open(pod, iface[i].name, iface[i].transport,
 				       iface[i].timestamping, 1+i, DM_E2E, c);
@@ -220,6 +242,13 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 			pr_err("failed to open port %s", iface[i].name);
 			return NULL;
 		}
+		c->fault_fd[i] = timerfd_create(CLOCK_MONOTONIC, 0);
+		if (c->fault_fd[i] < 0) {
+			pr_err("timerfd_create failed: %m");
+			return NULL;
+		}
+		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].fd = c->fault_fd[i];
+		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].events = POLLIN|POLLPRI;
 	}
 
 	c->dds.numberPorts = c->nports = count;
@@ -276,7 +305,7 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 			break;
 	}
 	for (j = 0; j < N_POLLFD; j++) {
-		k = N_POLLFD * i + j;
+		k = N_CLOCK_PFD * i + j;
 		c->pollfd[k].fd = fda.fd[j];
 		c->pollfd[k].events = POLLIN|POLLPRI;
 	}
@@ -310,8 +339,10 @@ int clock_poll(struct clock *c)
 	}
 
 	for (i = 0; i < c->nports; i++) {
+
+		/* Let the ports handle their events. */
 		for (j = 0; j < N_POLLFD; j++) {
-			k = N_POLLFD * i + j;
+			k = N_CLOCK_PFD * i + j;
 			if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
 				event = port_event(c->port[i], j);
 				if (EV_STATE_DECISION_EVENT == event)
@@ -319,6 +350,18 @@ int clock_poll(struct clock *c)
 				else
 					port_dispatch(c->port[i], event, 0);
 			}
+		}
+
+		/* Check the fault timer. */
+		k = N_CLOCK_PFD * i + N_POLLFD;
+		if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
+			clock_fault_timeout(c, i, 0);
+			port_dispatch(c->port[i], EV_FAULT_CLEARED, 0);
+		}
+
+		/* Clear any fault after a little while. */
+		if (PS_FAULTY == port_state(c->port[i])) {
+			clock_fault_timeout(c, i, 1);
 		}
 	}
 
@@ -376,7 +419,7 @@ void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
 			break;
 	}
 	for (j = 0; j < N_POLLFD; j++) {
-		k = N_POLLFD * i + j;
+		k = N_CLOCK_PFD * i + j;
 		c->pollfd[k].fd = -1;
 		c->pollfd[k].events = 0;
 	}
