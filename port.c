@@ -316,6 +316,13 @@ static int port_set_sync_tmo(struct port *p)
 	return set_tmo(p->fda.fd[FD_SYNC_TIMER], 1, p->logSyncInterval);
 }
 
+static void port_show_transition(struct port *p,
+				 enum port_state next, enum fsm_event event)
+{
+	pr_notice("port %hu: %s to %s on %s", portnum(p),
+		  ps_str[p->state], ps_str[next], ev_str[event]);
+}
+
 static void port_synchronize(struct port *p,
 			     struct timespec ingress_ts,
 			     struct timestamp origin_ts,
@@ -890,15 +897,16 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		if (port_is_enabled(p)) {
 			port_disable(p);
 		}
-		p->state = port_initialize(p) ? PS_FAULTY : PS_LISTENING;
+		next = port_initialize(p) ? PS_FAULTY : PS_LISTENING;
+		port_show_transition(p, next, event);
+		p->state = next;
 		return;
 	}
 
 	if (next == p->state)
 		return;
 
-	pr_notice("port %hu: %s to %s on %s", portnum(p),
-		ps_str[p->state], ps_str[next], ev_str[event]);
+	port_show_transition(p, next, event);
 
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
