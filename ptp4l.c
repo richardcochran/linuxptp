@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!nports) {
+		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		return -1;
 	}
