@@ -61,7 +61,7 @@ struct raw {
 
 static struct sock_filter raw_filter[N_RAW_FILTER] = {
 	{OP_LDH,  0, 0, OFF_ETYPE   },
-	{OP_JEQ,  0, 3, ETH_P_1588  }, /*f goto reject*/
+	{OP_JEQ,  0, 4, ETH_P_1588  }, /*f goto reject*/
 	{OP_LDB,  0, 0, ETH_HLEN    },
 	{OP_AND,  0, 0, PTP_GEN_BIT }, /*test general bit*/
 	{OP_JEQ,  0, 1, 0           }, /*0,1=accept event; 1,0=accept general*/
