@@ -108,7 +108,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			if (nports < MAX_PORTS) {
-				iface[nports++].name = optarg;
+				iface[nports].name = optarg;
+				iface[nports].transport = transport;
+				nports++;
 			} else {
 				fprintf(stderr, "too many interfaces\n");
 				return -1;
@@ -156,7 +158,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	for (i = 0; i < nports; i++) {
-		iface[i].transport = transport;
 		iface[i].timestamping = timestamping;
 	}
 	if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
