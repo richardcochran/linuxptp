@@ -684,6 +684,11 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	if (p->state != PS_MASTER && p->state != PS_GRAND_MASTER)
 		return -1;
 
+	if (p->delayMechanism == DM_P2P) {
+		pr_warning("port %hu: delay request on P2P port", portnum(p));
+		return -1;
+	}
+
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
