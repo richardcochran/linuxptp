@@ -47,6 +47,9 @@ struct port {
 	struct ptp_message *last_follow_up;
 	struct ptp_message *last_sync;
 	struct ptp_message *delay_req;
+	struct ptp_message *peer_delay_req;
+	struct ptp_message *peer_delay_resp;
+	struct ptp_message *peer_delay_fup;
 	struct {
 		UInteger16 announce;
 		UInteger16 delayreq;
@@ -562,6 +565,18 @@ static void port_disable(struct port *p)
 	if (p->delay_req) {
 		msg_put(p->delay_req);
 		p->delay_req = NULL;
+	}
+	if (p->peer_delay_req) {
+		msg_put(p->peer_delay_req);
+		p->peer_delay_req = NULL;
+	}
+	if (p->peer_delay_resp) {
+		msg_put(p->peer_delay_resp);
+		p->peer_delay_resp = NULL;
+	}
+	if (p->peer_delay_fup) {
+		msg_put(p->peer_delay_fup);
+		p->peer_delay_fup = NULL;
 	}
 
 	free_foreign_masters(p);
