@@ -124,7 +124,7 @@ struct pdelay_resp_msg {
 
 struct pdelay_resp_fup_msg {
 	struct ptp_header   hdr;
-	struct Timestamp    responeOriginTimestamp;
+	struct Timestamp    responseOriginTimestamp;
 	struct PortIdentity requestingPortIdentity;
 } PACKED;
 
