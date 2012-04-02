@@ -154,6 +154,8 @@ struct ptp_message {
 		 * - follow_up   preciseOriginTimestamp
 		 * - sync        originTimestamp
 		 * - delay_req   originTimestamp
+		 * - pdelay_resp     requestReceiptTimestamp
+		 * - pdelay_resp_fup responseOriginTimestamp
 		 */
 		struct timestamp pdu;
 		/**

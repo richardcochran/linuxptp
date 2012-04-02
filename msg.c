@@ -113,6 +113,16 @@ static char *msg_type_string(int type)
 	return "unknown";
 }
 
+static void port_id_post_recv(struct PortIdentity *pid)
+{
+	pid->portNumber = ntohs(pid->portNumber);
+}
+
+static void port_id_pre_send(struct PortIdentity *pid)
+{
+	pid->portNumber = htons(pid->portNumber);
+}
+
 static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
 {
 	uint32_t lsb = ntohl(ts->seconds_lsb);
@@ -179,6 +189,8 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	case PDELAY_RESP:
 		if (cnt < sizeof(struct pdelay_resp_msg))
 			return -1;
+		timestamp_post_recv(m, &m->pdelay_resp.requestReceiptTimestamp);
+		port_id_post_recv(&m->pdelay_resp.requestingPortIdentity);
 		break;
 	case FOLLOW_UP:
 		if (cnt < sizeof(struct follow_up_msg))
@@ -193,6 +205,8 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	case PDELAY_RESP_FOLLOW_UP:
 		if (cnt < sizeof(struct pdelay_resp_fup_msg))
 			return -1;
+		timestamp_post_recv(m, &m->pdelay_resp_fup.responseOriginTimestamp);
+		port_id_post_recv(&m->pdelay_resp_fup.requestingPortIdentity);
 		break;
 	case ANNOUNCE:
 		if (cnt < sizeof(struct announce_msg))
@@ -231,8 +245,11 @@ int msg_pre_send(struct ptp_message *m)
 	case DELAY_REQ:
 		break;
 	case PDELAY_REQ:
+		break;
 	case PDELAY_RESP:
-		return -1;
+		timestamp_pre_send(&m->pdelay_resp.requestReceiptTimestamp);
+		port_id_pre_send(&m->pdelay_resp.requestingPortIdentity);
+		break;
 	case FOLLOW_UP:
 		timestamp_pre_send(&m->follow_up.preciseOriginTimestamp);
 		break;
@@ -242,7 +259,9 @@ int msg_pre_send(struct ptp_message *m)
 			htons(m->delay_resp.requestingPortIdentity.portNumber);
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
-		return -1;
+		timestamp_pre_send(&m->pdelay_resp_fup.responseOriginTimestamp);
+		port_id_pre_send(&m->pdelay_resp_fup.requestingPortIdentity);
+		break;
 	case ANNOUNCE:
 		announce_pre_send(&m->announce);
 		break;
