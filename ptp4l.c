@@ -57,7 +57,11 @@ static void usage(char *progname)
 {
 	fprintf(stderr,
 		"\nusage: %s [options]\n\n"
-		" Network Transport\n\n"
+		" Delay Mechanism (per interface)\n\n"
+		" -A        Auto, starting with E2E\n"
+		" -E        E2E, delay request-response (default)\n"
+		" -P        P2P, peer delay mechanism\n\n"
+		" Network Transport (per interface)\n\n"
 		" -2        IEEE 802.3\n"
 		" -4        UDP IPV4 (default)\n"
 		" -6        UDP IPV6\n\n"
@@ -85,6 +89,7 @@ int main(int argc, char *argv[])
 	char *config = NULL, *phc = DEFAULT_PHC, *progname;
 	int c, i, nports = 0, slaveonly = 0;
 	struct interface iface[MAX_PORTS];
+	enum delay_mechanism dm = DM_E2E;
 	enum transport_type transport = TRANS_UDP_IPV4;
 	enum timestamp_type timestamping = TS_HARDWARE;
 	struct clock *clock;
@@ -92,7 +97,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246f:hi:l:mp:qrsvz"))) {
+	while (EOF != (c = getopt(argc, argv, "246AEf:hi:l:mPp:qrsvz"))) {
 		switch (c) {
 		case '2':
 			transport = TRANS_IEEE_802_3;
@@ -103,12 +108,19 @@ int main(int argc, char *argv[])
 		case '6':
 			transport = TRANS_UDP_IPV6;
 			break;
+		case 'A':
+			dm = DM_AUTO;
+			break;
+		case 'E':
+			dm = DM_E2E;
+			break;
 		case 'f':
 			config = optarg;
 			break;
 		case 'i':
 			if (nports < MAX_PORTS) {
 				iface[nports].name = optarg;
+				iface[nports].dm = dm;
 				iface[nports].transport = transport;
 				nports++;
 			} else {
@@ -121,6 +133,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'm':
 			slaveonly = 1;
+			break;
+		case 'P':
+			dm = DM_P2P;
 			break;
 		case 'p':
 			phc = optarg;

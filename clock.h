@@ -20,6 +20,7 @@
 #ifndef HAVE_CLOCK_H
 #define HAVE_CLOCK_H
 
+#include "dm.h"
 #include "ds.h"
 #include "servo.h"
 #include "tmv.h"
@@ -30,6 +31,7 @@
 /** Defines a network interface, with PTP options. */
 struct interface {
 	char *name;
+	enum delay_mechanism dm;
 	enum transport_type transport;
 	enum timestamp_type timestamping;
 };
