@@ -32,7 +32,6 @@
 #include "port.h"
 #include "servo.h"
 #include "print.h"
-#include "tmv.h"
 #include "util.h"
 
 #define FAULT_RESET_SECONDS 15
@@ -409,6 +408,11 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	c->path_delay = mave_accumulate(c->avg_delay, pd);
 
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
+}
+
+void clock_peer_delay(struct clock *c, tmv_t ppd)
+{
+	c->path_delay = ppd;
 }
 
 void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)

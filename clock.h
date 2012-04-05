@@ -22,6 +22,7 @@
 
 #include "ds.h"
 #include "servo.h"
+#include "tmv.h"
 #include "transport.h"
 
 #define MAX_PORTS 8
@@ -127,6 +128,13 @@ struct PortIdentity clock_parent_identity(struct clock *c);
  */
 void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 		      Integer64 correction);
+
+/**
+ * Provide the estimated peer delay from a slave port.
+ * @param c           The clock instance.
+ * @param ppd         The peer delay as measured on a slave port.
+ */
+void clock_peer_delay(struct clock *c, tmv_t ppd);
 
 /**
  * Poll for events and dispatch them.
