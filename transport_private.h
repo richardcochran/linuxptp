@@ -34,7 +34,7 @@ struct transport {
 	int (*recv)(struct transport *t, int fd, void *buf, int buflen,
 		    struct hw_timestamp *hwts);
 
-	int (*send)(struct transport *t, struct fdarray *fda, int event,
+	int (*send)(struct transport *t, struct fdarray *fda, int event, int peer,
 		    void *buf, int buflen, struct hw_timestamp *hwts);
 
 	void (*release)(struct transport *t);

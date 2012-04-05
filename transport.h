@@ -57,6 +57,9 @@ int transport_recv(struct transport *t, int fd,
 int transport_send(struct transport *t, struct fdarray *fda, int event,
 		   void *buf, int buflen, struct hw_timestamp *hwts);
 
+int transport_peer(struct transport *t, struct fdarray *fda, int event,
+		   void *buf, int buflen, struct hw_timestamp *hwts);
+
 /**
  * Allocate an instance of the specified transport.
  * @param type  Which transport to obtain.

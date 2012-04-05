@@ -42,7 +42,13 @@ int transport_recv(struct transport *t, int fd,
 int transport_send(struct transport *t, struct fdarray *fda, int event,
 		   void *buf, int buflen, struct hw_timestamp *hwts)
 {
-	return t->send(t, fda, event, buf, buflen, hwts);
+	return t->send(t, fda, event, 0, buf, buflen, hwts);
+}
+
+int transport_peer(struct transport *t, struct fdarray *fda, int event,
+		   void *buf, int buflen, struct hw_timestamp *hwts)
+{
+	return t->send(t, fda, event, 1, buf, buflen, hwts);
 }
 
 struct transport *transport_create(enum transport_type type)

@@ -210,7 +210,7 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	return sk_receive(fd, ptr, buflen, hwts, 0);
 }
 
-static int raw_send(struct transport *t, struct fdarray *fda, int event,
+static int raw_send(struct transport *t, struct fdarray *fda, int event, int peer,
 		    void *buf, int len, struct hw_timestamp *hwts)
 {
 	struct raw *raw = container_of(t, struct raw, t);

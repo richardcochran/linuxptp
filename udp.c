@@ -165,7 +165,7 @@ static int udp_recv(struct transport *t, int fd, void *buf, int buflen,
 	return sk_receive(fd, buf, buflen, hwts, 0);
 }
 
-static int udp_send(struct transport *t, struct fdarray *fda, int event,
+static int udp_send(struct transport *t, struct fdarray *fda, int event, int peer,
 		    void *buf, int len, struct hw_timestamp *hwts)
 {
 	ssize_t cnt;
