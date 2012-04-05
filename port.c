@@ -25,6 +25,7 @@
 
 #include "bmc.h"
 #include "clock.h"
+#include "mave.h"
 #include "missing.h"
 #include "msg.h"
 #include "port.h"
@@ -32,6 +33,8 @@
 #include "tmtab.h"
 #include "tmv.h"
 #include "util.h"
+
+#define PORT_MAVE_LENGTH 10
 
 #define PTP_VERSION 2
 
@@ -56,6 +59,8 @@ struct port {
 		UInteger16 sync;
 	} seqnum;
 	struct tmtab tmtab;
+	tmv_t peer_delay;
+	struct mave *avg_delay;
 	/* portDS */
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
@@ -346,10 +351,58 @@ static void port_synchronize(struct port *p,
 	}
 }
 
+static int port_pdelay_request(struct port *p)
+{
+	struct ptp_message *msg;
+	int cnt, pdulen;
+
+	msg = msg_allocate();
+	if (!msg)
+		return -1;
+	memset(msg, 0, sizeof(*msg));
+
+	pdulen = sizeof(struct pdelay_req_msg);
+	msg->hwts.type = p->timestamping;
+
+	msg->header.tsmt               = PDELAY_REQ;
+	msg->header.ver                = PTP_VERSION;
+	msg->header.messageLength      = pdulen;
+	msg->header.domainNumber       = clock_domain_number(p->clock);
+	msg->header.sourcePortIdentity = p->portIdentity;
+	msg->header.sequenceId         = p->seqnum.delayreq++;
+	msg->header.control            = CTL_OTHER;
+	msg->header.logMessageInterval = 0x7f;
+
+	if (msg_pre_send(msg))
+		goto out;
+
+	cnt = transport_send(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
+	if (cnt <= 0) {
+		pr_err("port %hu: send peer delay request failed", portnum(p));
+		goto out;
+	}
+	if (msg_sots_missing(msg)) {
+		pr_err("missing timestamp on transmitted peer delay request");
+		goto out;
+	}
+
+	if (p->peer_delay_req)
+		msg_put(p->peer_delay_req);
+
+	p->peer_delay_req = msg;
+	return 0;
+out:
+	msg_put(msg);
+	return -1;
+}
+
 static int port_delay_request(struct port *p)
 {
 	struct ptp_message *msg;
 	int cnt, pdulen;
+
+	if (p->delayMechanism == DM_P2P)
+		return port_pdelay_request(p);
 
 	msg = msg_allocate();
 	if (!msg)
@@ -813,6 +866,192 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 			 syn->header.correction, m->header.correction);
 }
 
+static int process_pdelay_req(struct port *p, struct ptp_message *m)
+{
+	struct ptp_message *rsp, *fup;
+	int cnt, err = -1, rsp_len, fup_len;
+
+	if (p->delayMechanism == DM_E2E) {
+		pr_warning("port %hu: pdelay_req on E2E port", portnum(p));
+		return -1;
+	}
+	if (p->delayMechanism == DM_AUTO) {
+		pr_info("port %hu: peer detected, switch to P2P", portnum(p));
+		p->delayMechanism = DM_P2P;
+	}
+
+	rsp = msg_allocate();
+	if (!rsp)
+		return -1;
+	fup = msg_allocate();
+	if (!fup) {
+		msg_put(rsp);
+		return -1;
+	}
+	memset(rsp, 0, sizeof(*rsp));
+	memset(fup, 0, sizeof(*fup));
+
+	rsp_len = sizeof(struct pdelay_resp_msg);
+	rsp->hwts.type = p->timestamping;
+
+	rsp->header.tsmt               = PDELAY_RESP;
+	rsp->header.ver                = PTP_VERSION;
+	rsp->header.messageLength      = rsp_len;
+	rsp->header.domainNumber       = m->header.domainNumber;
+	rsp->header.sourcePortIdentity = p->portIdentity;
+	rsp->header.sequenceId         = m->header.sequenceId;
+	rsp->header.control            = CTL_OTHER;
+	rsp->header.logMessageInterval = 0x7f;
+
+	rsp->header.flagField[0] |= TWO_STEP;
+
+	/*
+	 * NB - We do not have any fraction nanoseconds for the correction
+	 * fields, neither in the response or the follow up.
+	 */
+	ts_to_timestamp(&m->hwts.ts, &rsp->pdelay_resp.requestReceiptTimestamp);
+	rsp->pdelay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
+
+	fup_len = sizeof(struct pdelay_resp_fup_msg);
+	fup->hwts.type = p->timestamping;
+
+	fup->header.tsmt               = PDELAY_RESP_FOLLOW_UP;
+	fup->header.ver                = PTP_VERSION;
+	fup->header.messageLength      = fup_len;
+	fup->header.domainNumber       = m->header.domainNumber;
+	fup->header.correction         = m->header.correction;
+	fup->header.sourcePortIdentity = p->portIdentity;
+	fup->header.sequenceId         = m->header.sequenceId;
+	fup->header.control            = CTL_OTHER;
+	fup->header.logMessageInterval = 0x7f;
+
+	fup->pdelay_resp_fup.requestingPortIdentity = m->header.sourcePortIdentity;
+
+	if (msg_pre_send(rsp))
+		goto out;
+
+	cnt = transport_send(p->trp, &p->fda, 1, rsp, rsp_len, &rsp->hwts);
+	if (cnt <= 0) {
+		pr_err("port %hu: send peer delay response failed", portnum(p));
+		goto out;
+	}
+	if (msg_sots_missing(rsp)) {
+		pr_err("missing timestamp on transmitted peer delay response");
+		goto out;
+	}
+
+	ts_to_timestamp(&rsp->hwts.ts,
+			&fup->pdelay_resp_fup.responseOriginTimestamp);
+
+	if (msg_pre_send(fup))
+		goto out;
+
+	cnt = transport_send(p->trp, &p->fda, 0, fup, fup_len, &rsp->hwts);
+	if (cnt <= 0) {
+		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
+		goto out;
+	}
+	err = 0;
+out:
+	msg_put(rsp);
+	msg_put(fup);
+	return err;
+}
+
+static void port_peer_delay(struct port *p)
+{
+	tmv_t c1, c2, t1, t2, t3, t4, pd;
+	struct ptp_message *req = p->peer_delay_req;
+	struct ptp_message *rsp = p->peer_delay_resp;
+	struct ptp_message *fup = p->peer_delay_fup;
+
+	/* Check for response, validate port and sequence number. */
+
+	if (!rsp)
+		return;
+
+	if (!pid_eq(&rsp->pdelay_resp.requestingPortIdentity, &p->portIdentity))
+		return;
+
+	if (rsp->header.sequenceId != ntohs(req->header.sequenceId))
+		return;
+
+	// TODO - add asymmetry value to correctionField.
+
+	t1 = timespec_to_tmv(req->hwts.ts);
+	t4 = timespec_to_tmv(rsp->hwts.ts);
+	c1 = correction_to_tmv(rsp->header.correction);
+
+	/* Process one-step response immediately. */
+	if (one_step(rsp)) {
+		t2 = tmv_zero();
+		t3 = tmv_zero();
+		c2 = tmv_zero();
+		goto calc;
+	}
+
+	/* Check for follow up, validate port and sequence number. */
+
+	if (!fup)
+		return;
+
+	if (!pid_eq(&fup->pdelay_resp_fup.requestingPortIdentity, &p->portIdentity))
+		return;
+
+	if (fup->header.sequenceId != rsp->header.sequenceId)
+		return;
+
+	if (!pid_eq(&fup->header.sourcePortIdentity,
+		    &rsp->header.sourcePortIdentity))
+		return;
+
+	/* Process follow up response. */
+	t2 = timestamp_to_tmv(rsp->ts.pdu);
+	t3 = timestamp_to_tmv(fup->ts.pdu);
+	c2 = correction_to_tmv(fup->header.correction);
+calc:
+	pd = tmv_sub(tmv_sub(t4, t1), tmv_sub(t3, t2));
+	pd = tmv_sub(pd, c1);
+	pd = tmv_sub(pd, c2);
+	pd = tmv_div(pd, 2);
+
+	p->peer_delay = mave_accumulate(p->avg_delay, pd);
+
+	pr_debug("pdelay %hu   %10lld %10lld", portnum(p), p->peer_delay, pd);
+
+	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
+		clock_peer_delay(p->clock, p->peer_delay);
+	}
+}
+
+static void process_pdelay_resp(struct port *p, struct ptp_message *m)
+{
+	if (!p->peer_delay_req)
+		return;
+
+	if (p->peer_delay_resp) {
+		// TODO - make sure peer source port is same.
+		msg_put(p->peer_delay_resp);
+	}
+
+	msg_get(m);
+	p->peer_delay_resp = m;
+	port_peer_delay(p);
+}
+
+static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
+{
+	if (!p->peer_delay_req)
+		return;
+
+	if (p->peer_delay_fup)
+		msg_put(p->peer_delay_fup);
+
+	msg_get(m);
+	p->peer_delay_fup = m;
+	port_peer_delay(p);
+}
+
 static void process_sync(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *fup;
@@ -869,6 +1108,7 @@ void port_close(struct port *p)
 		port_disable(p);
 	}
 	transport_destroy(p->trp);
+	mave_destroy(p->avg_delay);
 	free(p);
 }
 
@@ -961,6 +1201,25 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		port_set_delay_tmo(p);
 		break;
 	};
+	if (p->delayMechanism == DM_P2P) {
+		switch (next) {
+		case PS_INITIALIZING:
+		case PS_FAULTY:
+		case PS_DISABLED:
+			break;
+		case PS_LISTENING:
+		case PS_PRE_MASTER:
+		case PS_MASTER:
+		case PS_GRAND_MASTER:
+		case PS_PASSIVE:
+			port_set_delay_tmo(p);
+			break;
+		case PS_UNCALIBRATED:
+		case PS_SLAVE:
+			/*already set above*/
+			break;
+		};
+	}
 	p->state = next;
 }
 
@@ -1028,7 +1287,10 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		process_delay_req(p, msg);
 		break;
 	case PDELAY_REQ:
+		process_pdelay_req(p, msg);
+		break;
 	case PDELAY_RESP:
+		process_pdelay_resp(p, msg);
 		break;
 	case FOLLOW_UP:
 		process_follow_up(p, msg);
@@ -1037,6 +1299,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		process_delay_resp(p, msg);
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
+		process_pdelay_resp_fup(p, msg);
 		break;
 	case ANNOUNCE:
 		if (process_announce(p, msg))
@@ -1079,6 +1342,14 @@ struct port *port_open(struct port_defaults *pod,
 	p->state = PS_INITIALIZING;
 	p->delayMechanism = dm;
 	p->versionNumber = PTP_VERSION;
+
+	p->avg_delay = mave_create(PORT_MAVE_LENGTH);
+	if (!p->avg_delay) {
+		pr_err("Failed to create moving average");
+		transport_destroy(p->trp);
+		free(p);
+		return NULL;
+	}
 
 	return p;
 }
