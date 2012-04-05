@@ -35,7 +35,8 @@
 
 #define EVENT_PORT        319
 #define GENERAL_PORT      320
-#define MULTICAST_IP_ADDR "224.0.1.129"
+#define PTP_PRIMARY_MCAST_IPADDR "224.0.1.129"
+#define PTP_PDELAY_MCAST_IPADDR  "224.0.0.107"
 
 static int mcast_bind(int fd, int index)
 {
@@ -81,7 +82,7 @@ static int udp_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int open_socket(char *name, struct in_addr *mc_addr, short port)
+static int open_socket(char *name, struct in_addr mc_addr[2], short port)
 {
 	struct sockaddr_in addr;
 	int fd, index, on = 1;
@@ -111,7 +112,12 @@ static int open_socket(char *name, struct in_addr *mc_addr, short port)
 		pr_err("setsockopt SO_BINDTODEVICE failed: %m");
 		goto no_option;
 	}
-	addr.sin_addr = *mc_addr;
+	addr.sin_addr = mc_addr[0];
+	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
+		pr_err("mcast_join failed");
+		goto no_option;
+	}
+	addr.sin_addr = mc_addr[1];
 	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
 		pr_err("mcast_join failed");
 		goto no_option;
@@ -126,21 +132,26 @@ no_socket:
 	return -1;
 }
 
-static struct in_addr mc_addr;
+enum { MC_PRIMARY, MC_PDELAY };
+
+static struct in_addr mcast_addr[2];
 
 static int udp_open(struct transport *t, char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
 	int efd, gfd;
 
-	if (!inet_aton(MULTICAST_IP_ADDR, &mc_addr))
+	if (!inet_aton(PTP_PRIMARY_MCAST_IPADDR, &mcast_addr[MC_PRIMARY]))
 		return -1;
 
-	efd = open_socket(name, &mc_addr, EVENT_PORT);
+	if (!inet_aton(PTP_PDELAY_MCAST_IPADDR, &mcast_addr[MC_PDELAY]))
+		return -1;
+
+	efd = open_socket(name, mcast_addr, EVENT_PORT);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, &mc_addr, GENERAL_PORT);
+	gfd = open_socket(name, mcast_addr, GENERAL_PORT);
 	if (gfd < 0)
 		goto no_general;
 
@@ -174,7 +185,7 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event, int pee
 	unsigned char junk[1600];
 
 	addr.sin_family = AF_INET;
-	addr.sin_addr = mc_addr;
+	addr.sin_addr = peer ? mcast_addr[MC_PDELAY] : mcast_addr[MC_PRIMARY];
 	addr.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
 
 	cnt = sendto(fd, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
