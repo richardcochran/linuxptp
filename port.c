@@ -1029,19 +1029,24 @@ calc:
 	}
 }
 
-static void process_pdelay_resp(struct port *p, struct ptp_message *m)
+static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
-	if (!p->peer_delay_req)
-		return;
-
+	if (!p->peer_delay_req) {
+		pr_err("port %hu: rogue peer delay response", portnum(p));
+		return -1;
+	}
 	if (p->peer_delay_resp) {
-		// TODO - make sure peer source port is same.
+		if (!source_pid_eq(p->peer_delay_resp, m)) {
+			pr_err("port %hu: multiple peer responses", portnum(p));
+			return -1;
+		}
 		msg_put(p->peer_delay_resp);
 	}
 
 	msg_get(m);
 	p->peer_delay_resp = m;
 	port_peer_delay(p);
+	return 0;
 }
 
 static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
@@ -1295,7 +1300,8 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		process_pdelay_req(p, msg);
 		break;
 	case PDELAY_RESP:
-		process_pdelay_resp(p, msg);
+		if (process_pdelay_resp(p, msg))
+			event = EV_FAULT_DETECTED;
 		break;
 	case FOLLOW_UP:
 		process_follow_up(p, msg);
