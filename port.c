@@ -129,6 +129,12 @@ static int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
 	return 0 == memcmp(a, b, sizeof(*a));
 }
 
+static int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
+{
+	return pid_eq(&m1->header.sourcePortIdentity,
+		      &m2->header.sourcePortIdentity);
+}
+
 static int set_tmo(int fd, unsigned int scale, int log_seconds)
 {
 	struct itimerspec tmo = {
@@ -1001,8 +1007,7 @@ static void port_peer_delay(struct port *p)
 	if (fup->header.sequenceId != rsp->header.sequenceId)
 		return;
 
-	if (!pid_eq(&fup->header.sourcePortIdentity,
-		    &rsp->header.sourcePortIdentity))
+	if (!source_pid_eq(fup, rsp))
 		return;
 
 	/* Process follow up response. */
