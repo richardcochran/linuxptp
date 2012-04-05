@@ -45,7 +45,8 @@
 
 struct raw {
 	struct transport t;
-	struct eth_addr addr;
+	struct eth_addr ptp_addr;
+	struct eth_addr p2p_addr;
 };
 
 #define OP_AND  (BPF_ALU | BPF_AND | BPF_K)
@@ -70,9 +71,9 @@ static struct sock_filter raw_filter[N_RAW_FILTER] = {
 };
 
 static int raw_configure(int fd, int event, int index,
-			 unsigned char *addr, int enable)
+			 unsigned char *addr1, unsigned char *addr2, int enable)
 {
-	int filter_test, option;
+	int err1, err2, filter_test, option;
 	struct packet_mreq mreq;
 	struct sock_fprog prg = { N_RAW_FILTER, raw_filter };
 
@@ -95,11 +96,20 @@ static int raw_configure(int fd, int event, int index,
 	mreq.mr_ifindex = index;
 	mreq.mr_type = PACKET_MR_MULTICAST;
 	mreq.mr_alen = 6;
-	memcpy(mreq.mr_address, addr, 6);
-	if (!setsockopt(fd, SOL_PACKET, option, &mreq, sizeof(mreq))) {
+	memcpy(mreq.mr_address, addr1, 6);
+
+	err1 = setsockopt(fd, SOL_PACKET, option, &mreq, sizeof(mreq));
+	if (err1)
+		pr_warning("setsockopt PACKET_MR_MULTICAST failed: %m");
+
+	memcpy(mreq.mr_address, addr2, 6);
+
+	err2 = setsockopt(fd, SOL_PACKET, option, &mreq, sizeof(mreq));
+	if (err2)
+		pr_warning("setsockopt PACKET_MR_MULTICAST failed: %m");
+
+	if (!err1 && !err2)
 		return 0;
-	}
-	pr_warning("setsockopt PACKET_MR_MULTICAST failed: %m");
 
 	mreq.mr_ifindex = index;
 	mreq.mr_type = PACKET_MR_ALLMULTI;
@@ -129,6 +139,7 @@ static int raw_close(struct transport *t, struct fdarray *fda)
 }
 
 static unsigned char ptp_dst_mac[MAC_LEN] = { PTP_DST_MAC };
+static unsigned char p2p_dst_mac[MAC_LEN] = { P2P_DST_MAC };
 
 static int open_socket(char *name, int event)
 {
@@ -156,7 +167,7 @@ static int open_socket(char *name, int event)
 		pr_err("setsockopt SO_BINDTODEVICE failed: %m");
 		goto no_option;
 	}
-	if (raw_configure(fd, event, index, ptp_dst_mac, 1))
+	if (raw_configure(fd, event, index, ptp_dst_mac, p2p_dst_mac, 1))
 		goto no_option;
 
 	return fd;
@@ -172,10 +183,13 @@ static int raw_open(struct transport *t, char *name,
 	struct raw *raw = container_of(t, struct raw, t);
 	int efd, gfd;
 
-	memcpy(raw->addr.dst, ptp_dst_mac, MAC_LEN);
+	memcpy(raw->ptp_addr.dst, ptp_dst_mac, MAC_LEN);
+	memcpy(raw->p2p_addr.dst, p2p_dst_mac, MAC_LEN);
 
-	if (sk_interface_macaddr(name, raw->addr.src, MAC_LEN))
+	if (sk_interface_macaddr(name, raw->ptp_addr.src, MAC_LEN))
 		goto no_mac;
+
+	memcpy(raw->p2p_addr.src, raw->ptp_addr.src, MAC_LEN);
 
 	efd = open_socket(name, 1);
 	if (efd < 0)
@@ -223,7 +237,11 @@ static int raw_send(struct transport *t, struct fdarray *fda, int event, int pee
 	len += sizeof(*hdr);
 
 	hdr = (struct eth_hdr *) ptr;
-	memcpy(&hdr->mac, &raw->addr, sizeof(hdr->mac));
+	if (peer)
+		memcpy(&hdr->mac, &raw->p2p_addr, sizeof(hdr->mac));
+	else
+		memcpy(&hdr->mac, &raw->ptp_addr, sizeof(hdr->mac));
+
 	hdr->type = htons(ETH_P_1588);
 
 	cnt = send(fd, ptr, len, 0);
