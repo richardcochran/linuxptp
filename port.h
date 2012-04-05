@@ -19,17 +19,11 @@
 #ifndef HAVE_PORT_H
 #define HAVE_PORT_H
 
+#include "dm.h"
 #include "fd.h"
 #include "foreign.h"
 #include "fsm.h"
 #include "transport.h"
-
-/** Defines the possible delay mechanisms. */
-enum delay_mechanism {
-	DM_AUTO, /**< Just go with the flow  */
-	DM_E2E,  /**< End to End mechanism   */
-	DM_P2P,  /**< Peer to Peer mechanism */
-};
 
 /** Opaque type. */
 struct port;
