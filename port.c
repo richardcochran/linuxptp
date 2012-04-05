@@ -382,7 +382,7 @@ static int port_pdelay_request(struct port *p)
 	if (msg_pre_send(msg))
 		goto out;
 
-	cnt = transport_send(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
+	cnt = transport_peer(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send peer delay request failed", portnum(p));
 		goto out;
@@ -936,7 +936,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	if (msg_pre_send(rsp))
 		goto out;
 
-	cnt = transport_send(p->trp, &p->fda, 1, rsp, rsp_len, &rsp->hwts);
+	cnt = transport_peer(p->trp, &p->fda, 1, rsp, rsp_len, &rsp->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send peer delay response failed", portnum(p));
 		goto out;
@@ -952,7 +952,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	if (msg_pre_send(fup))
 		goto out;
 
-	cnt = transport_send(p->trp, &p->fda, 0, fup, fup_len, &rsp->hwts);
+	cnt = transport_peer(p->trp, &p->fda, 0, fup, fup_len, &rsp->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
 		goto out;
