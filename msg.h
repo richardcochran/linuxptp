@@ -141,6 +141,7 @@ struct ptp_message {
 		struct pdelay_resp_fup_msg pdelay_resp_fup;
 	} PACKED;
 	/**/
+	int tail_room;
 	int refcnt;
 	TAILQ_ENTRY(ptp_message) list;
 	struct {

@@ -21,6 +21,7 @@
 #include "transport_private.h"
 #include "raw.h"
 #include "udp.h"
+#include "udp6.h"
 
 int transport_close(struct transport *t, struct fdarray *fda)
 {
@@ -57,7 +58,7 @@ struct transport *transport_create(enum transport_type type)
 	case TRANS_UDP_IPV4:
 		return udp_transport_create();
 	case TRANS_UDP_IPV6:
-		break;
+		return udp6_transport_create();
 	case TRANS_IEEE_802_3:
 		return raw_transport_create();
 	case TRANS_DEVICENET:
