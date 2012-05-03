@@ -22,6 +22,7 @@
 
 static void scan_line(char *s, struct config *cfg)
 {
+	double df;
 	int val;
 	Integer8 i8;
 	UInteger16 u16;
@@ -84,6 +85,16 @@ static void scan_line(char *s, struct config *cfg)
 
 		if (val > 0)
 			*cfg->tx_timestamp_retries = val;
+
+	} else if (1 == sscanf(s, " pi_proportional_const %lf", &df)) {
+
+		if (df > 0.0 && df < 1.0)
+			*cfg->pi_proportional_const = df;
+
+	} else if (1 == sscanf(s, " pi_integral_const %lf", &df)) {
+
+		if (df > 0.0 && df < 1.0)
+			*cfg->pi_integral_const = df;
 	}
 }
 

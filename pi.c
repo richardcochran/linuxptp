@@ -28,6 +28,10 @@
 #define SWTS_KP 0.1
 #define SWTS_KI 0.001
 
+/* These two take their values from the configuration file. (see ptp4l.c) */
+extern double configured_pi_kp;
+extern double configured_pi_ki;
+
 struct pi_servo {
 	struct servo servo;
 	double offset[2];
@@ -105,7 +109,10 @@ struct servo *pi_servo_create(int max_ppb, int sw_ts)
 	s->servo.sample  = pi_sample;
 	s->maxppb        = max_ppb;
 
-	if (sw_ts) {
+	if (configured_pi_kp && configured_pi_ki) {
+		s->kp = configured_pi_kp;
+		s->ki = configured_pi_ki;
+	} else if (sw_ts) {
 		s->kp = SWTS_KP;
 		s->ki = SWTS_KI;
 	} else {
