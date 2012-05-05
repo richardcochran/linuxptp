@@ -27,6 +27,15 @@
 
 #include "phc.h"
 
+/*
+ * On 32 bit platforms, the PHC driver's maximum adjustment (type
+ * 'int' in units of ppb) can overflow the timex.freq field (type
+ * 'long'). So in this case we clamp the maximum to the largest
+ * possible adjustment that fits into a 32 bit long.
+ */
+#define BITS_PER_LONG	(sizeof(long)*8)
+#define MAX_PPB_32	32767999	/* 2^31 - 1 / 65.536 */
+
 clockid_t phc_open(char *phc)
 {
 	int fd = open(phc, O_RDWR);
@@ -44,7 +53,7 @@ void phc_close(clockid_t clkid)
 
 int phc_max_adj(clockid_t clkid)
 {
-	int fd = CLOCKID_TO_FD(clkid);
+	int fd = CLOCKID_TO_FD(clkid), max;
 	struct ptp_clock_caps caps;
 
 	if (ioctl(fd, PTP_CLOCK_GETCAPS, &caps)) {
@@ -52,5 +61,10 @@ int phc_max_adj(clockid_t clkid)
 		return 0;
 	}
 
-	return caps.max_adj;
+	max = caps.max_adj;
+
+	if (BITS_PER_LONG == 32 && max > MAX_PPB_32)
+		max = MAX_PPB_32;
+
+	return max;
 }
