@@ -756,11 +756,11 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	int cnt, err = 0, pdulen;
 
 	if (p->state != PS_MASTER && p->state != PS_GRAND_MASTER)
-		return -1;
+		return 0;
 
 	if (p->delayMechanism == DM_P2P) {
 		pr_warning("port %hu: delay request on P2P port", portnum(p));
-		return -1;
+		return 0;
 	}
 
 	msg = msg_allocate();
@@ -879,7 +879,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 	if (p->delayMechanism == DM_E2E) {
 		pr_warning("port %hu: pdelay_req on E2E port", portnum(p));
-		return -1;
+		return 0;
 	}
 	if (p->delayMechanism == DM_AUTO) {
 		pr_info("port %hu: peer detected, switch to P2P", portnum(p));
@@ -1294,10 +1294,12 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		process_sync(p, msg);
 		break;
 	case DELAY_REQ:
-		process_delay_req(p, msg);
+		if (process_delay_req(p, msg))
+			event = EV_FAULT_DETECTED;
 		break;
 	case PDELAY_REQ:
-		process_pdelay_req(p, msg);
+		if (process_pdelay_req(p, msg))
+			event = EV_FAULT_DETECTED;
 		break;
 	case PDELAY_RESP:
 		if (process_pdelay_resp(p, msg))
