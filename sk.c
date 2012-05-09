@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <linux/net_tstamp.h>
 #include <linux/sockios.h>
+#include <linux/ethtool.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <string.h>
@@ -81,6 +82,41 @@ int sk_interface_index(int fd, char *name)
 		return err;
 	}
 	return ifreq.ifr_ifindex;
+}
+
+int sk_interface_phc(char *name, int *index)
+{
+#ifdef ETHTOOL_GET_TS_INFO
+	struct ethtool_ts_info info;
+	struct ifreq ifr;
+	int fd, err;
+
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&info, 0, sizeof(info));
+	info.cmd = ETHTOOL_GET_TS_INFO;
+	strcpy(ifr.ifr_name, name);
+	ifr.ifr_data = (char *) &info;
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if (fd < 0) {
+		pr_err("socket failed: %m");
+		return -1;
+	}
+
+	err = ioctl(fd, SIOCETHTOOL, &ifr);
+	if (err < 0) {
+		pr_err("ioctl SIOCETHTOOL failed: %m");
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
+	*index = info.phc_index;
+
+	return 0;
+#else
+	return -1;
+#endif
 }
 
 int sk_interface_macaddr(char *name, unsigned char *mac, int len)

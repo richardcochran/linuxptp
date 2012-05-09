@@ -80,6 +80,7 @@ enum fsm_event port_event(struct port *port, int fd_index);
 /**
  * Open a network port.
  * @param pod           A pointer to a default port data set for this port.
+ * @param phc_index     The PHC device index for the network device.
  * @param name          The name of the network interface.
  * @param transport     The network transport type to use on this port.
  * @param timestamping  The flavor of time stamping to use on this port.
@@ -89,6 +90,7 @@ enum fsm_event port_event(struct port *port, int fd_index);
  * @return A pointer to an open port on success, or NULL otherwise.
  */
 struct port *port_open(struct port_defaults *pod,
+		       int phc_index,
 		       char *name,
 		       enum transport_type transport,
 		       enum timestamp_type timestamping,

@@ -33,6 +33,7 @@
 #include "tmtab.h"
 #include "tmv.h"
 #include "util.h"
+#include "sk.h"
 
 #define PORT_MAVE_LENGTH 10
 
@@ -1328,6 +1329,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 }
 
 struct port *port_open(struct port_defaults *pod,
+		       int phc_index,
 		       char *name,
 		       enum transport_type transport,
 		       enum timestamp_type timestamping,
@@ -1336,10 +1338,21 @@ struct port *port_open(struct port_defaults *pod,
 		       struct clock *clock)
 {
 	struct port *p = malloc(sizeof(*p));
+	int checked_phc_index = -1;
+
 	if (!p)
 		return NULL;
 
 	memset(p, 0, sizeof(*p));
+
+	if (sk_interface_phc(name, &checked_phc_index))
+		pr_warning("port %d: get_ts_info not supported", number);
+	else if (phc_index >= 0 && phc_index != checked_phc_index) {
+		pr_err("port %d: PHC device mismatch", number);
+		pr_err("port %d: /dev/ptp%d requested, but /dev/ptp%d attached",
+		       number, phc_index, checked_phc_index);
+		return NULL;
+	}
 
 	p->pod = *pod;
 	p->name = name;

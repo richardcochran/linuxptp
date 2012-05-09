@@ -77,23 +77,24 @@ static void usage(char *progname)
 		"           (may be specified multiple times)\n"
 		" -l [num]  set the logging level to 'num'\n"
 		" -m        slave only mode (overrides configuration file)\n"
-		" -p [dev]  PTP hardware clock device to use, default '%s'\n"
+		" -p [dev]  PTP hardware clock device to use, default auto\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
 		" -q        quiet mode, do not use syslog(3)\n"
 		" -v        verbose mode, print messages to stdout\n"
 		"\n",
-		progname, DEFAULT_PHC);
+		progname);
 }
 
 int main(int argc, char *argv[])
 {
-	char *config = NULL, *phc = DEFAULT_PHC, *progname;
+	char *config = NULL, *req_phc = NULL, *progname;
 	int c, i, nports = 0, slaveonly = 0;
 	struct interface iface[MAX_PORTS];
 	enum delay_mechanism dm = DM_E2E;
 	enum transport_type transport = TRANS_UDP_IPV4;
 	enum timestamp_type timestamping = TS_HARDWARE;
 	struct clock *clock;
+	int phc_index = -1;
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
@@ -139,7 +140,7 @@ int main(int argc, char *argv[])
 			dm = DM_P2P;
 			break;
 		case 'p':
-			phc = optarg;
+			req_phc = optarg;
 			break;
 		case 'q':
 			print_no_syslog();
@@ -176,8 +177,23 @@ int main(int argc, char *argv[])
 	for (i = 0; i < nports; i++) {
 		iface[i].timestamping = timestamping;
 	}
+
+	/* determine PHC Clock index */
 	if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
-		phc = NULL;
+		phc_index = -1;
+	} else if (req_phc) {
+		if (1 != sscanf(req_phc, "/dev/ptp%d", &phc_index)) {
+			fprintf(stderr, "bad ptp device string\n");
+			return -1;
+		}
+	} else if (sk_interface_phc(iface[0].name, &phc_index)) {
+		fprintf(stderr, "get_ts_info not supported\n"
+				"please specify ptp device\n");
+		return -1;
+	}
+
+	if (phc_index >= 0) {
+		pr_info("selected /dev/ptp%d as PTP clock\n", phc_index);
 	}
 
 	ds.slaveOnly = FALSE;
@@ -213,7 +229,7 @@ int main(int argc, char *argv[])
 		ds.clockQuality.clockClass = 255;
 	}
 
-	clock = clock_create(phc, iface, nports, &ds, &pod);
+	clock = clock_create(phc_index, iface, nports, &ds, &pod);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

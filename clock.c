@@ -174,18 +174,20 @@ UInteger8 clock_class(struct clock *c)
 	return c->dds.clockQuality.clockClass;
 }
 
-struct clock *clock_create(char *phc, struct interface *iface, int count,
+struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			   struct defaultDS *ds, struct port_defaults *pod)
 {
 	int i, max_adj, sw_ts = 0;
 	struct clock *c = &the_clock;
+	char phc[32];
 
 	srandom(time(NULL));
 
 	if (c->nports)
 		clock_destroy(c);
 
-	if (phc) {
+	if (phc_index >= 0) {
+		snprintf(phc, 31, "/dev/ptp%d", phc_index);
 		c->clkid = phc_open(phc);
 		if (c->clkid == CLOCK_INVALID) {
 			pr_err("Failed to open %s: %m", phc);
@@ -235,7 +237,7 @@ struct clock *clock_create(char *phc, struct interface *iface, int count,
 	c->fault_timeout = FAULT_RESET_SECONDS;
 
 	for (i = 0; i < count; i++) {
-		c->port[i] = port_open(pod, iface[i].name, iface[i].transport,
+		c->port[i] = port_open(pod, phc_index, iface[i].name, iface[i].transport,
 				       iface[i].timestamping, 1+i, iface[i].dm, c);
 		if (!c->port[i]) {
 			pr_err("failed to open port %s", iface[i].name);

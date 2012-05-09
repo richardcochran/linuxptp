@@ -31,6 +31,13 @@
 int sk_interface_index(int fd, char *device);
 
 /**
+ * Obtain the PHC device index of a network interface.
+ * @param name	    The name of the interface
+ * @return index    The phc index associated with this iface
+ */
+int sk_interface_phc(char *name, int *index);
+
+/**
  * Obtain the MAC address of a network interface.
  * @param name  The name of the interface
  * @param mac   Buffer to hold the result
