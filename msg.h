@@ -87,6 +87,7 @@ struct announce_msg {
 	struct ClockIdentity grandmasterIdentity;
 	UInteger16           stepsRemoved;
 	Enumeration8         timeSource;
+	uint8_t              suffix[0];
 } PACKED;
 
 struct sync_msg {
@@ -102,12 +103,14 @@ struct delay_req_msg {
 struct follow_up_msg {
 	struct ptp_header   hdr;
 	struct Timestamp    preciseOriginTimestamp;
+	uint8_t             suffix[0];
 } PACKED;
 
 struct delay_resp_msg {
 	struct ptp_header   hdr;
 	struct Timestamp    receiveTimestamp;
 	struct PortIdentity requestingPortIdentity;
+	uint8_t             suffix[0];
 } PACKED;
 
 struct pdelay_req_msg {
@@ -126,6 +129,7 @@ struct pdelay_resp_fup_msg {
 	struct ptp_header   hdr;
 	struct Timestamp    responseOriginTimestamp;
 	struct PortIdentity requestingPortIdentity;
+	uint8_t             suffix[0];
 } PACKED;
 
 struct ptp_message {
