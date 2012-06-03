@@ -132,6 +132,22 @@ struct pdelay_resp_fup_msg {
 	uint8_t             suffix[0];
 } PACKED;
 
+struct signaling_msg {
+	struct ptp_header   hdr;
+	struct PortIdentity targetPortIdentity;
+	uint8_t             suffix[0];
+} PACKED;
+
+struct management_msg {
+	struct ptp_header   hdr;
+	struct PortIdentity targetPortIdentity;
+	UInteger8           startingBoundaryHops;
+	UInteger8           boundaryHops;
+	uint8_t             flags; /* reserved | actionField */
+	uint8_t             reserved;
+	uint8_t             suffix[0];
+} PACKED;
+
 struct ptp_message {
 	union {
 		struct ptp_header          header;
@@ -143,6 +159,8 @@ struct ptp_message {
 		struct pdelay_req_msg      pdelay_req;
 		struct pdelay_resp_msg     pdelay_resp;
 		struct pdelay_resp_fup_msg pdelay_resp_fup;
+		struct signaling_msg       signaling;
+		struct management_msg      management;
 	} PACKED;
 	/**/
 	int tail_room;
