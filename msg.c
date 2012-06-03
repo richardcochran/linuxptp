@@ -162,7 +162,7 @@ void msg_get(struct ptp_message *m)
 
 int msg_post_recv(struct ptp_message *m, int cnt)
 {
-	int type;
+	int pdulen, type;
 
 	if (cnt < sizeof(struct ptp_header))
 		return -1;
@@ -174,43 +174,65 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 
 	switch (type) {
 	case SYNC:
-		if (cnt < sizeof(struct sync_msg))
-			return -1;
+		pdulen = sizeof(struct sync_msg);
+		break;
+	case DELAY_REQ:
+		pdulen = sizeof(struct delay_req_msg);
+		break;
+	case PDELAY_REQ:
+		pdulen = sizeof(struct pdelay_req_msg);
+		break;
+	case PDELAY_RESP:
+		pdulen = sizeof(struct pdelay_resp_msg);
+		break;
+	case FOLLOW_UP:
+		pdulen = sizeof(struct follow_up_msg);
+		break;
+	case DELAY_RESP:
+		pdulen = sizeof(struct delay_resp_msg);
+		break;
+	case PDELAY_RESP_FOLLOW_UP:
+		pdulen = sizeof(struct pdelay_resp_fup_msg);
+		break;
+	case ANNOUNCE:
+		pdulen = sizeof(struct announce_msg);
+		break;
+	case SIGNALING:
+		pdulen = sizeof(struct signaling_msg);
+		break;
+	case MANAGEMENT:
+		pdulen = sizeof(struct management_msg);
+		break;
+	default:
+		return -1;
+	}
+
+	if (cnt < pdulen)
+		return -1;
+
+	switch (type) {
+	case SYNC:
 		timestamp_post_recv(m, &m->sync.originTimestamp);
 		break;
 	case DELAY_REQ:
-		if (cnt < sizeof(struct delay_req_msg))
-			return -1;
 		break;
 	case PDELAY_REQ:
-		if (cnt < sizeof(struct pdelay_req_msg))
-			return -1;
 		break;
 	case PDELAY_RESP:
-		if (cnt < sizeof(struct pdelay_resp_msg))
-			return -1;
 		timestamp_post_recv(m, &m->pdelay_resp.requestReceiptTimestamp);
 		port_id_post_recv(&m->pdelay_resp.requestingPortIdentity);
 		break;
 	case FOLLOW_UP:
-		if (cnt < sizeof(struct follow_up_msg))
-			return -1;
 		timestamp_post_recv(m, &m->follow_up.preciseOriginTimestamp);
 		break;
 	case DELAY_RESP:
-		if (cnt < sizeof(struct delay_resp_msg))
-			return -1;
 		timestamp_post_recv(m, &m->delay_resp.receiveTimestamp);
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
-		if (cnt < sizeof(struct pdelay_resp_fup_msg))
-			return -1;
 		timestamp_post_recv(m, &m->pdelay_resp_fup.responseOriginTimestamp);
 		port_id_post_recv(&m->pdelay_resp_fup.requestingPortIdentity);
 		break;
 	case ANNOUNCE:
-		if (cnt < sizeof(struct announce_msg))
-			return -1;
 		clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
 		timestamp_post_recv(m, &m->announce.originTimestamp);
 		announce_post_recv(&m->announce);
@@ -218,8 +240,6 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	case SIGNALING:
 	case MANAGEMENT:
 		break;
-	default:
-		return -1;
 	}
 
 	if (msg_sots_missing(m)) {
