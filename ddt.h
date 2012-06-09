@@ -61,10 +61,10 @@ struct ClockQuality {
 } PACKED;
 
 struct TLV {
-	Enumeration16 tlvType;
+	Enumeration16 type;
 	UInteger16    length; /* must be even */
-	Octet        *value;
-};
+	Octet         value[0];
+} PACKED;
 
 struct PTPText {
 	UInteger8 length;
