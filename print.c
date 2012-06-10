@@ -18,8 +18,8 @@
  */
 #include <stdarg.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <syslog.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "print.h"
@@ -45,24 +45,26 @@ void print_verbose(void)
 
 void print(int level, char const *format, ...)
 {
-	pid_t pid;
+	struct timespec ts;
 	va_list ap;
 	char buf[1024];
 
 	if (level > print_level)
 		return;
 
-	pid = getpid();
+	clock_gettime(CLOCK_MONOTONIC, &ts);
 
 	va_start(ap, format);
 	vsnprintf(buf, sizeof(buf), format, ap);
 	va_end(ap);
 
 	if (verbose) {
-		fprintf(stdout, "ptp4l[%d]: %s\n", pid, buf);
+		fprintf(stdout, "ptp4l[%ld.%03ld]: %s\n",
+			ts.tv_sec, ts.tv_nsec / 1000000, buf);
 		fflush(stdout);
 	}
 	if (use_syslog) {
-		syslog(level, "[%d] %s", pid, buf);
+		syslog(level, "[%ld.%03ld] %s",
+		       ts.tv_sec, ts.tv_nsec / 1000000, buf);
 	}
 }
