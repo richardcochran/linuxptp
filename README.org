@@ -30,9 +30,25 @@
   - Modular design allowing painless addition of new transports and
     clock servos.
 
+* Getting the Code
+
+  The source code is managed using the git version control system. To
+  get your own copy of the project sources, use the following command.
+
+#+BEGIN_EXAMPLE
+  git clone git://git.code.sf.net/p/linuxptp/code linuxptp
+#+END_EXAMPLE
+
+  If the git protocol is blocked by your local area network, then you
+  can use the alternative HTTP protocol instead.
+
+#+BEGIN_EXAMPLE
+  git clone http://git.code.sf.net/p/linuxptp/code linuxptp
+#+END_EXAMPLE
+
 * System Requirements
 
-  In order to run this software, you need to run a recent Linux kernel
+  In order to run this software, you need Linux kernel
   version 3.0 or newer, and the kernel header files must available at
   compile time.
 
