@@ -690,6 +690,20 @@ no_timers:
 	return -1;
 }
 
+static int port_renew_transport(struct port *p)
+{
+	if (!port_is_enabled(p)) {
+		return 0;
+	}
+	clock_remove_fda(p->clock, p, p->fda);
+	transport_close(p->trp, &p->fda);
+	if (transport_open(p->trp, p->name, &p->fda, p->timestamping)) {
+		return -1;
+	}
+	clock_install_fda(p->clock, p, p->fda);
+	return 0;
+}
+
 /*
  * Returns non-zero if the announce message is different than last.
  */
@@ -1238,6 +1252,9 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
+		if (clock_slave_only(p->clock) && port_renew_transport(p)) {
+			return EV_FAULT_DETECTED;
+		}
 		return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
 
 	case FD_DELAY_TIMER:
