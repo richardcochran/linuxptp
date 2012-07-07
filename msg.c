@@ -18,6 +18,7 @@
  */
 #include <arpa/inet.h>
 #include <malloc.h>
+#include <string.h>
 #include <time.h>
 
 #include <asm/byteorder.h>
@@ -39,6 +40,24 @@ struct message_storage {
 } PACKED;
 
 static TAILQ_HEAD(msg_pool, ptp_message) msg_pool;
+
+static struct {
+	int total;
+	int count;
+} pool_stats;
+
+#ifdef DEBUG_POOL
+static void pool_debug(const char *str, void *addr)
+{
+	fprintf(stderr, "*** %p %10s total %d count %d used %d\n",
+		addr, str, pool_stats.total, pool_stats.count,
+		pool_stats.total - pool_stats.count);
+}
+#else
+static void pool_debug(const char *str, void *addr)
+{
+}
+#endif
 
 static void announce_pre_send(struct announce_msg *m)
 {
@@ -145,13 +164,24 @@ struct ptp_message *msg_allocate(void)
 {
 	struct message_storage *s;
 	struct ptp_message *m = TAILQ_FIRST(&msg_pool);
-	if (!m) {
+
+	if (m) {
+		TAILQ_REMOVE(&msg_pool, m, list);
+		pool_stats.count--;
+		pool_debug("dequeue", m);
+	} else {
 		s = malloc(sizeof(*s));
 		if (s) {
 			m = &s->msg;
-			m->refcnt = 1;
+			pool_stats.total++;
+			pool_debug("allocate", m);
 		}
 	}
+	if (m) {
+		memset(m, 0, sizeof(*m));
+		m->refcnt = 1;
+	}
+
 	return m;
 }
 
@@ -330,8 +360,11 @@ void msg_print(struct ptp_message *m, FILE *fp)
 void msg_put(struct ptp_message *m)
 {
 	m->refcnt--;
-	if (!m)
+	if (!m->refcnt) {
+		pool_stats.count++;
+		pool_debug("recycle", m);
 		TAILQ_INSERT_HEAD(&msg_pool, m, list);
+	}
 }
 
 int msg_sots_missing(struct ptp_message *m)

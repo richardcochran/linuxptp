@@ -366,7 +366,6 @@ static int port_pdelay_request(struct port *p)
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
-	memset(msg, 0, sizeof(*msg));
 
 	pdulen = sizeof(struct pdelay_req_msg);
 	msg->hwts.type = p->timestamping;
@@ -414,7 +413,6 @@ static int port_delay_request(struct port *p)
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
-	memset(msg, 0, sizeof(*msg));
 
 	pdulen = sizeof(struct delay_req_msg);
 	msg->hwts.type = p->timestamping;
@@ -461,7 +459,6 @@ static int port_tx_announce(struct port *p)
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
-	memset(msg, 0, sizeof(*msg));
 
 	pdulen = sizeof(struct announce_msg);
 	msg->hwts.type = p->timestamping;
@@ -523,8 +520,6 @@ static int port_tx_sync(struct port *p)
 		msg_put(msg);
 		return -1;
 	}
-	memset(msg, 0, sizeof(*msg));
-	memset(fup, 0, sizeof(*fup));
 
 	pdulen = sizeof(struct sync_msg);
 	msg->hwts.type = p->timestamping;
@@ -767,7 +762,6 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
-	memset(msg, 0, sizeof(*msg));
 
 	pdulen = sizeof(struct delay_resp_msg);
 	msg->hwts.type = p->timestamping;
@@ -895,8 +889,6 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		msg_put(rsp);
 		return -1;
 	}
-	memset(rsp, 0, sizeof(*rsp));
-	memset(fup, 0, sizeof(*fup));
 
 	rsp_len = sizeof(struct pdelay_resp_msg);
 	rsp->hwts.type = p->timestamping;
