@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (phc_index >= 0) {
-		pr_info("selected /dev/ptp%d as PTP clock\n", phc_index);
+		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
 	}
 
 	ds.slaveOnly = FALSE;
