@@ -111,9 +111,15 @@ static void announce_to_dataset(struct ptp_message *m, struct clock *c,
 static int msg_current(struct ptp_message *m, struct timespec now)
 {
 	int64_t t1, t2, tmo;
+
 	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
 	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
-	tmo = 4 * (1 << m->header.logMessageInterval) * NSEC2SEC;
+
+	if (m->header.logMessageInterval < 0)
+		tmo = 4LL * NSEC2SEC / (1 << -m->header.logMessageInterval);
+	else
+		tmo = 4LL * (1 << m->header.logMessageInterval) * NSEC2SEC;
+
 	return t2 - t1 < tmo;
 }
 
