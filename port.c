@@ -1141,12 +1141,12 @@ struct foreign_clock *port_compute_best(struct port *p)
 		if (!tmp)
 			continue;
 
+		announce_to_dataset(tmp, p->clock, &fc->dataset);
+
 		fc_prune(fc);
 
 		if (fc->n_messages < FOREIGN_MASTER_THRESHOLD)
 			continue;
-
-		announce_to_dataset(tmp, p->clock, &fc->dataset);
 
 		if (!p->best)
 			p->best = fc;
