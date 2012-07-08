@@ -1283,7 +1283,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 
 	msg->hwts.type = p->timestamping;
 
-	cnt = transport_recv(p->trp, fd, msg, sizeof(*msg), &msg->hwts);
+	cnt = transport_recv(p->trp, fd, msg, sizeof(msg->data), &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: recv message failed", portnum(p));
 		msg_put(msg);

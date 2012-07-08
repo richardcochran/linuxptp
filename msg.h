@@ -148,6 +148,10 @@ struct management_msg {
 	uint8_t             suffix[0];
 } PACKED;
 
+struct message_data {
+	uint8_t buffer[1500];
+} PACKED;
+
 struct ptp_message {
 	union {
 		struct ptp_header          header;
@@ -161,6 +165,7 @@ struct ptp_message {
 		struct pdelay_resp_fup_msg pdelay_resp_fup;
 		struct signaling_msg       signaling;
 		struct management_msg      management;
+		struct message_data        data;
 	} PACKED;
 	/**/
 	int tail_room;
