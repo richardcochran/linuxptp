@@ -95,6 +95,16 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 	return timerfd_settime(c->fault_fd[index], 0, &tmo, NULL);
 }
 
+static int clock_master_lost(struct clock *c)
+{
+	int i;
+	for (i = 0; i < c->nports; i++) {
+		if (PS_SLAVE == port_state(c->port[i]))
+			return 0;
+	}
+	return 1;
+}
+
 static void clock_ppb(clockid_t clkid, double ppb)
 {
 	struct timex tx;
@@ -324,7 +334,7 @@ struct PortIdentity clock_parent_identity(struct clock *c)
 
 int clock_poll(struct clock *c)
 {
-	int cnt, i, j, k, sde = 0;
+	int cnt, i, j, k, lost = 0, sde = 0;
 	enum fsm_event event;
 
 	cnt = poll(c->pollfd, ARRAY_SIZE(c->pollfd), -1);
@@ -348,8 +358,9 @@ int clock_poll(struct clock *c)
 				event = port_event(c->port[i], j);
 				if (EV_STATE_DECISION_EVENT == event)
 					sde = 1;
-				else
-					port_dispatch(c->port[i], event, 0);
+				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event)
+					lost = 1;
+				port_dispatch(c->port[i], event, 0);
 			}
 		}
 
@@ -366,6 +377,8 @@ int clock_poll(struct clock *c)
 		}
 	}
 
+	if (lost && clock_master_lost(c))
+		clock_update_grandmaster(c);
 	if (sde)
 		handle_state_decision_event(c);
 
