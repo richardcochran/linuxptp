@@ -128,11 +128,13 @@
     | mv643xx_eth  | Marvell Discovery, Orion | SW   | N   | Y   | 3.1 |
     | pxa168_eth   | Marvell pxa168           | SW   | N   | Y   | 3.1 |
     | r6040        | RDC Ethernet MAC         | SW   | N   | Y   | 3.1 |
+    | r8169        | Realtek 8169/8168/8101   | SW   | N   | N   | 3.4 |
     | smsc911x     | SMSC LAN911x, LAN921x    | SW   | N   | Y   | 3.1 |
     | smsc9420     | SMSC LAN9420 PCI         | SW   | N   | Y   | 3.1 |
     | stmmac       | STM Synopsys IP Core     | SW   | N   | Y   | 3.1 |
     | tg3          | Broadcom Tigon3 PCI      | SW   | N   | Y   | 3.1 |
     | ucc_geth     | Freescale QE Gigabit     | SW   | N   | Y   | 3.1 |
+    | usbnet       | USB network devices      | SW   | N   | Y/N | 3.2 |
     |--------------+--------------------------+------+-----+-----+-----|
 
 * Installation
