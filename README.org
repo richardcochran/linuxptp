@@ -71,6 +71,21 @@
    into Linux version 3.0. The PHC code provides a driver framework and
    the user space API for clock control.
 
+** Ethtool Support
+
+   Starting with version 3.5 of the Linux kernel, you can query the
+   time stamping capabilities of a network interface using the
+   ETHTOOL_GET_TS_INFO ioctl. Using ethtool version 3.4 or later, you
+   can check your system's time stamping support as shown in the
+   following example.
+
+#+BEGIN_EXAMPLE
+  ethtool -T eth0
+#+END_EXAMPLE
+
+   If the ethtool ioctl is available, then the ptp4l program will use
+   it in order to discover the proper PHC device.
+
 ** Driver Support Matrix
 
    The table below shows the Linux drivers that support the new
@@ -102,10 +117,12 @@
     | Driver     | Hardware                | SOTS | PHC | PHY |     VER |
     |------------+-------------------------+------+-----+-----+---------|
     | bfin_mac   | Analog Blackfin         | SYS  | N   | NA  | pre 3.0 |
-    | igb        | Intel 82576, 82580      | SYS  | N   | NA  | pre 3.0 |
+    | igb        | Intel 82576, 82580      | RAW  | Y   | NA  |     3.5 |
+    | ixgb       | Intel 82599             | RAW  | Y   | NA  |     3.5 |
     | dp83640    | Nat Semi PHYTER         | RAW  | Y   | NA  |     3.0 |
     | gianfar    | Freescale eTSEC PowerPC | RAW  | Y   | NA  |     3.0 |
     | ptp_ixp46x | Intel IXP465            | RAW  | Y   | NA  |     3.0 |
+    | ptp_phc    | Lapis EG20T PCH         | RAW  | Y   | NA  |     3.5 |
     |------------+-------------------------+------+-----+-----+---------|
 
 *** Software Timestamping
@@ -113,12 +130,17 @@
     |--------------+--------------------------+------+-----+-----+-----|
     | Driver       | Hardware                 | SOTS | PHC | PHY | VER |
     |--------------+--------------------------+------+-----+-----+-----|
+    | bnx2x        | Broadcom Everest         | SW   | N   | N   | 3.5 |
     | davinci_emac | TI DaVinci, Sitara       | SW   | N   | Y   | 3.1 |
     | dnet         | Dave Ethernet MAC        | SW   | N   | Y   | 3.1 |
+    | e100         | Intel PRO/100            | SW   | N   | N   | 3.5 |
+    | e1000        | Intel PRO/1000 PCI/PCI-X | SW   | N   | N   | 3.5 |
+    | e1000e       | Intel PRO/1000 PCIe      | SW   | N   | N   | 3.5 |
     | emaclite     | Xilinx Ethernet Lite     | SW   | N   | Y   | 3.1 |
     | ethoc        | OpenCores 10/100 MAC     | SW   | N   | Y   | 3.1 |
     | fec          | Freescale Coldfire       | SW   | N   | Y   | 3.1 |
     | fec_mpc52xx  | Freescale MPC5200        | SW   | N   | Y   | 3.1 |
+    | forcedeth    | NVIDIA nForce            | SW   | N   | N   | 3.5 |
     | fs_enet      | Freescale MPC512x        | SW   | N   | Y   | 3.1 |
     | ixp4xx_eth   | Intel IXP4xx             | SW   | N   | Y   | 3.0 |
     | lib8390      | Asix AX88796             | SW   | N   | Y   | 3.1 |
