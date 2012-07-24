@@ -18,11 +18,10 @@
 KBUILD_OUTPUT ?= /lib/modules/$(shell uname -r)/build
 
 DEBUG	=
-CC	= gcc
+CC	= $(CROSS_COMPILE)gcc
 INC	= -I$(KBUILD_OUTPUT)/usr/include
-CFLAGS	= -Wall $(INC) $(DEBUG)
-LDFLAGS	=
-LDLIBS	= -lm -lrt
+CFLAGS	= -Wall $(INC) $(DEBUG) $(EXTRA_CFLAGS)
+LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l phc2sys hwstamp_ctl
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o raw.o servo.o sk.o tmtab.o transport.o udp.o udp6.o util.o
