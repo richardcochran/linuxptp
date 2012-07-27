@@ -138,8 +138,8 @@ static int raw_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static unsigned char ptp_dst_mac[MAC_LEN] = { PTP_DST_MAC };
-static unsigned char p2p_dst_mac[MAC_LEN] = { P2P_DST_MAC };
+unsigned char ptp_dst_mac[MAC_LEN] = { PTP_DST_MAC };
+unsigned char p2p_dst_mac[MAC_LEN] = { P2P_DST_MAC };
 
 static int open_socket(char *name, int event)
 {

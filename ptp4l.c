@@ -32,6 +32,8 @@
 
 int sk_tx_retries = 2; /*see sk.c*/
 double configured_pi_kp, configured_pi_ki; /*see pi.c*/
+extern unsigned char ptp_dst_mac[]; /*see raw.c*/
+extern unsigned char p2p_dst_mac[]; /*see raw.c*/
 
 static int running = 1;
 static struct defaultDS ds;
@@ -219,6 +221,8 @@ int main(int argc, char *argv[])
 	cfg_settings.tx_timestamp_retries = &sk_tx_retries;
 	cfg_settings.pi_proportional_const = &configured_pi_kp;
 	cfg_settings.pi_integral_const = &configured_pi_ki;
+	cfg_settings.ptp_dst_mac = ptp_dst_mac;
+	cfg_settings.p2p_dst_mac = p2p_dst_mac;
 
 	if (config && config_read(config, &cfg_settings)) {
 		fprintf(stderr, "failed to read configuration file\n");

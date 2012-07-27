@@ -28,6 +28,8 @@ struct config {
 	int *tx_timestamp_retries;
 	double *pi_proportional_const;
 	double *pi_integral_const;
+	unsigned char *ptp_dst_mac;
+	unsigned char *p2p_dst_mac;
 };
 
 int config_read(char *name, struct config *cfg);
