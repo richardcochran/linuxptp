@@ -207,6 +207,7 @@ int main(int argc, char *argv[])
 	pod.logSyncInterval = 0;
 	pod.logMinDelayReqInterval = 0;
 	pod.announceReceiptTimeout = 3;
+	pod.transportSpecific = 0;
 
 	if (generate_clock_identity(&ds.clockIdentity, iface[0].name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");

@@ -81,6 +81,7 @@ struct port_defaults {
 	Integer8 logSyncInterval;
 	Integer8 logMinDelayReqInterval;
 	UInteger8 announceReceiptTimeout;
+	UInteger8 transportSpecific;
 };
 
 #endif

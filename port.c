@@ -70,6 +70,7 @@ struct port {
 	TimeInterval        peerMeanPathDelay;
 	Integer8            logAnnounceInterval;
 	UInteger8           announceReceiptTimeout;
+	UInteger8           transportSpecific;
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;
@@ -376,7 +377,7 @@ static int port_pdelay_request(struct port *p)
 	pdulen = sizeof(struct pdelay_req_msg);
 	msg->hwts.type = p->timestamping;
 
-	msg->header.tsmt               = PDELAY_REQ;
+	msg->header.tsmt               = PDELAY_REQ | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
@@ -423,7 +424,7 @@ static int port_delay_request(struct port *p)
 	pdulen = sizeof(struct delay_req_msg);
 	msg->hwts.type = p->timestamping;
 
-	msg->header.tsmt               = DELAY_REQ;
+	msg->header.tsmt               = DELAY_REQ | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
@@ -469,7 +470,7 @@ static int port_tx_announce(struct port *p)
 	pdulen = sizeof(struct announce_msg);
 	msg->hwts.type = p->timestamping;
 
-	msg->header.tsmt               = ANNOUNCE;
+	msg->header.tsmt               = ANNOUNCE | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
@@ -530,7 +531,7 @@ static int port_tx_sync(struct port *p)
 	pdulen = sizeof(struct sync_msg);
 	msg->hwts.type = p->timestamping;
 
-	msg->header.tsmt               = SYNC;
+	msg->header.tsmt               = SYNC | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
@@ -563,7 +564,7 @@ static int port_tx_sync(struct port *p)
 	pdulen = sizeof(struct follow_up_msg);
 	fup->hwts.type = p->timestamping;
 
-	fup->header.tsmt               = FOLLOW_UP;
+	fup->header.tsmt               = FOLLOW_UP | p->transportSpecific;
 	fup->header.ver                = PTP_VERSION;
 	fup->header.messageLength      = pdulen;
 	fup->header.domainNumber       = clock_domain_number(p->clock);
@@ -657,6 +658,7 @@ static int port_initialize(struct port *p)
 	p->peerMeanPathDelay       = 0;
 	p->logAnnounceInterval     = p->pod.logAnnounceInterval;
 	p->announceReceiptTimeout  = p->pod.announceReceiptTimeout;
+	p->transportSpecific       = p->pod.transportSpecific;
 	p->logSyncInterval         = p->pod.logSyncInterval;
 	p->logMinPdelayReqInterval = LOG_MIN_PDELAY_REQ_INTERVAL;
 
@@ -786,7 +788,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	pdulen = sizeof(struct delay_resp_msg);
 	msg->hwts.type = p->timestamping;
 
-	msg->header.tsmt               = DELAY_RESP;
+	msg->header.tsmt               = DELAY_RESP | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = m->header.domainNumber;
@@ -913,7 +915,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	rsp_len = sizeof(struct pdelay_resp_msg);
 	rsp->hwts.type = p->timestamping;
 
-	rsp->header.tsmt               = PDELAY_RESP;
+	rsp->header.tsmt               = PDELAY_RESP | p->transportSpecific;
 	rsp->header.ver                = PTP_VERSION;
 	rsp->header.messageLength      = rsp_len;
 	rsp->header.domainNumber       = m->header.domainNumber;
@@ -934,7 +936,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	fup_len = sizeof(struct pdelay_resp_fup_msg);
 	fup->hwts.type = p->timestamping;
 
-	fup->header.tsmt               = PDELAY_RESP_FOLLOW_UP;
+	fup->header.tsmt               = PDELAY_RESP_FOLLOW_UP | p->transportSpecific;
 	fup->header.ver                = PTP_VERSION;
 	fup->header.messageLength      = fup_len;
 	fup->header.domainNumber       = m->header.domainNumber;
