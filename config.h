@@ -26,6 +26,7 @@ struct config {
 	struct defaultDS *dds;
 	struct port_defaults *pod;
 	int *tx_timestamp_retries;
+	int *rx_timestamp_l2only;
 	double *pi_proportional_const;
 	double *pi_integral_const;
 	unsigned char *ptp_dst_mac;

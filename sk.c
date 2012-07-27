@@ -45,7 +45,8 @@ static int hwts_init(int fd, char *device)
 
 	ifreq.ifr_data = (void *) &cfg;
 	cfg.tx_type    = HWTSTAMP_TX_ON;
-	cfg.rx_filter  = HWTSTAMP_FILTER_PTP_V2_EVENT;
+	cfg.rx_filter  = sk_prefer_layer2 ?
+		HWTSTAMP_FILTER_PTP_V2_L2_EVENT : HWTSTAMP_FILTER_PTP_V2_EVENT;
 
 	req = cfg;
 	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
@@ -59,7 +60,8 @@ static int hwts_init(int fd, char *device)
 		pr_warning("rx_filter %d not %d", cfg.rx_filter, req.rx_filter);
 
 		if (cfg.tx_type != HWTSTAMP_TX_ON ||
-		    cfg.rx_filter != HWTSTAMP_FILTER_ALL) {
+		    (cfg.rx_filter != HWTSTAMP_FILTER_ALL &&
+		     cfg.rx_filter != HWTSTAMP_FILTER_PTP_V2_EVENT)) {
 			return -1;
 		}
 	}
