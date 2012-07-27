@@ -30,6 +30,7 @@
 
 #define DEFAULT_PHC "/dev/ptp0"
 
+int assume_two_step;
 int sk_tx_retries = 2, sk_prefer_layer2 = 0; /*see sk.c*/
 double configured_pi_kp, configured_pi_ki; /*see pi.c*/
 extern unsigned char ptp_dst_mac[]; /*see raw.c*/
@@ -219,6 +220,7 @@ int main(int argc, char *argv[])
 
 	cfg_settings.dds = &ds;
 	cfg_settings.pod = &pod;
+	cfg_settings.assume_two_step = &assume_two_step;
 	cfg_settings.tx_timestamp_retries = &sk_tx_retries;
 	cfg_settings.rx_timestamp_l2only = &sk_prefer_layer2;
 	cfg_settings.pi_proportional_const = &configured_pi_kp;

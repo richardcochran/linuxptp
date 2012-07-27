@@ -25,6 +25,7 @@
 struct config {
 	struct defaultDS *dds;
 	struct port_defaults *pod;
+	int *assume_two_step;
 	int *tx_timestamp_retries;
 	int *rx_timestamp_l2only;
 	double *pi_proportional_const;

@@ -285,12 +285,19 @@ void msg_put(struct ptp_message *m);
 int msg_sots_missing(struct ptp_message *m);
 
 /**
+ * Work around buggy 802.1AS switches.
+ */
+extern int assume_two_step;
+
+/**
  * Test whether a message is one-step message.
  * @param m  Message to test.
  * @return   One if the message is a one-step, zero otherwise.
  */
 static inline Boolean one_step(struct ptp_message *m)
 {
+	if (assume_two_step)
+		return 0;
 	return !field_is_set(m, 0, TWO_STEP);
 }
 

@@ -91,6 +91,10 @@ static void scan_line(char *s, struct config *cfg)
 
 		pod->transportSpecific = u8 << 4;
 
+	} else if (1 == sscanf(s, " assume_two_step %u", &val)) {
+
+		*cfg->assume_two_step = val ? 1 : 0;
+
 	} else if (1 == sscanf(s, " tx_timestamp_retries %u", &val)) {
 
 		if (val > 0)
