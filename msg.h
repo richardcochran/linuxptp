@@ -213,6 +213,17 @@ static inline Boolean field_is_set(struct ptp_message *m, int index, Octet bit)
 }
 
 /**
+ * Obtain the transportSpecific field from a message.
+ * @param m  Message to test.
+ * @return   The value of the transportSpecific field. Note that the
+ *           value is returned unshifted, in the upper nibble.
+ */
+static inline UInteger8 msg_transport_specific(struct ptp_message *m)
+{
+	return m->header.tsmt & 0xf0;
+}
+
+/**
  * Obtain the message type.
  * @param m  Message to test.
  * @return   The value of the messageType field.

@@ -290,6 +290,9 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 {
 	struct ClockIdentity c1, c2;
 
+	if (msg_transport_specific(m) != p->transportSpecific) {
+		return 1;
+	}
 	if (pid_eq(&m->header.sourcePortIdentity, &p->portIdentity)) {
 		return 1;
 	}
