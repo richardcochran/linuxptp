@@ -208,6 +208,7 @@ int main(int argc, char *argv[])
 	pod.logAnnounceInterval = 1;
 	pod.logSyncInterval = 0;
 	pod.logMinDelayReqInterval = 0;
+	pod.logMinPdelayReqInterval = 0;
 	pod.announceReceiptTimeout = 3;
 	pod.transportSpecific = 0;
 

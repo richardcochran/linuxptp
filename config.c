@@ -79,6 +79,10 @@ static void scan_line(char *s, struct config *cfg)
 
 		pod->logMinDelayReqInterval = i8;
 
+	} else if (1 == sscanf(s, " logMinPdelayReqInterval %hhd", &i8)) {
+
+		pod->logMinPdelayReqInterval = i8;
+
 	} else if (1 == sscanf(s, " announceReceiptTimeout %hhu", &u8)) {
 
 		pod->announceReceiptTimeout = u8;

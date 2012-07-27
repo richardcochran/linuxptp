@@ -39,8 +39,6 @@
 
 #define PTP_VERSION 2
 
-#define LOG_MIN_PDELAY_REQ_INTERVAL     2 /* allow PDelay_Req every 4 sec */
-
 struct port {
 	char *name;
 	struct clock *clock;
@@ -663,7 +661,7 @@ static int port_initialize(struct port *p)
 	p->announceReceiptTimeout  = p->pod.announceReceiptTimeout;
 	p->transportSpecific       = p->pod.transportSpecific;
 	p->logSyncInterval         = p->pod.logSyncInterval;
-	p->logMinPdelayReqInterval = LOG_MIN_PDELAY_REQ_INTERVAL;
+	p->logMinPdelayReqInterval = p->pod.logMinPdelayReqInterval;
 
 	tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
 
