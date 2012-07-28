@@ -142,6 +142,32 @@ static void port_id_pre_send(struct PortIdentity *pid)
 	pid->portNumber = htons(pid->portNumber);
 }
 
+static int suffix_post_recv(uint8_t *ptr, int len)
+{
+	int cnt;
+	struct TLV *tlv;
+
+	if (!ptr)
+		return 0;
+
+	for (cnt = 0; len > sizeof(struct TLV); cnt++) {
+		tlv = (struct TLV *) ptr;
+		tlv->type = ntohs(tlv->type);
+		tlv->length = ntohs(tlv->length);
+		if (tlv->length % 2) {
+			break;
+		}
+		len -= sizeof(struct TLV);
+		ptr += sizeof(struct TLV);
+		if (tlv->length > len) {
+			break;
+		}
+		len -= tlv->length;
+		ptr += tlv->length;
+	}
+	return cnt;
+}
+
 static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
 {
 	uint32_t lsb = ntohl(ts->seconds_lsb);
@@ -193,6 +219,7 @@ void msg_get(struct ptp_message *m)
 int msg_post_recv(struct ptp_message *m, int cnt)
 {
 	int pdulen, type;
+	uint8_t *suffix = NULL;
 
 	if (cnt < sizeof(struct ptp_header))
 		return -1;
@@ -254,21 +281,28 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	case FOLLOW_UP:
 		timestamp_post_recv(m, &m->follow_up.preciseOriginTimestamp);
+		suffix = m->follow_up.suffix;
 		break;
 	case DELAY_RESP:
 		timestamp_post_recv(m, &m->delay_resp.receiveTimestamp);
+		suffix = m->delay_resp.suffix;
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
 		timestamp_post_recv(m, &m->pdelay_resp_fup.responseOriginTimestamp);
 		port_id_post_recv(&m->pdelay_resp_fup.requestingPortIdentity);
+		suffix = m->pdelay_resp_fup.suffix;
 		break;
 	case ANNOUNCE:
 		clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
 		timestamp_post_recv(m, &m->announce.originTimestamp);
 		announce_post_recv(&m->announce);
+		suffix = m->announce.suffix;
 		break;
 	case SIGNALING:
+		suffix = m->signaling.suffix;
+		break;
 	case MANAGEMENT:
+		suffix = m->management.suffix;
 		break;
 	}
 
@@ -276,6 +310,8 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		pr_err("received %s without timestamp", msg_type_string(type));
 		return -1;
 	}
+
+	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen);
 
 	return 0;
 }

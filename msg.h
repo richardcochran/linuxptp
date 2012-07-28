@@ -198,6 +198,10 @@ struct ptp_message {
 	 * SO_TIMESTAMPING socket option.
 	 */
 	struct hw_timestamp hwts;
+	/**
+	 * Contains the number of TLVs in the suffix.
+	 */
+	int tlv_count;
 };
 
 /**
