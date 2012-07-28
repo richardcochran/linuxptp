@@ -168,6 +168,22 @@ static int suffix_post_recv(uint8_t *ptr, int len)
 	return cnt;
 }
 
+static void suffix_pre_send(uint8_t *ptr, int cnt)
+{
+	int i;
+	struct TLV *tlv;
+
+	if (!ptr)
+		return;
+
+	for (i = 0; i < cnt; i++) {
+		tlv = (struct TLV *) ptr;
+		ptr += sizeof(struct TLV) + tlv->length;
+		tlv->type = htons(tlv->type);
+		tlv->length = htons(tlv->length);
+	}
+}
+
 static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
 {
 	uint32_t lsb = ntohl(ts->seconds_lsb);
@@ -319,6 +335,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 int msg_pre_send(struct ptp_message *m)
 {
 	int type;
+	uint8_t *suffix = NULL;
 
 	if (hdr_pre_send(&m->header))
 		return -1;
@@ -338,24 +355,33 @@ int msg_pre_send(struct ptp_message *m)
 		break;
 	case FOLLOW_UP:
 		timestamp_pre_send(&m->follow_up.preciseOriginTimestamp);
+		suffix = m->follow_up.suffix;
 		break;
 	case DELAY_RESP:
 		timestamp_pre_send(&m->delay_resp.receiveTimestamp);
 		m->delay_resp.requestingPortIdentity.portNumber =
 			htons(m->delay_resp.requestingPortIdentity.portNumber);
+		suffix = m->delay_resp.suffix;
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
 		timestamp_pre_send(&m->pdelay_resp_fup.responseOriginTimestamp);
 		port_id_pre_send(&m->pdelay_resp_fup.requestingPortIdentity);
+		suffix = m->pdelay_resp_fup.suffix;
 		break;
 	case ANNOUNCE:
 		announce_pre_send(&m->announce);
+		suffix = m->announce.suffix;
 		break;
 	case SIGNALING:
+		suffix = m->signaling.suffix;
+		break;
 	case MANAGEMENT:
+		suffix = m->management.suffix;
+		break;
 	default:
 		return -1;
 	}
+	suffix_pre_send(suffix, m->tlv_count);
 	return 0;
 }
 
