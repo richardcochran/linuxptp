@@ -28,8 +28,6 @@
 #include "sk.h"
 #include "transport.h"
 
-#define DEFAULT_PHC "/dev/ptp0"
-
 int assume_two_step;
 int sk_tx_retries = 2, sk_prefer_layer2 = 0; /*see sk.c*/
 double configured_pi_kp, configured_pi_ki; /*see pi.c*/
