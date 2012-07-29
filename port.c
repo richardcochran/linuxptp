@@ -30,10 +30,11 @@
 #include "msg.h"
 #include "port.h"
 #include "print.h"
+#include "sk.h"
+#include "tlv.h"
 #include "tmtab.h"
 #include "tmv.h"
 #include "util.h"
-#include "sk.h"
 
 #define PORT_MAVE_LENGTH 10
 
@@ -1357,6 +1358,35 @@ int port_forward(struct port *p, struct ptp_message *msg, int msglen)
 
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 {
+	struct management_tlv *mgt;
+	UInteger16 target = msg->management.targetPortIdentity.portNumber;
+
+	if (target != portnum(p) && target != 0xffff) {
+		return 0;
+	}
+	mgt = (struct management_tlv *) msg->management.suffix;
+	switch (mgt->id) {
+	case NULL_MANAGEMENT:
+	case CLOCK_DESCRIPTION:
+	case PORT_DATA_SET:
+	case LOG_ANNOUNCE_INTERVAL:
+	case ANNOUNCE_RECEIPT_TIMEOUT:
+	case LOG_SYNC_INTERVAL:
+	case VERSION_NUMBER:
+	case ENABLE_PORT:
+	case DISABLE_PORT:
+	case UNICAST_NEGOTIATION_ENABLE:
+	case UNICAST_MASTER_TABLE:
+	case UNICAST_MASTER_MAX_TABLE_SIZE:
+	case ACCEPTABLE_MASTER_TABLE_ENABLED:
+	case ALTERNATE_MASTER:
+	case TRANSPARENT_CLOCK_PORT_DATA_SET:
+	case DELAY_MECHANISM:
+	case LOG_MIN_PDELAY_REQ_INTERVAL:
+		break;
+	default:
+		return -1;
+	}
 	return 0;
 }
 
