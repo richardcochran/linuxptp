@@ -23,6 +23,7 @@
 void tlv_post_recv(struct TLV *tlv)
 {
 	struct management_tlv *mgt;
+	struct management_error_status *mes;
 
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
@@ -30,6 +31,10 @@ void tlv_post_recv(struct TLV *tlv)
 		mgt->id = ntohs(mgt->id);
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:
+		mes = (struct management_error_status *) tlv;
+		mes->error = ntohs(mes->error);
+		mes->id = ntohs(mes->id);
+		break;
 	case TLV_ORGANIZATION_EXTENSION:
 	case TLV_REQUEST_UNICAST_TRANSMISSION:
 	case TLV_GRANT_UNICAST_TRANSMISSION:
@@ -49,6 +54,7 @@ void tlv_post_recv(struct TLV *tlv)
 void tlv_pre_send(struct TLV *tlv)
 {
 	struct management_tlv *mgt;
+	struct management_error_status *mes;
 
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
@@ -56,6 +62,10 @@ void tlv_pre_send(struct TLV *tlv)
 		mgt->id = htons(mgt->id);
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:
+		mes = (struct management_error_status *) tlv;
+		mes->error = htons(mes->error);
+		mes->id = htons(mes->id);
+		break;
 	case TLV_ORGANIZATION_EXTENSION:
 	case TLV_REQUEST_UNICAST_TRANSMISSION:
 	case TLV_GRANT_UNICAST_TRANSMISSION:

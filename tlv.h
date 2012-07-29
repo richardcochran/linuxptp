@@ -96,10 +96,28 @@ enum management_action {
 #define DELAY_MECHANISM					0x6000
 #define LOG_MIN_PDELAY_REQ_INTERVAL			0x6001
 
+/* Management error ID values */
+#define RESPONSE_TOO_BIG				0x0001
+#define NO_SUCH_ID					0x0002
+#define WRONG_LENGTH					0x0003
+#define WRONG_VALUE					0x0004
+#define NOT_SETABLE					0x0005
+#define NOT_SUPPORTED					0x0006
+#define GENERAL_ERROR					0xFFFE
+
 struct management_tlv {
 	Enumeration16 type;
 	UInteger16    length;
 	Enumeration16 id;
+	Octet         data[0];
+} PACKED;
+
+struct management_error_status {
+	Enumeration16 type;
+	UInteger16    length;
+	Enumeration16 error;
+	Enumeration16 id;
+	Octet         reserved[4];
 	Octet         data[0];
 } PACKED;
 
