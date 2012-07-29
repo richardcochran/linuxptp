@@ -25,6 +25,7 @@
 
 #include "msg.h"
 #include "print.h"
+#include "tlv.h"
 
 #define VERSION_MASK 0x0f
 #define VERSION      0x02
@@ -164,6 +165,7 @@ static int suffix_post_recv(uint8_t *ptr, int len)
 		}
 		len -= tlv->length;
 		ptr += tlv->length;
+		tlv_post_recv(tlv);
 	}
 	return cnt;
 }
@@ -178,6 +180,7 @@ static void suffix_pre_send(uint8_t *ptr, int cnt)
 
 	for (i = 0; i < cnt; i++) {
 		tlv = (struct TLV *) ptr;
+		tlv_pre_send(tlv);
 		ptr += sizeof(struct TLV) + tlv->length;
 		tlv->type = htons(tlv->type);
 		tlv->length = htons(tlv->length);
