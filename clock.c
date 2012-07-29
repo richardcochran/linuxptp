@@ -32,6 +32,7 @@
 #include "port.h"
 #include "servo.h"
 #include "print.h"
+#include "tlv.h"
 #include "util.h"
 
 #define FAULT_RESET_SECONDS 15
@@ -66,6 +67,11 @@ struct clock {
 struct clock the_clock;
 
 static void handle_state_decision_event(struct clock *c);
+
+static int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
+{
+	return 0 == memcmp(a, b, sizeof(*a));
+}
 
 static void clock_destroy(struct clock *c)
 {
@@ -175,6 +181,22 @@ static void clock_update_slave(struct clock *c)
 	c->tds.frequencyTraceable      = field_is_set(msg, 1, FREQ_TRACEABLE);
 	c->tds.ptpTimescale            = field_is_set(msg, 1, PTP_TIMESCALE);
 	c->tds.timeSource              = msg->announce.timeSource;
+}
+
+static int forwarding(struct port *p)
+{
+	enum port_state ps = port_state(p);
+	switch (ps) {
+	case PS_MASTER:
+	case PS_GRAND_MASTER:
+	case PS_SLAVE:
+	case PS_UNCALIBRATED:
+	case PS_PRE_MASTER:
+		return 1;
+	default:
+		break;
+	}
+	return 0;
 }
 
 /* public methods */
@@ -319,6 +341,80 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 		k = N_CLOCK_PFD * i + j;
 		c->pollfd[k].fd = fda.fd[j];
 		c->pollfd[k].events = POLLIN|POLLPRI;
+	}
+}
+
+void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
+{
+	int i, pdulen;
+	struct port *fwd;
+	struct management_tlv *mgt;
+	struct ClockIdentity *tcid, wildcard = {
+		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+	};
+
+	/* Forward this message out all eligible ports. */
+	if (forwarding(p) && msg->management.boundaryHops) {
+		pdulen = msg->header.messageLength;
+		msg->management.boundaryHops--;
+		msg_pre_send(msg);
+		for (i = 0; i < c->nports; i++) {
+			fwd = c->port[i];
+			if (fwd != p && forwarding(fwd) &&
+			    port_forward(fwd, msg, pdulen))
+				pr_err("port %d: management forward failed", i);
+		}
+		msg_post_recv(msg, pdulen);
+		msg->management.boundaryHops++;
+	}
+
+	/* Apply this message to the local clock and ports. */
+	tcid = &msg->management.targetPortIdentity.clockIdentity;
+	if (!cid_eq(tcid, &wildcard) && !cid_eq(tcid, &c->dds.clockIdentity)) {
+		return;
+	}
+	if (msg->tlv_count != 1) {
+		return;
+	}
+	mgt = (struct management_tlv *) msg->management.suffix;
+	switch (mgt->id) {
+	case USER_DESCRIPTION:
+	case SAVE_IN_NON_VOLATILE_STORAGE:
+	case RESET_NON_VOLATILE_STORAGE:
+	case INITIALIZE:
+	case FAULT_LOG:
+	case FAULT_LOG_RESET:
+	case DEFAULT_DATA_SET:
+	case CURRENT_DATA_SET:
+	case PARENT_DATA_SET:
+	case TIME_PROPERTIES_DATA_SET:
+	case PRIORITY1:
+	case PRIORITY2:
+	case DOMAIN:
+	case SLAVE_ONLY:
+	case TIME:
+	case CLOCK_ACCURACY:
+	case UTC_PROPERTIES:
+	case TRACEABILITY_PROPERTIES:
+	case TIMESCALE_PROPERTIES:
+	case PATH_TRACE_LIST:
+	case PATH_TRACE_ENABLE:
+	case GRANDMASTER_CLUSTER_TABLE:
+	case ACCEPTABLE_MASTER_TABLE:
+	case ACCEPTABLE_MASTER_MAX_TABLE_SIZE:
+	case ALTERNATE_TIME_OFFSET_ENABLE:
+	case ALTERNATE_TIME_OFFSET_NAME:
+	case ALTERNATE_TIME_OFFSET_MAX_KEY:
+	case ALTERNATE_TIME_OFFSET_PROPERTIES:
+	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
+	case PRIMARY_DOMAIN:
+		break;
+	default:
+		for (i = 0; i < c->nports; i++) {
+			if (port_manage(c->port[i], p, msg))
+				break;
+		}
+		break;
 	}
 }
 

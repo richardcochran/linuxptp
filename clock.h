@@ -26,6 +26,8 @@
 #include "tmv.h"
 #include "transport.h"
 
+struct ptp_message; /*forward declaration*/
+
 #define MAX_PORTS 8
 
 /** Defines a network interface, with PTP options. */
@@ -105,6 +107,14 @@ struct ClockIdentity clock_identity(struct clock *c);
  * @param fda  The port's open file decriptors for its sockets and timers.
  */
 void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda);
+
+/**
+ * Manage the clock according to a given message.
+ * @param c    The clock instance.
+ * @param p    The port on which the message arrived.
+ * @param msg  A management message.
+ */
+void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg);
 
 /**
  * Obtain a clock's parent data set.

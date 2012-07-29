@@ -1338,12 +1338,26 @@ enum fsm_event port_event(struct port *p, int fd_index)
 			event = EV_STATE_DECISION_EVENT;
 		break;
 	case SIGNALING:
+		break;
 	case MANAGEMENT:
+		clock_manage(p->clock, p, msg);
 		break;
 	}
 
 	msg_put(msg);
 	return event;
+}
+
+int port_forward(struct port *p, struct ptp_message *msg, int msglen)
+{
+	int cnt;
+	cnt = transport_send(p->trp, &p->fda, 0, msg, msglen, &msg->hwts);
+	return cnt <= 0 ? -1 : 0;
+}
+
+int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
+{
+	return 0;
 }
 
 struct port *port_open(struct port_defaults *pod,

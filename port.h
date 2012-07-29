@@ -78,6 +78,24 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff);
 enum fsm_event port_event(struct port *port, int fd_index);
 
 /**
+ * Forward a message on a given port.
+ * @param port    A pointer previously obtained via port_open().
+ * @param msg     The message to send. Must be in network byte order.
+ * @param msglen  The length of the message in bytes.
+ * @return        Zero on success, non-zero otherwise.
+ */
+int port_forward(struct port *p, struct ptp_message *msg, int msglen);
+
+/**
+ * Manage a port according to a given message.
+ * @param p        A pointer previously obtained via port_open().
+ * @param ingress  The port on which 'msg' was received.
+ * @param msg      A management message.
+ * @return         Zero if the message is valid, non-zero otherwise.
+ */
+int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg);
+
+/**
  * Open a network port.
  * @param pod           A pointer to a default port data set for this port.
  * @param phc_index     The PHC device index for the network device.
