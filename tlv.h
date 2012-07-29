@@ -96,6 +96,13 @@ enum management_action {
 #define DELAY_MECHANISM					0x6000
 #define LOG_MIN_PDELAY_REQ_INTERVAL			0x6001
 
+struct management_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Enumeration16 id;
+	Octet         data[0];
+} PACKED;
+
 /**
  * Converts recognized value sub-fields into host byte order.
  * @param tlv Pointer to a Type Length Value field.

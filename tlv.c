@@ -16,12 +16,58 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <arpa/inet.h>
+
 #include "tlv.h"
 
 void tlv_post_recv(struct TLV *tlv)
 {
+	struct management_tlv *mgt;
+
+	switch (tlv->type) {
+	case TLV_MANAGEMENT:
+		mgt = (struct management_tlv *) tlv;
+		mgt->id = ntohs(mgt->id);
+		break;
+	case TLV_MANAGEMENT_ERROR_STATUS:
+	case TLV_ORGANIZATION_EXTENSION:
+	case TLV_REQUEST_UNICAST_TRANSMISSION:
+	case TLV_GRANT_UNICAST_TRANSMISSION:
+	case TLV_CANCEL_UNICAST_TRANSMISSION:
+	case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+	case TLV_PATH_TRACE:
+	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
+	case TLV_AUTHENTICATION:
+	case TLV_AUTHENTICATION_CHALLENGE:
+	case TLV_SECURITY_ASSOCIATION_UPDATE:
+	case TLV_CUM_FREQ_SCALE_FACTOR_OFFSET:
+	default:
+		break;
+	}
 }
 
 void tlv_pre_send(struct TLV *tlv)
 {
+	struct management_tlv *mgt;
+
+	switch (tlv->type) {
+	case TLV_MANAGEMENT:
+		mgt = (struct management_tlv *) tlv;
+		mgt->id = htons(mgt->id);
+		break;
+	case TLV_MANAGEMENT_ERROR_STATUS:
+	case TLV_ORGANIZATION_EXTENSION:
+	case TLV_REQUEST_UNICAST_TRANSMISSION:
+	case TLV_GRANT_UNICAST_TRANSMISSION:
+	case TLV_CANCEL_UNICAST_TRANSMISSION:
+	case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+	case TLV_PATH_TRACE:
+	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
+	case TLV_AUTHENTICATION:
+	case TLV_AUTHENTICATION_CHALLENGE:
+	case TLV_SECURITY_ASSOCIATION_UPDATE:
+	case TLV_CUM_FREQ_SCALE_FACTOR_OFFSET:
+	default:
+		break;
+	}
 }
