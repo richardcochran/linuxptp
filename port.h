@@ -25,6 +25,8 @@
 #include "fsm.h"
 #include "transport.h"
 
+struct clock; /*forward declaration*/
+
 /** Opaque type. */
 struct port;
 
