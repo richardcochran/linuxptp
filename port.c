@@ -1383,6 +1383,9 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	case TRANSPARENT_CLOCK_PORT_DATA_SET:
 	case DELAY_MECHANISM:
 	case LOG_MIN_PDELAY_REQ_INTERVAL:
+		if (port_managment_error(p->portIdentity, ingress, msg,
+					 NOT_SUPPORTED))
+			pr_err("port %hu: management error failed", portnum(p));
 		break;
 	default:
 		return -1;

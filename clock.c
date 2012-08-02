@@ -349,6 +349,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	int i, pdulen;
 	struct port *fwd;
 	struct management_tlv *mgt;
+	struct PortIdentity pid;
 	struct ClockIdentity *tcid, wildcard = {
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 	};
@@ -408,6 +409,10 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case ALTERNATE_TIME_OFFSET_PROPERTIES:
 	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case PRIMARY_DOMAIN:
+		pid.clockIdentity = clock_identity(c);
+		pid.portNumber = 0;
+		if (port_managment_error(pid, p, msg, NOT_SUPPORTED))
+			pr_err("failed to send management error status");
 		break;
 	default:
 		for (i = 0; i < c->nports; i++) {
