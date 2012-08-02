@@ -205,6 +205,16 @@ struct ptp_message {
 };
 
 /**
+ * Obtain the action field from a management message.
+ * @param m  A management message.
+ * @return   The value of the action field.
+ */
+static inline uint8_t management_action(struct ptp_message *m)
+{
+	return m->management.flags & 0x0f;
+}
+
+/**
  * Test a given bit in a message's flag field.
  * @param m      Message to test.
  * @param index  Index into flag field, either 0 or 1.

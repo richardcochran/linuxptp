@@ -98,6 +98,22 @@ int port_forward(struct port *p, struct ptp_message *msg, int msglen);
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg);
 
 /**
+ * Allocate a reply to a management message.
+ *
+ * Messages are reference counted, and newly allocated messages have a
+ * reference count of one. Allocated messages are freed using the
+ * function @ref msg_put().
+ *
+ * @param pid      The id of the responding port.
+ * @param ingress  The port on which 'req' was received.
+ * @param req      A management message.
+ * @return         Pointer to a message on success, NULL otherwise.
+ */
+struct ptp_message *port_management_reply(struct PortIdentity pid,
+					  struct port *ingress,
+					  struct ptp_message *req);
+
+/**
  * Open a network port.
  * @param pod           A pointer to a default port data set for this port.
  * @param phc_index     The PHC device index for the network device.

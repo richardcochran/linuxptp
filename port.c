@@ -1390,6 +1390,45 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	return 0;
 }
 
+struct ptp_message *port_management_reply(struct PortIdentity pid,
+					  struct port *ingress,
+					  struct ptp_message *req)
+{
+	struct ptp_message *msg;
+	int pdulen;
+
+	msg = msg_allocate();
+	if (!msg)
+		return NULL;
+
+	pdulen = sizeof(struct management_msg);
+	msg->hwts.type = ingress->timestamping;
+
+	msg->header.tsmt               = MANAGEMENT | ingress->transportSpecific;
+	msg->header.ver                = PTP_VERSION;
+	msg->header.messageLength      = pdulen;
+	msg->header.domainNumber       = clock_domain_number(ingress->clock);
+	msg->header.sourcePortIdentity = pid;
+	msg->header.sequenceId         = req->header.sequenceId;
+	msg->header.control            = CTL_MANAGEMENT;
+	msg->header.logMessageInterval = 0x7f;
+
+	msg->management.targetPortIdentity = req->header.sourcePortIdentity;
+	msg->management.startingBoundaryHops =
+		req->management.startingBoundaryHops - req->management.boundaryHops;
+	msg->management.boundaryHops = msg->management.startingBoundaryHops;
+
+	switch (management_action(req)) {
+	case GET: case SET:
+		msg->management.flags = RESPONSE;
+		break;
+	case COMMAND:
+		msg->management.flags = ACKNOWLEDGE;
+		break;
+	}
+	return msg;
+}
+
 struct port *port_open(struct port_defaults *pod,
 		       int phc_index,
 		       char *name,
