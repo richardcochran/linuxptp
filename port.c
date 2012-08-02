@@ -1390,6 +1390,38 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	return 0;
 }
 
+int port_managment_error(struct PortIdentity pid, struct port *ingress,
+			 struct ptp_message *req, Enumeration16 error_id)
+{
+	struct ptp_message *msg;
+	struct management_tlv *mgt;
+	struct management_error_status *mes;
+	int err = 0, pdulen;
+
+	msg = port_management_reply(pid, ingress, req);
+	if (!msg) {
+		return -1;
+	}
+	mgt = (struct management_tlv *) req->management.suffix;
+	mes = (struct management_error_status *) msg->management.suffix;
+	mes->type = TLV_MANAGEMENT_ERROR_STATUS;
+	mes->length = 8;
+	mes->error = error_id;
+	mes->id = mgt->id;
+	pdulen = msg->header.messageLength + sizeof(*mes);
+	msg->header.messageLength = pdulen;
+	msg->tlv_count = 1;
+
+	err = msg_pre_send(msg);
+	if (err) {
+		goto out;
+	}
+	err = port_forward(ingress, msg, pdulen);
+out:
+	msg_put(msg);
+	return err;
+}
+
 struct ptp_message *port_management_reply(struct PortIdentity pid,
 					  struct port *ingress,
 					  struct ptp_message *req)

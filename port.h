@@ -98,6 +98,17 @@ int port_forward(struct port *p, struct ptp_message *msg, int msglen);
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg);
 
 /**
+ * Send a management error status message.
+ * @param pid       The id of the responding port.
+ * @param ingress   Port on which the 'req' was received.
+ * @param req       The management message which triggered the error.
+ * @param error_id  One of the management error ID values.
+ * @return          Zero on success, non-zero otherwise.
+ */
+int port_managment_error(struct PortIdentity pid, struct port *ingress,
+			 struct ptp_message *req, Enumeration16 error_id);
+
+/**
  * Allocate a reply to a management message.
  *
  * Messages are reference counted, and newly allocated messages have a
