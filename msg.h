@@ -27,6 +27,8 @@
 #include "ddt.h"
 #include "transport.h"
 
+#define PTP_VERSION 2
+
 /* Values for the messageType field */
 #define SYNC                  0x0
 #define DELAY_REQ             0x1

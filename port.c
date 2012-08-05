@@ -38,8 +38,6 @@
 
 #define PORT_MAVE_LENGTH 10
 
-#define PTP_VERSION 2
-
 struct port {
 	char *name;
 	struct clock *clock;
