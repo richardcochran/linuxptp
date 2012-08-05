@@ -29,7 +29,6 @@
 #include "transport.h"
 
 int assume_two_step;
-int sk_tx_retries = 2, sk_prefer_layer2 = 0; /*see sk.c*/
 double configured_pi_kp, configured_pi_ki; /*see pi.c*/
 extern unsigned char ptp_dst_mac[]; /*see raw.c*/
 extern unsigned char p2p_dst_mac[]; /*see raw.c*/

@@ -30,6 +30,10 @@
 #include "print.h"
 #include "sk.h"
 
+/* globals */
+
+int sk_tx_retries = 2, sk_prefer_layer2 = 0;
+
 /* private methods */
 
 static int hwts_init(int fd, char *device)
