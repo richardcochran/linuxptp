@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 
+#include "sk.h"
 #include "util.h"
 
 char *ps_str[] = {
@@ -72,4 +73,20 @@ char *pid2str(struct PortIdentity *id)
 		 ptr[4], ptr[5], ptr[6], ptr[7],
 		 id->portNumber);
 	return buf;
+}
+
+int generate_clock_identity(struct ClockIdentity *ci, char *name)
+{
+	unsigned char mac[6];
+	if (sk_interface_macaddr(name, mac, sizeof(mac)))
+		return -1;
+	ci->id[0] = mac[0];
+	ci->id[1] = mac[1];
+	ci->id[2] = mac[2];
+	ci->id[3] = 0xFF;
+	ci->id[4] = 0xFE;
+	ci->id[5] = mac[3];
+	ci->id[6] = mac[4];
+	ci->id[7] = mac[5];
+	return 0;
 }

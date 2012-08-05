@@ -54,4 +54,6 @@ char *cid2str(struct ClockIdentity *id);
  */
 char *pid2str(struct PortIdentity *id);
 
+int generate_clock_identity(struct ClockIdentity *ci, char *name);
+
 #endif

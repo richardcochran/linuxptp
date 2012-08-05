@@ -27,6 +27,7 @@
 #include "print.h"
 #include "sk.h"
 #include "transport.h"
+#include "util.h"
 
 int assume_two_step;
 double configured_pi_kp, configured_pi_ki; /*see pi.c*/
@@ -37,22 +38,6 @@ static int running = 1;
 static struct defaultDS ds;
 static struct port_defaults pod;
 static struct config cfg_settings;
-
-static int generate_clock_identity(struct ClockIdentity *ci, char *name)
-{
-	unsigned char mac[6];
-	if (sk_interface_macaddr(name, mac, sizeof(mac)))
-		return -1;
-	ci->id[0] = mac[0];
-	ci->id[1] = mac[1];
-	ci->id[2] = mac[2];
-	ci->id[3] = 0xFF;
-	ci->id[4] = 0xFE;
-	ci->id[5] = mac[3];
-	ci->id[6] = mac[4];
-	ci->id[7] = mac[5];
-	return 0;
-}
 
 static void usage(char *progname)
 {
