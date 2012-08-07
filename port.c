@@ -750,10 +750,18 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 {
 	struct foreign_clock *fc = p->best;
 	struct ptp_message *tmp;
+	struct parentDS *dad;
+	struct path_trace_tlv *ptt;
 
 	if (!msg_source_equal(m, fc))
 		return add_foreign_master(p, m);
 
+	if (p->pod.path_trace_enabled) {
+		ptt = (struct path_trace_tlv *) m->announce.suffix;
+		dad = clock_parent_ds(p->clock);
+		memcpy(dad->ptl, ptt->cid, ptt->length);
+		dad->path_length = path_length(ptt);
+	}
 	port_set_announce_tmo(p);
 	fc_prune(fc);
 	msg_get(m);
