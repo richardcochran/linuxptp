@@ -60,6 +60,8 @@ struct parentDS {
 	struct ClockQuality  grandmasterClockQuality;
 	UInteger8            grandmasterPriority2;
 	struct ClockIdentity grandmasterIdentity;
+	struct ClockIdentity *ptl;
+	unsigned int path_length;
 };
 
 #define CURRENT_UTC_OFFSET  33

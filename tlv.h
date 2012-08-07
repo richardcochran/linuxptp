@@ -123,6 +123,21 @@ struct management_error_status {
 	Octet         data[0];
 } PACKED;
 
+#define PATH_TRACE_MAX \
+	((sizeof(struct message_data) - sizeof(struct announce_msg) - sizeof(struct TLV)) / \
+	 sizeof(struct ClockIdentity))
+
+struct path_trace_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	struct ClockIdentity cid[0];
+} PACKED;
+
+static inline unsigned int path_length(struct path_trace_tlv *p)
+{
+	return p->length / sizeof(struct ClockIdentity);
+}
+
 /**
  * Converts recognized value sub-fields into host byte order.
  * @param tlv Pointer to a Type Length Value field.

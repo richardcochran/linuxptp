@@ -49,6 +49,7 @@ struct clock {
 	struct currentDS cur;
 	struct parentDS dad;
 	struct timePropertiesDS tds;
+	struct ClockIdentity ptl[PATH_TRACE_MAX];
 	struct foreign_clock *best;
 	struct port *port[MAX_PORTS];
 	struct pollfd pollfd[MAX_PORTS*N_CLOCK_PFD];
@@ -148,12 +149,14 @@ static void clock_step(clockid_t clkid, int64_t ns)
 static void clock_update_grandmaster(struct clock *c)
 {
 	memset(&c->cur, 0, sizeof(c->cur));
+	memset(c->ptl, 0, sizeof(c->ptl));
 	c->dad.parentPortIdentity.clockIdentity = c->dds.clockIdentity;
 	c->dad.parentPortIdentity.portNumber    = 0;
 	c->dad.grandmasterIdentity              = c->dds.clockIdentity;
 	c->dad.grandmasterClockQuality          = c->dds.clockQuality;
 	c->dad.grandmasterPriority1             = c->dds.priority1;
 	c->dad.grandmasterPriority2             = c->dds.priority2;
+	c->dad.path_length                      = 0;
 	c->tds.currentUtcOffset                 = CURRENT_UTC_OFFSET;
 	c->tds.currentUtcOffsetValid            = FALSE;
 	c->tds.leap61                           = FALSE;
@@ -260,6 +263,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	c->dad.parentStats                           = 0;
 	c->dad.observedParentOffsetScaledLogVariance = 0xffff;
 	c->dad.observedParentClockPhaseChangeRate    = 0x7fffffff;
+	c->dad.ptl = c->ptl;
 
 	for (i = 0; i < ARRAY_SIZE(c->pollfd); i++) {
 		c->pollfd[i].fd = -1;
