@@ -275,6 +275,34 @@ static void free_foreign_masters(struct port *p)
 	}
 }
 
+static int path_trace_ignore(struct port *p, struct ptp_message *m)
+{
+	struct ClockIdentity cid;
+	struct path_trace_tlv *ptt;
+	int i, cnt;
+
+	if (!p->pod.path_trace_enabled) {
+		return 0;
+	}
+	if (msg_type(m) != ANNOUNCE) {
+		return 0;
+	}
+	if (m->tlv_count != 1) {
+		return 1;
+	}
+	ptt = (struct path_trace_tlv *) m->announce.suffix;
+	if (ptt->type != TLV_PATH_TRACE) {
+		return 1;
+	}
+	cnt = path_length(ptt);
+	cid = clock_identity(p->clock);
+	for (i = 0; i < cnt; i++) {
+		if (0 == memcmp(&ptt->cid[i], &cid, sizeof(cid)))
+			return 1;
+	}
+	return 0;
+}
+
 static int port_clr_tmo(int fd)
 {
 	struct itimerspec tmo = {
@@ -287,6 +315,9 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 {
 	struct ClockIdentity c1, c2;
 
+	if (path_trace_ignore(p, m)) {
+		return 1;
+	}
 	if (msg_transport_specific(m) != p->transportSpecific) {
 		return 1;
 	}
