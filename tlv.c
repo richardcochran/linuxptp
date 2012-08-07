@@ -24,6 +24,7 @@ void tlv_post_recv(struct TLV *tlv)
 {
 	struct management_tlv *mgt;
 	struct management_error_status *mes;
+	struct path_trace_tlv *ptt;
 
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
@@ -40,7 +41,13 @@ void tlv_post_recv(struct TLV *tlv)
 	case TLV_GRANT_UNICAST_TRANSMISSION:
 	case TLV_CANCEL_UNICAST_TRANSMISSION:
 	case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+		break;
 	case TLV_PATH_TRACE:
+		ptt = (struct path_trace_tlv *) tlv;
+		if (path_length(ptt) > PATH_TRACE_MAX) {
+			ptt->length = PATH_TRACE_MAX * sizeof(struct ClockIdentity);
+		}
+		break;
 	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
 	case TLV_AUTHENTICATION:
 	case TLV_AUTHENTICATION_CHALLENGE:
