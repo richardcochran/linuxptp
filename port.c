@@ -275,6 +275,24 @@ static void free_foreign_masters(struct port *p)
 	}
 }
 
+static int path_trace_append(struct port *p, struct ptp_message *m,
+			     struct parentDS *dad)
+{
+	struct path_trace_tlv *ptt;
+	int length = 1 + dad->path_length;
+
+	if (length > PATH_TRACE_MAX) {
+		return 0;
+	}
+	ptt = (struct path_trace_tlv *) m->announce.suffix;
+	ptt->type = TLV_PATH_TRACE;
+	ptt->length = length * sizeof(struct ClockIdentity);
+	memcpy(ptt->cid, dad->ptl, ptt->length);
+	ptt->cid[length - 1] = clock_identity(p->clock);
+	m->tlv_count = 1;
+	return ptt->length + sizeof(ptt->type) + sizeof(ptt->length);
+}
+
 static int path_trace_ignore(struct port *p, struct ptp_message *m)
 {
 	struct ClockIdentity cid;
@@ -500,6 +518,9 @@ static int port_tx_announce(struct port *p)
 
 	pdulen = sizeof(struct announce_msg);
 	msg->hwts.type = p->timestamping;
+
+	if (p->pod.path_trace_enabled)
+		pdulen += path_trace_append(p, msg, dad);
 
 	msg->header.tsmt               = ANNOUNCE | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
