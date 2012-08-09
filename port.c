@@ -265,6 +265,18 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	return broke_threshold || diff;
 }
 
+static int follow_up_info_append(struct port *p, struct ptp_message *m)
+{
+	struct follow_up_info_tlv *fui;
+	fui = (struct follow_up_info_tlv *) m->follow_up.suffix;
+	fui->type = TLV_ORGANIZATION_EXTENSION;
+	fui->length = sizeof(*fui) - sizeof(fui->type) - sizeof(fui->length);
+	memcpy(fui->id, ieee8021_id, sizeof(ieee8021_id));
+	fui->subtype[2] = 1;
+	m->tlv_count = 1;
+	return sizeof(*fui);
+}
+
 static void free_foreign_masters(struct port *p)
 {
 	struct foreign_clock *fc;
@@ -615,6 +627,9 @@ static int port_tx_sync(struct port *p)
 	 */
 	pdulen = sizeof(struct follow_up_msg);
 	fup->hwts.type = p->timestamping;
+
+	if (p->pod.follow_up_info)
+		pdulen += follow_up_info_append(p, fup);
 
 	fup->header.tsmt               = FOLLOW_UP | p->transportSpecific;
 	fup->header.ver                = PTP_VERSION;
