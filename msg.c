@@ -76,12 +76,12 @@ static void announce_post_recv(struct announce_msg *m)
 	m->stepsRemoved = ntohs(m->stepsRemoved);
 }
 
-static int64_t host2net64(int64_t val)
+int64_t host2net64(int64_t val)
 {
 	return __cpu_to_be64(val);
 }
 
-static int64_t net2host64(int64_t val)
+int64_t net2host64(int64_t val)
 {
 	return __be64_to_cpu(val);
 }

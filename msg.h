@@ -317,4 +317,14 @@ static inline Boolean one_step(struct ptp_message *m)
 	return !field_is_set(m, 0, TWO_STEP);
 }
 
+/**
+ * Convert a 64 bit word into network byte order.
+ */
+int64_t host2net64(int64_t val);
+
+/**
+ * Convert a 64 bit word into host byte order.
+ */
+int64_t net2host64(int64_t val);
+
 #endif

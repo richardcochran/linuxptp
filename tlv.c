@@ -17,8 +17,65 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <arpa/inet.h>
+#include <string.h>
 
 #include "tlv.h"
+
+uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };
+
+static void scaled_ns_n2h(ScaledNs *sns)
+{
+	sns->nanoseconds_msb = ntohs(sns->nanoseconds_msb);
+	sns->nanoseconds_lsb = net2host64(sns->nanoseconds_msb);
+	sns->fractional_nanoseconds = ntohs(sns->fractional_nanoseconds);
+}
+
+static void scaled_ns_h2n(ScaledNs *sns)
+{
+	sns->nanoseconds_msb = htons(sns->nanoseconds_msb);
+	sns->nanoseconds_lsb = host2net64(sns->nanoseconds_msb);
+	sns->fractional_nanoseconds = htons(sns->fractional_nanoseconds);
+}
+
+static void org_post_recv(struct organization_tlv *org)
+{
+	struct follow_up_info_tlv *f;
+
+	if (0 == memcmp(org->id, ieee8021_id, sizeof(ieee8021_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return;
+		}
+		switch (org->subtype[2]) {
+		case 1:
+			f = (struct follow_up_info_tlv *) org;
+			f->cumulativeScaledRateOffset = ntohl(f->cumulativeScaledRateOffset);
+			f->gmTimeBaseIndicator = ntohs(f->gmTimeBaseIndicator);
+			scaled_ns_n2h(&f->lastGmPhaseChange);
+			f->scaledLastGmPhaseChange = ntohl(f->scaledLastGmPhaseChange);
+			break;
+		}
+	}
+}
+
+static void org_pre_send(struct organization_tlv *org)
+{
+	struct follow_up_info_tlv *f;
+
+	if (0 == memcmp(org->id, ieee8021_id, sizeof(ieee8021_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return;
+		}
+		switch (org->subtype[2]) {
+		case 1:
+			f = (struct follow_up_info_tlv *) org;
+			f->cumulativeScaledRateOffset = htonl(f->cumulativeScaledRateOffset);
+			f->gmTimeBaseIndicator = htons(f->gmTimeBaseIndicator);
+			scaled_ns_h2n(&f->lastGmPhaseChange);
+			f->scaledLastGmPhaseChange = htonl(f->scaledLastGmPhaseChange);
+			break;
+		}
+	}
+}
 
 void tlv_post_recv(struct TLV *tlv)
 {
@@ -37,6 +94,8 @@ void tlv_post_recv(struct TLV *tlv)
 		mes->id = ntohs(mes->id);
 		break;
 	case TLV_ORGANIZATION_EXTENSION:
+		org_post_recv((struct organization_tlv *) tlv);
+		break;
 	case TLV_REQUEST_UNICAST_TRANSMISSION:
 	case TLV_GRANT_UNICAST_TRANSMISSION:
 	case TLV_CANCEL_UNICAST_TRANSMISSION:
@@ -74,6 +133,8 @@ void tlv_pre_send(struct TLV *tlv)
 		mes->id = htons(mes->id);
 		break;
 	case TLV_ORGANIZATION_EXTENSION:
+		org_pre_send((struct organization_tlv *) tlv);
+		break;
 	case TLV_REQUEST_UNICAST_TRANSMISSION:
 	case TLV_GRANT_UNICAST_TRANSMISSION:
 	case TLV_CANCEL_UNICAST_TRANSMISSION:

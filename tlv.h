@@ -123,6 +123,17 @@ struct management_error_status {
 	Octet         data[0];
 } PACKED;
 
+/* Organizationally Unique Identifiers */
+#define IEEE_802_1_COMMITTEE 0x00, 0x80, 0xC2
+extern uint8_t ieee8021_id[3];
+
+struct organization_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Octet         id[3];
+	Octet         subtype[3];
+} PACKED;
+
 #define PATH_TRACE_MAX \
 	((sizeof(struct message_data) - sizeof(struct announce_msg) - sizeof(struct TLV)) / \
 	 sizeof(struct ClockIdentity))
@@ -137,6 +148,23 @@ static inline unsigned int path_length(struct path_trace_tlv *p)
 {
 	return p->length / sizeof(struct ClockIdentity);
 }
+
+typedef struct Integer96 {
+	uint16_t nanoseconds_msb;
+	uint64_t nanoseconds_lsb;
+	uint16_t fractional_nanoseconds;
+} PACKED ScaledNs;
+
+struct follow_up_info_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Octet         id[3];
+	Octet         subtype[3];
+	UInteger32    cumulativeScaledRateOffset;
+	UInteger16    gmTimeBaseIndicator;
+	ScaledNs      lastGmPhaseChange;
+	Integer32     scaledLastGmPhaseChange;
+} PACKED;
 
 /**
  * Converts recognized value sub-fields into host byte order.
