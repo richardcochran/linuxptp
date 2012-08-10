@@ -218,10 +218,15 @@ no_mac:
 static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 		    struct hw_timestamp *hwts)
 {
+	int cnt;
 	unsigned char *ptr = buf;
 	ptr    -= sizeof(struct eth_hdr);
 	buflen += sizeof(struct eth_hdr);
-	return sk_receive(fd, ptr, buflen, hwts, 0);
+	cnt = sk_receive(fd, ptr, buflen, hwts, 0);
+	if (cnt >= sizeof(struct eth_hdr))  {
+		cnt -= sizeof(struct eth_hdr);
+	}
+	return cnt;
 }
 
 static int raw_send(struct transport *t, struct fdarray *fda, int event, int peer,
