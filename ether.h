@@ -36,6 +36,15 @@ struct eth_hdr {
 	uint16_t type;
 } __attribute__((packed));
 
+#define VLAN_HLEN 4
+
+struct vlan_hdr {
+	struct eth_addr mac;
+	uint16_t tpid;
+	uint16_t tci;
+	uint16_t type;
+} __attribute__((packed));
+
 #define OFF_ETYPE sizeof(struct eth_addr)
 
 #endif

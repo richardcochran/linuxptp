@@ -47,21 +47,28 @@ struct raw {
 	struct transport t;
 	struct eth_addr ptp_addr;
 	struct eth_addr p2p_addr;
+	int vlan;
 };
 
 #define OP_AND  (BPF_ALU | BPF_AND | BPF_K)
 #define OP_JEQ  (BPF_JMP | BPF_JEQ | BPF_K)
+#define OP_JUN  (BPF_JMP | BPF_JA)
 #define OP_LDB  (BPF_LD  | BPF_B   | BPF_ABS)
 #define OP_LDH  (BPF_LD  | BPF_H   | BPF_ABS)
 #define OP_RETK (BPF_RET | BPF_K)
 
 #define PTP_GEN_BIT 0x08 /* indicates general message, if set in message type */
 
-#define N_RAW_FILTER    7
-#define RAW_FILTER_TEST 4
+#define N_RAW_FILTER    12
+#define RAW_FILTER_TEST 9
 
 static struct sock_filter raw_filter[N_RAW_FILTER] = {
 	{OP_LDH,  0, 0, OFF_ETYPE   },
+	{OP_JEQ,  0, 4, ETH_P_8021Q          }, /*f goto non-vlan block*/
+	{OP_LDH,  0, 0, OFF_ETYPE + 4        },
+	{OP_JEQ,  0, 7, ETH_P_1588           }, /*f goto reject*/
+	{OP_LDB,  0, 0, ETH_HLEN + VLAN_HLEN },
+	{OP_JUN,  0, 0, 2                    }, /*goto test general bit*/
 	{OP_JEQ,  0, 4, ETH_P_1588  }, /*f goto reject*/
 	{OP_LDB,  0, 0, ETH_HLEN    },
 	{OP_AND,  0, 0, PTP_GEN_BIT }, /*test general bit*/
@@ -218,13 +225,35 @@ no_mac:
 static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 		    struct hw_timestamp *hwts)
 {
-	int cnt;
+	int cnt, hlen;
 	unsigned char *ptr = buf;
-	ptr    -= sizeof(struct eth_hdr);
-	buflen += sizeof(struct eth_hdr);
+	struct eth_hdr *hdr;
+	struct raw *raw = container_of(t, struct raw, t);
+
+	if (raw->vlan) {
+		hlen = sizeof(struct vlan_hdr);
+	} else {
+		hlen = sizeof(struct eth_hdr);
+	}
+	ptr    -= hlen;
+	buflen += hlen;
+	hdr = (struct eth_hdr *) ptr;
+
 	cnt = sk_receive(fd, ptr, buflen, hwts, 0);
-	if (cnt >= sizeof(struct eth_hdr))  {
-		cnt -= sizeof(struct eth_hdr);
+
+	if (raw->vlan) {
+		if (ETH_P_1588 == ntohs(hdr->type)) {
+			pr_notice("raw: disabling VLAN mode");
+			raw->vlan = 0;
+		}
+	} else {
+		if (ETH_P_8021Q == ntohs(hdr->type)) {
+			pr_notice("raw: switching to VLAN mode");
+			raw->vlan = 1;
+		}
+	}
+	if (cnt >= hlen)  {
+		cnt -= hlen;
 	}
 	return cnt;
 }
