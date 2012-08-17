@@ -41,6 +41,13 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+struct freq_estimator {
+	tmv_t origin1;
+	tmv_t ingress1;
+	int max_count;
+	int count;
+};
+
 struct clock {
 	clockid_t clkid;
 	struct servo *servo;
@@ -59,6 +66,7 @@ struct clock {
 	tmv_t master_offset;
 	tmv_t path_delay;
 	struct mave *avg_delay;
+	struct freq_estimator fest;
 	tmv_t c1;
 	tmv_t c2;
 	tmv_t t1;
@@ -112,6 +120,46 @@ static int clock_master_lost(struct clock *c)
 			return 0;
 	}
 	return 1;
+}
+
+static enum servo_state clock_no_adjust(struct clock *c)
+{
+	double ratio;
+	struct freq_estimator *f = &c->fest;
+	enum servo_state state = SERVO_UNLOCKED;
+	/*
+	 * We have clock.t1 as the origin time stamp, and clock.t2 as
+	 * the ingress. The time at which the master sent the sync is:
+	 *
+	 *    origin = origin_ts + path_delay + correction
+	 *
+	 * The ratio of the local clock freqency to the master clock
+	 * is estimated by:
+	 *
+	 *    (ingress_2 - ingress_1) / (origin_2 - origin_1)
+	 *
+	 * Both of the origin time estimates include the path delay,
+	 * but we assume that the path delay is in fact constant.
+	 * By leaving out the path delay altogther, we can avoid the
+	 * error caused by our imperfect path delay measurement.
+	 */
+	f->count++;
+	if (f->count < f->max_count) {
+		return state;
+	}
+	if (f->ingress1) {
+
+		ratio = (c->t2 - f->ingress1 + 0.0) /
+			(c->t1 /*+c->path_delay*/ + c->c1 + c->c2 - f->origin1);
+
+		pr_info("master offset %10lld s%d ratio %.9f path delay %10lld",
+			c->master_offset, state, ratio, c->path_delay);
+	}
+	f->ingress1 = c->t2;
+	f->origin1 = c->t1 /*+c->path_delay*/ + c->c1 + c->c2;
+	f->count = 0;
+
+	return state;
 }
 
 static void clock_ppb(clockid_t clkid, double ppb)
@@ -266,6 +314,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	}
 
 	c->fault_timeout = FAULT_RESET_SECONDS;
+	c->fest.max_count = 2;
 
 	for (i = 0; i < count; i++) {
 		c->port[i] = port_open(phc_index, timestamping, 1+i, &iface[i], c);
@@ -580,6 +629,9 @@ enum servo_state clock_synchronize(struct clock *c,
 
 	if (!c->path_delay)
 		return state;
+
+	if (c->dds.free_running)
+		return clock_no_adjust(c);
 
 	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
 
