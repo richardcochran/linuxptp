@@ -177,6 +177,8 @@ int config_create_interface(char *name, struct config *cfg)
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
 	iface->dm = cfg->dm;
 	iface->transport = cfg->transport;
+	memcpy(&iface->pod, &cfg->pod, sizeof(cfg->pod));
+
 	cfg->nports++;
 
 	return i;

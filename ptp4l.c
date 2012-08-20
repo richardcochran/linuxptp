@@ -112,7 +112,6 @@ int main(int argc, char *argv[])
 	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
 	struct defaultDS *ds = &cfg_settings.dds;
-	struct port_defaults *pod = &cfg_settings.pod;
 	int phc_index = -1;
 
 	/* Process the command line arguments. */
@@ -222,7 +221,7 @@ int main(int argc, char *argv[])
 		ds->clockQuality.clockClass = 255;
 	}
 
-	clock = clock_create(phc_index, iface, *nports, *timestamping, ds, pod);
+	clock = clock_create(phc_index, iface, *nports, *timestamping, ds);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

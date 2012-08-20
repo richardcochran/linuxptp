@@ -1537,8 +1537,7 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 	return msg;
 }
 
-struct port *port_open(struct port_defaults *pod,
-		       int phc_index,
+struct port *port_open(int phc_index,
 		       enum timestamp_type timestamping,
 		       int number,
 		       struct interface *interface,
@@ -1561,7 +1560,7 @@ struct port *port_open(struct port_defaults *pod,
 		return NULL;
 	}
 
-	p->pod = *pod;
+	p->pod = interface->pod;
 	p->name = interface->name;
 	p->clock = clock;
 	p->trp = transport_create(interface->transport);

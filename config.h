@@ -32,6 +32,7 @@ struct interface {
 	char name[MAX_IFNAME_SIZE + 1];
 	enum delay_mechanism dm;
 	enum transport_type transport;
+	struct port_defaults pod;
 };
 
 struct config {

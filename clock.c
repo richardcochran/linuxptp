@@ -210,8 +210,7 @@ UInteger8 clock_class(struct clock *c)
 }
 
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
-			   enum timestamp_type timestamping, struct defaultDS *ds,
-			   struct port_defaults *pod)
+			   enum timestamp_type timestamping, struct defaultDS *ds)
 {
 	int i, max_adj, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
@@ -267,7 +266,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	c->fault_timeout = FAULT_RESET_SECONDS;
 
 	for (i = 0; i < count; i++) {
-		c->port[i] = port_open(pod, phc_index, timestamping, 1+i, &iface[i], c);
+		c->port[i] = port_open(phc_index, timestamping, 1+i, &iface[i], c);
 		if (!c->port[i]) {
 			pr_err("failed to open port %s", iface[i].name);
 			return NULL;
