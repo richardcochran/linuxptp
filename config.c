@@ -22,11 +22,60 @@
 #include "ether.h"
 #include "print.h"
 
+static int scan_pod(const char *s, struct port_defaults *pod)
+{
+	int val;
+	Integer8 i8;
+	UInteger8 u8;
+
+	if (1 == sscanf(s, " logAnnounceInterval %hhd", &i8)) {
+
+		pod->logAnnounceInterval = i8;
+		return 1;
+
+	} else if (1 == sscanf(s, " logSyncInterval %hhd", &i8)) {
+
+		pod->logSyncInterval = i8;
+		return 1;
+
+	} else if (1 == sscanf(s, " logMinDelayReqInterval %hhd", &i8)) {
+
+		pod->logMinDelayReqInterval = i8;
+		return 1;
+
+	} else if (1 == sscanf(s, " logMinPdelayReqInterval %hhd", &i8)) {
+
+		pod->logMinPdelayReqInterval = i8;
+		return 1;
+
+	} else if (1 == sscanf(s, " announceReceiptTimeout %hhu", &u8)) {
+
+		pod->announceReceiptTimeout = u8;
+		return 1;
+
+	} else if (1 == sscanf(s, " transportSpecific %hhx", &u8)) {
+
+		pod->transportSpecific = u8 << 4;
+		return 1;
+
+	} else if (1 == sscanf(s, " path_trace_enabled %u", &val)) {
+
+		pod->path_trace_enabled = val ? 1 : 0;
+		return 1;
+
+	} else if (1 == sscanf(s, " follow_up_info %u", &val)) {
+
+		pod->follow_up_info = val ? 1 : 0;
+		return 1;
+	}
+
+	return 0;
+}
+
 static void scan_line(char *s, struct config *cfg)
 {
 	double df;
 	int i, val, cfg_ignore = cfg->cfg_ignore;
-	Integer8 i8;
 	UInteger16 u16;
 	UInteger8 u8;
 	unsigned char mac[MAC_LEN];
@@ -35,7 +84,11 @@ static void scan_line(char *s, struct config *cfg)
 	struct defaultDS *dds = &cfg->dds;
 	struct port_defaults *pod = &cfg->pod;
 
-	if (1 == sscanf(s, " twoStepFlag %d", &val)) {
+	if (scan_pod(s, pod)) {
+
+		/* nothing to do here */
+
+	} else if (1 == sscanf(s, " twoStepFlag %d", &val)) {
 
 		if (val) /* TODO - implement one step */
 			dds->twoStepFlag = val ? 1 : 0;
@@ -70,38 +123,6 @@ static void scan_line(char *s, struct config *cfg)
 	} else if (1 == sscanf(s, " offsetScaledLogVariance %hx", &u16)) {
 
 		dds->clockQuality.offsetScaledLogVariance = u16;
-
-	} else if (1 == sscanf(s, " logAnnounceInterval %hhd", &i8)) {
-
-		pod->logAnnounceInterval = i8;
-
-	} else if (1 == sscanf(s, " logSyncInterval %hhd", &i8)) {
-
-		pod->logSyncInterval = i8;
-
-	} else if (1 == sscanf(s, " logMinDelayReqInterval %hhd", &i8)) {
-
-		pod->logMinDelayReqInterval = i8;
-
-	} else if (1 == sscanf(s, " logMinPdelayReqInterval %hhd", &i8)) {
-
-		pod->logMinPdelayReqInterval = i8;
-
-	} else if (1 == sscanf(s, " announceReceiptTimeout %hhu", &u8)) {
-
-		pod->announceReceiptTimeout = u8;
-
-	} else if (1 == sscanf(s, " transportSpecific %hhx", &u8)) {
-
-		pod->transportSpecific = u8 << 4;
-
-	} else if (1 == sscanf(s, " path_trace_enabled %u", &val)) {
-
-		pod->path_trace_enabled = val ? 1 : 0;
-
-	} else if (1 == sscanf(s, " follow_up_info %u", &val)) {
-
-		pod->follow_up_info = val ? 1 : 0;
 
 	} else if (1 == sscanf(s, " assume_two_step %u", &val)) {
 
