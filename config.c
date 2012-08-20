@@ -24,16 +24,24 @@
 
 enum config_section {
 	GLOBAL_SECTION,
+	PORT_SECTION,
 	UNKNOWN_SECTION,
 };
 
-static int scan_mode(const char *s, enum config_section *section)
+static int scan_mode(char *s, enum config_section *section)
 {
 	if (0 == strcasecmp(s, "[global]\n")) {
 		*section = GLOBAL_SECTION;
 		return 1;
 	} else if (s[0] == '[') {
-		*section = UNKNOWN_SECTION;
+		char c;
+		*section = PORT_SECTION;
+		/* Replace square brackets with white space. */
+		while (0 != (c = *s)) {
+			if (c == '[' || c == ']')
+				*s = ' ';
+			s++;
+		}
 		return 1;
 	} else {
 		return 0;
@@ -88,6 +96,45 @@ static int scan_pod(const char *s, struct port_defaults *pod)
 	}
 
 	return 0;
+}
+
+static void scan_port_line(const char *s, struct config *cfg, int p)
+{
+	char string[1024];
+
+	if (scan_pod(s, &cfg->iface[p].pod)) {
+
+		/* nothing to do here */
+
+	} else if (1 == sscanf(s, " network_transport %1023s", string)) {
+
+		if (0 == strcasecmp("L2", string))
+
+			cfg->iface[p].transport = TRANS_IEEE_802_3;
+
+		else if (0 == strcasecmp("UDPv4", string))
+
+			cfg->iface[p].transport = TRANS_UDP_IPV4;
+
+		else if (0 == strcasecmp("UDPv6", string))
+
+			cfg->iface[p].transport = TRANS_UDP_IPV6;
+
+	} else if (1 == sscanf(s, " delay_mechanism %1023s", string)) {
+
+		if (0 == strcasecmp("Auto", string))
+
+			cfg->iface[p].dm = DM_AUTO;
+
+		else if (0 == strcasecmp("E2E", string))
+
+			cfg->iface[p].dm = DM_E2E;
+
+		else if (0 == strcasecmp("P2P", string))
+
+			cfg->iface[p].dm = DM_P2P;
+
+	}
 }
 
 static void scan_global_line(const char *s, struct config *cfg)
@@ -255,6 +302,7 @@ int config_read(char *name, struct config *cfg)
 	enum config_section current_section = GLOBAL_SECTION;
 	FILE *fp;
 	char line[1024];
+	int current_port;
 
 	fp = fopen(name, "r");
 
@@ -264,12 +312,24 @@ int config_read(char *name, struct config *cfg)
 	}
 
 	while (fgets(line, sizeof(line), fp)) {
-		if (scan_mode(line, &current_section))
+		if (scan_mode(line, &current_section) ) {
+			if (current_section == PORT_SECTION) {
+				char port[17];
+				if (1 != sscanf(line, " %16s", port)) {
+					current_section = UNKNOWN_SECTION;
+					continue;
+				}
+				current_port = config_create_interface(port, cfg);
+			}
 			continue;
+		}
 
 		switch(current_section) {
 		case GLOBAL_SECTION:
 			scan_global_line(line, cfg);
+			break;
+		case PORT_SECTION:
+			scan_port_line(line, cfg, current_port);
 			break;
 		default:
 			continue;
