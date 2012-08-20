@@ -38,8 +38,8 @@ struct config {
 	struct interface iface[MAX_PORTS];
 	int nports;
 
-	struct defaultDS *dds;
-	struct port_defaults *pod;
+	struct defaultDS dds;
+	struct port_defaults pod;
 	int *assume_two_step;
 	int *tx_timestamp_retries;
 	int *rx_timestamp_l2only;

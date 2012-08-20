@@ -30,8 +30,8 @@ static void scan_line(char *s, struct config *cfg)
 	UInteger8 u8;
 	unsigned char mac[MAC_LEN];
 
-	struct defaultDS *dds = cfg->dds;
-	struct port_defaults *pod = cfg->pod;
+	struct defaultDS *dds = &cfg->dds;
+	struct port_defaults *pod = &cfg->pod;
 
 	if (1 == sscanf(s, " twoStepFlag %d", &val)) {
 

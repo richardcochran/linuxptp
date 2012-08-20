@@ -35,9 +35,36 @@ extern unsigned char ptp_dst_mac[]; /*see raw.c*/
 extern unsigned char p2p_dst_mac[]; /*see raw.c*/
 
 static int running = 1;
-static struct defaultDS ds;
-static struct port_defaults pod;
-static struct config cfg_settings;
+
+static struct config cfg_settings = {
+	.dds = {
+		.slaveOnly = FALSE,
+		.priority1 = 128,
+		.clockQuality.clockClass = 248,
+		.clockQuality.clockAccuracy = 0xfe,
+		.clockQuality.offsetScaledLogVariance = 0xffff,
+		.priority2 = 128,
+	},
+
+	.pod = {
+		.logAnnounceInterval = 1,
+		.logSyncInterval = 0,
+		.logMinDelayReqInterval = 0,
+		.logMinPdelayReqInterval = 0,
+		.announceReceiptTimeout = 3,
+		.transportSpecific = 0,
+		.path_trace_enabled = 0,
+		.follow_up_info = 0,
+	},
+
+	.assume_two_step = &assume_two_step,
+	.tx_timestamp_retries = &sk_tx_retries,
+	.rx_timestamp_l2only = &sk_prefer_layer2,
+	.pi_proportional_const = &configured_pi_kp,
+	.pi_integral_const = &configured_pi_ki,
+	.ptp_dst_mac = ptp_dst_mac,
+	.p2p_dst_mac = p2p_dst_mac,
+};
 
 static void usage(char *progname)
 {
@@ -80,6 +107,8 @@ int main(int argc, char *argv[])
 	enum transport_type transport = TRANS_UDP_IPV4;
 	enum timestamp_type timestamping = TS_HARDWARE;
 	struct clock *clock;
+	struct defaultDS *ds = &cfg_settings.dds;
+	struct port_defaults *pod = &cfg_settings.pod;
 	int phc_index = -1;
 
 	/* Process the command line arguments. */
@@ -179,36 +208,10 @@ int main(int argc, char *argv[])
 		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
 	}
 
-	ds.slaveOnly = FALSE;
-	ds.priority1 = 128;
-	ds.clockQuality.clockClass = 248;
-	ds.clockQuality.clockAccuracy = 0xfe;
-	ds.clockQuality.offsetScaledLogVariance = 0xffff;
-	ds.priority2 = 128;
-
-	pod.logAnnounceInterval = 1;
-	pod.logSyncInterval = 0;
-	pod.logMinDelayReqInterval = 0;
-	pod.logMinPdelayReqInterval = 0;
-	pod.announceReceiptTimeout = 3;
-	pod.transportSpecific = 0;
-	pod.path_trace_enabled = 0;
-	pod.follow_up_info = 0;
-
-	if (generate_clock_identity(&ds.clockIdentity, iface[0].name)) {
+	if (generate_clock_identity(&ds->clockIdentity, iface[0].name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");
 		return -1;
 	}
-
-	cfg_settings.dds = &ds;
-	cfg_settings.pod = &pod;
-	cfg_settings.assume_two_step = &assume_two_step;
-	cfg_settings.tx_timestamp_retries = &sk_tx_retries;
-	cfg_settings.rx_timestamp_l2only = &sk_prefer_layer2;
-	cfg_settings.pi_proportional_const = &configured_pi_kp;
-	cfg_settings.pi_integral_const = &configured_pi_ki;
-	cfg_settings.ptp_dst_mac = ptp_dst_mac;
-	cfg_settings.p2p_dst_mac = p2p_dst_mac;
 
 	if (config && config_read(config, &cfg_settings)) {
 		fprintf(stderr, "failed to read configuration file\n");
@@ -216,11 +219,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (slaveonly) {
-		ds.slaveOnly = TRUE;
-		ds.clockQuality.clockClass = 255;
+		ds->slaveOnly = TRUE;
+		ds->clockQuality.clockClass = 255;
 	}
 
-	clock = clock_create(phc_index, iface, *nports, timestamping, &ds, &pod);
+	clock = clock_create(phc_index, iface, *nports, timestamping, ds, pod);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;
