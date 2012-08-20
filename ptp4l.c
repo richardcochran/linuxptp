@@ -110,9 +110,10 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	int c;
+	int c, i;
 	struct interface *iface = cfg_settings.iface;
-	int *nports = &cfg_settings.nports;
+	char *ports[MAX_PORTS];
+	int nports = 0;
 	int *cfg_ignore = &cfg_settings.cfg_ignore;
 	enum delay_mechanism *dm = &cfg_settings.dm;
 	enum transport_type *transport = &cfg_settings.transport;
@@ -166,10 +167,8 @@ int main(int argc, char *argv[])
 			config = optarg;
 			break;
 		case 'i':
-			if (config_create_interface(optarg, &cfg_settings) < 0) {
-				fprintf(stderr, "too many interfaces\n");
-				return -1;
-			}
+			ports[nports] = optarg;
+			nports++;
 			break;
 		case 'p':
 			req_phc = optarg;
@@ -208,7 +207,14 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (!*nports) {
+	for (i = 0; i < nports; i++) {
+		if (config_create_interface(ports[i], &cfg_settings) < 0) {
+			fprintf(stderr, "too many interfaces\n");
+			return -1;
+		}
+	}
+
+	if (!cfg_settings.nports) {
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		return -1;
@@ -241,7 +247,8 @@ int main(int argc, char *argv[])
 	print_set_syslog(cfg_settings.use_syslog);
 	print_set_level(cfg_settings.print_level);
 
-	clock = clock_create(phc_index, iface, *nports, *timestamping, ds);
+	clock = clock_create(phc_index, iface, cfg_settings.nports,
+			     *timestamping, ds);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;
