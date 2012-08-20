@@ -63,8 +63,8 @@ static void usage(char *progname)
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
 		" -s        slave only mode (overrides configuration file)\n"
 		" -l [num]  set the logging level to 'num'\n"
-		" -q        quiet mode, do not use syslog(3)\n"
-		" -v        verbose mode, print messages to stdout\n"
+		" -q        do not print messages to the syslog\n"
+		" -v        print messages to stdout\n"
 		" -h        prints this message and exits\n"
 		"\n",
 		progname);
@@ -137,10 +137,10 @@ int main(int argc, char *argv[])
 			print_set_level(atoi(optarg));
 			break;
 		case 'q':
-			print_no_syslog();
+			print_set_syslog(1);
 			break;
 		case 'v':
-			print_verbose();
+			print_set_verbose(1);
 			break;
 		case 'h':
 			usage(progname);

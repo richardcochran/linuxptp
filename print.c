@@ -24,13 +24,13 @@
 
 #include "print.h"
 
-static int verbose;
+static int verbose = 0;
 static int print_level = LOG_INFO;
 static int use_syslog = 1;
 
-void print_no_syslog(void)
+void print_set_syslog(int value)
 {
-	use_syslog = 0;
+	use_syslog = value ? 1 : 0;
 }
 
 void print_set_level(int level)
@@ -38,9 +38,9 @@ void print_set_level(int level)
 	print_level = level;
 }
 
-void print_verbose(void)
+void print_set_verbose(int value)
 {
-	verbose = 1;
+	verbose = value ? 1 : 0;
 }
 
 void print(int level, char const *format, ...)

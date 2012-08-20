@@ -347,8 +347,8 @@ int main(int argc, char *argv[])
 	pollfd[1].fd = fdarray.fd[FD_GENERAL];
 	pollfd[1].events = POLLIN|POLLPRI;
 
-	print_no_syslog();
-	print_verbose();
+	print_set_syslog(1);
+	print_set_verbose(1);
 
 	while (1) {
 		cnt = poll(pollfd, N_FD, -1);
