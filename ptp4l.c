@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			if (*nports < MAX_PORTS) {
-				iface[*nports].name = optarg;
+				strncpy(iface[*nports].name, optarg, MAX_IFNAME_SIZE);
 				iface[*nports].dm = *dm;
 				iface[*nports].transport = *transport;
 				(*nports)++;

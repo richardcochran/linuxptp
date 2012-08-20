@@ -25,10 +25,11 @@
 #include "transport.h"
 
 #define MAX_PORTS 8
+#define MAX_IFNAME_SIZE 16
 
 /** Defines a network interface, with PTP options. */
 struct interface {
-	char *name;
+	char name[MAX_IFNAME_SIZE + 1];
 	enum delay_mechanism dm;
 	enum transport_type transport;
 };
