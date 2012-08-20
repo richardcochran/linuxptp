@@ -203,6 +203,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (config && config_read(config, &cfg_settings)) {
+		fprintf(stderr, "failed to read configuration file\n");
+		return -1;
+	}
+
 	if (!*nports) {
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
@@ -229,11 +234,6 @@ int main(int argc, char *argv[])
 
 	if (generate_clock_identity(&ds->clockIdentity, iface[0].name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");
-		return -1;
-	}
-
-	if (config && config_read(config, &cfg_settings)) {
-		fprintf(stderr, "failed to read configuration file\n");
 		return -1;
 	}
 
