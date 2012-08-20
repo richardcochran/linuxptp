@@ -25,7 +25,7 @@
 static void scan_line(char *s, struct config *cfg)
 {
 	double df;
-	int i, val;
+	int i, val, cfg_ignore = cfg->cfg_ignore;
 	Integer8 i8;
 	UInteger16 u16;
 	UInteger8 u8;
@@ -42,7 +42,8 @@ static void scan_line(char *s, struct config *cfg)
 
 	} else if (1 == sscanf(s, " slaveOnly %d", &val)) {
 
-		dds->slaveOnly = val ? 1 : 0;
+		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY))
+			dds->slaveOnly = val ? 1 : 0;
 
 	} else if (1 == sscanf(s, " priority1 %hhu", &u8)) {
 
@@ -59,7 +60,8 @@ static void scan_line(char *s, struct config *cfg)
 
 	} else if (1 == sscanf(s, " clockClass %hhu", &u8)) {
 
-		dds->clockQuality.clockClass = u8;
+		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY))
+			dds->clockQuality.clockClass = u8;
 
 	} else if (1 == sscanf(s, " clockAccuracy %hhx", &u8)) {
 
@@ -138,58 +140,74 @@ static void scan_line(char *s, struct config *cfg)
 
 	} else if (1 == sscanf(s, " logging_level %d", &val)) {
 
-		if (val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX)
-			cfg->print_level = val;
+		if (!(cfg_ignore & CFG_IGNORE_VERBOSE)) {
+
+			if (val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX)
+				cfg->print_level = val;
+
+		}
 
 	} else if (1 == sscanf(s, " verbose %d", &val)) {
 
-		cfg->verbose = val ? 1 : 0;
+		if (!(cfg_ignore & CFG_IGNORE_VERBOSE))
+			cfg->verbose = val ? 1 : 0;
 
 	} else if (1 == sscanf(s, " use_syslog %d", &val)) {
 
-		cfg->use_syslog = val ? 1 : 0;
+		if (!(cfg_ignore & CFG_IGNORE_USE_SYSLOG))
+			cfg->use_syslog = val ? 1 : 0;
 
 	} else if (1 == sscanf(s, " time_stamping %1023s", string)) {
 
-		if (0 == strcasecmp("hardware", string))
+		if (!(cfg_ignore & CFG_IGNORE_TIMESTAMPING)) {
 
-			cfg->timestamping = TS_HARDWARE;
+			if (0 == strcasecmp("hardware", string))
 
-		else if (0 == strcasecmp("software", string))
+				cfg->timestamping = TS_HARDWARE;
 
-			cfg->timestamping = TS_SOFTWARE;
+			else if (0 == strcasecmp("software", string))
 
-		else if (0 == strcasecmp("legacy", string))
+				cfg->timestamping = TS_SOFTWARE;
 
-			cfg->timestamping = TS_LEGACY_HW;
+			else if (0 == strcasecmp("legacy", string))
+
+				cfg->timestamping = TS_LEGACY_HW;
+		}
 
 	} else if (1 == sscanf(s, " delay_mechanism %1023s", string)) {
 
-		if (0 == strcasecmp("E2E", string))
+		if (!(cfg_ignore & CFG_IGNORE_DM)) {
 
-			cfg->dm = DM_E2E;
+			if (0 == strcasecmp("E2E", string))
 
-		else if (0 == strcasecmp("P2P", string))
+				cfg->dm = DM_E2E;
 
-			cfg->dm = DM_P2P;
+			else if (0 == strcasecmp("P2P", string))
 
-		else if (0 == strcasecmp("Auto", string))
+				cfg->dm = DM_P2P;
 
-			cfg->dm = DM_AUTO;
+			else if (0 == strcasecmp("Auto", string))
+
+				cfg->dm = DM_AUTO;
+		}
+
 	} else if (1 == sscanf(s, " network_transport %1023s", string)) {
 
-		if (0 == strcasecmp("UDPv4", string))
+		if (!(cfg_ignore & CFG_IGNORE_TRANSPORT)) {
 
-			cfg->transport = TRANS_UDP_IPV4;
+			if (0 == strcasecmp("UDPv4", string))
 
-		else if (0 == strcasecmp("UDPv6", string))
+				cfg->transport = TRANS_UDP_IPV4;
 
-			cfg->transport = TRANS_UDP_IPV6;
+			else if (0 == strcasecmp("UDPv6", string))
 
-		else if (0 == strcasecmp("L2", string))
+				cfg->transport = TRANS_UDP_IPV6;
 
-			cfg->transport = TRANS_IEEE_802_3;
+			else if (0 == strcasecmp("L2", string))
 
+				cfg->transport = TRANS_IEEE_802_3;
+
+		}
 	}
 }
 

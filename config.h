@@ -35,7 +35,18 @@ struct interface {
 	struct port_defaults pod;
 };
 
+#define CFG_IGNORE_DM           (1 << 0)
+#define CFG_IGNORE_TRANSPORT    (1 << 1)
+#define CFG_IGNORE_TIMESTAMPING (1 << 2)
+#define CFG_IGNORE_SLAVEONLY    (1 << 3)
+#define CFG_IGNORE_PRINT_LEVEL  (1 << 4)
+#define CFG_IGNORE_USE_SYSLOG   (1 << 5)
+#define CFG_IGNORE_VERBOSE      (1 << 6)
+
 struct config {
+	/* configuration override */
+	int cfg_ignore;
+
 	/* configured interfaces */
 	struct interface iface[MAX_PORTS];
 	int nports;

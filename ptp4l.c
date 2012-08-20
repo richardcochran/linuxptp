@@ -72,6 +72,8 @@ static struct config cfg_settings = {
 	.print_level = LOG_INFO,
 	.use_syslog = 1,
 	.verbose = 0,
+
+	.cfg_ignore = 0,
 };
 
 static void usage(char *progname)
@@ -108,9 +110,10 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	int c, slaveonly = 0;
+	int c;
 	struct interface *iface = cfg_settings.iface;
 	int *nports = &cfg_settings.nports;
+	int *cfg_ignore = &cfg_settings.cfg_ignore;
 	enum delay_mechanism *dm = &cfg_settings.dm;
 	enum transport_type *transport = &cfg_settings.transport;
 	enum timestamp_type *timestamping = &cfg_settings.timestamping;
@@ -125,30 +128,39 @@ int main(int argc, char *argv[])
 		switch (c) {
 		case 'A':
 			*dm = DM_AUTO;
+			*cfg_ignore |= CFG_IGNORE_DM;
 			break;
 		case 'E':
 			*dm = DM_E2E;
+			*cfg_ignore |= CFG_IGNORE_DM;
 			break;
 		case 'P':
 			*dm = DM_P2P;
+			*cfg_ignore |= CFG_IGNORE_DM;
 			break;
 		case '2':
 			*transport = TRANS_IEEE_802_3;
+			*cfg_ignore |= CFG_IGNORE_TRANSPORT;
 			break;
 		case '4':
 			*transport = TRANS_UDP_IPV4;
+			*cfg_ignore |= CFG_IGNORE_TRANSPORT;
 			break;
 		case '6':
 			*transport = TRANS_UDP_IPV6;
+			*cfg_ignore |= CFG_IGNORE_TRANSPORT;
 			break;
 		case 'H':
 			*timestamping = TS_HARDWARE;
+			*cfg_ignore |= CFG_IGNORE_TIMESTAMPING;
 			break;
 		case 'S':
 			*timestamping = TS_SOFTWARE;
+			*cfg_ignore |= CFG_IGNORE_TIMESTAMPING;
 			break;
 		case 'L':
 			*timestamping = TS_LEGACY_HW;
+			*cfg_ignore |= CFG_IGNORE_TIMESTAMPING;
 			break;
 		case 'f':
 			config = optarg;
@@ -163,16 +175,21 @@ int main(int argc, char *argv[])
 			req_phc = optarg;
 			break;
 		case 's':
-			slaveonly = 1;
+			ds->slaveOnly = TRUE;
+			ds->clockQuality.clockClass = 255;
+			*cfg_ignore |= CFG_IGNORE_SLAVEONLY;
 			break;
 		case 'l':
 			cfg_settings.print_level = atoi(optarg);
+			*cfg_ignore |= CFG_IGNORE_PRINT_LEVEL;
 			break;
 		case 'q':
 			cfg_settings.use_syslog = 0;
+			*cfg_ignore |= CFG_IGNORE_USE_SYSLOG;
 			break;
 		case 'v':
 			cfg_settings.verbose = 1;
+			*cfg_ignore |= CFG_IGNORE_VERBOSE;
 			break;
 		case 'h':
 			usage(progname);
@@ -218,11 +235,6 @@ int main(int argc, char *argv[])
 	if (config && config_read(config, &cfg_settings)) {
 		fprintf(stderr, "failed to read configuration file\n");
 		return -1;
-	}
-
-	if (slaveonly) {
-		ds->slaveOnly = TRUE;
-		ds->clockQuality.clockClass = 255;
 	}
 
 	print_set_verbose(cfg_settings.verbose);
