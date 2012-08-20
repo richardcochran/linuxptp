@@ -68,6 +68,10 @@ static struct config cfg_settings = {
 	.pi_integral_const = &configured_pi_ki,
 	.ptp_dst_mac = ptp_dst_mac,
 	.p2p_dst_mac = p2p_dst_mac,
+
+	.print_level = LOG_INFO,
+	.use_syslog = 1,
+	.verbose = 0,
 };
 
 static void usage(char *progname)
@@ -162,13 +166,13 @@ int main(int argc, char *argv[])
 			slaveonly = 1;
 			break;
 		case 'l':
-			print_set_level(atoi(optarg));
+			cfg_settings.print_level = atoi(optarg);
 			break;
 		case 'q':
-			print_set_syslog(1);
+			cfg_settings.use_syslog = 0;
 			break;
 		case 'v':
-			print_set_verbose(1);
+			cfg_settings.verbose = 1;
 			break;
 		case 'h':
 			usage(progname);
@@ -220,6 +224,10 @@ int main(int argc, char *argv[])
 		ds->slaveOnly = TRUE;
 		ds->clockQuality.clockClass = 255;
 	}
+
+	print_set_verbose(cfg_settings.verbose);
+	print_set_syslog(cfg_settings.use_syslog);
+	print_set_level(cfg_settings.print_level);
 
 	clock = clock_create(phc_index, iface, *nports, *timestamping, ds);
 	if (!clock) {

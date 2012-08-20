@@ -22,6 +22,9 @@
 
 #include <syslog.h>
 
+#define PRINT_LEVEL_MIN LOG_EMERG
+#define PRINT_LEVEL_MAX LOG_DEBUG
+
 void print(int level, char const *format, ...);
 
 void print_set_syslog(int value);

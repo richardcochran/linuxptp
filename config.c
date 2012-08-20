@@ -20,6 +20,7 @@
 #include <string.h>
 #include "config.h"
 #include "ether.h"
+#include "print.h"
 
 static void scan_line(char *s, struct config *cfg)
 {
@@ -29,6 +30,7 @@ static void scan_line(char *s, struct config *cfg)
 	UInteger16 u16;
 	UInteger8 u8;
 	unsigned char mac[MAC_LEN];
+	char string[1024];
 
 	struct defaultDS *dds = &cfg->dds;
 	struct port_defaults *pod = &cfg->pod;
@@ -36,7 +38,7 @@ static void scan_line(char *s, struct config *cfg)
 	if (1 == sscanf(s, " twoStepFlag %d", &val)) {
 
 		if (val) /* TODO - implement one step */
-		dds->twoStepFlag = val ? 1 : 0;
+			dds->twoStepFlag = val ? 1 : 0;
 
 	} else if (1 == sscanf(s, " slaveOnly %d", &val)) {
 
@@ -133,6 +135,61 @@ static void scan_line(char *s, struct config *cfg)
 
 		for (i = 0; i < MAC_LEN; i++)
 			cfg->p2p_dst_mac[i] = mac[i];
+
+	} else if (1 == sscanf(s, " logging_level %d", &val)) {
+
+		if (val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX)
+			cfg->print_level = val;
+
+	} else if (1 == sscanf(s, " verbose %d", &val)) {
+
+		cfg->verbose = val ? 1 : 0;
+
+	} else if (1 == sscanf(s, " use_syslog %d", &val)) {
+
+		cfg->use_syslog = val ? 1 : 0;
+
+	} else if (1 == sscanf(s, " time_stamping %1023s", string)) {
+
+		if (0 == strcasecmp("hardware", string))
+
+			cfg->timestamping = TS_HARDWARE;
+
+		else if (0 == strcasecmp("software", string))
+
+			cfg->timestamping = TS_SOFTWARE;
+
+		else if (0 == strcasecmp("legacy", string))
+
+			cfg->timestamping = TS_LEGACY_HW;
+
+	} else if (1 == sscanf(s, " delay_mechanism %1023s", string)) {
+
+		if (0 == strcasecmp("E2E", string))
+
+			cfg->dm = DM_E2E;
+
+		else if (0 == strcasecmp("P2P", string))
+
+			cfg->dm = DM_P2P;
+
+		else if (0 == strcasecmp("Auto", string))
+
+			cfg->dm = DM_AUTO;
+	} else if (1 == sscanf(s, " network_transport %1023s", string)) {
+
+		if (0 == strcasecmp("UDPv4", string))
+
+			cfg->transport = TRANS_UDP_IPV4;
+
+		else if (0 == strcasecmp("UDPv6", string))
+
+			cfg->transport = TRANS_UDP_IPV6;
+
+		else if (0 == strcasecmp("L2", string))
+
+			cfg->transport = TRANS_IEEE_802_3;
+
 	}
 }
 

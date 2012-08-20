@@ -53,6 +53,10 @@ struct config {
 	double *pi_integral_const;
 	unsigned char *ptp_dst_mac;
 	unsigned char *p2p_dst_mac;
+
+	int print_level;
+	int use_syslog;
+	int verbose;
 };
 
 int config_read(char *name, struct config *cfg);
