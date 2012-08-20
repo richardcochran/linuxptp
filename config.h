@@ -38,6 +38,10 @@ struct config {
 	struct interface iface[MAX_PORTS];
 	int nports;
 
+	enum timestamp_type timestamping;
+	enum transport_type transport;
+	enum delay_mechanism dm;
+
 	struct defaultDS dds;
 	struct port_defaults pod;
 	int *assume_two_step;

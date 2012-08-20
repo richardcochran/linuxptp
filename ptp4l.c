@@ -57,6 +57,10 @@ static struct config cfg_settings = {
 		.follow_up_info = 0,
 	},
 
+	.timestamping = TS_HARDWARE,
+	.dm = DM_E2E,
+	.transport = TRANS_UDP_IPV4,
+
 	.assume_two_step = &assume_two_step,
 	.tx_timestamp_retries = &sk_tx_retries,
 	.rx_timestamp_l2only = &sk_prefer_layer2,
@@ -103,9 +107,9 @@ int main(int argc, char *argv[])
 	int c, slaveonly = 0;
 	struct interface *iface = cfg_settings.iface;
 	int *nports = &cfg_settings.nports;
-	enum delay_mechanism dm = DM_E2E;
-	enum transport_type transport = TRANS_UDP_IPV4;
-	enum timestamp_type timestamping = TS_HARDWARE;
+	enum delay_mechanism *dm = &cfg_settings.dm;
+	enum transport_type *transport = &cfg_settings.transport;
+	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
 	struct defaultDS *ds = &cfg_settings.dds;
 	struct port_defaults *pod = &cfg_settings.pod;
@@ -117,31 +121,31 @@ int main(int argc, char *argv[])
 	while (EOF != (c = getopt(argc, argv, "AEP246HSLf:i:p:sl:qvh"))) {
 		switch (c) {
 		case 'A':
-			dm = DM_AUTO;
+			*dm = DM_AUTO;
 			break;
 		case 'E':
-			dm = DM_E2E;
+			*dm = DM_E2E;
 			break;
 		case 'P':
-			dm = DM_P2P;
+			*dm = DM_P2P;
 			break;
 		case '2':
-			transport = TRANS_IEEE_802_3;
+			*transport = TRANS_IEEE_802_3;
 			break;
 		case '4':
-			transport = TRANS_UDP_IPV4;
+			*transport = TRANS_UDP_IPV4;
 			break;
 		case '6':
-			transport = TRANS_UDP_IPV6;
+			*transport = TRANS_UDP_IPV6;
 			break;
 		case 'H':
-			timestamping = TS_HARDWARE;
+			*timestamping = TS_HARDWARE;
 			break;
 		case 'S':
-			timestamping = TS_SOFTWARE;
+			*timestamping = TS_SOFTWARE;
 			break;
 		case 'L':
-			timestamping = TS_LEGACY_HW;
+			*timestamping = TS_LEGACY_HW;
 			break;
 		case 'f':
 			config = optarg;
@@ -149,8 +153,8 @@ int main(int argc, char *argv[])
 		case 'i':
 			if (*nports < MAX_PORTS) {
 				iface[*nports].name = optarg;
-				iface[*nports].dm = dm;
-				iface[*nports].transport = transport;
+				iface[*nports].dm = *dm;
+				iface[*nports].transport = *transport;
 				(*nports)++;
 			} else {
 				fprintf(stderr, "too many interfaces\n");
@@ -191,7 +195,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* determine PHC Clock index */
-	if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
+	if (*timestamping == TS_SOFTWARE || *timestamping == TS_LEGACY_HW) {
 		phc_index = -1;
 	} else if (req_phc) {
 		if (1 != sscanf(req_phc, "/dev/ptp%d", &phc_index)) {
@@ -223,7 +227,7 @@ int main(int argc, char *argv[])
 		ds->clockQuality.clockClass = 255;
 	}
 
-	clock = clock_create(phc_index, iface, *nports, timestamping, ds, pod);
+	clock = clock_create(phc_index, iface, *nports, *timestamping, ds, pod);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;
