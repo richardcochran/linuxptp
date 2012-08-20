@@ -84,6 +84,8 @@ static void clock_destroy(struct clock *c)
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
 	}
+	servo_destroy(c->servo);
+	mave_destroy(c->avg_delay);
 	memset(c, 0, sizeof(*c));
 }
 
