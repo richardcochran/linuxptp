@@ -52,20 +52,20 @@ static void usage(char *progname)
 		" -4        UDP IPV4 (default)\n"
 		" -6        UDP IPV6\n\n"
 		" Time Stamping\n\n"
-		" -r        HARDWARE (default)\n"
-		" -s        SOFTWARE\n"
-		" -z        LEGACY HW\n\n"
+		" -H        HARDWARE (default)\n"
+		" -S        SOFTWARE\n"
+		" -L        LEGACY HW\n\n"
 		" Other Options\n\n"
 		" -f [file] read configuration from 'file'\n"
-		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, for example 'eth0'\n"
 		"           (may be specified multiple times)\n"
-		" -l [num]  set the logging level to 'num'\n"
-		" -m        slave only mode (overrides configuration file)\n"
 		" -p [dev]  PTP hardware clock device to use, default auto\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
+		" -s        slave only mode (overrides configuration file)\n"
+		" -l [num]  set the logging level to 'num'\n"
 		" -q        quiet mode, do not use syslog(3)\n"
 		" -v        verbose mode, print messages to stdout\n"
+		" -h        prints this message and exits\n"
 		"\n",
 		progname);
 }
@@ -84,8 +84,17 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246AEf:hi:l:mPp:qrsvz"))) {
+	while (EOF != (c = getopt(argc, argv, "AEP246HSLf:i:p:sl:qvh"))) {
 		switch (c) {
+		case 'A':
+			dm = DM_AUTO;
+			break;
+		case 'E':
+			dm = DM_E2E;
+			break;
+		case 'P':
+			dm = DM_P2P;
+			break;
 		case '2':
 			transport = TRANS_IEEE_802_3;
 			break;
@@ -95,11 +104,14 @@ int main(int argc, char *argv[])
 		case '6':
 			transport = TRANS_UDP_IPV6;
 			break;
-		case 'A':
-			dm = DM_AUTO;
+		case 'H':
+			timestamping = TS_HARDWARE;
 			break;
-		case 'E':
-			dm = DM_E2E;
+		case 'S':
+			timestamping = TS_SOFTWARE;
+			break;
+		case 'L':
+			timestamping = TS_LEGACY_HW;
 			break;
 		case 'f':
 			config = optarg;
@@ -115,32 +127,20 @@ int main(int argc, char *argv[])
 				return -1;
 			}
 			break;
-		case 'l':
-			print_set_level(atoi(optarg));
-			break;
-		case 'm':
-			slaveonly = 1;
-			break;
-		case 'P':
-			dm = DM_P2P;
-			break;
 		case 'p':
 			req_phc = optarg;
+			break;
+		case 's':
+			slaveonly = 1;
+			break;
+		case 'l':
+			print_set_level(atoi(optarg));
 			break;
 		case 'q':
 			print_no_syslog();
 			break;
-		case 'r':
-			timestamping = TS_HARDWARE;
-			break;
-		case 's':
-			timestamping = TS_SOFTWARE;
-			break;
 		case 'v':
 			print_verbose();
-			break;
-		case 'z':
-			timestamping = TS_LEGACY_HW;
 			break;
 		case 'h':
 			usage(progname);
