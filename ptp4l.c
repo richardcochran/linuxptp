@@ -73,7 +73,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	int c, i, nports = 0, slaveonly = 0;
+	int c, nports = 0, slaveonly = 0;
 	struct interface iface[MAX_PORTS];
 	enum delay_mechanism dm = DM_E2E;
 	enum transport_type transport = TRANS_UDP_IPV4;
@@ -159,9 +159,6 @@ int main(int argc, char *argv[])
 		usage(progname);
 		return -1;
 	}
-	for (i = 0; i < nports; i++) {
-		iface[i].timestamping = timestamping;
-	}
 
 	/* determine PHC Clock index */
 	if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
@@ -222,7 +219,7 @@ int main(int argc, char *argv[])
 		ds.clockQuality.clockClass = 255;
 	}
 
-	clock = clock_create(phc_index, iface, nports, &ds, &pod);
+	clock = clock_create(phc_index, iface, nports, timestamping, &ds, &pod);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

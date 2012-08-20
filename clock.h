@@ -35,7 +35,6 @@ struct interface {
 	char *name;
 	enum delay_mechanism dm;
 	enum transport_type transport;
-	enum timestamp_type timestamping;
 };
 
 /** Opaque type. */
@@ -68,16 +67,18 @@ UInteger8 clock_class(struct clock *c);
  * Create a clock instance. There can only be one clock in any system,
  * so subsequent calls will destroy the previous clock instance.
  *
- * @param phc_index   PTP hardware clock device to use.
- *                    Pass -1 to select CLOCK_REALTIME.
- * @param interface   An array of network interfaces.
- * @param count       The number of elements in @a interfaces.
- * @param ds          A pointer to a default data set for the clock.
- * @param pod         A pointer to a default port data set for the clock.
- * @return            A pointer to the single global clock instance.
+ * @param phc_index    PTP hardware clock device to use.
+ *                     Pass -1 to select CLOCK_REALTIME.
+ * @param interface    An array of network interfaces.
+ * @param count        The number of elements in @a interfaces.
+ * @param timestamping The timestamping mode for this clock.
+ * @param ds           A pointer to a default data set for the clock.
+ * @param pod          A pointer to a default port data set for the clock.
+ * @return             A pointer to the single global clock instance.
  */
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
-			   struct defaultDS *ds, struct port_defaults *pod);
+			   enum timestamp_type timestamping, struct defaultDS *ds,
+			   struct port_defaults *pod);
 
 /**
  * Obtains a clock's default data set.

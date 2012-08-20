@@ -210,9 +210,10 @@ UInteger8 clock_class(struct clock *c)
 }
 
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
-			   struct defaultDS *ds, struct port_defaults *pod)
+			   enum timestamp_type timestamping, struct defaultDS *ds,
+			   struct port_defaults *pod)
 {
-	int i, max_adj, sw_ts = 0;
+	int i, max_adj, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	char phc[32];
 
@@ -236,13 +237,6 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	} else {
 		c->clkid = CLOCK_REALTIME;
 		max_adj = 512000;
-	}
-
-	for (i = 0; i < count; i++) {
-		if (iface[i].timestamping == TS_SOFTWARE) {
-			sw_ts = 1;
-			break;
-		}
 	}
 
 	c->servo = servo_create("pi", max_adj, sw_ts);
@@ -274,7 +268,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	for (i = 0; i < count; i++) {
 		c->port[i] = port_open(pod, phc_index, iface[i].name, iface[i].transport,
-				       iface[i].timestamping, 1+i, iface[i].dm, c);
+				       timestamping, 1+i, iface[i].dm, c);
 		if (!c->port[i]) {
 			pr_err("failed to open port %s", iface[i].name);
 			return NULL;
