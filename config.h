@@ -55,5 +55,6 @@ struct config {
 };
 
 int config_read(char *name, struct config *cfg);
+int config_create_interface(char *name, struct config *cfg);
 
 #endif

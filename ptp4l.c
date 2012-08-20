@@ -151,12 +151,7 @@ int main(int argc, char *argv[])
 			config = optarg;
 			break;
 		case 'i':
-			if (*nports < MAX_PORTS) {
-				strncpy(iface[*nports].name, optarg, MAX_IFNAME_SIZE);
-				iface[*nports].dm = *dm;
-				iface[*nports].transport = *transport;
-				(*nports)++;
-			} else {
+			if (config_create_interface(optarg, &cfg_settings) < 0) {
 				fprintf(stderr, "too many interfaces\n");
 				return -1;
 			}

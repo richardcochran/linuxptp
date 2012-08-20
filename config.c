@@ -155,3 +155,29 @@ int config_read(char *name, struct config *cfg)
 	fclose(fp);
 	return 0;
 }
+
+/* returns the number matching that interface, or -1 on failure */
+int config_create_interface(char *name, struct config *cfg)
+{
+	struct interface *iface;
+	int i;
+
+	if (cfg->nports >= MAX_PORTS) {
+		return -1;
+	}
+
+	iface = &cfg->iface[cfg->nports];
+
+	/* only create each interface once (by name) */
+	for(i = 0; i < cfg->nports; i++) {
+		if (0 == strncmp(name, cfg->iface[i].name, MAX_IFNAME_SIZE))
+			return i;
+	}
+
+	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	iface->dm = cfg->dm;
+	iface->transport = cfg->transport;
+	cfg->nports++;
+
+	return i;
+}
