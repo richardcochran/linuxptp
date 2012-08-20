@@ -21,8 +21,23 @@
 #define HAVE_CONFIG_H
 
 #include "ds.h"
+#include "dm.h"
+#include "transport.h"
+
+#define MAX_PORTS 8
+
+/** Defines a network interface, with PTP options. */
+struct interface {
+	char *name;
+	enum delay_mechanism dm;
+	enum transport_type transport;
+};
 
 struct config {
+	/* configured interfaces */
+	struct interface iface[MAX_PORTS];
+	int nports;
+
 	struct defaultDS *dds;
 	struct port_defaults *pod;
 	int *assume_two_step;

@@ -22,20 +22,12 @@
 
 #include "dm.h"
 #include "ds.h"
+#include "config.h"
 #include "servo.h"
 #include "tmv.h"
 #include "transport.h"
 
 struct ptp_message; /*forward declaration*/
-
-#define MAX_PORTS 8
-
-/** Defines a network interface, with PTP options. */
-struct interface {
-	char *name;
-	enum delay_mechanism dm;
-	enum transport_type transport;
-};
 
 /** Opaque type. */
 struct clock;

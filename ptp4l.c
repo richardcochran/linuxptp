@@ -73,8 +73,9 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	int c, nports = 0, slaveonly = 0;
-	struct interface iface[MAX_PORTS];
+	int c, slaveonly = 0;
+	struct interface *iface = cfg_settings.iface;
+	int *nports = &cfg_settings.nports;
 	enum delay_mechanism dm = DM_E2E;
 	enum transport_type transport = TRANS_UDP_IPV4;
 	enum timestamp_type timestamping = TS_HARDWARE;
@@ -117,11 +118,11 @@ int main(int argc, char *argv[])
 			config = optarg;
 			break;
 		case 'i':
-			if (nports < MAX_PORTS) {
-				iface[nports].name = optarg;
-				iface[nports].dm = dm;
-				iface[nports].transport = transport;
-				nports++;
+			if (*nports < MAX_PORTS) {
+				iface[*nports].name = optarg;
+				iface[*nports].dm = dm;
+				iface[*nports].transport = transport;
+				(*nports)++;
 			} else {
 				fprintf(stderr, "too many interfaces\n");
 				return -1;
@@ -154,7 +155,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!nports) {
+	if (!*nports) {
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		return -1;
@@ -219,7 +220,7 @@ int main(int argc, char *argv[])
 		ds.clockQuality.clockClass = 255;
 	}
 
-	clock = clock_create(phc_index, iface, nports, timestamping, &ds, &pod);
+	clock = clock_create(phc_index, iface, *nports, timestamping, &ds, &pod);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;
