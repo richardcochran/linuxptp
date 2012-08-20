@@ -22,6 +22,24 @@
 #include "ether.h"
 #include "print.h"
 
+enum config_section {
+	GLOBAL_SECTION,
+	UNKNOWN_SECTION,
+};
+
+static int scan_mode(const char *s, enum config_section *section)
+{
+	if (0 == strcasecmp(s, "[global]\n")) {
+		*section = GLOBAL_SECTION;
+		return 1;
+	} else if (s[0] == '[') {
+		*section = UNKNOWN_SECTION;
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 static int scan_pod(const char *s, struct port_defaults *pod)
 {
 	int val;
@@ -72,7 +90,7 @@ static int scan_pod(const char *s, struct port_defaults *pod)
 	return 0;
 }
 
-static void scan_line(char *s, struct config *cfg)
+static void scan_global_line(const char *s, struct config *cfg)
 {
 	double df;
 	int i, val, cfg_ignore = cfg->cfg_ignore;
@@ -234,10 +252,11 @@ static void scan_line(char *s, struct config *cfg)
 
 int config_read(char *name, struct config *cfg)
 {
+	enum config_section current_section = GLOBAL_SECTION;
 	FILE *fp;
 	char line[1024];
 
-	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
+	fp = fopen(name, "r");
 
 	if (!fp) {
 		perror("fopen");
@@ -245,7 +264,16 @@ int config_read(char *name, struct config *cfg)
 	}
 
 	while (fgets(line, sizeof(line), fp)) {
-		scan_line(line, cfg);
+		if (scan_mode(line, &current_section))
+			continue;
+
+		switch(current_section) {
+		case GLOBAL_SECTION:
+			scan_global_line(line, cfg);
+			break;
+		default:
+			continue;
+		}
 	}
 
 	fclose(fp);
