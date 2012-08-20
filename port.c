@@ -1539,11 +1539,9 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 
 struct port *port_open(struct port_defaults *pod,
 		       int phc_index,
-		       char *name,
-		       enum transport_type transport,
 		       enum timestamp_type timestamping,
 		       int number,
-		       enum delay_mechanism dm,
+		       struct interface *interface,
 		       struct clock *clock)
 {
 	struct port *p = malloc(sizeof(*p));
@@ -1554,7 +1552,7 @@ struct port *port_open(struct port_defaults *pod,
 
 	memset(p, 0, sizeof(*p));
 
-	if (sk_interface_phc(name, &checked_phc_index))
+	if (sk_interface_phc(interface->name, &checked_phc_index))
 		pr_warning("port %d: get_ts_info not supported", number);
 	else if (phc_index >= 0 && phc_index != checked_phc_index) {
 		pr_err("port %d: PHC device mismatch", number);
@@ -1564,9 +1562,9 @@ struct port *port_open(struct port_defaults *pod,
 	}
 
 	p->pod = *pod;
-	p->name = name;
+	p->name = interface->name;
 	p->clock = clock;
-	p->trp = transport_create(transport);
+	p->trp = transport_create(interface->transport);
 	if (!p->trp) {
 		free(p);
 		return NULL;
@@ -1575,7 +1573,7 @@ struct port *port_open(struct port_defaults *pod,
 	p->portIdentity.clockIdentity = clock_identity(clock);
 	p->portIdentity.portNumber = number;
 	p->state = PS_INITIALIZING;
-	p->delayMechanism = dm;
+	p->delayMechanism = interface->dm;
 	p->versionNumber = PTP_VERSION;
 
 	p->avg_delay = mave_create(PORT_MAVE_LENGTH);

@@ -25,7 +25,9 @@
 #include "fsm.h"
 #include "transport.h"
 
-struct clock; /*forward declaration*/
+/* forward declarations */
+struct interface;
+struct clock;
 
 /** Opaque type. */
 struct port;
@@ -128,21 +130,17 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
  * Open a network port.
  * @param pod           A pointer to a default port data set for this port.
  * @param phc_index     The PHC device index for the network device.
- * @param name          The name of the network interface.
- * @param transport     The network transport type to use on this port.
- * @param timestamping  The flavor of time stamping to use on this port.
- * @param number        An arbitrary port number for this port.
- * @param dm            Which delay mechanism to use on this port.
+ * @param timestamping  The timestamping mode for this port.
+ * @param number	An arbitrary number assigned to this port.
+ * @param interface     The interface data
  * @param clock         A pointer to the system PTP clock.
  * @return A pointer to an open port on success, or NULL otherwise.
  */
 struct port *port_open(struct port_defaults *pod,
 		       int phc_index,
-		       char *name,
-		       enum transport_type transport,
 		       enum timestamp_type timestamping,
 		       int number,
-		       enum delay_mechanism dm,
+		       struct interface *interface,
 		       struct clock *clock);
 
 /**
