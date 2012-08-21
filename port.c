@@ -59,6 +59,7 @@ struct port {
 	struct tmtab tmtab;
 	tmv_t peer_delay;
 	struct mave *avg_delay;
+	int log_sync_interval;
 	/* portDS */
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
@@ -1173,6 +1174,11 @@ static void process_sync(struct port *p, struct ptp_message *m)
 	master = clock_parent_identity(p->clock);
 	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master))) {
 		return;
+	}
+
+	if (m->header.logMessageInterval != p->log_sync_interval) {
+		p->log_sync_interval = m->header.logMessageInterval;
+		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
 
 	// TODO - add asymmetry value to correctionField.
