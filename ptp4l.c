@@ -80,11 +80,11 @@ static void usage(char *progname)
 {
 	fprintf(stderr,
 		"\nusage: %s [options]\n\n"
-		" Delay Mechanism (per interface)\n\n"
+		" Delay Mechanism\n\n"
 		" -A        Auto, starting with E2E\n"
 		" -E        E2E, delay request-response (default)\n"
 		" -P        P2P, peer delay mechanism\n\n"
-		" Network Transport (per interface)\n\n"
+		" Network Transport\n\n"
 		" -2        IEEE 802.3\n"
 		" -4        UDP IPV4 (default)\n"
 		" -6        UDP IPV6\n\n"
