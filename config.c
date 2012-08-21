@@ -304,7 +304,7 @@ int config_read(char *name, struct config *cfg)
 	char line[1024];
 	int current_port;
 
-	fp = fopen(name, "r");
+	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
 
 	if (!fp) {
 		perror("fopen");
