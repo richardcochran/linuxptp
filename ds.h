@@ -33,6 +33,7 @@ struct defaultDS {
 	UInteger8            priority2;
 	struct ClockIdentity clockIdentity;
 	UInteger8            domainNumber;
+	int                  free_running;
 };
 
 struct dataset {
