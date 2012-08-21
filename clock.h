@@ -185,6 +185,13 @@ enum servo_state clock_synchronize(struct clock *c,
 				   Integer64 correction2);
 
 /**
+ * Inform a slaved clock about the master's sync interval.
+ * @param c  The clock instance.
+ * @param n  The logarithm base two of the sync interval.
+ */
+void clock_sync_interval(struct clock *c, int n);
+
+/**
  * Obtain a clock's time properties data set.
  * @param c  The clock instance.
  * @return   A pointer to the time properties data set of the clock.

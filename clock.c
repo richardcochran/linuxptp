@@ -601,6 +601,16 @@ enum servo_state clock_synchronize(struct clock *c,
 	return state;
 }
 
+void clock_sync_interval(struct clock *c, int n)
+{
+	int shift = c->dds.freq_est_interval - n;
+
+	if (shift < 0)
+		shift = 0;
+
+	c->fest.max_count = (1 << shift);
+}
+
 struct timePropertiesDS *clock_time_properties(struct clock *c)
 {
 	return &c->tds;
