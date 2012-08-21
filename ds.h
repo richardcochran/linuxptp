@@ -34,6 +34,7 @@ struct defaultDS {
 	struct ClockIdentity clockIdentity;
 	UInteger8            domainNumber;
 	int                  free_running;
+	int                  freq_est_interval; /*log seconds*/
 };
 
 struct dataset {

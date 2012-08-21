@@ -44,6 +44,7 @@ static struct config cfg_settings = {
 		.clockQuality.clockAccuracy = 0xfe,
 		.clockQuality.offsetScaledLogVariance = 0xffff,
 		.priority2 = 128,
+		.freq_est_interval = 1,
 	},
 
 	.pod = {

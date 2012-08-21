@@ -193,6 +193,11 @@ static void scan_global_line(const char *s, struct config *cfg)
 
 		dds->free_running = val ? 1 : 0;
 
+	} else if (1 == sscanf(s, " freq_est_interval %d", &val)) {
+
+		if (val >= 0)
+			dds->freq_est_interval = val;
+
 	} else if (1 == sscanf(s, " assume_two_step %u", &val)) {
 
 		*cfg->assume_two_step = val ? 1 : 0;
