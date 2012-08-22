@@ -418,8 +418,18 @@ static void port_synchronize(struct port *p,
 				  correction1, correction2);
 	switch (state) {
 	case SERVO_UNLOCKED:
+		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+		break;
 	case SERVO_JUMP:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+		if (p->delay_req) {
+			msg_put(p->delay_req);
+			p->delay_req = NULL;
+		}
+		if (p->peer_delay_req) {
+			msg_put(p->peer_delay_req);
+			p->peer_delay_req = NULL;
+		}
 		break;
 	case SERVO_LOCKED:
 		port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
