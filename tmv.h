@@ -71,6 +71,11 @@ static inline tmv_t correction_to_tmv(Integer64 c)
 	return c >> 16;
 }
 
+static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
+{
+	return x << 16;
+}
+
 static inline tmv_t timespec_to_tmv(struct timespec ts)
 {
 	return ts.tv_sec * NS_PER_SEC + ts.tv_nsec;

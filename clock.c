@@ -570,6 +570,8 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 
 	c->path_delay = mave_accumulate(c->avg_delay, pd);
 
+	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
+
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
 }
 
@@ -626,6 +628,8 @@ enum servo_state clock_synchronize(struct clock *c,
 	 */
 	c->master_offset = tmv_sub(ingress,
 		tmv_add(origin, tmv_add(c->path_delay, tmv_add(c->c1, c->c2))));
+
+	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
 
 	if (!c->path_delay)
 		return state;
