@@ -217,6 +217,8 @@ static void null_management(int action, int index)
 {
 	if (action == GET)
 		get_action(idtab[index].code);
+	else
+		puts("non-get actions still todo");
 }
 
 static int parse_action(char *s)
@@ -266,7 +268,9 @@ static int do_command(char *str)
 		return 0;
 	}
 
-	fprintf(stdout, "%s\n", idtab[id].name);
+	fprintf(stdout, "sending: %s %s\n",
+		action_string[action], idtab[id].name);
+
 	idtab[id].func(action, id);
 
 	return 0;
