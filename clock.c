@@ -112,6 +112,47 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 	return timerfd_settime(c->fault_fd[index], 0, &tmo, NULL);
 }
 
+static int clock_management_response(struct clock *c, struct port *p, int id,
+				     struct ptp_message *req)
+{
+	int datalen = 0, err, pdulen, respond = 0;
+	struct management_tlv *tlv;
+	struct ptp_message *rsp;
+	struct PortIdentity pid;
+
+	pid.clockIdentity = clock_identity(c);
+	pid.portNumber = 0;
+	rsp = port_management_reply(pid, p, req);
+	if (!rsp) {
+		return 0;
+	}
+	tlv = (struct management_tlv *) rsp->management.suffix;
+	tlv->type = TLV_MANAGEMENT;
+	tlv->id = id;
+
+	switch (id) {
+	case CURRENT_DATA_SET:
+		memcpy(tlv->data, &c->cur, sizeof(c->cur));
+		datalen = sizeof(c->cur);
+		respond = 1;
+		break;
+	}
+	if (respond) {
+		tlv->length = sizeof(tlv->id) + datalen;
+		pdulen = rsp->header.messageLength + sizeof(*tlv) + datalen;
+		rsp->header.messageLength = pdulen;
+		rsp->tlv_count = 1;
+		err = msg_pre_send(rsp);
+		if (err) {
+			goto out;
+		}
+		err = port_forward(p, rsp, pdulen);
+	}
+out:
+	msg_put(rsp);
+	return respond ? 1 : 0;
+}
+
 static int clock_master_lost(struct clock *c)
 {
 	int i;
@@ -425,6 +466,10 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		return;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
+
+	if (clock_management_response(c, p, mgt->id, msg))
+		return;
+
 	switch (mgt->id) {
 	case USER_DESCRIPTION:
 	case SAVE_IN_NON_VOLATILE_STORAGE:
@@ -433,7 +478,6 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case FAULT_LOG:
 	case FAULT_LOG_RESET:
 	case DEFAULT_DATA_SET:
-	case CURRENT_DATA_SET:
 	case PARENT_DATA_SET:
 	case TIME_PROPERTIES_DATA_SET:
 	case PRIORITY1:
