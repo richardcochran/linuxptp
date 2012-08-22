@@ -37,6 +37,32 @@ static void scaled_ns_h2n(ScaledNs *sns)
 	sns->fractional_nanoseconds = htons(sns->fractional_nanoseconds);
 }
 
+static void mgt_post_recv(struct management_tlv *m)
+{
+	struct currentDS *cds;
+	switch (m->id) {
+	case CURRENT_DATA_SET:
+		cds = (struct currentDS *) m->data;
+		cds->stepsRemoved = ntohs(cds->stepsRemoved);
+		cds->offsetFromMaster = net2host64(cds->offsetFromMaster);
+		cds->meanPathDelay = net2host64(cds->meanPathDelay);
+		break;
+	}
+}
+
+static void mgt_pre_send(struct management_tlv *m)
+{
+	struct currentDS *cds;
+	switch (m->id) {
+	case CURRENT_DATA_SET:
+		cds = (struct currentDS *) m->data;
+		cds->stepsRemoved = htons(cds->stepsRemoved);
+		cds->offsetFromMaster = host2net64(cds->offsetFromMaster);
+		cds->meanPathDelay = host2net64(cds->meanPathDelay);
+		break;
+	}
+}
+
 static void org_post_recv(struct organization_tlv *org)
 {
 	struct follow_up_info_tlv *f;
@@ -87,6 +113,7 @@ void tlv_post_recv(struct TLV *tlv)
 	case TLV_MANAGEMENT:
 		mgt = (struct management_tlv *) tlv;
 		mgt->id = ntohs(mgt->id);
+		mgt_post_recv(mgt);
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:
 		mes = (struct management_error_status *) tlv;
@@ -125,6 +152,7 @@ void tlv_pre_send(struct TLV *tlv)
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
 		mgt = (struct management_tlv *) tlv;
+		mgt_pre_send(mgt);
 		mgt->id = htons(mgt->id);
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:

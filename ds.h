@@ -51,7 +51,7 @@ struct currentDS {
 	UInteger16   stepsRemoved;
 	TimeInterval offsetFromMaster;
 	TimeInterval meanPathDelay;
-};
+} PACKED;
 
 struct parentDS {
 	struct PortIdentity  parentPortIdentity;
