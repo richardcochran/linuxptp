@@ -43,6 +43,7 @@ static struct PortIdentity port_identity;
 static struct transport *transport;
 static struct fdarray fdarray;
 
+static void do_get_action(int action, int index);
 static void not_supported(int action, int index);
 static void null_management(int action, int index);
 
@@ -61,7 +62,7 @@ struct management_id idtab[] = {
 	{ "FAULT_LOG", FAULT_LOG, not_supported },
 	{ "FAULT_LOG_RESET", FAULT_LOG_RESET, not_supported },
 	{ "DEFAULT_DATA_SET", DEFAULT_DATA_SET, not_supported },
-	{ "CURRENT_DATA_SET", CURRENT_DATA_SET, not_supported },
+	{ "CURRENT_DATA_SET", CURRENT_DATA_SET, do_get_action },
 	{ "PARENT_DATA_SET", PARENT_DATA_SET, not_supported },
 	{ "TIME_PROPERTIES_DATA_SET", TIME_PROPERTIES_DATA_SET, not_supported },
 	{ "PRIORITY1", PRIORITY1, not_supported },
@@ -206,6 +207,14 @@ static void get_action(int id)
 	msg->tlv_count = 1;
 	pmc_send(msg, pdulen);
 	msg_put(msg);
+}
+
+static void do_get_action(int action, int index)
+{
+	if (action == GET)
+		get_action(idtab[index].code);
+	else
+		fprintf(stderr, "%s only allows GET\n", idtab[index].name);
 }
 
 static void not_supported(int action, int index)
