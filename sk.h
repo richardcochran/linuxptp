@@ -33,7 +33,8 @@ int sk_interface_index(int fd, char *device);
 /**
  * Obtain the PHC device index of a network interface.
  * @param name	    The name of the interface
- * @return index    The phc index associated with this iface
+ * @return index    The non-negative phc index associated with this iface.
+ *                  On error a negative integer is returned.
  */
 int sk_interface_phc(char *name, int *index);
 

@@ -119,7 +119,7 @@ int sk_interface_phc(char *name, int *index)
 	close(fd);
 	*index = info.phc_index;
 
-	return 0;
+	return info.phc_index < 0 ? -1 : 0;
 #else
 	return -1;
 #endif
