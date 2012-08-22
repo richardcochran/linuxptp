@@ -159,10 +159,14 @@ static char *action_string[] = {
 	"ACKNOWLEDGE",
 };
 
+#define IFMT "\n\t\t"
+
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
 	int action;
 	struct TLV *tlv;
+	struct management_tlv *mgt;
+	struct currentDS *cds;
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
 	}
@@ -181,8 +185,21 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		fprintf(fp, "MANAGMENT ");
 	} else if (tlv->type == TLV_MANAGEMENT_ERROR_STATUS) {
 		fprintf(fp, "MANAGMENT_ERROR_STATUS ");
+		goto out;
 	} else {
 		fprintf(fp, "unknown-tlv ");
+	}
+	mgt = (struct management_tlv *) msg->management.suffix;
+	switch (mgt->id) {
+	case CURRENT_DATA_SET:
+		cds = (struct currentDS *) mgt->data;
+		fprintf(fp, "CURRENT_DATA_SET "
+			IFMT "stepsRemoved     %hd "
+			IFMT "offsetFromMaster %.1f "
+			IFMT "meanPathDelay    %.1f ",
+			cds->stepsRemoved, cds->offsetFromMaster / 65536.0,
+			cds->meanPathDelay / 65536.0);
+		break;
 	}
 out:
 	fprintf(fp, "\n");
