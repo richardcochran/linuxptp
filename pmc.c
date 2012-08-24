@@ -309,7 +309,8 @@ static void usage(char *progname)
 		" Network Transport\n\n"
 		" -2        IEEE 802.3\n"
 		" -4        UDP IPV4 (default)\n"
-		" -6        UDP IPV6\n\n"
+		" -6        UDP IPV6\n"
+		" -u        UDS local\n\n"
 		" Other Options\n\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
@@ -330,7 +331,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246hi:"))) {
+	while (EOF != (c = getopt(argc, argv, "246uhi:"))) {
 		switch (c) {
 		case '2':
 			transport_type = TRANS_IEEE_802_3;
@@ -340,6 +341,9 @@ int main(int argc, char *argv[])
 			break;
 		case '6':
 			transport_type = TRANS_UDP_IPV6;
+			break;
+		case 'u':
+			transport_type = TRANS_UDS;
 			break;
 		case 'i':
 			iface_name = optarg;
@@ -356,7 +360,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (generate_clock_identity(&port_identity.clockIdentity, iface_name)) {
+	if (transport_type != TRANS_UDS &&
+	    generate_clock_identity(&port_identity.clockIdentity, iface_name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");
 		return -1;
 	}
