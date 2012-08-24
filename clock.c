@@ -33,8 +33,10 @@
 #include "servo.h"
 #include "print.h"
 #include "tlv.h"
+#include "uds.h"
 #include "util.h"
 
+#define CLK_N_PORTS (MAX_PORTS + 1) /* plus one for the UDS interface */
 #define FAULT_RESET_SECONDS 15
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define MAVE_LENGTH 10
@@ -58,11 +60,11 @@ struct clock {
 	struct timePropertiesDS tds;
 	struct ClockIdentity ptl[PATH_TRACE_MAX];
 	struct foreign_clock *best;
-	struct port *port[MAX_PORTS];
-	struct pollfd pollfd[MAX_PORTS*N_CLOCK_PFD];
-	int fault_fd[MAX_PORTS];
+	struct port *port[CLK_N_PORTS];
+	struct pollfd pollfd[CLK_N_PORTS*N_CLOCK_PFD];
+	int fault_fd[CLK_N_PORTS];
 	time_t fault_timeout;
-	int nports;
+	int nports; /* does not include the UDS port */
 	tmv_t master_offset;
 	tmv_t path_delay;
 	struct mave *avg_delay;
@@ -89,6 +91,7 @@ static void clock_destroy(struct clock *c)
 		port_close(c->port[i]);
 		close(c->fault_fd[i]);
 	}
+	port_close(c->port[i]); /*uds*/
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
 	}
@@ -277,7 +280,7 @@ static void clock_update_slave(struct clock *c)
 	c->tds.timeSource              = msg->announce.timeSource;
 }
 
-static int forwarding(struct port *p)
+static int forwarding(struct clock *c, struct port *p)
 {
 	enum port_state ps = port_state(p);
 	switch (ps) {
@@ -289,6 +292,9 @@ static int forwarding(struct port *p)
 		return 1;
 	default:
 		break;
+	}
+	if (p == c->port[c->nports]) { /*uds*/
+		return 1;
 	}
 	return 0;
 }
@@ -306,6 +312,11 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	int i, max_adj, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	char phc[32];
+	struct interface udsif;
+
+	memset(&udsif, 0, sizeof(udsif));
+	snprintf(udsif.name, sizeof(udsif.name), UDS_PATH);
+	udsif.transport = TRANS_UDS;
 
 	srandom(time(NULL));
 
@@ -372,10 +383,21 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].events = POLLIN|POLLPRI;
 	}
 
+	/*
+	 * One extra port is for the UDS interface.
+	 */
+	c->port[i] = port_open(phc_index, timestamping, 0xffff, &udsif, c);
+	if (!c->port[i]) {
+		pr_err("failed to open the UDS port");
+		return NULL;
+	}
+
 	c->dds.numberPorts = c->nports = count;
 
 	for (i = 0; i < c->nports; i++)
 		port_dispatch(c->port[i], EV_INITIALIZE, 0);
+
+	port_dispatch(c->port[i], EV_INITIALIZE, 0); /*uds*/
 
 	return c;
 }
@@ -421,7 +443,7 @@ struct ClockIdentity clock_identity(struct clock *c)
 void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 {
 	int i, j, k;
-	for (i = 0; i < c->nports; i++) {
+	for (i = 0; i < c->nports + 1; i++) {
 		if (p == c->port[i])
 			break;
 	}
@@ -443,13 +465,13 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	};
 
 	/* Forward this message out all eligible ports. */
-	if (forwarding(p) && msg->management.boundaryHops) {
+	if (forwarding(c, p) && msg->management.boundaryHops) {
 		pdulen = msg->header.messageLength;
 		msg->management.boundaryHops--;
 		msg_pre_send(msg);
-		for (i = 0; i < c->nports; i++) {
+		for (i = 0; i < c->nports + 1; i++) {
 			fwd = c->port[i];
-			if (fwd != p && forwarding(fwd) &&
+			if (fwd != p && forwarding(c, fwd) &&
 			    port_forward(fwd, msg, pdulen))
 				pr_err("port %d: management forward failed", i);
 		}
@@ -569,6 +591,14 @@ int clock_poll(struct clock *c)
 		}
 	}
 
+	/* Check the UDS port. */
+	for (j = 0; j < N_POLLFD; j++) {
+		k = N_CLOCK_PFD * i + j;
+		if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
+			event = port_event(c->port[i], j);
+		}
+	}
+
 	if (lost && clock_master_lost(c))
 		clock_update_grandmaster(c);
 	if (sde)
@@ -627,7 +657,7 @@ void clock_peer_delay(struct clock *c, tmv_t ppd)
 void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
 {
 	int i, j, k;
-	for (i = 0; i < c->nports; i++) {
+	for (i = 0; i < c->nports + 1; i++) {
 		if (p == c->port[i])
 			break;
 	}
