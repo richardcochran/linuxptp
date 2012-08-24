@@ -31,6 +31,7 @@ enum transport_type {
 	TRANS_DEVICENET,
 	TRANS_CONTROLNET,
 	TRANS_PROFINET,
+	TRANS_UDS,
 };
 
 enum timestamp_type {

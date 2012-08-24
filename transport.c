@@ -22,6 +22,7 @@
 #include "raw.h"
 #include "udp.h"
 #include "udp6.h"
+#include "uds.h"
 
 int transport_close(struct transport *t, struct fdarray *fda)
 {
@@ -65,6 +66,8 @@ struct transport *transport_create(enum transport_type type)
 	case TRANS_CONTROLNET:
 	case TRANS_PROFINET:
 		break;
+	case TRANS_UDS:
+		return uds_transport_create();
 	}
 	return NULL;
 }
