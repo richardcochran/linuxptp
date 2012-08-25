@@ -326,7 +326,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *iface_name = NULL, *progname;
-	int c, cnt, length;
+	int c, cnt, length, tmo = -1;
 	char line[1024];
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	struct ptp_message *msg;
@@ -404,7 +404,7 @@ int main(int argc, char *argv[])
 	print_set_verbose(1);
 
 	while (1) {
-		cnt = poll(pollfd, N_FD, -1);
+		cnt = poll(pollfd, N_FD, tmo);
 		if (cnt < 0) {
 			if (EINTR == errno) {
 				continue;
@@ -413,7 +413,17 @@ int main(int argc, char *argv[])
 				return -1;
 			}
 		} else if (!cnt) {
-			continue;
+			break;
+		}
+		if (pollfd[0].revents & POLLHUP) {
+			if (tmo == -1) {
+				/* Wait a bit longer for outstanding replies. */
+				tmo = 1000;
+				pollfd[0].fd = -1;
+				pollfd[0].events = 0;
+			} else {
+				break;
+			}
 		}
 		if (pollfd[0].revents & (POLLIN|POLLPRI)) {
 			if (!fgets(line, sizeof(line), stdin)) {
