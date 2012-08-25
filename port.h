@@ -91,6 +91,13 @@ enum fsm_event port_event(struct port *port, int fd_index);
 int port_forward(struct port *p, struct ptp_message *msg, int msglen);
 
 /**
+ * Obtain a port's identity.
+ * @param p        A pointer previously obtained via port_open().
+ * @return         The port identity of 'p'.
+ */
+struct PortIdentity port_identity(struct port *p);
+
+/**
  * Manage a port according to a given message.
  * @param p        A pointer previously obtained via port_open().
  * @param ingress  The port on which 'msg' was received.

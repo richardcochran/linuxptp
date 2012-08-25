@@ -1445,6 +1445,11 @@ int port_forward(struct port *p, struct ptp_message *msg, int msglen)
 	return cnt <= 0 ? -1 : 0;
 }
 
+struct PortIdentity port_identity(struct port *p)
+{
+	return p->portIdentity;
+}
+
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 {
 	struct management_tlv *mgt;
