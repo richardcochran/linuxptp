@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -312,9 +313,12 @@ static void usage(char *progname)
 		" -6        UDP IPV6\n"
 		" -u        UDS local\n\n"
 		" Other Options\n\n"
+		" -b [num]  boundary hops, default 1\n"
+		" -d [num]  domain number, default 0\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
 		"           for network and '/tmp/pmc' for UDS.\n"
+		" -t [hex]  transport specific field, default 0x0\n"
 		"\n",
 		progname);
 }
@@ -332,7 +336,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246uhi:"))) {
+	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:t:"))) {
 		switch (c) {
 		case '2':
 			transport_type = TRANS_IEEE_802_3;
@@ -346,8 +350,18 @@ int main(int argc, char *argv[])
 		case 'u':
 			transport_type = TRANS_UDS;
 			break;
+		case 'b':
+			boundary_hops = atoi(optarg);
+			break;
+		case 'd':
+			domain_number = atoi(optarg);
+			break;
 		case 'i':
 			iface_name = optarg;
+			break;
+		case 't':
+			if (1 == sscanf(optarg, "%x", &c))
+				transport_specific = c << 4;
 			break;
 		case 'h':
 			usage(progname);
