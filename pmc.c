@@ -314,13 +314,14 @@ static void usage(char *progname)
 		" Other Options\n\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
+		"           for network and '/tmp/pmc' for UDS.\n"
 		"\n",
 		progname);
 }
 
 int main(int argc, char *argv[])
 {
-	char *iface_name = "eth0", *progname;
+	char *iface_name = NULL, *progname;
 	int c, cnt, length;
 	char line[1024];
 	enum transport_type transport_type = TRANS_UDP_IPV4;
@@ -360,6 +361,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!iface_name) {
+		iface_name = transport_type == TRANS_UDS ? "/tmp/pmc" : "eth0";
+	}
 	if (transport_type != TRANS_UDS &&
 	    generate_clock_identity(&port_identity.clockIdentity, iface_name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");
