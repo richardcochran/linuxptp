@@ -26,13 +26,12 @@
 #include "config.h"
 #include "pi.h"
 #include "print.h"
+#include "raw.h"
 #include "sk.h"
 #include "transport.h"
 #include "util.h"
 
 int assume_two_step;
-extern unsigned char ptp_dst_mac[]; /*see raw.c*/
-extern unsigned char p2p_dst_mac[]; /*see raw.c*/
 
 static int running = 1;
 
