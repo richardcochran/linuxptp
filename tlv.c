@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#include "port.h"
 #include "tlv.h"
 
 uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ds.h"
 #include "msg.h"
 #include "print.h"
 #include "tlv.h"

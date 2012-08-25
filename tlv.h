@@ -22,7 +22,6 @@
 
 #include "ddt.h"
 #include "msg.h"
-#include "port.h"
 
 /* TLV types */
 #define TLV_MANAGEMENT					0x0001
