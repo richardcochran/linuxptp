@@ -21,6 +21,18 @@
 
 #include "servo.h"
 
+/**
+ * When set to a non-zero value, this variable determines the
+ * proportional constant for the PI controller.
+ */
+extern double configured_pi_kp;
+
+/**
+ * When set to a non-zero value, this variable determines the
+ * integral constant for the PI controller.
+ */
+extern double configured_pi_ki;
+
 struct servo *pi_servo_create(int max_ppb, int sw_ts);
 
 #endif

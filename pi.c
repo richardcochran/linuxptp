@@ -29,8 +29,8 @@
 #define SWTS_KI 0.001
 
 /* These two take their values from the configuration file. (see ptp4l.c) */
-extern double configured_pi_kp;
-extern double configured_pi_ki;
+double configured_pi_kp;
+double configured_pi_ki;
 
 struct pi_servo {
 	struct servo servo;

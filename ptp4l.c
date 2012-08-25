@@ -24,13 +24,13 @@
 
 #include "clock.h"
 #include "config.h"
+#include "pi.h"
 #include "print.h"
 #include "sk.h"
 #include "transport.h"
 #include "util.h"
 
 int assume_two_step;
-double configured_pi_kp, configured_pi_ki; /*see pi.c*/
 extern unsigned char ptp_dst_mac[]; /*see raw.c*/
 extern unsigned char p2p_dst_mac[]; /*see raw.c*/
 
