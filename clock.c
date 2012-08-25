@@ -121,10 +121,8 @@ static int clock_management_response(struct clock *c, struct port *p, int id,
 	int datalen = 0, err, pdulen, respond = 0;
 	struct management_tlv *tlv;
 	struct ptp_message *rsp;
-	struct PortIdentity pid;
+	struct PortIdentity pid = port_identity(p);
 
-	pid.clockIdentity = clock_identity(c);
-	pid.portNumber = 0;
 	rsp = port_management_reply(pid, p, req);
 	if (!rsp) {
 		return 0;
@@ -522,8 +520,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case ALTERNATE_TIME_OFFSET_PROPERTIES:
 	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case PRIMARY_DOMAIN:
-		pid.clockIdentity = clock_identity(c);
-		pid.portNumber = 0;
+		pid = port_identity(p);
 		if (port_managment_error(pid, p, msg, NOT_SUPPORTED))
 			pr_err("failed to send management error status");
 		break;
