@@ -384,7 +384,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	/*
 	 * One extra port is for the UDS interface.
 	 */
-	c->port[i] = port_open(phc_index, timestamping, 0xffff, &udsif, c);
+	c->port[i] = port_open(phc_index, timestamping, 0, &udsif, c);
 	if (!c->port[i]) {
 		pr_err("failed to open the UDS port");
 		return NULL;
