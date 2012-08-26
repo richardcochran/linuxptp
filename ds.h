@@ -66,7 +66,7 @@ struct parentDS {
 	unsigned int path_length;
 };
 
-#define CURRENT_UTC_OFFSET  33
+#define CURRENT_UTC_OFFSET  35 /* 1 Jul 2012 */
 #define INTERNAL_OSCILLATOR 0xA0
 
 struct timePropertiesDS {
