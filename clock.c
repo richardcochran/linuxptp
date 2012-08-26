@@ -276,6 +276,12 @@ static void clock_update_slave(struct clock *c)
 	c->tds.frequencyTraceable      = field_is_set(msg, 1, FREQ_TRACEABLE);
 	c->tds.ptpTimescale            = field_is_set(msg, 1, PTP_TIMESCALE);
 	c->tds.timeSource              = msg->announce.timeSource;
+	if (!c->tds.ptpTimescale) {
+		pr_warning("foreign master not using PTP timescale");
+	}
+	if (c->tds.currentUtcOffset < CURRENT_UTC_OFFSET) {
+		pr_warning("running in a temporal vortex");
+	}
 }
 
 static int forwarding(struct clock *c, struct port *p)
