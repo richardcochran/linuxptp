@@ -65,6 +65,7 @@ struct clock {
 	int fault_fd[CLK_N_PORTS];
 	time_t fault_timeout;
 	int nports; /* does not include the UDS port */
+	int utc_timescale;
 	tmv_t master_offset;
 	tmv_t path_delay;
 	struct mave *avg_delay;
@@ -255,7 +256,7 @@ static void clock_update_grandmaster(struct clock *c)
 	c->tds.leap59                           = FALSE;
 	c->tds.timeTraceable                    = FALSE;
 	c->tds.frequencyTraceable               = FALSE;
-	c->tds.ptpTimescale                     = TRUE;
+	c->tds.ptpTimescale                     = c->utc_timescale ? FALSE : TRUE;
 	c->tds.timeSource                       = INTERNAL_OSCILLATOR;
 }
 
@@ -282,6 +283,25 @@ static void clock_update_slave(struct clock *c)
 	if (c->tds.currentUtcOffset < CURRENT_UTC_OFFSET) {
 		pr_warning("running in a temporal vortex");
 	}
+}
+
+static void clock_utc_correct(struct clock *c)
+{
+	struct timespec offset;
+	if (!c->utc_timescale)
+		return;
+	if (!c->tds.ptpTimescale)
+		return;
+	if (c->tds.currentUtcOffsetValid && c->tds.timeTraceable) {
+		offset.tv_sec = c->tds.currentUtcOffset;
+	} else if (c->tds.currentUtcOffset > CURRENT_UTC_OFFSET) {
+		offset.tv_sec = c->tds.currentUtcOffset;
+	} else {
+		offset.tv_sec = CURRENT_UTC_OFFSET;
+	}
+	offset.tv_nsec = 0;
+	/* Local clock is UTC, but master is TAI. */
+	c->master_offset = tmv_add(c->master_offset, timespec_to_tmv(offset));
 }
 
 static int forwarding(struct clock *c, struct port *p)
@@ -341,6 +361,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		}
 	} else {
 		c->clkid = CLOCK_REALTIME;
+		c->utc_timescale = 1;
 		max_adj = 512000;
 	}
 
@@ -705,6 +726,8 @@ enum servo_state clock_synchronize(struct clock *c,
 	 */
 	c->master_offset = tmv_sub(ingress,
 		tmv_add(origin, tmv_add(c->path_delay, tmv_add(c->c1, c->c2))));
+
+	clock_utc_correct(c);
 
 	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
 
