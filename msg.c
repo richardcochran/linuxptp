@@ -23,6 +23,7 @@
 
 #include <asm/byteorder.h>
 
+#include "contain.h"
 #include "msg.h"
 #include "print.h"
 #include "tlv.h"
@@ -228,6 +229,17 @@ struct ptp_message *msg_allocate(void)
 	}
 
 	return m;
+}
+
+void msg_cleanup(void)
+{
+	struct message_storage *s;
+	struct ptp_message *m;
+	while ((m = TAILQ_FIRST(&msg_pool)) != NULL) {
+		TAILQ_REMOVE(&msg_pool, m, list);
+		s = container_of(m, struct message_storage, msg);
+		free(s);
+	}
 }
 
 void msg_get(struct ptp_message *m)

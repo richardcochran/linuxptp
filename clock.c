@@ -99,6 +99,7 @@ static void clock_destroy(struct clock *c)
 	servo_destroy(c->servo);
 	mave_destroy(c->avg_delay);
 	memset(c, 0, sizeof(*c));
+	msg_cleanup();
 }
 
 static int clock_fault_timeout(struct clock *c, int index, int set)

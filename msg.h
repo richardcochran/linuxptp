@@ -261,6 +261,11 @@ static inline int msg_type(struct ptp_message *m)
 struct ptp_message *msg_allocate(void);
 
 /**
+ * Release all of the memory in the message cache.
+ */
+void msg_cleanup(void);
+
+/**
  * Obtain a reference to a message, increasing its reference count by one.
  * @param m A message obtained using @ref msg_allocate().
  */
