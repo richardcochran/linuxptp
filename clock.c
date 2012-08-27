@@ -85,7 +85,7 @@ static int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
 	return 0 == memcmp(a, b, sizeof(*a));
 }
 
-static void clock_destroy(struct clock *c)
+void clock_destroy(struct clock *c)
 {
 	int i;
 	for (i = 0; i < c->nports; i++) {

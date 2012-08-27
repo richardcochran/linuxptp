@@ -78,6 +78,12 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 struct dataset *clock_default_ds(struct clock *c);
 
 /**
+ * Free all of the resources associated with a clock.
+ * @param c  The clock instance.
+ */
+void clock_destroy(struct clock *c);
+
+/**
  * Obtain the domain number from a clock's default data set.
  * @param c  The clock instance.
  * @return   The PTP domain number.
