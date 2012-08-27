@@ -77,6 +77,7 @@ static int uds_open(struct transport *t, char *name, struct fdarray *fda,
 	uds->len = sizeof(sa);
 
 	chmod(name, UDS_FILEMODE);
+	fda->fd[FD_EVENT] = -1;
 	fda->fd[FD_GENERAL] = fd;
 	return 0;
 }
