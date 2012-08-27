@@ -227,6 +227,10 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	print_set_verbose(cfg_settings.verbose);
+	print_set_syslog(cfg_settings.use_syslog);
+	print_set_level(cfg_settings.print_level);
+
 	for (i = 0; i < nports; i++) {
 		if (config_create_interface(ports[i], &cfg_settings) < 0) {
 			fprintf(stderr, "too many interfaces\n");
@@ -262,10 +266,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "failed to generate a clock identity\n");
 		return -1;
 	}
-
-	print_set_verbose(cfg_settings.verbose);
-	print_set_syslog(cfg_settings.use_syslog);
-	print_set_level(cfg_settings.print_level);
 
 	clock = clock_create(phc_index, iface, cfg_settings.nports,
 			     *timestamping, ds);
