@@ -279,5 +279,6 @@ int main(int argc, char *argv[])
 			break;
 	}
 
+	clock_destroy(clock);
 	return 0;
 }
