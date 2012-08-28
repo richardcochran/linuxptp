@@ -277,10 +277,29 @@ static int parse_id(char *s)
 	return index;
 }
 
+static void print_help(FILE *fp)
+{
+	int i;
+	fprintf(fp, "\n");
+	for (i = 0; i < ARRAY_SIZE(idtab); i++) {
+		if (idtab[i].func != not_supported)
+			fprintf(fp, "\t[action] %s\n", idtab[i].name);
+	}
+	fprintf(fp, "\n");
+	fprintf(fp, "\tThe [action] can be GET, SET, CMD, or COMMAND\n");
+	fprintf(fp, "\tCommands are case insensitive and may be abbreviated.\n");
+	fprintf(fp, "\n");
+}
+
 static int do_command(char *str)
 {
 	int action, id;
 	char action_str[10+1] = {0}, id_str[64+1] = {0};
+
+	if (0 == strncasecmp(str, "HELP", strlen(str))) {
+		print_help(stdout);
+		return 0;
+	}
 
 	if (2 != sscanf(str, " %10s %64s", action_str, id_str))
 		return -1;
