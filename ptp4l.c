@@ -195,7 +195,6 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			ds->slaveOnly = TRUE;
-			ds->clockQuality.clockClass = 255;
 			*cfg_ignore |= CFG_IGNORE_SLAVEONLY;
 			break;
 		case 'l':
@@ -225,6 +224,9 @@ int main(int argc, char *argv[])
 	if (config && config_read(config, &cfg_settings)) {
 		fprintf(stderr, "failed to read configuration file\n");
 		return -1;
+	}
+	if (ds->slaveOnly) {
+		ds->clockQuality.clockClass = 255;
 	}
 
 	print_set_verbose(cfg_settings.verbose);
