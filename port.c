@@ -719,6 +719,7 @@ static void port_disable(struct port *p)
 		p->peer_delay_fup = NULL;
 	}
 
+	p->best = NULL;
 	free_foreign_masters(p);
 	clock_remove_fda(p->clock, p, p->fda);
 	transport_close(p->trp, &p->fda);
