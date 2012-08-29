@@ -41,6 +41,8 @@
 #define max_ppb  512000
 #define min_ppb -512000
 
+#define PHC_READINGS 5
+
 static clockid_t clock_open(char *device)
 {
 	int fd = open(device, O_RDWR);
@@ -87,25 +89,34 @@ static void clock_step(clockid_t clkid, int64_t ns)
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int rdelay, int64_t *offset, uint64_t *ts)
 {
-	struct timespec tsrc, tdst;
+	struct timespec tdst1, tdst2, tsrc;
+	int i;
+	int64_t interval, best_interval = INT64_MAX;
 
 	if (clkid == CLOCK_INVALID) {
 		return 0;
 	}
 
-	if (clock_gettime(clkid, &tsrc)) {
-		perror("clock_gettime");
-		return 0;
-	}
+	/* Pick the quickest clkid reading. */
+	for (i = 0; i < PHC_READINGS; i++) {
+		if (clock_gettime(sysclk, &tdst1) ||
+				clock_gettime(clkid, &tsrc) ||
+				clock_gettime(sysclk, &tdst2)) {
+			perror("clock_gettime");
+			return 0;
+		}
 
-	if (clock_gettime(sysclk, &tdst)) {
-		perror("clock_gettime");
-		return 0;
-	}
+		interval = (tdst2.tv_sec - tdst1.tv_sec) * NS_PER_SEC +
+			tdst2.tv_nsec - tdst1.tv_nsec;
 
-	*offset = tdst.tv_sec * NS_PER_SEC - tsrc.tv_sec * NS_PER_SEC +
-		tdst.tv_nsec - tsrc.tv_nsec - rdelay;
-	*ts = tdst.tv_sec * NS_PER_SEC + tdst.tv_nsec;
+		if (best_interval > interval) {
+			best_interval = interval;
+			*offset = (tdst1.tv_sec - tsrc.tv_sec) * NS_PER_SEC +
+				tdst1.tv_nsec - tsrc.tv_nsec +
+				interval / 2 - rdelay;
+			*ts = tdst2.tv_sec * NS_PER_SEC + tdst2.tv_nsec;
+		}
+	}
 
 	return 1;
 }
