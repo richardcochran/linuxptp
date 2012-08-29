@@ -85,33 +85,36 @@ static void clock_step(clockid_t clkid, int64_t ns)
 		fprintf(stderr, "failed to step clock: %m\n");
 }
 
-static int64_t read_phc(clockid_t clkid, clockid_t sysclk, int rdelay)
+static int read_phc(clockid_t clkid, clockid_t sysclk, int rdelay, int64_t *offset, uint64_t *ts)
 {
-	int64_t offset = 0;
+	struct timespec tsrc, tdst;
 
 	if (clkid == CLOCK_INVALID) {
 		return 0;
 	}
-	if (rdelay) {
-		struct timespec tsrc, tdst;
 
-		if (clock_gettime(clkid, &tsrc))
-			perror("clock_gettime");
-
-		if (clock_gettime(sysclk, &tdst))
-			perror("clock_gettime");
-
-		offset = tdst.tv_sec * NS_PER_SEC - tsrc.tv_sec * NS_PER_SEC +
-			tdst.tv_nsec - tsrc.tv_nsec - rdelay;
+	if (clock_gettime(clkid, &tsrc)) {
+		perror("clock_gettime");
+		return 0;
 	}
-	return offset;
+
+	if (clock_gettime(sysclk, &tdst)) {
+		perror("clock_gettime");
+		return 0;
+	}
+
+	*offset = tdst.tv_sec * NS_PER_SEC - tsrc.tv_sec * NS_PER_SEC +
+		tdst.tv_nsec - tsrc.tv_nsec - rdelay;
+	*ts = tdst.tv_sec * NS_PER_SEC + tdst.tv_nsec;
+
+	return 1;
 }
 
 struct servo {
 	uint64_t last_ts;
 	double drift;
 	enum {
-		PPS_0, PPS_1, PPS_2, PPS_3, PPS_N
+		SAMPLE_0, SAMPLE_1, SAMPLE_2, SAMPLE_3, SAMPLE_N
 	} state;
 };
 
@@ -119,42 +122,34 @@ static struct servo servo;
 
 static void do_servo(struct servo *srv,
 		     clockid_t src, clockid_t dst,
-		     uint64_t ts, double kp, double ki, int rdelay)
+		     int64_t offset, uint64_t ts, double kp, double ki)
 {
 	double ki_term, ppb;
-	int64_t delta, offset, phc;
+	int64_t delta;
 
-	offset = ts % NS_PER_SEC;
-	if (offset > NS_PER_SEC / 2) {
-		offset -= NS_PER_SEC;
-	}
-
-	phc = read_phc(src, dst, rdelay);
-
-	printf("s%d %lld.%09llu offset %9lld phc %9lld drift %.2f\n",
-	       srv->state, ts / NS_PER_SEC, ts % NS_PER_SEC,
-	       offset, phc, srv->drift);
+	printf("s%d %lld.%09llu drift %.2f\n",
+		srv->state, ts / NS_PER_SEC, ts % NS_PER_SEC, srv->drift);
 
 	switch (srv->state) {
-	case PPS_0:
+	case SAMPLE_0:
 		clock_ppb(dst, 0.0);
-		srv->state = PPS_1;
+		srv->state = SAMPLE_1;
 		break;
-	case PPS_1:
-		srv->state = PPS_2;
+	case SAMPLE_1:
+		srv->state = SAMPLE_2;
 		break;
-	case PPS_2:
+	case SAMPLE_2:
 		delta = ts - srv->last_ts;
 		offset = delta - NS_PER_SEC;
 		srv->drift = offset;
 		clock_ppb(dst, -offset);
-		srv->state = PPS_3;
+		srv->state = SAMPLE_3;
 		break;
-	case PPS_3:
+	case SAMPLE_3:
 		clock_step(dst, -offset);
-		srv->state = PPS_N;
+		srv->state = SAMPLE_N;
 		break;
-	case PPS_N:
+	case SAMPLE_N:
 		ki_term = ki * offset;
 		ppb = kp * offset + srv->drift + ki_term;
 		if (ppb < min_ppb) {
@@ -171,10 +166,10 @@ static void do_servo(struct servo *srv,
 	srv->last_ts = ts;
 }
 
-static uint64_t read_pps(int fd)
+static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 {
 	struct pps_fdata pfd;
-	uint64_t ts;
+
 	pfd.timeout.sec = 10;
 	pfd.timeout.nsec = 0;
 	pfd.timeout.flags = ~PPS_TIME_INVALID;
@@ -182,9 +177,15 @@ static uint64_t read_pps(int fd)
 		perror("ioctl PPS_FETCH");
 		return 0;
 	}
-	ts = pfd.info.assert_tu.sec * NS_PER_SEC;
-	ts += pfd.info.assert_tu.nsec;
-	return ts;
+
+	*ts = pfd.info.assert_tu.sec * NS_PER_SEC;
+	*ts += pfd.info.assert_tu.nsec;
+
+	*offset = *ts % NS_PER_SEC;
+	if (*offset > NS_PER_SEC / 2)
+		*offset -= NS_PER_SEC;
+
+	return 1;
 }
 
 static void usage(char *progname)
@@ -208,8 +209,9 @@ int main(int argc, char *argv[])
 	double kp = KP, ki = KI;
 	char *device = NULL, *progname;
 	clockid_t src = CLOCK_INVALID, dst = CLOCK_REALTIME;
-	uint64_t ts;
-	int c, fd, rdelay = 0;
+	uint64_t pps_ts, phc_ts;
+	int64_t pps_offset, phc_offset;
+	int c, fd = 0, rdelay = 0;
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
@@ -243,14 +245,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!device || dst == CLOCK_INVALID) {
+	if (!(device || src != CLOCK_INVALID) || dst == CLOCK_INVALID) {
 		usage(progname);
 		return -1;
 	}
-	fd = open(device, O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "cannot open %s: %m\n", device);
-		return -1;
+	if (device) {
+		fd = open(device, O_RDONLY);
+		if (fd < 0) {
+			fprintf(stderr, "cannot open %s: %m\n", device);
+			return -1;
+		}
 	}
 	if (src != CLOCK_INVALID) {
 		struct timespec now;
@@ -260,8 +264,21 @@ int main(int argc, char *argv[])
 			perror("clock_settime");
 	}
 	while (1) {
-		ts = read_pps(fd);
-		do_servo(&servo, src, dst, ts, kp, ki, rdelay);
+		if (fd > 0) {
+			if (!read_pps(fd, &pps_offset, &pps_ts))
+				continue;
+			printf("pps %9lld ", pps_offset);
+		} else
+			usleep(1000000);
+
+		if (!read_phc(src, dst, rdelay, &phc_offset, &phc_ts))
+			continue;
+		printf("phc %9lld ", phc_offset);
+
+		if (fd > 0)
+			do_servo(&servo, src, dst, pps_offset, pps_ts, kp, ki);
+		else
+			do_servo(&servo, src, dst, phc_offset, phc_ts, kp, ki);
 	}
 	return 0;
 }
