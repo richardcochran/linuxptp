@@ -240,3 +240,15 @@
 
   - git://github.com/richardcochran/ptpd-phc.git
   - https://github.com/richardcochran/ptpd-phc
+
+* Thanks
+
+  Thanks to Intel Corporation for donating three NICs, the 82574,
+  82580, and the 82599.
+
+  - http://www.intel.com
+  - http://e1000.sourceforge.net
+
+  For testing I use an OTMC 100 grandmaster clock donated by OMICRON Lab.
+
+  - http://www.omicron-lab.com/ptp
