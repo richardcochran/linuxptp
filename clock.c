@@ -173,7 +173,8 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	enum servo_state state = SERVO_UNLOCKED;
 	/*
 	 * We have clock.t1 as the origin time stamp, and clock.t2 as
-	 * the ingress. The time at which the master sent the sync is:
+	 * the ingress. According to the master's clock, the time at
+	 * which the sync arrived is:
 	 *
 	 *    origin = origin_ts + path_delay + correction
 	 *
