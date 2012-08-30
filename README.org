@@ -14,7 +14,7 @@
   GNU General Public License. See the file, COPYING, for details of
   the license terms.
 
-* Goals and Features
+* Features
 
   - Supports hardware and software time stamping via the Linux
     SO_TIMESTAMPING socket option.
@@ -26,6 +26,8 @@
   - Implements Boundary Clock (BC) and Ordinary Clock (OC).
 
   - Transport over UDP/IPv4, UDP/IPv6, and raw Ethernet (Layer 2).
+
+  - Supports IEEE 802.1AS-2011 in the role of end station.
 
   - Modular design allowing painless addition of new transports and
     clock servos.
