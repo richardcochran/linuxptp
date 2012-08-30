@@ -122,7 +122,8 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int rdelay, int64_t *offs
 }
 
 struct servo {
-	uint64_t last_ts;
+	uint64_t saved_ts;
+	int64_t saved_offset;
 	double drift;
 	enum {
 		SAMPLE_0, SAMPLE_1, SAMPLE_2, SAMPLE_3, SAMPLE_N
@@ -136,7 +137,6 @@ static void do_servo(struct servo *srv,
 		     int64_t offset, uint64_t ts, double kp, double ki)
 {
 	double ki_term, ppb;
-	int64_t delta;
 
 	printf("s%d %lld.%09llu drift %.2f\n",
 		srv->state, ts / NS_PER_SEC, ts % NS_PER_SEC, srv->drift);
@@ -144,19 +144,20 @@ static void do_servo(struct servo *srv,
 	switch (srv->state) {
 	case SAMPLE_0:
 		clock_ppb(dst, 0.0);
+		srv->saved_offset = offset;
+		srv->saved_ts = ts;
 		srv->state = SAMPLE_1;
 		break;
 	case SAMPLE_1:
 		srv->state = SAMPLE_2;
 		break;
 	case SAMPLE_2:
-		delta = ts - srv->last_ts;
-		offset = delta - NS_PER_SEC;
-		srv->drift = offset;
-		clock_ppb(dst, -offset);
 		srv->state = SAMPLE_3;
 		break;
 	case SAMPLE_3:
+		srv->drift = (offset - srv->saved_offset) * 1e9 /
+			(ts - srv->saved_ts);
+		clock_ppb(dst, -srv->drift);
 		clock_step(dst, -offset);
 		srv->state = SAMPLE_N;
 		break;
@@ -173,8 +174,6 @@ static void do_servo(struct servo *srv,
 		clock_ppb(dst, -ppb);
 		break;
 	}
-
-	srv->last_ts = ts;
 }
 
 static int read_pps(int fd, int64_t *offset, uint64_t *ts)
