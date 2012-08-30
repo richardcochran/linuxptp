@@ -41,8 +41,6 @@
 #define max_ppb  512000
 #define min_ppb -512000
 
-#define PHC_READINGS 5
-
 static clockid_t clock_open(char *device)
 {
 	int fd = open(device, O_RDWR);
@@ -87,7 +85,7 @@ static void clock_step(clockid_t clkid, int64_t ns)
 		fprintf(stderr, "failed to step clock: %m\n");
 }
 
-static int read_phc(clockid_t clkid, clockid_t sysclk, int rdelay, int64_t *offset, uint64_t *ts)
+static int read_phc(clockid_t clkid, clockid_t sysclk, int rdelay, int readings, int64_t *offset, uint64_t *ts)
 {
 	struct timespec tdst1, tdst2, tsrc;
 	int i;
@@ -98,7 +96,7 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int rdelay, int64_t *offs
 	}
 
 	/* Pick the quickest clkid reading. */
-	for (i = 0; i < PHC_READINGS; i++) {
+	for (i = 0; i < readings; i++) {
 		if (clock_gettime(sysclk, &tdst1) ||
 				clock_gettime(clkid, &tsrc) ||
 				clock_gettime(sysclk, &tdst2)) {
@@ -210,6 +208,8 @@ static void usage(char *progname)
 		" -s [device]  set the time from this PHC device\n"
 		" -P [val]     set proportional constant to 'val'\n"
 		" -I [val]     set integration constant to 'val'\n"
+		" -R [val]     set PHC update rate to 'val' Hz\n"
+		" -N [val]     set number of PHC readings per update\n"
 		"\n",
 		progname);
 }
@@ -221,12 +221,12 @@ int main(int argc, char *argv[])
 	clockid_t src = CLOCK_INVALID, dst = CLOCK_REALTIME;
 	uint64_t pps_ts, phc_ts;
 	int64_t pps_offset, phc_offset;
-	int c, fd = 0, rdelay = 0;
+	int c, fd = 0, rdelay = 0, phc_readings = 5, phc_rate = 1;
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "c:d:hr:s:P:I:"))) {
+	while (EOF != (c = getopt(argc, argv, "c:d:hr:s:P:I:R:N:"))) {
 		switch (c) {
 		case 'c':
 			dst = clock_open(optarg);
@@ -245,6 +245,12 @@ int main(int argc, char *argv[])
 			break;
 		case 'I':
 			ki = atof(optarg);
+			break;
+		case 'R':
+			phc_rate = atoi(optarg);
+			break;
+		case 'N':
+			phc_readings = atoi(optarg);
 			break;
 		case 'h':
 			usage(progname);
@@ -279,9 +285,9 @@ int main(int argc, char *argv[])
 				continue;
 			printf("pps %9lld ", pps_offset);
 		} else
-			usleep(1000000);
+			usleep(1000000 / phc_rate);
 
-		if (!read_phc(src, dst, rdelay, &phc_offset, &phc_ts))
+		if (!read_phc(src, dst, rdelay, phc_readings, &phc_offset, &phc_ts))
 			continue;
 		printf("phc %9lld ", phc_offset);
 
