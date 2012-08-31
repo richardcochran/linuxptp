@@ -38,6 +38,14 @@
 
 #define PORT_MAVE_LENGTH 10
 
+struct nrate_estimator {
+	double ratio;
+	tmv_t origin1;
+	tmv_t ingress1;
+	int max_count;
+	int count;
+};
+
 struct port {
 	char *name;
 	struct clock *clock;
@@ -60,6 +68,7 @@ struct port {
 	tmv_t peer_delay;
 	struct mave *avg_delay;
 	int log_sync_interval;
+	struct nrate_estimator nrate;
 	/* portDS */
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
@@ -366,6 +375,42 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 		return 1;
 	}
 	return 0;
+}
+
+static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
+{
+	tmv_t origin2;
+	struct nrate_estimator *n = &p->nrate;
+
+	if (!n->ingress1) {
+		n->ingress1 = t4;
+		n->origin1 = tmv_add(t3, c);
+		return;
+	}
+	n->count++;
+	if (n->count < n->max_count) {
+		return;
+	}
+	origin2 = tmv_add(t3, c);
+	n->ratio =
+		tmv_dbl(tmv_sub(origin2, n->origin1)) /
+		tmv_dbl(tmv_sub(t4, n->ingress1));
+	n->ingress1 = t4;
+	n->origin1 = origin2;
+	n->count = 0;
+}
+
+static void port_nrate_initialize(struct port *p)
+{
+	int shift = p->pod.freq_est_interval - p->logMinPdelayReqInterval;
+
+	if (shift < 0)
+		shift = 0;
+
+	p->nrate.origin1 = tmv_zero();
+	p->nrate.ingress1 = tmv_zero();
+	p->nrate.max_count = (1 << shift);
+	p->nrate.count = 0;
 }
 
 static int port_set_announce_tmo(struct port *p)
@@ -769,6 +814,8 @@ static int port_initialize(struct port *p)
 	if (port_set_announce_tmo(p))
 		goto no_tmo;
 
+	port_nrate_initialize(p);
+
 	clock_install_fda(p->clock, p, p->fda);
 	return 0;
 
@@ -1131,6 +1178,9 @@ calc:
 	p->peer_delay = mave_accumulate(p->avg_delay, pd);
 
 	pr_debug("pdelay %hu   %10lld %10lld", portnum(p), p->peer_delay, pd);
+
+	if (p->pod.follow_up_info)
+		port_nrate_calculate(p, t3, t4, tmv_add(c1, c2));
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay);
@@ -1610,7 +1660,7 @@ struct port *port_open(int phc_index,
 		free(p);
 		return NULL;
 	}
-
+	p->nrate.ratio = 1.0;
 	return p;
 }
 
