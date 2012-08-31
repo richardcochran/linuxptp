@@ -177,6 +177,7 @@ static int clock_master_lost(struct clock *c)
 
 static enum servo_state clock_no_adjust(struct clock *c)
 {
+	double fui;
 	double ratio;
 	tmv_t origin2;
 	struct freq_estimator *f = &c->fest;
@@ -211,6 +212,17 @@ static enum servo_state clock_no_adjust(struct clock *c)
 			tmv_dbl(tmv_sub(c->t2, f->ingress1));
 		pr_info("master offset %10lld s%d ratio %.9f path delay %10lld",
 			c->master_offset, state, ratio, c->path_delay);
+
+		fui = 1.0 +
+			(c->status.cumulativeScaledRateOffset + 0.0) /
+			(1ULL << 41);
+
+		pr_debug("peer/local    %.9f", c->nrr);
+		pr_debug("fup_info      %.9f", fui);
+		pr_debug("product       %.9f", fui * c->nrr);
+		pr_debug("sum-1         %.9f", fui + c->nrr - 1.0);
+		pr_debug("master/local  %.9f", ratio);
+		pr_debug("diff         %+.9f", ratio - (fui + c->nrr - 1.0));
 	}
 	f->ingress1 = c->t2;
 	f->origin1 = origin2;
