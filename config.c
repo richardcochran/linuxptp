@@ -235,11 +235,9 @@ static void scan_global_line(const char *s, struct config *cfg)
 
 	} else if (1 == sscanf(s, " logging_level %d", &val)) {
 
-		if (!(cfg_ignore & CFG_IGNORE_VERBOSE)) {
-
+		if (!(cfg_ignore & CFG_IGNORE_PRINT_LEVEL)) {
 			if (val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX)
 				cfg->print_level = val;
-
 		}
 
 	} else if (1 == sscanf(s, " verbose %d", &val)) {
