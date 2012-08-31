@@ -287,6 +287,21 @@ static int follow_up_info_append(struct port *p, struct ptp_message *m)
 	return sizeof(*fui);
 }
 
+static struct follow_up_info_tlv *follow_up_info_extract(struct ptp_message *m)
+{
+	struct follow_up_info_tlv *f;
+	f = (struct follow_up_info_tlv *) m->follow_up.suffix;
+
+	if (m->tlv_count != 1 ||
+	    f->type != TLV_ORGANIZATION_EXTENSION ||
+	    f->length != sizeof(*f) - sizeof(f->type) - sizeof(f->length) ||
+	    memcmp(f->id, ieee8021_id, sizeof(ieee8021_id)) ||
+	    f->subtype[0] || f->subtype[1] || f->subtype[2] != 1) {
+		return NULL;
+	}
+	return f;
+}
+
 static void free_foreign_masters(struct port *p)
 {
 	struct foreign_clock *fc;
@@ -1006,6 +1021,14 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 	master = clock_parent_identity(p->clock);
 	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master)))
 		return;
+
+	if (p->pod.follow_up_info) {
+		struct follow_up_info_tlv *fui = follow_up_info_extract(m);
+		if (!fui)
+			return;
+		clock_follow_up_info(p->clock, fui);
+	}
+
 	/*
 	 * Handle out of order packets. The network stack might
 	 * provide the follow up _before_ the sync message. After all,
