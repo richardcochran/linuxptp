@@ -142,8 +142,9 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
  * Provide the estimated peer delay from a slave port.
  * @param c           The clock instance.
  * @param ppd         The peer delay as measured on a slave port.
+ * @param nrr         The neighbor rate ratio as measured on a slave port.
  */
-void clock_peer_delay(struct clock *c, tmv_t ppd);
+void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr);
 
 /**
  * Poll for events and dispatch them.

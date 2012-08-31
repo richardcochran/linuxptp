@@ -70,6 +70,7 @@ struct clock {
 	tmv_t path_delay;
 	struct mave *avg_delay;
 	struct freq_estimator fest;
+	double nrr;
 	tmv_t c1;
 	tmv_t c2;
 	tmv_t t1;
@@ -685,9 +686,10 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
 }
 
-void clock_peer_delay(struct clock *c, tmv_t ppd)
+void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
 {
 	c->path_delay = ppd;
+	c->nrr = nrr;
 }
 
 void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)

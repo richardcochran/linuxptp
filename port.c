@@ -1183,7 +1183,7 @@ calc:
 		port_nrate_calculate(p, t3, t4, tmv_add(c1, c2));
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
-		clock_peer_delay(p->clock, p->peer_delay);
+		clock_peer_delay(p->clock, p->peer_delay, p->nrate.ratio);
 	}
 }
 
