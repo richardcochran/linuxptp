@@ -24,6 +24,7 @@
 #include "ds.h"
 #include "config.h"
 #include "servo.h"
+#include "tlv.h"
 #include "tmv.h"
 #include "transport.h"
 
@@ -89,6 +90,13 @@ void clock_destroy(struct clock *c);
  * @return   The PTP domain number.
  */
 UInteger8 clock_domain_number(struct clock *c);
+
+/**
+ * Provide the follow_up info TLV from a slave port.
+ * @param c  The clock instance.
+ * @param f  Pointer to the TLV.
+ */
+void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f);
 
 /**
  * Obtain a clock's identity from its default data set.

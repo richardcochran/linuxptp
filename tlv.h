@@ -165,6 +165,13 @@ struct follow_up_info_tlv {
 	Integer32     scaledLastGmPhaseChange;
 } PACKED;
 
+struct time_status_np {
+	UInteger32    cumulativeScaledRateOffset;
+	Integer32     scaledLastGmPhaseChange;
+	UInteger16    gmTimeBaseIndicator;
+	ScaledNs      lastGmPhaseChange;
+} PACKED;
+
 /**
  * Converts recognized value sub-fields into host byte order.
  * @param tlv Pointer to a Type Length Value field.

@@ -70,6 +70,7 @@ struct clock {
 	tmv_t path_delay;
 	struct mave *avg_delay;
 	struct freq_estimator fest;
+	struct time_status_np status;
 	double nrr;
 	tmv_t c1;
 	tmv_t c2;
@@ -471,6 +472,15 @@ struct dataset *clock_default_ds(struct clock *c)
 UInteger8 clock_domain_number(struct clock *c)
 {
 	return c->dds.domainNumber;
+}
+
+void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f)
+{
+	c->status.cumulativeScaledRateOffset = f->cumulativeScaledRateOffset;
+	c->status.scaledLastGmPhaseChange = f->scaledLastGmPhaseChange;
+	c->status.gmTimeBaseIndicator = f->gmTimeBaseIndicator;
+	memcpy(&c->status.lastGmPhaseChange, &f->lastGmPhaseChange,
+	       sizeof(c->status.lastGmPhaseChange));
 }
 
 struct ClockIdentity clock_identity(struct clock *c)
