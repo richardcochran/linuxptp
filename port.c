@@ -295,7 +295,7 @@ static struct follow_up_info_tlv *follow_up_info_extract(struct ptp_message *m)
 	if (m->tlv_count != 1 ||
 	    f->type != TLV_ORGANIZATION_EXTENSION ||
 	    f->length != sizeof(*f) - sizeof(f->type) - sizeof(f->length) ||
-	    memcmp(f->id, ieee8021_id, sizeof(ieee8021_id)) ||
+//	    memcmp(f->id, ieee8021_id, sizeof(ieee8021_id)) ||
 	    f->subtype[0] || f->subtype[1] || f->subtype[2] != 1) {
 		return NULL;
 	}
