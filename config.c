@@ -195,8 +195,10 @@ static void scan_global_line(const char *s, struct config *cfg)
 
 	} else if (1 == sscanf(s, " freq_est_interval %d", &val)) {
 
-		if (val >= 0)
+		if (val >= 0) {
 			dds->freq_est_interval = val;
+			pod->freq_est_interval = val;
+		}
 
 	} else if (1 == sscanf(s, " assume_two_step %u", &val)) {
 

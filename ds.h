@@ -89,6 +89,7 @@ struct port_defaults {
 	UInteger8 transportSpecific;
 	int path_trace_enabled;
 	int follow_up_info;
+	int freq_est_interval; /*log seconds*/
 };
 
 #endif
