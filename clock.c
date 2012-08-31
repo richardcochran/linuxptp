@@ -198,8 +198,8 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	 */
 	origin2 = tmv_add(c->t1, tmv_add(c->c1, c->c2));
 	if (f->ingress1) {
-		ratio = tmv_dbl(tmv_sub(c->t2, f->ingress1)) /
-			tmv_dbl(tmv_sub(origin2, f->origin1));
+		ratio = tmv_dbl(tmv_sub(origin2, f->origin1)) /
+			tmv_dbl(tmv_sub(c->t2, f->ingress1));
 		pr_info("master offset %10lld s%d ratio %.9f path delay %10lld",
 			c->master_offset, state, ratio, c->path_delay);
 	}
