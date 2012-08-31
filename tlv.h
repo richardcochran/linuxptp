@@ -77,6 +77,7 @@ enum management_action {
 #define ALTERNATE_TIME_OFFSET_PROPERTIES		0x2021
 #define TRANSPARENT_CLOCK_DEFAULT_DATA_SET		0x4000
 #define PRIMARY_DOMAIN					0x4002
+#define TIME_STATUS_NP					0xC000
 
 /* Port management ID values */
 #define NULL_MANAGEMENT					0x0000
