@@ -379,7 +379,12 @@ static int port_set_delay_tmo(struct port *p)
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
 	};
-	int index = random() % TMTAB_MAX;
+	int index;
+	if (p->delayMechanism == DM_P2P) {
+		return set_tmo(p->fda.fd[FD_DELAY_TIMER], 1,
+			       p->logMinPdelayReqInterval);
+	}
+	index = random() % TMTAB_MAX;
 	tmo.it_value = p->tmtab.ts[index];
 	return timerfd_settime(p->fda.fd[FD_DELAY_TIMER], 0, &tmo, NULL);
 }
