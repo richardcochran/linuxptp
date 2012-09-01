@@ -456,7 +456,8 @@ static int port_pdelay_request(struct port *p)
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_OTHER;
-	msg->header.logMessageInterval = 0x7f;
+	msg->header.logMessageInterval = p->pod.follow_up_info ?
+		p->logMinPdelayReqInterval : 0x7f;
 
 	if (msg_pre_send(msg))
 		goto out;
