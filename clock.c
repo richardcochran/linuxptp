@@ -117,6 +117,13 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 	return timerfd_settime(c->fault_fd[index], 0, &tmo, NULL);
 }
 
+static void clock_freq_est_reset(struct clock *c)
+{
+	c->fest.origin1 = tmv_zero();
+	c->fest.ingress1 = tmv_zero();
+	c->fest.count = 0;
+};
+
 static int clock_management_response(struct clock *c, struct port *p, int id,
 				     struct ptp_message *req)
 {
@@ -797,6 +804,7 @@ static void handle_state_decision_event(struct clock *c)
 		cid2str(&best->dataset.identity));
 
 	if (c->best != best) {
+		clock_freq_est_reset(c);
 		mave_reset(c->avg_delay);
 		fresh_best = 1;
 	}
