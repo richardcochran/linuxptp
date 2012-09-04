@@ -209,6 +209,10 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	if (f->count < f->max_count) {
 		return state;
 	}
+	if (tmv_eq(c->t2, f->ingress1)) {
+		pr_warning("bad timestamps in rate ratio calculation");
+		return state;
+	}
 	/*
 	 * origin2 = c->t1 (+c->path_delay) + c->c1 + c->c2;
 	 */

@@ -407,6 +407,10 @@ static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 		return;
 	}
 	origin2 = tmv_add(t3, c);
+	if (tmv_eq(t4, n->ingress1)) {
+		pr_warning("bad timestamps in nrate calculation");
+		return;
+	}
 	n->ratio =
 		tmv_dbl(tmv_sub(origin2, n->origin1)) /
 		tmv_dbl(tmv_sub(t4, n->ingress1));
