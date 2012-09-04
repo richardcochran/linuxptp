@@ -40,6 +40,7 @@
 #define FAULT_RESET_SECONDS 15
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define MAVE_LENGTH 10
+#define POW2_41 ((double)(1ULL << 41))
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -219,9 +220,7 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	pr_info("master offset %10lld s%d ratio %.9f path delay %10lld",
 		c->master_offset, state, ratio, c->path_delay);
 
-	fui = 1.0 +
-		(c->status.cumulativeScaledRateOffset + 0.0) /
-		(1ULL << 41);
+	fui = 1.0 + (c->status.cumulativeScaledRateOffset + 0.0) / POW2_41;
 
 	pr_debug("peer/local    %.9f", c->nrr);
 	pr_debug("fup_info      %.9f", fui);
