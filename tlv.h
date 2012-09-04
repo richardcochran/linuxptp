@@ -160,14 +160,14 @@ struct follow_up_info_tlv {
 	UInteger16    length;
 	Octet         id[3];
 	Octet         subtype[3];
-	UInteger32    cumulativeScaledRateOffset;
+	Integer32     cumulativeScaledRateOffset;
 	UInteger16    gmTimeBaseIndicator;
 	ScaledNs      lastGmPhaseChange;
 	Integer32     scaledLastGmPhaseChange;
 } PACKED;
 
 struct time_status_np {
-	UInteger32    cumulativeScaledRateOffset;
+	Integer32     cumulativeScaledRateOffset;
 	Integer32     scaledLastGmPhaseChange;
 	UInteger16    gmTimeBaseIndicator;
 	ScaledNs      lastGmPhaseChange;
