@@ -44,10 +44,12 @@
 #define FD_TO_CLOCKID(fd)	((~(clockid_t) (fd) << 3) | CLOCKFD)
 #define CLOCKID_TO_FD(clk)	((unsigned int) ~((clk) >> 3))
 
+#ifndef HAVE_CLOCK_ADJTIME
 static inline int clock_adjtime(clockid_t id, struct timex *tx)
 {
 	return syscall(__NR_clock_adjtime, id, tx);
 }
+#endif
 
 #ifndef __uClinux__
 

@@ -17,10 +17,15 @@
 
 KBUILD_OUTPUT ?= /lib/modules/$(shell uname -r)/build
 
+FEAT_CFLAGS :=
+ifneq ($(shell grep clock_adjtime /usr/include/bits/time.h),)
+FEAT_CFLAGS += -D_GNU_SOURCE -DHAVE_CLOCK_ADJTIME
+endif
+
 DEBUG	=
 CC	= $(CROSS_COMPILE)gcc
 INC	= -I$(KBUILD_OUTPUT)/usr/include
-CFLAGS	= -Wall $(INC) $(DEBUG) $(EXTRA_CFLAGS)
+CFLAGS	= -Wall $(INC) $(DEBUG) $(FEAT_CFLAGS) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
