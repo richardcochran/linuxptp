@@ -402,7 +402,9 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	if (c->nports)
 		clock_destroy(c);
 
-	if (phc_index >= 0) {
+	if (c->dds.free_running) {
+		c->clkid = CLOCK_INVALID;
+	} else if (phc_index >= 0) {
 		snprintf(phc, 31, "/dev/ptp%d", phc_index);
 		c->clkid = phc_open(phc);
 		if (c->clkid == CLOCK_INVALID) {
