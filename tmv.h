@@ -33,7 +33,7 @@
  * arithmetic functions such as @ref tmv_add() and the like, and just
  * use plain old math operators in the code.
  *
- * However, we are going to be a bit pendandic here and enforce the
+ * However, we are going to be a bit pedantic here and enforce the
  * use of the these functions, so that we can easily upgrade the code
  * to a finer representation later on. In that way, we can make use of
  * the fractional nanosecond parts of the correction fields, if and
