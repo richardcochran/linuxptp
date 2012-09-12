@@ -61,6 +61,7 @@ struct clock {
 	struct timePropertiesDS tds;
 	struct ClockIdentity ptl[PATH_TRACE_MAX];
 	struct foreign_clock *best;
+	struct ClockIdentity best_id;
 	struct port *port[CLK_N_PORTS];
 	struct pollfd pollfd[CLK_N_PORTS*N_CLOCK_PFD];
 	int fault_fd[CLK_N_PORTS];
@@ -836,13 +837,14 @@ static void handle_state_decision_event(struct clock *c)
 	pr_notice("selected best master clock %s",
 		cid2str(&best->dataset.identity));
 
-	if (c->best != best) {
+	if (!cid_eq(&best->dataset.identity, &c->best_id)) {
 		clock_freq_est_reset(c);
 		mave_reset(c->avg_delay);
 		fresh_best = 1;
 	}
 
 	c->best = best;
+	c->best_id = best->dataset.identity;
 
 	for (i = 0; i < c->nports; i++) {
 		enum port_state ps;
