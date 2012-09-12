@@ -41,6 +41,7 @@ static void scaled_ns_h2n(ScaledNs *sns)
 static void mgt_post_recv(struct management_tlv *m)
 {
 	struct currentDS *cds;
+	struct time_status_np *tsn;
 	switch (m->id) {
 	case CURRENT_DATA_SET:
 		cds = (struct currentDS *) m->data;
@@ -48,18 +49,39 @@ static void mgt_post_recv(struct management_tlv *m)
 		cds->offsetFromMaster = net2host64(cds->offsetFromMaster);
 		cds->meanPathDelay = net2host64(cds->meanPathDelay);
 		break;
+	case TIME_STATUS_NP:
+		tsn = (struct time_status_np *) m->data;
+		tsn->master_offset = net2host64(tsn->master_offset);
+		tsn->ingress_time = net2host64(tsn->ingress_time);
+		tsn->cumulativeScaledRateOffset = ntohl(tsn->cumulativeScaledRateOffset);
+		tsn->scaledLastGmPhaseChange = ntohl(tsn->scaledLastGmPhaseChange);
+		tsn->gmTimeBaseIndicator = ntohs(tsn->gmTimeBaseIndicator);
+		scaled_ns_n2h(&tsn->lastGmPhaseChange);
+		tsn->gmPresent = ntohl(tsn->gmPresent);
+		break;
 	}
 }
 
 static void mgt_pre_send(struct management_tlv *m)
 {
 	struct currentDS *cds;
+	struct time_status_np *tsn;
 	switch (m->id) {
 	case CURRENT_DATA_SET:
 		cds = (struct currentDS *) m->data;
 		cds->stepsRemoved = htons(cds->stepsRemoved);
 		cds->offsetFromMaster = host2net64(cds->offsetFromMaster);
 		cds->meanPathDelay = host2net64(cds->meanPathDelay);
+		break;
+	case TIME_STATUS_NP:
+		tsn = (struct time_status_np *) m->data;
+		tsn->master_offset = host2net64(tsn->master_offset);
+		tsn->ingress_time = host2net64(tsn->ingress_time);
+		tsn->cumulativeScaledRateOffset = htonl(tsn->cumulativeScaledRateOffset);
+		tsn->scaledLastGmPhaseChange = htonl(tsn->scaledLastGmPhaseChange);
+		tsn->gmTimeBaseIndicator = htons(tsn->gmTimeBaseIndicator);
+		scaled_ns_h2n(&tsn->lastGmPhaseChange);
+		tsn->gmPresent = htonl(tsn->gmPresent);
 		break;
 	}
 }
