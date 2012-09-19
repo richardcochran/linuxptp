@@ -91,10 +91,6 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int rdelay, int readings,
 	int i;
 	int64_t interval, best_interval = INT64_MAX;
 
-	if (clkid == CLOCK_INVALID) {
-		return 0;
-	}
-
 	/* Pick the quickest clkid reading. */
 	for (i = 0; i < readings; i++) {
 		if (clock_gettime(sysclk, &tdst1) ||
@@ -287,9 +283,11 @@ int main(int argc, char *argv[])
 		} else
 			usleep(1000000 / phc_rate);
 
-		if (!read_phc(src, dst, rdelay, phc_readings, &phc_offset, &phc_ts))
-			continue;
-		printf("phc %9lld ", phc_offset);
+		if (src != CLOCK_INVALID) {
+			if (!read_phc(src, dst, rdelay, phc_readings, &phc_offset, &phc_ts))
+				continue;
+			printf("phc %9lld ", phc_offset);
+		}
 
 		if (fd > 0)
 			do_servo(&servo, src, dst, pps_offset, pps_ts, kp, ki);
