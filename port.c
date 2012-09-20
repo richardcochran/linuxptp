@@ -476,6 +476,13 @@ static void port_show_transition(struct port *p,
 		  ps_str[p->state], ps_str[next], ev_str[event]);
 }
 
+static void port_slave_priority_warning(struct port *p)
+{
+	UInteger16 n = portnum(p);
+	pr_warning("port %hu: master state recommended in slave only mode", n);
+	pr_warning("port %hu: defaultDS.priority1 probably misconfigured", n);
+}
+
 static void port_synchronize(struct port *p,
 			     struct timespec ingress_ts,
 			     struct timestamp origin_ts,
@@ -1344,9 +1351,16 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
-	enum port_state next = clock_slave_only(p->clock) ?
-		ptp_slave_fsm(p->state, event, mdiff) :
-		ptp_fsm(p->state, event, mdiff);
+	enum port_state next;
+
+	if (clock_slave_only(p->clock)) {
+		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER) {
+			port_slave_priority_warning(p);
+		}
+		next = ptp_slave_fsm(p->state, event, mdiff);
+	} else {
+		next = ptp_fsm(p->state, event, mdiff);
+	}
 
 	if (PS_INITIALIZING == next) {
 		/*
