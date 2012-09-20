@@ -167,10 +167,14 @@ struct follow_up_info_tlv {
 } PACKED;
 
 struct time_status_np {
+	int64_t       master_offset; /*nanoseconds*/
+	int64_t       ingress_time;  /*nanoseconds*/
 	Integer32     cumulativeScaledRateOffset;
 	Integer32     scaledLastGmPhaseChange;
 	UInteger16    gmTimeBaseIndicator;
 	ScaledNs      lastGmPhaseChange;
+	Integer32     gmPresent;
+	struct ClockIdentity gmIdentity;
 } PACKED;
 
 /**

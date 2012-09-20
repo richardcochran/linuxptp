@@ -247,7 +247,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* determine PHC Clock index */
-	if (*timestamping == TS_SOFTWARE || *timestamping == TS_LEGACY_HW) {
+	if (ds->free_running) {
+		phc_index = -1;
+	} else if (*timestamping == TS_SOFTWARE || *timestamping == TS_LEGACY_HW) {
 		phc_index = -1;
 	} else if (req_phc) {
 		if (1 != sscanf(req_phc, "/dev/ptp%d", &phc_index)) {

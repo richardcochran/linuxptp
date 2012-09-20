@@ -134,6 +134,7 @@ static int clock_management_response(struct clock *c, struct port *p, int id,
 	int datalen = 0, err, pdulen, respond = 0;
 	struct management_tlv *tlv;
 	struct ptp_message *rsp;
+	struct time_status_np *tsn;
 	struct PortIdentity pid = port_identity(p);
 
 	rsp = port_management_reply(pid, p, req);
@@ -148,6 +149,24 @@ static int clock_management_response(struct clock *c, struct port *p, int id,
 	case CURRENT_DATA_SET:
 		memcpy(tlv->data, &c->cur, sizeof(c->cur));
 		datalen = sizeof(c->cur);
+		respond = 1;
+		break;
+	case TIME_STATUS_NP:
+		tsn = (struct time_status_np *) tlv->data;
+		tsn->master_offset = c->master_offset;
+		tsn->ingress_time = tmv_to_nanoseconds(c->t2);
+		tsn->cumulativeScaledRateOffset =
+			(UInteger32) (c->status.cumulativeScaledRateOffset +
+				      c->nrr * POW2_41 - POW2_41);
+		tsn->scaledLastGmPhaseChange = c->status.scaledLastGmPhaseChange;
+		tsn->gmTimeBaseIndicator = c->status.gmTimeBaseIndicator;
+		tsn->lastGmPhaseChange = c->status.lastGmPhaseChange;
+		if (cid_eq(&c->dad.grandmasterIdentity, &c->dds.clockIdentity))
+			tsn->gmPresent = 0;
+		else
+			tsn->gmPresent = 1;
+		tsn->gmIdentity = c->dad.grandmasterIdentity;
+		datalen = sizeof(*tsn);
 		respond = 1;
 		break;
 	}
@@ -383,7 +402,9 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	if (c->nports)
 		clock_destroy(c);
 
-	if (phc_index >= 0) {
+	if (c->dds.free_running) {
+		c->clkid = CLOCK_INVALID;
+	} else if (phc_index >= 0) {
 		snprintf(phc, 31, "/dev/ptp%d", phc_index);
 		c->clkid = phc_open(phc);
 		if (c->clkid == CLOCK_INVALID) {

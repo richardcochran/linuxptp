@@ -35,6 +35,7 @@
 #define BAD_ID       -1
 #define AMBIGUOUS_ID -2
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define P41 ((double)(1ULL << 41))
 
 static UInteger16 sequence_id;
 static UInteger8 boundary_hops = 1;
@@ -87,6 +88,7 @@ struct management_id idtab[] = {
 	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", ALTERNATE_TIME_OFFSET_PROPERTIES, not_supported },
 	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
 	{ "PRIMARY_DOMAIN", PRIMARY_DOMAIN, not_supported },
+	{ "TIME_STATUS_NP", TIME_STATUS_NP, do_get_action },
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", NULL_MANAGEMENT, null_management },
 	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, not_supported },
@@ -169,6 +171,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct TLV *tlv;
 	struct management_tlv *mgt;
 	struct currentDS *cds;
+	struct time_status_np *tsn;
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
 	}
@@ -201,6 +204,28 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "meanPathDelay    %.1f ",
 			cds->stepsRemoved, cds->offsetFromMaster / 65536.0,
 			cds->meanPathDelay / 65536.0);
+		break;
+	case TIME_STATUS_NP:
+		tsn = (struct time_status_np *) mgt->data;
+		fprintf(fp, "TIME_STATUS_NP "
+			IFMT "master_offset              %lld "
+			IFMT "ingress_time               %lld "
+			IFMT "cumulativeScaledRateOffset %+.9f "
+			IFMT "scaledLastGmPhaseChange    %d "
+			IFMT "gmTimeBaseIndicator        %hu "
+			IFMT "lastGmPhaseChange          0x%04hx'%016llx.%04hx "
+			IFMT "gmPresent                  %s "
+			IFMT "gmIdentity                 %s ",
+			tsn->master_offset,
+			tsn->ingress_time,
+			1.0 + (tsn->cumulativeScaledRateOffset + 0.0) / P41,
+			tsn->scaledLastGmPhaseChange,
+			tsn->gmTimeBaseIndicator,
+			tsn->lastGmPhaseChange.nanoseconds_msb,
+			tsn->lastGmPhaseChange.nanoseconds_lsb,
+			tsn->lastGmPhaseChange.fractional_nanoseconds,
+			tsn->gmPresent ? "true" : "false",
+			cid2str(&tsn->gmIdentity));
 		break;
 	}
 out:
