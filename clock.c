@@ -270,6 +270,18 @@ static void clock_ppb(clockid_t clkid, double ppb)
 		pr_err("failed to adjust the clock: %m");
 }
 
+static double clock_ppb_read(clockid_t clkid)
+{
+	double f = 0.0;
+	struct timex tx;
+	memset(&tx, 0, sizeof(tx));
+	if (clock_adjtime(clkid, &tx) < 0)
+		pr_err("failed to read out the clock frequency adjustment: %m");
+	else
+		f = tx.freq / 65.536;
+	return f;
+}
+
 static void clock_step(clockid_t clkid, int64_t ns)
 {
 	struct timex tx;
@@ -388,7 +400,7 @@ UInteger8 clock_class(struct clock *c)
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			   enum timestamp_type timestamping, struct defaultDS *ds)
 {
-	int i, max_adj, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
+	int i, fadj = 0, max_adj, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	char phc[32];
 	struct interface udsif;
@@ -422,7 +434,10 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		max_adj = 512000;
 	}
 
-	c->servo = servo_create("pi", max_adj, sw_ts);
+	if (c->clkid != CLOCK_INVALID) {
+		fadj = (int) clock_ppb_read(c->clkid);
+	}
+	c->servo = servo_create("pi", -fadj, max_adj, sw_ts);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
 		return NULL;

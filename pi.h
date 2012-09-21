@@ -33,6 +33,6 @@ extern double configured_pi_kp;
  */
 extern double configured_pi_ki;
 
-struct servo *pi_servo_create(int max_ppb, int sw_ts);
+struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts);
 
 #endif

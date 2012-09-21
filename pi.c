@@ -71,7 +71,7 @@ static double pi_sample(struct servo *servo,
 		s->count = 2;
 		break;
 	case 2:
-		s->drift = (s->offset[1] - s->offset[0]) /
+		s->drift += (s->offset[1] - s->offset[0]) /
 			(s->local[1] - s->local[0]);
 		*state = SERVO_UNLOCKED;
 		s->count = 3;
@@ -97,7 +97,7 @@ static double pi_sample(struct servo *servo,
 	return ppb;
 }
 
-struct servo *pi_servo_create(int max_ppb, int sw_ts)
+struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 {
 	struct pi_servo *s;
 
@@ -107,6 +107,7 @@ struct servo *pi_servo_create(int max_ppb, int sw_ts)
 
 	s->servo.destroy = pi_destroy;
 	s->servo.sample  = pi_sample;
+	s->drift         = fadj;
 	s->maxppb        = max_ppb;
 
 	if (configured_pi_kp && configured_pi_ki) {

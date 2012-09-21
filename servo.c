@@ -21,10 +21,10 @@
 #include "pi.h"
 #include "servo_private.h"
 
-struct servo *servo_create(char *name, int max_ppb, int sw_ts)
+struct servo *servo_create(char *name, int fadj, int max_ppb, int sw_ts)
 {
 	if (!strncmp(name, "pi", 2)) {
-		return pi_servo_create(max_ppb, sw_ts);
+		return pi_servo_create(fadj, max_ppb, sw_ts);
 	}
 	return NULL;
 }
