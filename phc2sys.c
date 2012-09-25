@@ -126,8 +126,7 @@ struct servo {
 
 static struct servo servo;
 
-static void do_servo(struct servo *srv,
-		     clockid_t src, clockid_t dst,
+static void do_servo(struct servo *srv, clockid_t dst,
 		     int64_t offset, uint64_t ts, double kp, double ki)
 {
 	double ki_term, ppb;
@@ -290,9 +289,9 @@ int main(int argc, char *argv[])
 		}
 
 		if (fd > 0)
-			do_servo(&servo, src, dst, pps_offset, pps_ts, kp, ki);
+			do_servo(&servo, dst, pps_offset, pps_ts, kp, ki);
 		else
-			do_servo(&servo, src, dst, phc_offset, phc_ts, kp, ki);
+			do_servo(&servo, dst, phc_offset, phc_ts, kp, ki);
 	}
 	return 0;
 }
