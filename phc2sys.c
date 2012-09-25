@@ -191,6 +191,28 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 	return 1;
 }
 
+static int do_pps_loop(char *pps_device, double kp, double ki, clockid_t dst)
+{
+	int64_t pps_offset;
+	uint64_t pps_ts;
+	int fd;
+
+	fd = open(pps_device, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "cannot open '%s': %m\n", pps_device);
+		return -1;
+	}
+	while (1) {
+		if (!read_pps(fd, &pps_offset, &pps_ts)) {
+			continue;
+		}
+		printf("pps %9lld ", pps_offset);
+		do_servo(&servo, dst, pps_offset, pps_ts, kp, ki);
+	}
+	close(fd);
+	return 0;
+}
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -213,9 +235,9 @@ int main(int argc, char *argv[])
 	double kp = KP, ki = KI;
 	char *device = NULL, *progname;
 	clockid_t src = CLOCK_INVALID, dst = CLOCK_REALTIME;
-	uint64_t pps_ts, phc_ts;
-	int64_t pps_offset, phc_offset;
-	int c, fd = 0, phc_readings = 5, phc_rate = 1;
+	uint64_t phc_ts;
+	int64_t phc_offset;
+	int c, phc_readings = 5, phc_rate = 1;
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
@@ -256,13 +278,6 @@ int main(int argc, char *argv[])
 		usage(progname);
 		return -1;
 	}
-	if (device) {
-		fd = open(device, O_RDONLY);
-		if (fd < 0) {
-			fprintf(stderr, "cannot open %s: %m\n", device);
-			return -1;
-		}
-	}
 	if (src != CLOCK_INVALID) {
 		struct timespec now;
 		if (clock_gettime(src, &now))
@@ -270,24 +285,17 @@ int main(int argc, char *argv[])
 		if (clock_settime(dst, &now))
 			perror("clock_settime");
 	}
+
+	if (device)
+		return do_pps_loop(device, kp, ki, dst);
+
 	while (1) {
-		if (fd > 0) {
-			if (!read_pps(fd, &pps_offset, &pps_ts))
-				continue;
-			printf("pps %9lld ", pps_offset);
-		} else
-			usleep(1000000 / phc_rate);
-
-		if (src != CLOCK_INVALID) {
-			if (!read_phc(src, dst, phc_readings, &phc_offset, &phc_ts))
-				continue;
-			printf("phc %9lld ", phc_offset);
+		usleep(1000000 / phc_rate);
+		if (!read_phc(src, dst, phc_readings, &phc_offset, &phc_ts)) {
+			continue;
 		}
-
-		if (fd > 0)
-			do_servo(&servo, dst, pps_offset, pps_ts, kp, ki);
-		else
-			do_servo(&servo, dst, phc_offset, phc_ts, kp, ki);
+		printf("phc %9lld ", phc_offset);
+		do_servo(&servo, dst, phc_offset, phc_ts, kp, ki);
 	}
 	return 0;
 }
