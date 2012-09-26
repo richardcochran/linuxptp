@@ -126,13 +126,17 @@ struct servo {
 
 static struct servo servo;
 
+static void show_servo(FILE *fp, const char *label, int64_t offset, uint64_t ts)
+{
+	fprintf(fp, "%s %9lld s%d %lld.%09llu drift %.2f\n", label, offset,
+		servo.state, ts / NS_PER_SEC, ts % NS_PER_SEC, servo.drift);
+	fflush(fp);
+}
+
 static void do_servo(struct servo *srv, clockid_t dst,
 		     int64_t offset, uint64_t ts, double kp, double ki)
 {
 	double ki_term, ppb;
-
-	printf("s%d %lld.%09llu drift %.2f\n",
-		srv->state, ts / NS_PER_SEC, ts % NS_PER_SEC, srv->drift);
 
 	switch (srv->state) {
 	case SAMPLE_0:
@@ -206,8 +210,8 @@ static int do_pps_loop(char *pps_device, double kp, double ki, clockid_t dst)
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
 			continue;
 		}
-		printf("pps %9lld ", pps_offset);
 		do_servo(&servo, dst, pps_offset, pps_ts, kp, ki);
+		show_servo(stdout, "pps", pps_offset, pps_ts);
 	}
 	close(fd);
 	return 0;
@@ -294,8 +298,8 @@ int main(int argc, char *argv[])
 		if (!read_phc(src, dst, phc_readings, &phc_offset, &phc_ts)) {
 			continue;
 		}
-		printf("phc %9lld ", phc_offset);
 		do_servo(&servo, dst, phc_offset, phc_ts, kp, ki);
+		show_servo(stdout, "phc", phc_offset, phc_ts);
 	}
 	return 0;
 }
