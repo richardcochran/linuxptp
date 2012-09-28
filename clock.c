@@ -398,7 +398,8 @@ UInteger8 clock_class(struct clock *c)
 }
 
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
-			   enum timestamp_type timestamping, struct defaultDS *ds)
+			   enum timestamp_type timestamping, struct defaultDS *ds,
+			   enum servo_type servo)
 {
 	int i, fadj = 0, max_adj, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
@@ -437,7 +438,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clock_ppb_read(c->clkid);
 	}
-	c->servo = servo_create(CLOCK_SERVO_PI, -fadj, max_adj, sw_ts);
+	c->servo = servo_create(servo, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
 		return NULL;

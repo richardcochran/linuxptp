@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
 	}
 
 	clock = clock_create(phc_index, iface, cfg_settings.nports,
-			     *timestamping, ds);
+			     *timestamping, ds, CLOCK_SERVO_PI);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;
