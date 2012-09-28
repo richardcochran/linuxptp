@@ -65,6 +65,9 @@ static struct config cfg_settings = {
 	.assume_two_step = &assume_two_step,
 	.tx_timestamp_retries = &sk_tx_retries,
 	.rx_timestamp_l2only = &sk_prefer_layer2,
+
+	.clock_servo = CLOCK_SERVO_PI,
+
 	.pi_proportional_const = &configured_pi_kp,
 	.pi_integral_const = &configured_pi_ki,
 	.ptp_dst_mac = ptp_dst_mac,
@@ -272,7 +275,7 @@ int main(int argc, char *argv[])
 	}
 
 	clock = clock_create(phc_index, iface, cfg_settings.nports,
-			     *timestamping, ds, CLOCK_SERVO_PI);
+			     *timestamping, ds, cfg_settings.clock_servo);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

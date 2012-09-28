@@ -303,6 +303,13 @@ static void scan_global_line(const char *s, struct config *cfg)
 				cfg->transport = TRANS_IEEE_802_3;
 
 		}
+
+	} else if (1 == sscanf(s, " clock_servo %1023s", string)) {
+
+		if (0 == strcasecmp("pi", string))
+
+			cfg->clock_servo = CLOCK_SERVO_PI;
+
 	}
 }
 

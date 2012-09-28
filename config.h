@@ -23,6 +23,7 @@
 #include "ds.h"
 #include "dm.h"
 #include "transport.h"
+#include "servo.h"
 
 #define MAX_PORTS 8
 #define MAX_IFNAME_SIZE 16
@@ -60,6 +61,9 @@ struct config {
 	int *assume_two_step;
 	int *tx_timestamp_retries;
 	int *rx_timestamp_l2only;
+
+	enum servo_type clock_servo;
+
 	double *pi_proportional_const;
 	double *pi_integral_const;
 	unsigned char *ptp_dst_mac;
