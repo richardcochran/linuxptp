@@ -43,7 +43,7 @@ ptp4l: $(OBJ)
 
 pmc: pmc.o msg.o print.o raw.o sk.o tlv.o transport.o udp.o udp6.o uds.o util.o
 
-phc2sys: phc2sys.o
+phc2sys: phc2sys.o sk.o print.o
 
 hwstamp_ctl: hwstamp_ctl.o
 

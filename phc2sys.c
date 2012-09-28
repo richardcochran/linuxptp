@@ -33,6 +33,7 @@
 #include <linux/ptp_clock.h>
 
 #include "missing.h"
+#include "sk.h"
 
 #define KP 0.7
 #define KI 0.3
@@ -226,6 +227,7 @@ static void usage(char *progname)
 		" -d [device]  master device, source of PPS events\n"
 		" -h           prints this message and exits\n"
 		" -s [device]  set the time from this PHC device\n"
+		" -i [device]  set the time from PHC connected to this eth device\n"
 		" -P [val]     set proportional constant to 'val'\n"
 		" -I [val]     set integration constant to 'val'\n"
 		" -R [val]     set PHC update rate to 'val' Hz\n"
@@ -237,7 +239,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	double kp = KP, ki = KI;
-	char *device = NULL, *progname;
+	char *device = NULL, *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID, dst = CLOCK_REALTIME;
 	uint64_t phc_ts;
 	int64_t phc_offset;
@@ -246,7 +248,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:"))) {
+	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:i:"))) {
 		switch (c) {
 		case 'c':
 			dst = clock_open(optarg);
@@ -269,6 +271,9 @@ int main(int argc, char *argv[])
 		case 'N':
 			phc_readings = atoi(optarg);
 			break;
+		case 'i':
+			ethdev = optarg;
+			break;
 		case 'h':
 			usage(progname);
 			return 0;
@@ -278,6 +283,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (src == CLOCK_INVALID && ethdev) {
+		int phc_index = -1;
+		char phc_device[16];
+		if (sk_interface_phc(ethdev, &phc_index) || phc_index < 0) {
+			fprintf(stderr, "can't autodiscover PHC device\n");
+			return -1;
+		}
+		sprintf(phc_device, "/dev/ptp%d", phc_index);
+		src = clock_open(phc_device);
+	}
 	if (!(device || src != CLOCK_INVALID) || dst == CLOCK_INVALID) {
 		usage(progname);
 		return -1;
