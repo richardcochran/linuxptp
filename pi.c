@@ -18,6 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <stdlib.h>
+#include <math.h>
 
 #include "pi.h"
 #include "servo_private.h"
@@ -28,9 +29,12 @@
 #define SWTS_KP 0.1
 #define SWTS_KI 0.001
 
+#define NSEC_PER_SEC 1000000000
+
 /* These two take their values from the configuration file. (see ptp4l.c) */
 double configured_pi_kp;
 double configured_pi_ki;
+double configured_pi_offset;
 
 struct pi_servo {
 	struct servo servo;
@@ -40,6 +44,7 @@ struct pi_servo {
 	double maxppb;
 	double kp;
 	double ki;
+	double max_offset;
 	int count;
 };
 
@@ -81,6 +86,19 @@ static double pi_sample(struct servo *servo,
 		s->count = 4;
 		break;
 	case 4:
+		/*
+		 * reset the clock servo when offset is greater than the max
+		 * offset value. Note that the clock jump will be performed in
+		 * step 3, so it is not necessary to have clock jump
+		 * immediately. This allows re-calculating drift as in initial
+		 * clock startup.
+		 */
+		if (s->max_offset && (s->max_offset < fabs(offset))) {
+			*state = SERVO_UNLOCKED;
+			s->count = 0;
+			break;
+		}
+
 		ki_term = s->ki * offset;
 		ppb = s->kp * offset + s->drift + ki_term;
 		if (ppb < -s->maxppb) {
@@ -119,6 +137,12 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 	} else {
 		s->kp = HWTS_KP;
 		s->ki = HWTS_KI;
+	}
+
+	if (configured_pi_offset > 0.0) {
+		s->max_offset = configured_pi_offset * NSEC_PER_SEC;
+	} else {
+		s->max_offset = 0.0;
 	}
 
 	return &s->servo;

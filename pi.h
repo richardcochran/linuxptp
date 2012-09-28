@@ -33,6 +33,15 @@ extern double configured_pi_kp;
  */
 extern double configured_pi_ki;
 
+/**
+ * When set to a non-zero value, this variable controls the maximum allowed
+ * offset before a clock jump occurs instead of the default clock-slewing
+ * mechanism
+ *
+ * Note that this variable is measured in seconds, and allows fractional values.
+ */
+extern double configured_pi_offset;
+
 struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts);
 
 #endif
