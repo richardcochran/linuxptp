@@ -24,6 +24,13 @@
 struct servo;
 
 /**
+ * Defines the available servo cores
+ */
+enum servo_type {
+	CLOCK_SERVO_PI,
+};
+
+/**
  * Defines the caller visible states of a clock servo.
  */
 enum servo_state {
@@ -47,7 +54,7 @@ enum servo_state {
 
 /**
  * Create a new instance of a clock servo.
- * @param name    The name of the servo flavor to create.
+ * @param type    The type of the servo to create.
  * @param fadj    The clock's current adjustment in parts per billion.
  * @param max_ppb The absolute maxinum adjustment allowed by the clock
  *                in parts per billion. The clock servo will clamp its
@@ -56,7 +63,7 @@ enum servo_state {
  *                and the servo should use more aggressive filtering.
  * @return A pointer to a new servo on success, NULL otherwise.
  */
-struct servo *servo_create(char *name, int fadj, int max_ppb, int sw_ts);
+struct servo *servo_create(enum servo_type type, int fadj, int max_ppb, int sw_ts);
 
 /**
  * Destroy an instance of a clock servo.

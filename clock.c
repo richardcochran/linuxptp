@@ -437,7 +437,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clock_ppb_read(c->clkid);
 	}
-	c->servo = servo_create("pi", -fadj, max_adj, sw_ts);
+	c->servo = servo_create(CLOCK_SERVO_PI, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
 		return NULL;

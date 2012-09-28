@@ -21,9 +21,9 @@
 #include "pi.h"
 #include "servo_private.h"
 
-struct servo *servo_create(char *name, int fadj, int max_ppb, int sw_ts)
+struct servo *servo_create(enum servo_type type, int fadj, int max_ppb, int sw_ts)
 {
-	if (!strncmp(name, "pi", 2)) {
+	if (type == CLOCK_SERVO_PI) {
 		return pi_servo_create(fadj, max_ppb, sw_ts);
 	}
 	return NULL;
