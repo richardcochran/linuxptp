@@ -226,21 +226,6 @@
 
    https://lists.sourceforge.net/lists/listinfo/linuxptp-devel
 
-* Other PTP Applications
-
-  As of yet there are no other open source applications making use of
-  the new Linux APIs for PTP. However, patches are available for the
-  *ptpd* program adapting it to the new calls. These patches do not
-  really turn the *ptpd* into a perfect solution for hardware time
-  stamping under Linux. Instead, they merely illustrate how the newer
-  APIs work.
-
-  You can get the patches over at github. There are two branches,
-  *phc1* and *phc2*, for PTP versions 1 and 2, respectively.
-
-  - git://github.com/richardcochran/ptpd-phc.git
-  - https://github.com/richardcochran/ptpd-phc
-
 * Thanks
 
   Thanks to Intel Corporation for donating three NICs, the 82574,
