@@ -225,7 +225,7 @@ static void scan_global_line(const char *s, struct config *cfg)
 
 	} else if (1 == sscanf(s, " pi_offset_const %lf", &df)) {
 
-		if (df > 0.0)
+		if (df >= 0.0)
 			*cfg->pi_offset_const = df;
 
 	} else if (MAC_LEN == sscanf(s, " ptp_dst_mac %hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
