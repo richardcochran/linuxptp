@@ -1670,7 +1670,9 @@ struct port *port_open(int phc_index,
 
 	memset(p, 0, sizeof(*p));
 
-	if (sk_interface_phc(interface->name, &checked_phc_index))
+	if (interface->transport == TRANS_UDS)
+		; /* UDS cannot have a PHC. */
+	else if (sk_interface_phc(interface->name, &checked_phc_index))
 		pr_warning("port %d: get_ts_info not supported", number);
 	else if (phc_index >= 0 && phc_index != checked_phc_index) {
 		pr_err("port %d: PHC device mismatch", number);
