@@ -32,18 +32,21 @@
 #include "transport.h"
 #include "util.h"
 
-int assume_two_step;
+int assume_two_step = 0;
 
 static int running = 1;
 
 static struct config cfg_settings = {
 	.dds = {
+		.twoStepFlag = TRUE,
 		.slaveOnly = FALSE,
 		.priority1 = 128,
 		.clockQuality.clockClass = 248,
 		.clockQuality.clockAccuracy = 0xfe,
 		.clockQuality.offsetScaledLogVariance = 0xffff,
 		.priority2 = 128,
+		.domainNumber = 0,
+		.free_running = 0,
 		.freq_est_interval = 1,
 	},
 
@@ -56,6 +59,7 @@ static struct config cfg_settings = {
 		.transportSpecific = 0,
 		.path_trace_enabled = 0,
 		.follow_up_info = 0,
+		.freq_est_interval = 1,
 	},
 
 	.timestamping = TS_HARDWARE,

@@ -32,9 +32,9 @@
 #define NSEC_PER_SEC 1000000000
 
 /* These two take their values from the configuration file. (see ptp4l.c) */
-double configured_pi_kp;
-double configured_pi_ki;
-double configured_pi_offset;
+double configured_pi_kp = 0.0;
+double configured_pi_ki = 0.0;
+double configured_pi_offset = 0.0;
 
 struct pi_servo {
 	struct servo servo;
