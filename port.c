@@ -1678,6 +1678,7 @@ struct port *port_open(int phc_index,
 		pr_err("port %d: PHC device mismatch", number);
 		pr_err("port %d: /dev/ptp%d requested, but /dev/ptp%d attached",
 		       number, phc_index, checked_phc_index);
+		free(p);
 		return NULL;
 	}
 

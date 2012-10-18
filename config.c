@@ -341,6 +341,9 @@ int config_read(char *name, struct config *cfg)
 					continue;
 				}
 				current_port = config_create_interface(port, cfg);
+				if (current_port < 0) {
+					return -1;
+				}
 			}
 			continue;
 		}

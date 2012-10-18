@@ -401,7 +401,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			   enum timestamp_type timestamping, struct defaultDS *ds,
 			   enum servo_type servo)
 {
-	int i, fadj = 0, max_adj, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
+	int i, fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	char phc[32];
 	struct interface udsif;
