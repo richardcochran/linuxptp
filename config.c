@@ -209,10 +209,6 @@ static void scan_global_line(const char *s, struct config *cfg)
 		if (val > 0)
 			*cfg->tx_timestamp_retries = val;
 
-	} else if (1 == sscanf(s, " rx_timestamp_l2only %u", &val)) {
-
-		*cfg->rx_timestamp_l2only = val ? 1 : 0;
-
 	} else if (1 == sscanf(s, " pi_proportional_const %lf", &df)) {
 
 		if (df > 0.0 && df < 1.0)

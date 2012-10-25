@@ -76,10 +76,4 @@ int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
  */
 extern int sk_tx_retries;
 
-/**
- * Request the hardware receive filter that is limited to layer 2 time
- * stamping.
- */
-extern int sk_prefer_layer2;
-
 #endif

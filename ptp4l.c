@@ -68,7 +68,6 @@ static struct config cfg_settings = {
 
 	.assume_two_step = &assume_two_step,
 	.tx_timestamp_retries = &sk_tx_retries,
-	.rx_timestamp_l2only = &sk_prefer_layer2,
 
 	.clock_servo = CLOCK_SERVO_PI,
 

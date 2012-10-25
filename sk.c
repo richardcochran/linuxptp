@@ -32,7 +32,7 @@
 
 /* globals */
 
-int sk_tx_retries = 2, sk_prefer_layer2 = 0;
+int sk_tx_retries = 2;
 
 /* private methods */
 
