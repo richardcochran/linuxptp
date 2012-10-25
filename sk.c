@@ -36,7 +36,7 @@ int sk_tx_retries = 2, sk_prefer_layer2 = 0;
 
 /* private methods */
 
-static int hwts_init(int fd, char *device)
+static int hwts_init(int fd, char *device, int rx_filter)
 {
 	struct ifreq ifreq;
 	struct hwtstamp_config cfg, req;
@@ -49,13 +49,11 @@ static int hwts_init(int fd, char *device)
 
 	ifreq.ifr_data = (void *) &cfg;
 	cfg.tx_type    = HWTSTAMP_TX_ON;
-	cfg.rx_filter  = sk_prefer_layer2 ?
-		HWTSTAMP_FILTER_PTP_V2_L2_EVENT : HWTSTAMP_FILTER_PTP_V2_EVENT;
-
+	cfg.rx_filter  = rx_filter;
 	req = cfg;
 	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
 	if (err < 0)
-		pr_err("ioctl SIOCSHWTSTAMP failed: %m");
+		return err;
 
 	if (memcmp(&cfg, &req, sizeof(cfg))) {
 
@@ -70,7 +68,7 @@ static int hwts_init(int fd, char *device)
 		}
 	}
 
-	return err ? errno : 0;
+	return 0;
 }
 
 /* public methods */
@@ -226,7 +224,7 @@ int sk_receive(int fd, void *buf, int buflen,
 int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
 			 enum transport_type transport)
 {
-	int flags;
+	int err, filter1, filter2, flags;
 
 	switch (type) {
 	case TS_SOFTWARE:
@@ -248,8 +246,32 @@ int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
 		return -1;
 	}
 
-	if (type != TS_SOFTWARE && hwts_init(fd, device))
-		return -1;
+	if (type != TS_SOFTWARE) {
+		filter1 = HWTSTAMP_FILTER_PTP_V2_EVENT;
+		switch (transport) {
+		case TRANS_UDP_IPV4:
+		case TRANS_UDP_IPV6:
+			filter2 = HWTSTAMP_FILTER_PTP_V2_L4_EVENT;
+			break;
+		case TRANS_IEEE_802_3:
+			filter2 = HWTSTAMP_FILTER_PTP_V2_L2_EVENT;
+			break;
+		case TRANS_DEVICENET:
+		case TRANS_CONTROLNET:
+		case TRANS_PROFINET:
+		case TRANS_UDS:
+			return -1;
+		}
+		err = hwts_init(fd, device, filter1);
+		if (err) {
+			pr_info("driver rejected most general HWTSTAMP filter");
+			err = hwts_init(fd, device, filter2);
+			if (err) {
+				pr_err("ioctl SIOCSHWTSTAMP failed: %m");
+				return err;
+			}
+		}
+	}
 
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPING,
 		       &flags, sizeof(flags)) < 0) {
