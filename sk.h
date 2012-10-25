@@ -61,12 +61,14 @@ int sk_receive(int fd, void *buf, int buflen,
 
 /**
  * Enable time stamping on a given network interface.
- * @param fd      An open socket.
- * @param device  The name of the network interface to configure.
- * @param type    The requested flavor of time stamping.
- * @return        Zero on success, non-zero otherwise.
+ * @param fd          An open socket.
+ * @param device      The name of the network interface to configure.
+ * @param type        The requested flavor of time stamping.
+ * @param transport   The type of transport used.
+ * @return            Zero on success, non-zero otherwise.
  */
-int sk_timestamping_init(int fd, char *device, enum timestamp_type type);
+int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
+			 enum transport_type transport);
 
 /**
  * Limits the number of RECVMSG(2) calls when attempting to obtain a

@@ -154,7 +154,7 @@ static int udp6_open(struct transport *t, char *name, struct fdarray *fda,
 	if (gfd < 0)
 		goto no_general;
 
-	if (sk_timestamping_init(efd, name, ts_type))
+	if (sk_timestamping_init(efd, name, ts_type, TRANS_UDP_IPV6))
 		goto no_timestamping;
 
 	fda->fd[FD_EVENT] = efd;

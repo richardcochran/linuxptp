@@ -223,7 +223,8 @@ int sk_receive(int fd, void *buf, int buflen,
 	return cnt;
 }
 
-int sk_timestamping_init(int fd, char *device, enum timestamp_type type)
+int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
+			 enum transport_type transport)
 {
 	int flags;
 
