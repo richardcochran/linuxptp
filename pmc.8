@@ -1,0 +1,85 @@
+.TH PMC 8 "November 2012" "linuxptp"
+.SH NAME
+pmc \- PTP management client
+
+.SH SYNOPSIS
+.B pmc
+[
+.B \-2
+|
+.B \-4
+|
+.B \-6
+|
+.B \-u
+] [
+.BI \-b " boundary-hops"
+] [
+.BI \-d " domain-number"
+] [
+.BI \-i " interface"
+] [
+.BI \-t " transport-specific-field"
+]
+
+.SH DESCRIPTION
+.B pmc
+is a program which implements a PTP management client according to IEEE
+standard 1588. The program reads from the standard input actions specified by
+name and management ID, sends them over the selected transport and prints any
+received replies. There are three actions supported: 
+.B GET
+retrieves the specified information,
+.B SET
+updates the specified information and
+.B CMD
+(or
+.BR COMMAND )
+initiates the specified event.
+
+Command
+.B help
+can be used to get a list of supported actions and management IDs.
+
+.SH OPTIONS
+.TP
+.B \-2
+Select the IEEE 802.3 network transport.
+.TP
+.B \-4
+Select the UDP IPv4 network transport. This is the default transport.
+.TP
+.B \-6
+Select the UDP IPv6 network transport.
+.TP
+.B \-u
+Select the Unix Domain Socket transport.
+.TP
+.BI \-b " boundary-hops"
+Specify the boundary hops value in sent messages. The default is 1.
+.TP
+.BI \-d " domain-number"
+Specify the domain number in sent messages. The default is 0.
+.TP
+.BI \-i " interface"
+Specify the network interface. The default is /tmp/pmc for the Unix Domain
+Socket transport and eth0 for the other transports.
+.TP
+.BI \-t " transport-specific-field"
+Specify the transport specific field in sent messages as a hexadecimal number.
+The default is 0x0.
+.TP
+.B \-h
+Display a help message.
+
+.SH MANAGEMENT IDS
+
+.TP
+.B CURRENT_DATA_SET
+.TP
+.B TIME_STATUS_NP
+.TP
+.B NULL_MANAGEMENT
+
+.SH SEE ALSO
+.BR ptp4l (8)

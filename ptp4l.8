@@ -1,0 +1,291 @@
+.TH PTP4l 8 "November 2012" "linuxptp"
+.SH NAME
+ptp4l \- PTP Boundary/Ordinary Clock
+
+.SH SYNOPSIS
+.B ptp4l
+[
+.B \-A
+|
+.B \-E
+|
+.B \-P
+] [
+.B \-2
+|
+.B \-4
+|
+.B \-6
+] [
+.B \-H
+|
+.B \-S
+|
+.B \-L
+] [
+.BI \-f " config"
+] [
+.BI \-p " phc-device"
+] [
+.B \-s
+] [
+.BI \-l " print-level"
+] [
+.B \-q
+] [
+.B \-v
+]
+[
+.BI \-i " interface"
+]
+.I .\|.\|.
+
+.SH DESCRIPTION
+.B ptp4l
+is an implementation of the Precision Time Protocol (PTP) according to IEEE
+standard 1588 for Linux. It implements Boundary Clock (BC) and Ordinary Clock
+(OC).
+
+.SH OPTIONS
+.TP
+.B \-A
+Select the delay mechanism automatically. Start with E2E and switch to P2P when
+a peer delay request is received.
+.TP
+.B \-E
+Select the delay request-response (E2E) mechanism. This is the default
+mechanism.
+.TP
+.B \-P
+Select the peer delay (P2P) mechanism.
+.TP
+.B \-2
+Select the IEEE 802.3 network transport.
+.TP
+.B \-4
+Select the UDP IPv4 network transport. This is the default transport.
+.TP
+.B \-6
+Select the UDP IPv6 network transport.
+.TP
+.B \-H
+Select the hardware time stamping. All ports specified by the
+.B \-i
+option and in the configuration file must be attached to the same PTP hardware
+clock (PHC). This is the default time stamping.
+.TP
+.B \-S
+Select the software time stamping.
+.TP
+.B \-L
+Select the legacy hardware time stamping.
+.TP
+.BI \-f " config"
+Read configuration from the specified file. No configuration file is read by
+default.
+.TP
+.BI \-p " phc-device"
+With hardware time stamping, force which PHC device (e.g. /dev/ptp0) should be
+used.
+.TP
+.B \-s
+Enable the slaveOnly mode.
+.TP
+.BI \-l " print-level"
+Set the maximum syslog level of messages which should be printed or sent to
+the system logger. The default is 6 (LOG_INFO).
+.TP
+.B \-q
+Don't send messages to the system logger.
+.TP
+.B \-v
+Print messages to the standard output.
+.TP
+.BI \-i " interface"
+Specify a PTP port, it may be used multiple times. At least one port must be
+specified by this option or in the configuration file.
+.TP
+.BI \-h
+Display a help message.
+
+.SH CONFIGURATION FILE
+
+The configuration file is divided into sections. Each section starts with a
+line containing its name enclosed in brackets and it follows with settings.
+Each setting is placed on a separate line, it contains the name of the
+option and the value separated by whitespace characters.
+
+The global section (indicated as
+.BR [global] )
+sets the program options, clock options and default port options. Other
+sections are port specific sections and they override the default port options.
+The name of the section is the name of the configured port (e.g.
+.BR [eth0] ).
+Ports specified in the configuration file don't need to be
+specified by the
+.B \-i
+option. An empty port section can be used to replace the command line option.
+
+.SH PORT OPTIONS
+
+.TP
+.B logAnnounceInterval
+The mean time interval between Announce messages. A shorter interval makes
+ptp4l react faster to the changes in the master-slave hierarchy. The interval
+should be the same in the whole domain. It's specified as a power of two in
+seconds.
+The default is 1 (2 seconds).
+.TP
+.B logSyncInterval
+The mean time interval between Sync messages. A shorter interval may improve
+accuracy of the local clock. It's specified as a power of two in seconds.
+The default is 0 (1 second).
+.TP
+.B logMinDelayReqInterval
+The minimum permitted mean time interval between Delay_Req messages. A shorter
+interval makes ptp4l react faster to the changes in the path delay. It's
+specified as a power of two in seconds.
+The default is 0 (1 second).
+.TP
+.B logMinPdelayReqInterval
+The minimum permitted mean time interval between Pdelay_Req messages. It's
+specified as a power of two in seconds.
+The default is 0 (1 second).
+.TP
+.B announceReceiptTimeout
+The number of missed Announce messages before the last Announce messages
+expires.
+The default is 3.
+.TP
+.B transportSpecific
+The transport specific field. Must be in the range 0 to 255.
+The default is 0.
+.TP
+.B path_trace_enabled
+Enable the mechanism used to trace the route of the Announce messages.
+The default is 0 (disabled).
+.TP
+.B follow_up_info
+Include the 802.1AS data in the Follow_Up messages if enabled.
+The default is 0 (disabled).
+.TP
+.B delay_mechanism
+Select the delay mechanism. Possible values are E2E, P2P and Auto.
+The default is E2E.
+.TP
+.B network_transport
+Select the network transport. Possible values are UDPv4, UDPv6 and L2.
+The default is UDPv4.
+
+.SH PROGRAM AND CLOCK OPTIONS
+
+.TP
+.B twoStepFlag
+The local clock is a two-step clock if enabled. One-step clocks are not
+supported yet.
+The default is 1 (enabled).
+.TP
+.B slaveOnly
+The local clock is a slave-only clock if enabled.
+The default is 0 (disabled).
+.TP
+.B priority1
+The priority1 attribute of the local clock. It is used in the best master
+selection algorithm, lower values take precedence. Must be in the range 0 to
+255.
+The default is 128.
+.TP
+.B priority2
+The priority2 attribute of the local clock. It is used in the best master
+selection algorithm, lower values take precedence. Must be in the range 0 to
+255.
+The default is 128.
+.TP
+.B clockClass
+The clockClass attribute of the local clock. It denotes the traceability of the
+time distributed by the grandmaster clock.
+The default is 248.
+.TP
+.B clockAccuracy
+The clockAccuracy attribute of the local clock. It is used in the best master
+selection algorithm.
+The default is 0xFE.
+.TP
+.B offsetScaledLogVariance
+The offsetScaledLogVariance attribute of the local clock. It characterizes the
+stability of the clock.
+The default is 0xFFFF.
+.TP
+.B domainNumber
+The domain attribute of the local clock.
+The default is 0.
+.TP
+.B free_running
+Don't adjust the local clock if enabled.
+The default is 0 (disabled).
+.TP
+.B freq_est_interval
+The time interval over which is estimated the ratio of the local and
+peer clock frequencies. It is specified as a power of two in seconds.
+The default is 1 (2 seconds).
+.TP
+.B assume_two_step
+Treat one-step responses as two-step if enabled. It is used to work around
+buggy 802.1AS switches.
+The default is 0 (disabled).
+.TP
+.B tx_timestamp_retries
+The number of retries to fetch the tx time stamp from the kernel when a message
+is sent.
+The default is 2.
+.TP
+.B clock_servo
+The servo which is used to synchronize the local clock. Currently only one
+servo is implemented, a PI controller.
+The default is pi.
+.TP
+.B pi_proportional_const
+The proportional constant of the PI controller. When set to 0.0, the value will
+be selected from 0.7 and 0.1 for the hardware and software time stamping
+respectively.
+The default is 0.0.
+.TP
+.B pi_integral_const
+The integral constant of the PI controller. When set to 0.0, the value will be
+selected from 0.3 and 0.001 for the hardware and software time stamping
+respectively.
+The default is 0.0.
+.TP
+.B pi_offset_const
+The maximum offset the PI controller will correct by changing the clock
+frequency instead of stepping the clock. When set to 0.0, the controller will
+never step the clock.
+The default is 0.0.
+.TP
+.B ptp_dst_mac
+The MAC address where should be PTP messages sent.
+Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
+.TP
+.B p2p_dst_mac
+The MAC address where should be peer delay messages the PTP peer.
+Relevant only with L2 transport. The default is 01:80:C2:00:00:0E.
+.TP
+.B logging_level
+The maximum logging level of messages which should be printed.
+The default is 6 (LOG_INFO).
+.TP
+.B verbose
+Print messages to the standard output if enabled.
+The default is 0 (disabled).
+.TP
+.B use_syslog
+Print messages to the system log if enabled.
+The default is 1 (enabled).
+.TP
+.B time_stamping
+The time stamping method. The allowed values are hardware, software and legacy.
+The default is hardware.
+
+.SH SEE ALSO
+.BR pmc (8),
+.BR phc2sys (8)

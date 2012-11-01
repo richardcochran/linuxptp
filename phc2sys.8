@@ -1,0 +1,91 @@
+.TH PHC2SYS 8 "November 2012" "linuxptp"
+.SH NAME
+phc2sys \- synchronize two clocks
+
+.SH SYNOPSIS
+.B phc2sys
+{
+.BI \-d " pps-device"
+[
+.BI \-s " phc-device"
+|
+.BI \-i " interface"
+] |
+.BI \-s " phc-device"
+|
+.BI \-i " interface"
+} [
+.BI \-c " phc-device"
+] [
+.BI \-P " kp"
+] [
+.BI \-I " ki"
+] [
+.BI \-R " update-rate"
+] [
+.BI \-N " clock-readings"
+]
+
+.SH DESCRIPTION
+.B phc2sys
+is a program which synchronizes two clocks in the system. Typically, it is used
+to synchronize the system clock to a PTP hardware clock (PHC), which itself is
+synchronized by the
+.BR ptp4l (8)
+program.
+
+Two synchronization modes are supported, one uses a pulse per second (PPS)
+signal provided by the source clock and the other mode reads time from the
+source clock directly. The PPS mode is usually preferred, because reading the
+PHC is slow and introduces an unknown error in the readings, but not all PHCs
+provide the PPS signal.
+
+.SH OPTIONS
+.TP
+.BI \-d " pps-device"
+Specify the PPS device of the master clock (e.g. /dev/pps0). With this option
+the PPS synchronization mode is used instead of the direct mode. As the PPS
+signal does not specify time and only marks start of a second, the slave clock
+should be already close to the correct time before
+.B phc2sys
+is started or the
+.B \-s
+option should be used too. 
+.TP
+.BI \-s " phc-device"
+Specify the device of the master clock (e.g. /dev/ptp0). When this option is
+used together with the
+.B \-d
+option, the master clock is read only on start to fix an offset over 0.5
+seconds which cannot be fixed with PPS alone.
+.TP
+.BI \-i " interface"
+Similar to the
+.B \-s
+option, but specified by the interface which provides the master clock. 
+.TP
+.BI \-c " phc-device"
+Specify the device of the slave clock (e.g. /dev/ptp1). The default slave clock
+is the system clock (CLOCK_REALTIME).
+.TP
+.BI \-P " kp"
+Specify the proportional constant of the PI controller. The default is 0.7.
+.TP
+.BI \-I " ki"
+Specify the integral constant of the PI controller. The default is 0.3.
+.TP
+.BI \-R " update-rate"
+Specify the slave clock update rate when running in the direct synchronization
+mode. The default is 1 per second.
+.TP
+.BI \-N " phc-num"
+Specify the number of master clock readings per one slave clock update. Only
+the fastest reading is used to update the slave clock, this is useful to
+minimize the error caused by random delays in scheduling and bus utilization.
+The default is 5.
+.TP
+.BI \-h
+Display a help message.
+
+.SH SEE ALSO
+.BR ptp4l (8)

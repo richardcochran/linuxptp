@@ -1,0 +1,56 @@
+.TH HWSTAMP_CTL 8 "November 2012" "linuxptp"
+.SH NAME
+hwstamp_ctl \- set time stamping policy at the driver level
+
+.SH SYNOPSIS
+.B hwstamp_ctl
+.BI \-i " interface"
+[
+.BI \-r " rx-filter"
+] [
+.BI \-t " tx-type"
+]
+
+.SH DESCRIPTION
+.B hwstamp_ctl
+is a program used to set the hardware time stamping policy at the network
+driver level with the
+.B SIOCSHWTSTAMP
+.BR ioctl (2).
+The 
+.I tx-type
+and
+.I rx-filter
+values are hints to the driver what it is expected to do. If the requested
+fine-grained filtering for incoming packets is not supported, the driver may
+time stamp more than just the requested types of packets.
+
+This program is a debugging tool. The
+.BR ptp4l (8)
+program does not need this program to function, it will set the policy
+automatically as appropriate.
+
+.SH OPTIONS
+.TP
+.BI \-i " interface"
+Specify the network interface of which the policy should be changed.
+.TP
+.BI \-r " rx-filter"
+Specify which types of incoming packets should be time stamped,
+.I rx-filter
+is an integer value.
+.TP
+.BI \-t " tx-type"
+Enable or disable hardware time stamping for outgoing packets,
+.I tx-type
+is an integer value.
+.TP
+.BI \-h
+Display a help message and list of possible values for
+.I rx-filter
+and
+.IR tx-type .
+
+.SH SEE ALSO
+.BR ioctl (2),
+.BR ptp4l (8)
