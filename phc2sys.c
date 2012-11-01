@@ -233,15 +233,15 @@ static void usage(char *progname)
 	fprintf(stderr,
 		"\n"
 		"usage: %s [options]\n\n"
-		" -c [device]  slave clock device, default CLOCK_REALTIME\n"
-		" -d [device]  master device, source of PPS events\n"
-		" -h           prints this message and exits\n"
-		" -s [device]  set the time from this PHC device\n"
-		" -i [device]  set the time from PHC connected to this eth device\n"
-		" -P [val]     set proportional constant to 'val'\n"
-		" -I [val]     set integration constant to 'val'\n"
-		" -R [val]     set PHC update rate to 'val' Hz\n"
-		" -N [val]     set number of PHC readings per update\n"
+		" -c [dev|name]  slave clock (CLOCK_REALTIME)\n"
+		" -d [dev]       master PPS device\n"
+		" -s [dev|name]  master clock\n"
+		" -i [iface]     master clock by network interface\n"
+		" -P [kp]        proportional constant (0.7)\n"
+		" -I [ki]        integration constant (0.3)\n"
+		" -R [rate]      slave clock update rate in HZ (1)\n"
+		" -N [num]       number of master clock readings per update (5)\n"
+		" -h             prints this message and exits\n"
 		"\n",
 		progname);
 }
