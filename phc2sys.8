@@ -53,8 +53,8 @@ is started or the
 option should be used too. 
 .TP
 .BI \-s " phc-device"
-Specify the device of the master clock (e.g. /dev/ptp0). When this option is
-used together with the
+Specify the master clock by device (e.g. /dev/ptp0) or name (e.g. CLOCK_REALTIME
+for the system clock). When this option is used together with the
 .B \-d
 option, the master clock is read only on start to fix an offset over 0.5
 seconds which cannot be fixed with PPS alone.
@@ -65,8 +65,8 @@ Similar to the
 option, but specified by the interface which provides the master clock. 
 .TP
 .BI \-c " phc-device"
-Specify the device of the slave clock (e.g. /dev/ptp1). The default slave clock
-is the system clock (CLOCK_REALTIME).
+Specify the slave clock by device (e.g. /dev/ptp1) or name. The default is
+CLOCK_REALTIME (the system clock).
 .TP
 .BI \-P " kp"
 Specify the proportional constant of the PI controller. The default is 0.7.

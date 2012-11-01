@@ -44,7 +44,17 @@
 
 static clockid_t clock_open(char *device)
 {
-	int fd = open(device, O_RDWR);
+	int fd;
+
+	if (device[0] != '/') {
+		if (!strcasecmp(device, "CLOCK_REALTIME"))
+			return CLOCK_REALTIME;
+
+		fprintf(stderr, "unknown clock %s\n", device);
+		return CLOCK_INVALID;
+	}
+
+	fd = open(device, O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, "cannot open %s: %m\n", device);
 		return CLOCK_INVALID;
