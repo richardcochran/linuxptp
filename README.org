@@ -228,6 +228,10 @@
 
 * Thanks
 
+  Thanks to AudioScience Inc for sponsoring the 8021.AS support.
+
+  - http://www.audioscience.com
+
   Thanks to Intel Corporation for donating three NICs, the 82574,
   82580, and the 82599.
 
