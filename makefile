@@ -37,6 +37,11 @@ DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 VPATH	= $(srcdir)
 
+prefix	= /usr/local
+sbindir	= $(prefix)/sbin
+mandir	= $(prefix)/man
+man8dir	= $(mandir)/man8
+
 all: $(PRG)
 
 ptp4l: $(OBJ)
@@ -46,6 +51,11 @@ pmc: pmc.o msg.o print.o raw.o sk.o tlv.o transport.o udp.o udp6.o uds.o util.o
 phc2sys: phc2sys.o sk.o print.o
 
 hwstamp_ctl: hwstamp_ctl.o
+
+install: $(PRG)
+	mkdir -p $(sbindir) $(man8dir)
+	install $(PRG) $(sbindir)
+	install -p -m 644 -t $(man8dir) $(PRG:%=%.8)
 
 clean:
 	rm -f $(OBJECTS) $(DEPEND)
