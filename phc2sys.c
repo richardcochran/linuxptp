@@ -241,6 +241,7 @@ static void usage(char *progname)
 		" -I [ki]        integration constant (0.3)\n"
 		" -R [rate]      slave clock update rate in HZ (1)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
+		" -O [offset]    slave-master time offset (0)\n"
 		" -h             prints this message and exits\n"
 		"\n",
 		progname);
@@ -253,12 +254,12 @@ int main(int argc, char *argv[])
 	clockid_t src = CLOCK_INVALID, dst = CLOCK_REALTIME;
 	uint64_t phc_ts;
 	int64_t phc_offset;
-	int c, phc_readings = 5, phc_rate = 1;
+	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0;
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:i:"))) {
+	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:O:i:"))) {
 		switch (c) {
 		case 'c':
 			dst = clock_open(optarg);
@@ -280,6 +281,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'N':
 			phc_readings = atoi(optarg);
+			break;
+		case 'O':
+			sync_offset = atoi(optarg);
 			break;
 		case 'i':
 			ethdev = optarg;
@@ -311,6 +315,7 @@ int main(int argc, char *argv[])
 		struct timespec now;
 		if (clock_gettime(src, &now))
 			perror("clock_gettime");
+		now.tv_sec += sync_offset;
 		if (clock_settime(dst, &now))
 			perror("clock_settime");
 	}
@@ -323,6 +328,7 @@ int main(int argc, char *argv[])
 		if (!read_phc(src, dst, phc_readings, &phc_offset, &phc_ts)) {
 			continue;
 		}
+		phc_offset -= sync_offset * NS_PER_SEC;
 		do_servo(&servo, dst, phc_offset, phc_ts, kp, ki);
 		show_servo(stdout, "phc", phc_offset, phc_ts);
 	}

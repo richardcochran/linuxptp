@@ -24,6 +24,8 @@ phc2sys \- synchronize two clocks
 .BI \-R " update-rate"
 ] [
 .BI \-N " clock-readings"
+] [
+.BI \-O " offset"
 ]
 
 .SH DESCRIPTION
@@ -83,6 +85,10 @@ Specify the number of master clock readings per one slave clock update. Only
 the fastest reading is used to update the slave clock, this is useful to
 minimize the error caused by random delays in scheduling and bus utilization.
 The default is 5.
+.TP
+.BI \-O " offset"
+Specify the offset between the slave and master times in seconds.
+The default is 0 seconds.
 .TP
 .BI \-h
 Display a help message.
