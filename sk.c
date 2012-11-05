@@ -32,7 +32,7 @@
 
 /* globals */
 
-int sk_tx_retries = 2;
+int sk_tx_retries = 100;
 
 /* private methods */
 
