@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "config.h"
 #include "ether.h"
 #include "print.h"
@@ -318,7 +319,7 @@ int config_read(char *name, struct config *cfg)
 {
 	enum config_section current_section = GLOBAL_SECTION;
 	FILE *fp;
-	char line[1024];
+	char buf[1024], *line;
 	int current_port;
 
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
@@ -328,7 +329,17 @@ int config_read(char *name, struct config *cfg)
 		return -1;
 	}
 
-	while (fgets(line, sizeof(line), fp)) {
+	while (fgets(buf, sizeof(buf), fp)) {
+		line = buf;
+
+		/* skip whitespace characters */
+		while (isspace(line[0]))
+			line++;
+
+		/* ignore empty lines and comments */
+		if (line[0] == '#' || line[0] == '\n' || line[0] == '\0')
+			continue;
+
 		if (scan_mode(line, &current_section) ) {
 			if (current_section == PORT_SECTION) {
 				char port[17];
