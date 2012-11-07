@@ -229,9 +229,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (config && config_read(config, &cfg_settings)) {
-		fprintf(stderr, "failed to read configuration file\n");
-		return -1;
+	if (config && (c = config_read(config, &cfg_settings))) {
+		return c;
 	}
 	if (ds->slaveOnly) {
 		ds->clockQuality.clockClass = 255;

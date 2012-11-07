@@ -29,11 +29,16 @@ enum config_section {
 	UNKNOWN_SECTION,
 };
 
-static int scan_mode(char *s, enum config_section *section)
+enum parser_result {
+	PARSED_OK,
+	NOT_PARSED,
+	BAD_VALUE,
+};
+
+static enum parser_result parse_section_line(char *s, enum config_section *section)
 {
-	if (0 == strcasecmp(s, "[global]\n")) {
+	if (!strcasecmp(s, "[global]")) {
 		*section = GLOBAL_SECTION;
-		return 1;
 	} else if (s[0] == '[') {
 		char c;
 		*section = PORT_SECTION;
@@ -43,325 +48,384 @@ static int scan_mode(char *s, enum config_section *section)
 				*s = ' ';
 			s++;
 		}
-		return 1;
-	} else {
-		return 0;
-	}
+	} else
+		return NOT_PARSED;
+	return PARSED_OK;
 }
 
-static int scan_pod(const char *s, struct port_defaults *pod)
+static enum parser_result parse_pod_setting(const char *option,
+					    const char *value,
+					    struct port_defaults *pod)
 {
 	int val;
 	Integer8 i8;
 	UInteger8 u8;
 
-	if (1 == sscanf(s, " logAnnounceInterval %hhd", &i8)) {
-
+	if (!strcmp(option, "logAnnounceInterval")) {
+		if (1 != sscanf(value, "%hhd", &i8))
+			return BAD_VALUE;
 		pod->logAnnounceInterval = i8;
-		return 1;
 
-	} else if (1 == sscanf(s, " logSyncInterval %hhd", &i8)) {
-
+	} else if (!strcmp(option, "logSyncInterval")) {
+		if (1 != sscanf(value, "%hhd", &i8))
+			return BAD_VALUE;
 		pod->logSyncInterval = i8;
-		return 1;
 
-	} else if (1 == sscanf(s, " logMinDelayReqInterval %hhd", &i8)) {
-
+	} else if (!strcmp(option, "logMinDelayReqInterval")) {
+		if (1 != sscanf(value, "%hhd", &i8))
+			return BAD_VALUE;
 		pod->logMinDelayReqInterval = i8;
-		return 1;
 
-	} else if (1 == sscanf(s, " logMinPdelayReqInterval %hhd", &i8)) {
-
+	} else if (!strcmp(option, "logMinPdelayReqInterval")) {
+		if (1 != sscanf(value, "%hhd", &i8))
+			return BAD_VALUE;
 		pod->logMinPdelayReqInterval = i8;
-		return 1;
 
-	} else if (1 == sscanf(s, " announceReceiptTimeout %hhu", &u8)) {
-
+	} else if (!strcmp(option, "announceReceiptTimeout")) {
+		if (1 != sscanf(value, "%hhu", &u8))
+			return BAD_VALUE;
 		pod->announceReceiptTimeout = u8;
-		return 1;
 
-	} else if (1 == sscanf(s, " transportSpecific %hhx", &u8)) {
-
+	} else if (!strcmp(option, "transportSpecific")) {
+		if (1 != sscanf(value, "%hhx", &u8))
+			return BAD_VALUE;
 		pod->transportSpecific = u8 << 4;
-		return 1;
 
-	} else if (1 == sscanf(s, " path_trace_enabled %u", &val)) {
-
+	} else if (!strcmp(option, "path_trace_enabled")) {
+		if (1 != sscanf(value, "%u", &val))
+			return BAD_VALUE;
 		pod->path_trace_enabled = val ? 1 : 0;
-		return 1;
 
-	} else if (1 == sscanf(s, " follow_up_info %u", &val)) {
-
+	} else if (!strcmp(option, "follow_up_info")) {
+		if (1 != sscanf(value, "%u", &val))
+			return BAD_VALUE;
 		pod->follow_up_info = val ? 1 : 0;
-		return 1;
-	}
 
-	return 0;
+	} else
+		return NOT_PARSED;
+
+	return PARSED_OK;
 }
 
-static void scan_port_line(const char *s, struct config *cfg, int p)
+static enum parser_result parse_port_setting(const char *option,
+					    const char *value,
+					    struct config *cfg,
+					    int p)
 {
-	char string[1024];
+	enum parser_result r;
 
-	if (scan_pod(s, &cfg->iface[p].pod)) {
+	r = parse_pod_setting(option, value, &cfg->iface[p].pod);
+	if (r != NOT_PARSED)
+		return r;
 
-		/* nothing to do here */
-
-	} else if (1 == sscanf(s, " network_transport %1023s", string)) {
-
-		if (0 == strcasecmp("L2", string))
-
+	if (!strcmp(option, "network_transport")) {
+		if (!strcasecmp("L2", value))
 			cfg->iface[p].transport = TRANS_IEEE_802_3;
-
-		else if (0 == strcasecmp("UDPv4", string))
-
+		else if (!strcasecmp("UDPv4", value))
 			cfg->iface[p].transport = TRANS_UDP_IPV4;
-
-		else if (0 == strcasecmp("UDPv6", string))
-
+		else if (!strcasecmp("UDPv6", value))
 			cfg->iface[p].transport = TRANS_UDP_IPV6;
+		else
+			return BAD_VALUE;
 
-	} else if (1 == sscanf(s, " delay_mechanism %1023s", string)) {
-
-		if (0 == strcasecmp("Auto", string))
-
+	} else if (!strcmp(option, "delay_mechanism")) {
+		if (!strcasecmp("Auto", value))
 			cfg->iface[p].dm = DM_AUTO;
-
-		else if (0 == strcasecmp("E2E", string))
-
+		else if (!strcasecmp("E2E", value))
 			cfg->iface[p].dm = DM_E2E;
-
-		else if (0 == strcasecmp("P2P", string))
-
+		else if (!strcasecmp("P2P", value))
 			cfg->iface[p].dm = DM_P2P;
+		else
+			return BAD_VALUE;
+	} else
+		return NOT_PARSED;
 
-	}
+	return PARSED_OK;
 }
 
-static void scan_global_line(const char *s, struct config *cfg)
+static enum parser_result parse_global_setting(const char *option,
+					       const char *value,
+					       struct config *cfg)
 {
 	double df;
 	int i, val, cfg_ignore = cfg->cfg_ignore;
 	UInteger16 u16;
 	UInteger8 u8;
 	unsigned char mac[MAC_LEN];
-	char string[1024];
 
 	struct defaultDS *dds = &cfg->dds;
 	struct port_defaults *pod = &cfg->pod;
 
-	if (scan_pod(s, pod)) {
+	enum parser_result r;
 
-		/* nothing to do here */
+	r = parse_pod_setting(option, value, pod);
+	if (r != NOT_PARSED)
+		return r;
 
-	} else if (1 == sscanf(s, " twoStepFlag %d", &val)) {
+	if (!strcmp(option, "twoStepFlag")) {
+		/* TODO - implement one step */
+		if (1 != sscanf(value, "%d", &val) || !val)
+			return BAD_VALUE;
+		dds->twoStepFlag = val ? 1 : 0;
 
-		if (val) /* TODO - implement one step */
-			dds->twoStepFlag = val ? 1 : 0;
-
-	} else if (1 == sscanf(s, " slaveOnly %d", &val)) {
-
+	} else if (!strcmp(option, "slaveOnly")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
 		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY))
 			dds->slaveOnly = val ? 1 : 0;
 
-	} else if (1 == sscanf(s, " priority1 %hhu", &u8)) {
-
+	} else if (!strcmp(option, "priority1")) {
+		if (1 != sscanf(value, "%hhu", &u8))
+			return BAD_VALUE;
 		dds->priority1 = u8;
 
-	} else if (1 == sscanf(s, " priority2 %hhu", &u8)) {
-
+	} else if (!strcmp(option, "priority2")) {
+		if (1 != sscanf(value, "%hhu", &u8))
+			return BAD_VALUE;
 		dds->priority2 = u8;
 
-	} else if (1 == sscanf(s, " domainNumber %hhu", &u8)) {
+	} else if (!strcmp(option, "domainNumber")) {
+		if (1 != sscanf(value, "%hhu", &u8) || !(u8 < 128))
+			return BAD_VALUE;
+		dds->domainNumber = u8;
 
-		if (u8 < 128)
-			dds->domainNumber = u8;
-
-	} else if (1 == sscanf(s, " clockClass %hhu", &u8)) {
-
+	} else if (!strcmp(option, "clockClass")) {
+		if (1 != sscanf(value, "%hhu", &u8))
+			return BAD_VALUE;
 		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY))
 			dds->clockQuality.clockClass = u8;
 
-	} else if (1 == sscanf(s, " clockAccuracy %hhx", &u8)) {
-
+	} else if (!strcmp(option, "clockAccuracy")) {
+		if (1 != sscanf(value, "%hhx", &u8))
+			return BAD_VALUE;
 		dds->clockQuality.clockAccuracy = u8;
 
-	} else if (1 == sscanf(s, " offsetScaledLogVariance %hx", &u16)) {
-
+	} else if (!strcmp(option, "offsetScaledLogVariance")) {
+		if (1 != sscanf(value, "%hx", &u16))
+			return BAD_VALUE;
 		dds->clockQuality.offsetScaledLogVariance = u16;
 
-	} else if (1 == sscanf(s, " free_running %d", &val)) {
-
+	} else if (!strcmp(option, "free_running")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
 		dds->free_running = val ? 1 : 0;
 
-	} else if (1 == sscanf(s, " freq_est_interval %d", &val)) {
+	} else if (!strcmp(option, "freq_est_interval")) {
+		if (1 != sscanf(value, "%d", &val) || !(val >= 0))
+			return BAD_VALUE;
+		dds->freq_est_interval = val;
+		pod->freq_est_interval = val;
 
-		if (val >= 0) {
-			dds->freq_est_interval = val;
-			pod->freq_est_interval = val;
-		}
-
-	} else if (1 == sscanf(s, " assume_two_step %u", &val)) {
-
+	} else if (!strcmp(option, "assume_two_step")) {
+		if (1 != sscanf(value, "%u", &val))
+			return BAD_VALUE;
 		*cfg->assume_two_step = val ? 1 : 0;
 
-	} else if (1 == sscanf(s, " tx_timestamp_retries %u", &val)) {
+	} else if (!strcmp(option, "tx_timestamp_retries")) {
+		if (1 != sscanf(value, "%u", &val) || !(val > 0))
+			return BAD_VALUE;
+		*cfg->tx_timestamp_retries = val;
 
-		if (val > 0)
-			*cfg->tx_timestamp_retries = val;
+	} else if (!strcmp(option, "pi_proportional_const")) {
+		if (1 != sscanf(value, "%lf", &df) || !(df >= 0.0 && df < 1.0))
+			return BAD_VALUE;
+		*cfg->pi_proportional_const = df;
 
-	} else if (1 == sscanf(s, " pi_proportional_const %lf", &df)) {
+	} else if (!strcmp(option, "pi_integral_const")) {
+		if (1 != sscanf(value, "%lf", &df) || !(df >= 0.0 && df < 1.0))
+			return BAD_VALUE;
+		*cfg->pi_integral_const = df;
 
-		if (df > 0.0 && df < 1.0)
-			*cfg->pi_proportional_const = df;
+	} else if (!strcmp(option, "pi_offset_const")) {
+		if (1 != sscanf(value, "%lf", &df) || !(df >= 0.0))
+			return BAD_VALUE;
+		*cfg->pi_offset_const = df;
 
-	} else if (1 == sscanf(s, " pi_integral_const %lf", &df)) {
-
-		if (df > 0.0 && df < 1.0)
-			*cfg->pi_integral_const = df;
-
-	} else if (1 == sscanf(s, " pi_offset_const %lf", &df)) {
-
-		if (df >= 0.0)
-			*cfg->pi_offset_const = df;
-
-	} else if (MAC_LEN == sscanf(s, " ptp_dst_mac %hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-			&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5])) {
-
+	} else if (!strcmp(option, "ptp_dst_mac")) {
+		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+				      &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]))
+			return BAD_VALUE;
 		for (i = 0; i < MAC_LEN; i++)
 			cfg->ptp_dst_mac[i] = mac[i];
 
-	} else if (MAC_LEN == sscanf(s, " p2p_dst_mac %hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-			&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5])) {
-
+	} else if (!strcmp(option, "p2p_dst_mac")) {
+		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+				      &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]))
+			return BAD_VALUE;
 		for (i = 0; i < MAC_LEN; i++)
 			cfg->p2p_dst_mac[i] = mac[i];
 
-	} else if (1 == sscanf(s, " logging_level %d", &val)) {
-
+	} else if (!strcmp(option, "logging_level")) {
+		if (1 != sscanf(value, "%d", &val) ||
+				!(val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX))
+			return BAD_VALUE;
 		if (!(cfg_ignore & CFG_IGNORE_PRINT_LEVEL)) {
-			if (val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX)
-				cfg->print_level = val;
+			cfg->print_level = val;
 		}
 
-	} else if (1 == sscanf(s, " verbose %d", &val)) {
-
+	} else if (!strcmp(option, "verbose")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
 		if (!(cfg_ignore & CFG_IGNORE_VERBOSE))
 			cfg->verbose = val ? 1 : 0;
 
-	} else if (1 == sscanf(s, " use_syslog %d", &val)) {
-
+	} else if (!strcmp(option, "use_syslog")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
 		if (!(cfg_ignore & CFG_IGNORE_USE_SYSLOG))
 			cfg->use_syslog = val ? 1 : 0;
 
-	} else if (1 == sscanf(s, " time_stamping %1023s", string)) {
-
+	} else if (!strcmp(option, "time_stamping")) {
 		if (!(cfg_ignore & CFG_IGNORE_TIMESTAMPING)) {
-
-			if (0 == strcasecmp("hardware", string))
-
+			if (0 == strcasecmp("hardware", value))
 				cfg->timestamping = TS_HARDWARE;
-
-			else if (0 == strcasecmp("software", string))
-
+			else if (0 == strcasecmp("software", value))
 				cfg->timestamping = TS_SOFTWARE;
-
-			else if (0 == strcasecmp("legacy", string))
-
+			else if (0 == strcasecmp("legacy", value))
 				cfg->timestamping = TS_LEGACY_HW;
+			else
+				return BAD_VALUE;
 		}
 
-	} else if (1 == sscanf(s, " delay_mechanism %1023s", string)) {
-
+	} else if (!strcmp(option, "delay_mechanism")) {
 		if (!(cfg_ignore & CFG_IGNORE_DM)) {
-
-			if (0 == strcasecmp("E2E", string))
-
+			if (0 == strcasecmp("E2E", value))
 				cfg->dm = DM_E2E;
-
-			else if (0 == strcasecmp("P2P", string))
-
+			else if (0 == strcasecmp("P2P", value))
 				cfg->dm = DM_P2P;
-
-			else if (0 == strcasecmp("Auto", string))
-
+			else if (0 == strcasecmp("Auto", value))
 				cfg->dm = DM_AUTO;
+			else
+				return BAD_VALUE;
 		}
 
-	} else if (1 == sscanf(s, " network_transport %1023s", string)) {
-
+	} else if (!strcmp(option, "network_transport")) {
 		if (!(cfg_ignore & CFG_IGNORE_TRANSPORT)) {
-
-			if (0 == strcasecmp("UDPv4", string))
-
+			if (!strcasecmp("UDPv4", value))
 				cfg->transport = TRANS_UDP_IPV4;
-
-			else if (0 == strcasecmp("UDPv6", string))
-
+			else if (!strcasecmp("UDPv6", value))
 				cfg->transport = TRANS_UDP_IPV6;
-
-			else if (0 == strcasecmp("L2", string))
-
+			else if (!strcasecmp("L2", value))
 				cfg->transport = TRANS_IEEE_802_3;
-
+			else
+				return BAD_VALUE;
 		}
 
-	} else if (1 == sscanf(s, " clock_servo %1023s", string)) {
-
-		if (0 == strcasecmp("pi", string))
-
+	} else if (!strcmp(option, "clock_servo")) {
+		if (!strcasecmp("pi", value))
 			cfg->clock_servo = CLOCK_SERVO_PI;
+		else
+			return BAD_VALUE;
 
+	} else
+		return NOT_PARSED;
+
+	return PARSED_OK;
+}
+
+static enum parser_result parse_setting_line(char *line, char **option, char **value)
+{
+	*option = line;
+
+	while (!isspace(line[0])) {
+		if (line[0] == '\0')
+			return NOT_PARSED;
+		line++;
 	}
+
+	while (isspace(line[0])) {
+		line[0] = '\0';
+		line++;
+	}
+
+	*value = line;
+
+	return PARSED_OK;
 }
 
 int config_read(char *name, struct config *cfg)
 {
-	enum config_section current_section = GLOBAL_SECTION;
+	enum config_section current_section = UNKNOWN_SECTION;
+	enum parser_result parser_res;
 	FILE *fp;
-	char buf[1024], *line;
-	int current_port;
+	char buf[1024], *line, *c, *option, *value;
+	int current_port, line_num;
 
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
 
 	if (!fp) {
-		perror("fopen");
+		fprintf(stderr, "failed to open configuration file %s: %m\n", name);
 		return -1;
 	}
 
-	while (fgets(buf, sizeof(buf), fp)) {
-		line = buf;
+	for (line_num = 1; fgets(buf, sizeof(buf), fp); line_num++) {
+		c = buf;
 
 		/* skip whitespace characters */
-		while (isspace(line[0]))
-			line++;
+		while (isspace(*c))
+			c++;
 
 		/* ignore empty lines and comments */
-		if (line[0] == '#' || line[0] == '\n' || line[0] == '\0')
+		if (*c == '#' || *c == '\n' || *c == '\0')
 			continue;
 
-		if (scan_mode(line, &current_section) ) {
+		line = c;
+
+		/* remove trailing whitespace characters and \n */
+		c += strlen(line) - 1;
+		while (c > line && (*c == '\n' || isspace(*c)))
+			*c-- = '\0';
+
+		if (parse_section_line(line, &current_section) == PARSED_OK) {
 			if (current_section == PORT_SECTION) {
 				char port[17];
 				if (1 != sscanf(line, " %16s", port)) {
-					current_section = UNKNOWN_SECTION;
-					continue;
+					fprintf(stderr, "could not parse port name on line %d\n",
+							line_num);
+					goto parse_error;
 				}
 				current_port = config_create_interface(port, cfg);
-				if (current_port < 0) {
-					return -1;
-				}
+				if (current_port < 0)
+					goto parse_error;
 			}
 			continue;
 		}
 
-		switch(current_section) {
+		switch (current_section) {
 		case GLOBAL_SECTION:
-			scan_global_line(line, cfg);
-			break;
 		case PORT_SECTION:
-			scan_port_line(line, cfg, current_port);
+			if (parse_setting_line(line, &option, &value)) {
+				fprintf(stderr, "could not parse line %d in %s section\n",
+						line_num,
+						current_section == GLOBAL_SECTION ?
+							"global" : cfg->iface[current_port].name);
+				goto parse_error;
+			}
+
+			if (current_section == GLOBAL_SECTION)
+				parser_res = parse_global_setting(option, value, cfg);
+			else
+				parser_res = parse_port_setting(option, value, cfg, current_port);
+
+			switch (parser_res) {
+			case PARSED_OK:
+				break;
+			case NOT_PARSED:
+				fprintf(stderr, "unknown option %s at line %d in %s section\n",
+						option, line_num,
+						current_section == GLOBAL_SECTION ?
+							"global" : cfg->iface[current_port].name);
+				goto parse_error;
+			case BAD_VALUE:
+				fprintf(stderr, "%s is a bad value for option %s at line %d\n",
+						value, option, line_num);
+				goto parse_error;
+			}
+
 			break;
+		case UNKNOWN_SECTION:
+			fprintf(stderr, "line %d is not in a section\n", line_num);
+			goto parse_error;
 		default:
 			continue;
 		}
@@ -369,6 +433,11 @@ int config_read(char *name, struct config *cfg)
 
 	fclose(fp);
 	return 0;
+
+parse_error:
+	fprintf(stderr, "failed to parse configuration file %s\n", name);
+	fclose(fp);
+	return -2;
 }
 
 /* returns the number matching that interface, or -1 on failure */
@@ -378,6 +447,7 @@ int config_create_interface(char *name, struct config *cfg)
 	int i;
 
 	if (cfg->nports >= MAX_PORTS) {
+		fprintf(stderr, "more than %d ports specified\n", MAX_PORTS);
 		return -1;
 	}
 
