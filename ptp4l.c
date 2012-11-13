@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <linux/net_tstamp.h>
 
 #include "clock.h"
 #include "config.h"
@@ -135,7 +136,7 @@ int main(int argc, char *argv[])
 	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
 	struct defaultDS *ds = &cfg_settings.dds;
-	int phc_index = -1;
+	int phc_index = -1, required_modes = 0;
 
 	if (SIG_ERR == signal(SIGINT, handle_int_quit_term)) {
 		fprintf(stderr, "cannot handle SIGINT\n");
@@ -251,6 +252,30 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		return -1;
+	}
+
+	if (*timestamping == TS_SOFTWARE)
+		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
+			SOF_TIMESTAMPING_RX_SOFTWARE |
+			SOF_TIMESTAMPING_SOFTWARE;
+	else if (*timestamping == TS_LEGACY_HW)
+		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+			SOF_TIMESTAMPING_RX_HARDWARE |
+			SOF_TIMESTAMPING_SYS_HARDWARE;
+	else if (*timestamping == TS_HARDWARE)
+		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+			SOF_TIMESTAMPING_RX_HARDWARE |
+			SOF_TIMESTAMPING_RAW_HARDWARE;
+
+	/* check whether timestamping mode is supported. */
+	for (i = 0; i < cfg_settings.nports; i++) {
+		if (iface[i].ts_info.valid &&
+		    !(iface[0].ts_info.so_timestamping & required_modes)) {
+			fprintf(stderr, "interface '%s' does not support "
+				        "requested timestamping mode.\n",
+				iface[i].name);
+			return -1;
+		}
 	}
 
 	/* determine PHC Clock index */
