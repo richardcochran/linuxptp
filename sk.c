@@ -88,7 +88,7 @@ int sk_interface_index(int fd, char *name)
 	return ifreq.ifr_ifindex;
 }
 
-int sk_interface_phc(char *name, int *index)
+int sk_get_ts_info(char *name, struct sk_ts_info *sk_info)
 {
 #ifdef ETHTOOL_GET_TS_INFO
 	struct ethtool_ts_info info;
@@ -98,29 +98,38 @@ int sk_interface_phc(char *name, int *index)
 	memset(&ifr, 0, sizeof(ifr));
 	memset(&info, 0, sizeof(info));
 	info.cmd = ETHTOOL_GET_TS_INFO;
-	strcpy(ifr.ifr_name, name);
+	strncpy(ifr.ifr_name, name, IFNAMSIZ - 1);
 	ifr.ifr_data = (char *) &info;
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 
 	if (fd < 0) {
 		pr_err("socket failed: %m");
-		return -1;
+		goto failed;
 	}
 
 	err = ioctl(fd, SIOCETHTOOL, &ifr);
 	if (err < 0) {
 		pr_err("ioctl SIOCETHTOOL failed: %m");
 		close(fd);
-		return -1;
+		goto failed;
 	}
 
 	close(fd);
-	*index = info.phc_index;
 
-	return info.phc_index < 0 ? -1 : 0;
-#else
-	return -1;
+	/* copy the necessary data to sk_info */
+	memset(sk_info, 0, sizeof(struct sk_ts_info));
+	sk_info->valid = 1;
+	sk_info->phc_index = info.phc_index;
+	sk_info->so_timestamping = info.so_timestamping;
+	sk_info->tx_types = info.tx_types;
+	sk_info->rx_filters = info.rx_filters;
+
+	return 0;
 #endif
+failed:
+	/* clear data and ensure it is not marked valid */
+	memset(sk_info, 0, sizeof(struct sk_ts_info));
+	return -1;
 }
 
 int sk_interface_macaddr(char *name, unsigned char *mac, int len)

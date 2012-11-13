@@ -23,6 +23,19 @@
 #include "transport.h"
 
 /**
+ * struct sk_ts_info - supported timestamping information
+ * @valid: set to non-zero when the info struct contains valid data
+ * @info: structure containing the values returned by GET_TS_INFO
+ */
+struct sk_ts_info {
+	int valid;
+	int phc_index;
+	unsigned int so_timestamping;
+	unsigned int tx_types;
+	unsigned int rx_filters;
+};
+
+/**
  * Obtain the numerical index from a network interface by name.
  * @param fd      An open socket.
  * @param device  The name of the network interface of interest.
@@ -31,12 +44,12 @@
 int sk_interface_index(int fd, char *device);
 
 /**
- * Obtain the PHC device index of a network interface.
+ * Obtain supported timestamping information
  * @param name	    The name of the interface
- * @return index    The non-negative phc index associated with this iface.
- *                  On error a negative integer is returned.
+ * @param info      Struct containing obtained timestamping information.
+ * @return          zero on success, negative on failure.
  */
-int sk_interface_phc(char *name, int *index);
+int sk_get_ts_info(char *name, struct sk_ts_info *sk_info);
 
 /**
  * Obtain the MAC address of a network interface.

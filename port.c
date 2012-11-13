@@ -1663,7 +1663,6 @@ struct port *port_open(int phc_index,
 		       struct clock *clock)
 {
 	struct port *p = malloc(sizeof(*p));
-	int checked_phc_index = -1;
 
 	if (!p)
 		return NULL;
@@ -1672,12 +1671,12 @@ struct port *port_open(int phc_index,
 
 	if (interface->transport == TRANS_UDS)
 		; /* UDS cannot have a PHC. */
-	else if (sk_interface_phc(interface->name, &checked_phc_index))
+	else if (!interface->ts_info.valid)
 		pr_warning("port %d: get_ts_info not supported", number);
-	else if (phc_index >= 0 && phc_index != checked_phc_index) {
+	else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
 		pr_err("port %d: PHC device mismatch", number);
 		pr_err("port %d: /dev/ptp%d requested, but /dev/ptp%d attached",
-		       number, phc_index, checked_phc_index);
+		       number, phc_index, interface->ts_info.phc_index);
 		free(p);
 		return NULL;
 	}

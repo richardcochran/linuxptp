@@ -298,13 +298,13 @@ int main(int argc, char *argv[])
 	}
 
 	if (src == CLOCK_INVALID && ethdev) {
-		int phc_index = -1;
+		struct sk_ts_info ts_info;
 		char phc_device[16];
-		if (sk_interface_phc(ethdev, &phc_index) || phc_index < 0) {
+		if (sk_get_ts_info(ethdev, &ts_info) || !ts_info.valid) {
 			fprintf(stderr, "can't autodiscover PHC device\n");
 			return -1;
 		}
-		sprintf(phc_device, "/dev/ptp%d", phc_index);
+		sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
 		src = clock_open(phc_device);
 	}
 	if (!(device || src != CLOCK_INVALID) || dst == CLOCK_INVALID) {

@@ -24,6 +24,7 @@
 #include "dm.h"
 #include "transport.h"
 #include "servo.h"
+#include "sk.h"
 
 #define MAX_PORTS 8
 #define MAX_IFNAME_SIZE 16
@@ -34,6 +35,7 @@ struct interface {
 	enum delay_mechanism dm;
 	enum transport_type transport;
 	struct port_defaults pod;
+	struct sk_ts_info ts_info;
 };
 
 #define CFG_IGNORE_DM           (1 << 0)

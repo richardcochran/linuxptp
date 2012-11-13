@@ -464,6 +464,8 @@ int config_create_interface(char *name, struct config *cfg)
 	iface->transport = cfg->transport;
 	memcpy(&iface->pod, &cfg->pod, sizeof(cfg->pod));
 
+	sk_get_ts_info(name, &iface->ts_info);
+
 	cfg->nports++;
 
 	return i;

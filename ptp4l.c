@@ -263,9 +263,12 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "bad ptp device string\n");
 			return -1;
 		}
-	} else if (sk_interface_phc(iface[0].name, &phc_index)) {
-		fprintf(stderr, "get_ts_info not supported\n"
-				"please specify ptp device\n");
+	} else if (iface[0].ts_info.valid) {
+		phc_index = iface[0].ts_info.phc_index;
+	} else {
+		fprintf(stderr, "ptp device not specified and\n"
+			        "automatic determination is not\n"
+			        "supported. please specify ptp device\n");
 		return -1;
 	}
 
