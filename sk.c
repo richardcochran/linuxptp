@@ -125,8 +125,8 @@ int sk_get_ts_info(char *name, struct sk_ts_info *sk_info)
 	sk_info->rx_filters = info.rx_filters;
 
 	return 0;
-#endif
 failed:
+#endif
 	/* clear data and ensure it is not marked valid */
 	memset(sk_info, 0, sizeof(struct sk_ts_info));
 	return -1;
