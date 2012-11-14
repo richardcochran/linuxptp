@@ -23,9 +23,12 @@
 #include "transport.h"
 
 /**
- * struct sk_ts_info - supported timestamping information
- * @valid: set to non-zero when the info struct contains valid data
- * @info: structure containing the values returned by GET_TS_INFO
+ * Contains timestamping information returned by the GET_TS_INFO ioctl.
+ * @valid:            set to non-zero when the info struct contains valid data.
+ * @phc_index:        index of the PHC device.
+ * @so_timestamping:  supported time stamping modes.
+ * @tx_types:         driver level transmit options for the HWTSTAMP ioctl.
+ * @rx_filters:       driver level receive options for the HWTSTAMP ioctl.
  */
 struct sk_ts_info {
 	int valid;
