@@ -23,11 +23,13 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "contain.h"
 #include "print.h"
 #include "sk.h"
 #include "transport_private.h"
@@ -37,6 +39,11 @@
 #define GENERAL_PORT      320
 #define PTP_PRIMARY_MCAST_IP6ADDR "FF0E:0:0:0:0:0:0:181"
 #define PTP_PDELAY_MCAST_IP6ADDR  "FF02:0:0:0:0:0:0:6B"
+
+struct udp6 {
+	struct transport t;
+	int index;
+};
 
 static int mc_bind(int fd, int index)
 {
@@ -81,7 +88,8 @@ static int udp6_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int open_socket_ipv6(char *name, struct in6_addr mc_addr[2], short port)
+static int open_socket_ipv6(char *name, struct in6_addr mc_addr[2], short port,
+			    int *interface_index)
 {
 	struct sockaddr_in6 addr;
 	int fd, index, on = 1;
@@ -99,6 +107,8 @@ static int open_socket_ipv6(char *name, struct in6_addr mc_addr[2], short port)
 	index = sk_interface_index(fd, name);
 	if (index < 0)
 		goto no_option;
+
+	*interface_index = index;
 
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) {
 		pr_err("setsockopt SO_REUSEADDR failed: %m");
@@ -139,6 +149,7 @@ static struct in6_addr mc6_addr[2];
 static int udp6_open(struct transport *t, char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
+	struct udp6 *udp6 = container_of(t, struct udp6, t);
 	int efd, gfd;
 
 	if (1 != inet_pton(AF_INET6, PTP_PRIMARY_MCAST_IP6ADDR, &mc6_addr[MC_PRIMARY]))
@@ -147,11 +158,11 @@ static int udp6_open(struct transport *t, char *name, struct fdarray *fda,
 	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR, &mc6_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket_ipv6(name, mc6_addr, EVENT_PORT);
+	efd = open_socket_ipv6(name, mc6_addr, EVENT_PORT, &udp6->index);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket_ipv6(name, mc6_addr, GENERAL_PORT);
+	gfd = open_socket_ipv6(name, mc6_addr, GENERAL_PORT, &udp6->index);
 	if (gfd < 0)
 		goto no_general;
 
@@ -204,19 +215,20 @@ static int udp6_send(struct transport *t, struct fdarray *fda, int event, int pe
 
 static void udp6_release(struct transport *t)
 {
-	/* No need for any per-instance deallocation. */
+	struct udp6 *udp6 = container_of(t, struct udp6, t);
+	free(udp6);
 }
-
-static struct transport the_udp6_transport = {
-	.close = udp6_close,
-	.open  = udp6_open,
-	.recv  = udp6_recv,
-	.send  = udp6_send,
-	.release = udp6_release,
-};
 
 struct transport *udp6_transport_create(void)
 {
-	/* No need for any per-instance allocation. */
-	return &the_udp6_transport;
+	struct udp6 *udp6;
+	udp6 = calloc(1, sizeof(*udp6));
+	if (!udp6)
+		return NULL;
+	udp6->t.close   = udp6_close;
+	udp6->t.open    = udp6_open;
+	udp6->t.recv    = udp6_recv;
+	udp6->t.send    = udp6_send;
+	udp6->t.release = udp6_release;
+	return &udp6->t;
 }
