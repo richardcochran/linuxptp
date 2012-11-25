@@ -40,6 +40,8 @@
 #define PTP_PRIMARY_MCAST_IP6ADDR "FF0E:0:0:0:0:0:0:181"
 #define PTP_PDELAY_MCAST_IP6ADDR  "FF02:0:0:0:0:0:0:6B"
 
+unsigned char udp6_scope = 0x0E;
+
 struct udp6 {
 	struct transport t;
 	int index;
@@ -159,6 +161,8 @@ static int udp6_open(struct transport *t, char *name, struct fdarray *fda,
 
 	if (1 != inet_pton(AF_INET6, PTP_PRIMARY_MCAST_IP6ADDR, &mc6_addr[MC_PRIMARY]))
 		return -1;
+
+	mc6_addr[MC_PRIMARY].s6_addr[1] = udp6_scope;
 
 	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR, &mc6_addr[MC_PDELAY]))
 		return -1;

@@ -255,6 +255,11 @@ static enum parser_result parse_global_setting(const char *option,
 		for (i = 0; i < MAC_LEN; i++)
 			cfg->p2p_dst_mac[i] = mac[i];
 
+	} else if (!strcmp(option, "udp6_scope")) {
+		if (1 != sscanf(value, "%hhx", &u8) || (u8 & 0xF0))
+			return BAD_VALUE;
+		*cfg->udp6_scope = u8;
+
 	} else if (!strcmp(option, "logging_level")) {
 		if (1 != sscanf(value, "%d", &val) ||
 				!(val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX))

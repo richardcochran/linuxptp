@@ -24,6 +24,12 @@
 #include "transport.h"
 
 /**
+ * The desired scope for the multicast messages. This will be used as
+ * the second byte of the primary IPv6 address. See RFC 4291.
+ */
+extern unsigned char udp6_scope;
+
+/**
  * Allocate an instance of a UDP/IPv6 transport.
  * @return Pointer to a new transport instance on success, NULL otherwise.
  */

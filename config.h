@@ -71,6 +71,7 @@ struct config {
 
 	unsigned char *ptp_dst_mac;
 	unsigned char *p2p_dst_mac;
+	unsigned char *udp6_scope;
 
 	int print_level;
 	int use_syslog;
