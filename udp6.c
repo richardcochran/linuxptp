@@ -86,6 +86,7 @@ static int open_socket_ipv6(char *name, struct in6_addr mc_addr[2], short port)
 	struct sockaddr_in6 addr;
 	int fd, index, on = 1;
 
+	memset(&addr, 0, sizeof(addr));
 	addr.sin6_family = AF_INET6;
 	addr.sin6_addr = in6addr_any;
 	addr.sin6_port = htons(port);
@@ -183,6 +184,7 @@ static int udp6_send(struct transport *t, struct fdarray *fda, int event, int pe
 	struct sockaddr_in6 addr;
 	unsigned char junk[1600];
 
+	memset(&addr, 0, sizeof(addr));
 	addr.sin6_family = AF_INET6;
 	addr.sin6_addr = peer ? mc6_addr[MC_PDELAY] : mc6_addr[MC_PRIMARY];
 	addr.sin6_port = htons(event ? EVENT_PORT : GENERAL_PORT);

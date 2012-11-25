@@ -87,6 +87,7 @@ static int open_socket(char *name, struct in_addr mc_addr[2], short port)
 	struct sockaddr_in addr;
 	int fd, index, on = 1;
 
+	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	addr.sin_port = htons(port);
@@ -184,6 +185,7 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event, int pee
 	struct sockaddr_in addr;
 	unsigned char junk[1600];
 
+	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr = peer ? mcast_addr[MC_PDELAY] : mcast_addr[MC_PRIMARY];
 	addr.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
