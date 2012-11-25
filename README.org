@@ -202,8 +202,10 @@
       installed into the system path), then you should set the
       KBUILD_OUTPUT environment variable as in the example, above.
 
-   3. There is no install target. You can run the program in place or
-      copy it into the system path, like /usr/local/bin.
+   3. In order to install the programs and man pages into /usr/local,
+      run the 'make install' target. You can change the installation
+      directories by setttings the variables prefix, sbindir, mandir,
+      and man8dir on the make command line.
 
 * Getting Involved
 
