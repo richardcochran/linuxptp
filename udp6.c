@@ -45,6 +45,11 @@ struct udp6 {
 	int index;
 };
 
+static int is_link_local(struct in6_addr *addr)
+{
+	return addr->s6_addr[1] == 0x02 ? 1 : 0;
+}
+
 static int mc_bind(int fd, int index)
 {
 	int err;
@@ -190,6 +195,7 @@ static int udp6_recv(struct transport *t, int fd, void *buf, int buflen,
 static int udp6_send(struct transport *t, struct fdarray *fda, int event, int peer,
 		    void *buf, int len, struct hw_timestamp *hwts)
 {
+	struct udp6 *udp6 = container_of(t, struct udp6, t);
 	ssize_t cnt;
 	int fd = event ? fda->fd[FD_EVENT] : fda->fd[FD_GENERAL];
 	struct sockaddr_in6 addr;
@@ -199,6 +205,10 @@ static int udp6_send(struct transport *t, struct fdarray *fda, int event, int pe
 	addr.sin6_family = AF_INET6;
 	addr.sin6_addr = peer ? mc6_addr[MC_PDELAY] : mc6_addr[MC_PRIMARY];
 	addr.sin6_port = htons(event ? EVENT_PORT : GENERAL_PORT);
+
+	if (is_link_local(&addr.sin6_addr)) {
+		addr.sin6_scope_id = udp6->index;
+	}
 
 	len += 2; /* Extend the payload by two, for UDP checksum corrections. */
 
