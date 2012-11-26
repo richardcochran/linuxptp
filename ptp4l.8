@@ -271,6 +271,12 @@ Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
 The MAC address where should be peer delay messages the PTP peer.
 Relevant only with L2 transport. The default is 01:80:C2:00:00:0E.
 .TP
+.B udp6_scope
+Specifies the desired scope for the IPv6 multicast messages.  This
+will be used as the second byte of the primary address.  This option
+is only relevant with IPv6 transport.  See RFC 4291.  The default is
+0x0E for the global scope.
+.TP
 .B logging_level
 The maximum logging level of messages which should be printed.
 The default is 6 (LOG_INFO).
