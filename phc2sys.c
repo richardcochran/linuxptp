@@ -34,6 +34,7 @@
 
 #include "missing.h"
 #include "sk.h"
+#include "sysoff.h"
 
 #define KP 0.7
 #define KI 0.3
@@ -228,6 +229,26 @@ static int do_pps_loop(char *pps_device, double kp, double ki, clockid_t dst)
 	return 0;
 }
 
+static int do_sysoff_loop(clockid_t src, clockid_t dst,
+			  int rate, int n_readings, int sync_offset,
+			  double kp, double ki)
+{
+	uint64_t ts;
+	int64_t offset;
+	int err = 0, fd = CLOCKID_TO_FD(src);
+	while (1) {
+		usleep(1000000 / rate);
+		if (sysoff_measure(fd, n_readings, &offset, &ts)) {
+			err = -1;
+			break;
+		}
+		offset -= sync_offset * NS_PER_SEC;
+		do_servo(&servo, dst, offset, ts, kp, ki);
+		show_servo(stdout, "sys", offset, ts);
+	}
+	return err;
+}
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -322,6 +343,11 @@ int main(int argc, char *argv[])
 
 	if (device)
 		return do_pps_loop(device, kp, ki, dst);
+
+	if (dst == CLOCK_REALTIME &&
+	    SYSOFF_SUPPORTED == sysoff_probe(CLOCKID_TO_FD(src), phc_readings))
+		return do_sysoff_loop(src, dst, phc_rate,
+				      phc_readings, sync_offset, kp, ki);
 
 	while (1) {
 		usleep(1000000 / phc_rate);

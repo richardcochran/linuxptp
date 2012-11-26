@@ -31,7 +31,7 @@ PRG	= ptp4l pmc phc2sys hwstamp_ctl
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o raw.o servo.o sk.o tlv.o tmtab.o transport.o udp.o udp6.o uds.o util.o
 
-OBJECTS	= $(OBJ) pmc.o phc2sys.o hwstamp_ctl.o
+OBJECTS	= $(OBJ) pmc.o phc2sys.o hwstamp_ctl.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
@@ -48,7 +48,7 @@ ptp4l: $(OBJ)
 
 pmc: pmc.o msg.o print.o raw.o sk.o tlv.o transport.o udp.o udp6.o uds.o util.o
 
-phc2sys: phc2sys.o sk.o print.o
+phc2sys: phc2sys.o sk.o sysoff.o print.o
 
 hwstamp_ctl: hwstamp_ctl.o
 
