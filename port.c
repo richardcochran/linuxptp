@@ -670,6 +670,7 @@ static int port_tx_sync(struct port *p)
 {
 	struct ptp_message *msg, *fup;
 	int cnt, err = 0, pdulen;
+	int event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
 
 	msg = msg_allocate();
 	if (!msg)
@@ -692,19 +693,22 @@ static int port_tx_sync(struct port *p)
 	msg->header.control            = CTL_SYNC;
 	msg->header.logMessageInterval = p->logSyncInterval;
 
-	msg->header.flagField[0] |= TWO_STEP;
+	if (p->timestamping != TS_ONESTEP)
+		msg->header.flagField[0] |= TWO_STEP;
 
 	if (msg_pre_send(msg)) {
 		err = -1;
 		goto out;
 	}
-	cnt = transport_send(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
+	cnt = transport_send(p->trp, &p->fda, event, msg, pdulen, &msg->hwts);
 	if (cnt <= 0) {
 		pr_err("port %hu: send sync failed", portnum(p));
 		err = -1;
 		goto out;
 	}
-	if (msg_sots_missing(msg)) {
+	if (p->timestamping == TS_ONESTEP) {
+		goto out;
+	} else if (msg_sots_missing(msg)) {
 		pr_err("missing timestamp on transmitted sync");
 		err = -1;
 		goto out;
@@ -1097,7 +1101,10 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	rsp->header.sequenceId         = m->header.sequenceId;
 	rsp->header.control            = CTL_OTHER;
 	rsp->header.logMessageInterval = 0x7f;
-
+	/*
+	 * NB - There is no kernel support for one step P2P messaging,
+	 * so we always send a follow up message.
+	 */
 	rsp->header.flagField[0] |= TWO_STEP;
 
 	/*

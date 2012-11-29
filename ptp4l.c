@@ -256,18 +256,39 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (*timestamping == TS_SOFTWARE)
+	if (!ds->twoStepFlag) {
+		switch (*timestamping) {
+		case TS_SOFTWARE:
+		case TS_LEGACY_HW:
+			fprintf(stderr, "one step is only possible "
+				"with hardware time stamping\n");
+			return -1;
+		case TS_HARDWARE:
+			*timestamping = TS_ONESTEP;
+			break;
+		case TS_ONESTEP:
+			break;
+		}
+	}
+
+	switch (*timestamping) {
+	case TS_SOFTWARE:
 		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
 			SOF_TIMESTAMPING_RX_SOFTWARE |
 			SOF_TIMESTAMPING_SOFTWARE;
-	else if (*timestamping == TS_LEGACY_HW)
+		break;
+	case TS_LEGACY_HW:
 		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
 			SOF_TIMESTAMPING_RX_HARDWARE |
 			SOF_TIMESTAMPING_SYS_HARDWARE;
-	else if (*timestamping == TS_HARDWARE)
+		break;
+	case TS_HARDWARE:
+	case TS_ONESTEP:
 		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
 			SOF_TIMESTAMPING_RX_HARDWARE |
 			SOF_TIMESTAMPING_RAW_HARDWARE;
+		break;
+	}
 
 	/* check whether timestamping mode is supported. */
 	for (i = 0; i < cfg_settings.nports; i++) {

@@ -163,8 +163,7 @@ static enum parser_result parse_global_setting(const char *option,
 		return r;
 
 	if (!strcmp(option, "twoStepFlag")) {
-		/* TODO - implement one step */
-		if (1 != sscanf(value, "%d", &val) || !val)
+		if (1 != sscanf(value, "%d", &val))
 			return BAD_VALUE;
 		dds->twoStepFlag = val ? 1 : 0;
 
