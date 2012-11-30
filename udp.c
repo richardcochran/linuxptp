@@ -190,6 +190,14 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event, int pee
 	addr.sin_addr = peer ? mcast_addr[MC_PDELAY] : mcast_addr[MC_PRIMARY];
 	addr.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
 
+	/*
+	 * Extend the payload by two, for UDP checksum correction.
+	 * This is not really part of the standard, but it is the way
+	 * that the phyter works.
+	 */
+	if (event == TRANS_ONESTEP)
+		len += 2;
+
 	cnt = sendto(fd, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
 	if (cnt < 1) {
 		pr_err("sendto failed: %m");
