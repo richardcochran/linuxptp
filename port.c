@@ -392,6 +392,44 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+static int port_management_response(struct port *target, struct port *ingress,
+				    int id, struct ptp_message *req)
+{
+	int datalen = 0, err, pdulen, respond = 0;
+	struct management_tlv *tlv;
+	struct ptp_message *rsp;
+	struct PortIdentity pid = port_identity(target);
+
+	rsp = port_management_reply(pid, ingress, req);
+	if (!rsp) {
+		return 0;
+	}
+	tlv = (struct management_tlv *) rsp->management.suffix;
+	tlv->type = TLV_MANAGEMENT;
+	tlv->id = id;
+
+	switch (id) {
+	case NULL_MANAGEMENT:
+		datalen = 0;
+		respond = 1;
+		break;
+	}
+	if (respond) {
+		tlv->length = sizeof(tlv->id) + datalen;
+		pdulen = rsp->header.messageLength + sizeof(*tlv) + datalen;
+		rsp->header.messageLength = pdulen;
+		rsp->tlv_count = 1;
+		err = msg_pre_send(rsp);
+		if (err) {
+			goto out;
+		}
+		err = port_forward(ingress, rsp, pdulen);
+	}
+out:
+	msg_put(rsp);
+	return respond ? 1 : 0;
+}
+
 static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 {
 	tmv_t origin2;
@@ -1564,8 +1602,10 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 		return 0;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
+	if (port_management_response(p, ingress, mgt->id, msg)) {
+		return 0;
+	}
 	switch (mgt->id) {
-	case NULL_MANAGEMENT:
 	case CLOCK_DESCRIPTION:
 	case PORT_DATA_SET:
 	case LOG_ANNOUNCE_INTERVAL:
