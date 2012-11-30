@@ -40,14 +40,15 @@ static int running = 1;
 
 static struct config cfg_settings = {
 	.dds = {
-		.twoStepFlag = TRUE,
-		.slaveOnly = FALSE,
-		.priority1 = 128,
-		.clockQuality.clockClass = 248,
-		.clockQuality.clockAccuracy = 0xfe,
-		.clockQuality.offsetScaledLogVariance = 0xffff,
-		.priority2 = 128,
-		.domainNumber = 0,
+		.dds = {
+			.flags = DDS_TWO_STEP_FLAG,
+			.priority1 = 128,
+			.clockQuality.clockClass = 248,
+			.clockQuality.clockAccuracy = 0xfe,
+			.clockQuality.offsetScaledLogVariance = 0xffff,
+			.priority2 = 128,
+			.domainNumber = 0,
+		},
 		.free_running = 0,
 		.freq_est_interval = 1,
 	},
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
 	enum transport_type *transport = &cfg_settings.transport;
 	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
-	struct defaultDS *ds = &cfg_settings.dds;
+	struct defaultDS *ds = &cfg_settings.dds.dds;
 	int phc_index = -1, required_modes = 0;
 
 	if (SIG_ERR == signal(SIGINT, handle_int_quit_term)) {
@@ -205,7 +206,7 @@ int main(int argc, char *argv[])
 			req_phc = optarg;
 			break;
 		case 's':
-			ds->slaveOnly = TRUE;
+			ds->flags |= DDS_SLAVE_ONLY;
 			*cfg_ignore |= CFG_IGNORE_SLAVEONLY;
 			break;
 		case 'l':
@@ -235,7 +236,7 @@ int main(int argc, char *argv[])
 	if (config && (c = config_read(config, &cfg_settings))) {
 		return c;
 	}
-	if (ds->slaveOnly) {
+	if (ds->flags & DDS_SLAVE_ONLY) {
 		ds->clockQuality.clockClass = 255;
 	}
 
@@ -256,7 +257,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (!ds->twoStepFlag) {
+	if (!(ds->flags & DDS_TWO_STEP_FLAG)) {
 		switch (*timestamping) {
 		case TS_SOFTWARE:
 		case TS_LEGACY_HW:
@@ -302,7 +303,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* determine PHC Clock index */
-	if (ds->free_running) {
+	if (cfg_settings.dds.free_running) {
 		phc_index = -1;
 	} else if (*timestamping == TS_SOFTWARE || *timestamping == TS_LEGACY_HW) {
 		phc_index = -1;
@@ -330,7 +331,8 @@ int main(int argc, char *argv[])
 	}
 
 	clock = clock_create(phc_index, iface, cfg_settings.nports,
-			     *timestamping, ds, cfg_settings.clock_servo);
+			     *timestamping, &cfg_settings.dds,
+			     cfg_settings.clock_servo);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

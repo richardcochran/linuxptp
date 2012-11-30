@@ -153,7 +153,7 @@ static enum parser_result parse_global_setting(const char *option,
 	UInteger8 u8;
 	unsigned char mac[MAC_LEN];
 
-	struct defaultDS *dds = &cfg->dds;
+	struct defaultDS *dds = &cfg->dds.dds;
 	struct port_defaults *pod = &cfg->pod;
 
 	enum parser_result r;
@@ -165,13 +165,20 @@ static enum parser_result parse_global_setting(const char *option,
 	if (!strcmp(option, "twoStepFlag")) {
 		if (1 != sscanf(value, "%d", &val))
 			return BAD_VALUE;
-		dds->twoStepFlag = val ? 1 : 0;
+		if (val)
+			dds->flags |=  DDS_TWO_STEP_FLAG;
+		else
+			dds->flags &= ~DDS_TWO_STEP_FLAG;
 
 	} else if (!strcmp(option, "slaveOnly")) {
 		if (1 != sscanf(value, "%d", &val))
 			return BAD_VALUE;
-		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY))
-			dds->slaveOnly = val ? 1 : 0;
+		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY)) {
+			if (val)
+				dds->flags |=  DDS_SLAVE_ONLY;
+			else
+				dds->flags &= ~DDS_SLAVE_ONLY;
+		}
 
 	} else if (!strcmp(option, "priority1")) {
 		if (1 != sscanf(value, "%hhu", &u8))
@@ -207,12 +214,12 @@ static enum parser_result parse_global_setting(const char *option,
 	} else if (!strcmp(option, "free_running")) {
 		if (1 != sscanf(value, "%d", &val))
 			return BAD_VALUE;
-		dds->free_running = val ? 1 : 0;
+		cfg->dds.free_running = val ? 1 : 0;
 
 	} else if (!strcmp(option, "freq_est_interval")) {
 		if (1 != sscanf(value, "%d", &val) || !(val >= 0))
 			return BAD_VALUE;
-		dds->freq_est_interval = val;
+		cfg->dds.freq_est_interval = val;
 		pod->freq_est_interval = val;
 
 	} else if (!strcmp(option, "assume_two_step")) {

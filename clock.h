@@ -65,12 +65,12 @@ UInteger8 clock_class(struct clock *c);
  * @param interface    An array of network interfaces.
  * @param count        The number of elements in @a interfaces.
  * @param timestamping The timestamping mode for this clock.
- * @param ds           A pointer to a default data set for the clock.
+ * @param dds          A pointer to a default data set for the clock.
  * @param servo        The servo that this clock will use.
  * @return             A pointer to the single global clock instance.
  */
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
-			   enum timestamp_type timestamping, struct defaultDS *ds,
+			   enum timestamp_type timestamping, struct default_ds *dds,
 			   enum servo_type servo);
 
 /**

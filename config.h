@@ -58,7 +58,7 @@ struct config {
 	enum transport_type transport;
 	enum delay_mechanism dm;
 
-	struct defaultDS dds;
+	struct default_ds dds;
 	struct port_defaults pod;
 	int *assume_two_step;
 	int *tx_timestamp_retries;

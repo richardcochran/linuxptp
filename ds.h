@@ -24,17 +24,25 @@
 
 /* clock data sets */
 
+#define DDS_TWO_STEP_FLAG (1<<0)
+#define DDS_SLAVE_ONLY    (1<<1)
+
 struct defaultDS {
-	Boolean              twoStepFlag;
-	Boolean              slaveOnly;
+	UInteger8            flags;
+	UInteger8            reserved1;
 	UInteger16           numberPorts;
 	UInteger8            priority1;
 	struct ClockQuality  clockQuality;
 	UInteger8            priority2;
 	struct ClockIdentity clockIdentity;
 	UInteger8            domainNumber;
-	int                  free_running;
-	int                  freq_est_interval; /*log seconds*/
+	UInteger8            reserved2;
+} PACKED;
+
+struct default_ds {
+	struct defaultDS dds;
+	int free_running;
+	int freq_est_interval; /*log seconds*/
 };
 
 struct dataset {

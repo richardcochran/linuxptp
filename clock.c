@@ -67,6 +67,8 @@ struct clock {
 	int fault_fd[CLK_N_PORTS];
 	time_t fault_timeout;
 	int nports; /* does not include the UDS port */
+	int free_running;
+	int freq_est_interval;
 	int utc_timescale;
 	tmv_t master_offset;
 	tmv_t path_delay;
@@ -398,7 +400,7 @@ UInteger8 clock_class(struct clock *c)
 }
 
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
-			   enum timestamp_type timestamping, struct defaultDS *ds,
+			   enum timestamp_type timestamping, struct default_ds *dds,
 			   enum servo_type servo)
 {
 	int i, fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
@@ -415,7 +417,10 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	if (c->nports)
 		clock_destroy(c);
 
-	if (c->dds.free_running) {
+	c->free_running = dds->free_running;
+	c->freq_est_interval = dds->freq_est_interval;
+
+	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
 	} else if (phc_index >= 0) {
 		snprintf(phc, 31, "/dev/ptp%d", phc_index);
@@ -449,7 +454,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		return NULL;
 	}
 
-	c->dds = *ds;
+	c->dds = dds->dds;
 
 	/* Initialize the parentDS. */
 	clock_update_grandmaster(c);
@@ -788,7 +793,7 @@ void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
 
 int clock_slave_only(struct clock *c)
 {
-	return c->dds.slaveOnly;
+	return c->dds.flags & DDS_SLAVE_ONLY;
 }
 
 UInteger16 clock_steps_removed(struct clock *c)
@@ -828,7 +833,7 @@ enum servo_state clock_synchronize(struct clock *c,
 	if (!c->path_delay)
 		return state;
 
-	if (c->dds.free_running)
+	if (c->free_running)
 		return clock_no_adjust(c);
 
 	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
@@ -853,7 +858,7 @@ enum servo_state clock_synchronize(struct clock *c,
 
 void clock_sync_interval(struct clock *c, int n)
 {
-	int shift = c->dds.freq_est_interval - n;
+	int shift = c->freq_est_interval - n;
 
 	if (shift < 0)
 		shift = 0;
