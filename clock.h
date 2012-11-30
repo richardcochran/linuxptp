@@ -128,7 +128,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg);
  * @param c  The clock instance.
  * @return   A pointer to the parent data set of the clock.
  */
-struct parentDS *clock_parent_ds(struct clock *c);
+struct parent_ds *clock_parent_ds(struct clock *c);
 
 /**
  * Obtain the parent port identity from a clock's parent data set.

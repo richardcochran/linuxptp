@@ -63,13 +63,18 @@ struct currentDS {
 
 struct parentDS {
 	struct PortIdentity  parentPortIdentity;
-	Boolean              parentStats;
+	UInteger8            parentStats;
+	UInteger8            reserved;
 	UInteger16           observedParentOffsetScaledLogVariance;
 	Integer32            observedParentClockPhaseChangeRate;
 	UInteger8            grandmasterPriority1;
 	struct ClockQuality  grandmasterClockQuality;
 	UInteger8            grandmasterPriority2;
 	struct ClockIdentity grandmasterIdentity;
+} PACKED;
+
+struct parent_ds {
+	struct parentDS pds;
 	struct ClockIdentity *ptl;
 	unsigned int path_length;
 };

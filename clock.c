@@ -57,7 +57,7 @@ struct clock {
 	struct defaultDS dds;
 	struct dataset default_dataset;
 	struct currentDS cur;
-	struct parentDS dad;
+	struct parent_ds dad;
 	struct timePropertiesDS tds;
 	struct ClockIdentity ptl[PATH_TRACE_MAX];
 	struct foreign_clock *best;
@@ -163,11 +163,11 @@ static int clock_management_response(struct clock *c, struct port *p, int id,
 		tsn->scaledLastGmPhaseChange = c->status.scaledLastGmPhaseChange;
 		tsn->gmTimeBaseIndicator = c->status.gmTimeBaseIndicator;
 		tsn->lastGmPhaseChange = c->status.lastGmPhaseChange;
-		if (cid_eq(&c->dad.grandmasterIdentity, &c->dds.clockIdentity))
+		if (cid_eq(&c->dad.pds.grandmasterIdentity, &c->dds.clockIdentity))
 			tsn->gmPresent = 0;
 		else
 			tsn->gmPresent = 1;
-		tsn->gmIdentity = c->dad.grandmasterIdentity;
+		tsn->gmIdentity = c->dad.pds.grandmasterIdentity;
 		datalen = sizeof(*tsn);
 		respond = 1;
 		break;
@@ -310,14 +310,15 @@ static void clock_step(clockid_t clkid, int64_t ns)
 
 static void clock_update_grandmaster(struct clock *c)
 {
+	struct parentDS *pds = &c->dad.pds;
 	memset(&c->cur, 0, sizeof(c->cur));
 	memset(c->ptl, 0, sizeof(c->ptl));
-	c->dad.parentPortIdentity.clockIdentity = c->dds.clockIdentity;
-	c->dad.parentPortIdentity.portNumber    = 0;
-	c->dad.grandmasterIdentity              = c->dds.clockIdentity;
-	c->dad.grandmasterClockQuality          = c->dds.clockQuality;
-	c->dad.grandmasterPriority1             = c->dds.priority1;
-	c->dad.grandmasterPriority2             = c->dds.priority2;
+	pds->parentPortIdentity.clockIdentity   = c->dds.clockIdentity;
+	pds->parentPortIdentity.portNumber      = 0;
+	pds->grandmasterIdentity                = c->dds.clockIdentity;
+	pds->grandmasterClockQuality            = c->dds.clockQuality;
+	pds->grandmasterPriority1               = c->dds.priority1;
+	pds->grandmasterPriority2               = c->dds.priority2;
 	c->dad.path_length                      = 0;
 	c->tds.currentUtcOffset                 = CURRENT_UTC_OFFSET;
 	c->tds.currentUtcOffsetValid            = FALSE;
@@ -331,13 +332,14 @@ static void clock_update_grandmaster(struct clock *c)
 
 static void clock_update_slave(struct clock *c)
 {
+	struct parentDS *pds = &c->dad.pds;
 	struct ptp_message *msg        = TAILQ_FIRST(&c->best->messages);
 	c->cur.stepsRemoved            = 1 + c->best->dataset.stepsRemoved;
-	c->dad.parentPortIdentity      = c->best->dataset.sender;
-	c->dad.grandmasterIdentity     = msg->announce.grandmasterIdentity;
-	c->dad.grandmasterClockQuality = msg->announce.grandmasterClockQuality;
-	c->dad.grandmasterPriority1    = msg->announce.grandmasterPriority1;
-	c->dad.grandmasterPriority2    = msg->announce.grandmasterPriority2;
+	pds->parentPortIdentity        = c->best->dataset.sender;
+	pds->grandmasterIdentity       = msg->announce.grandmasterIdentity;
+	pds->grandmasterClockQuality   = msg->announce.grandmasterClockQuality;
+	pds->grandmasterPriority1      = msg->announce.grandmasterPriority1;
+	pds->grandmasterPriority2      = msg->announce.grandmasterPriority2;
 	c->tds.currentUtcOffset        = msg->announce.currentUtcOffset;
 	c->tds.currentUtcOffsetValid   = field_is_set(msg, 1, UTC_OFF_VALID);
 	c->tds.leap61                  = field_is_set(msg, 1, LEAP_61);
@@ -458,9 +460,9 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	/* Initialize the parentDS. */
 	clock_update_grandmaster(c);
-	c->dad.parentStats                           = 0;
-	c->dad.observedParentOffsetScaledLogVariance = 0xffff;
-	c->dad.observedParentClockPhaseChangeRate    = 0x7fffffff;
+	c->dad.pds.parentStats                           = 0;
+	c->dad.pds.observedParentOffsetScaledLogVariance = 0xffff;
+	c->dad.pds.observedParentClockPhaseChangeRate    = 0x7fffffff;
 	c->dad.ptl = c->ptl;
 
 	for (i = 0; i < ARRAY_SIZE(c->pollfd); i++) {
@@ -658,14 +660,14 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	}
 }
 
-struct parentDS *clock_parent_ds(struct clock *c)
+struct parent_ds *clock_parent_ds(struct clock *c)
 {
 	return &c->dad;
 }
 
 struct PortIdentity clock_parent_identity(struct clock *c)
 {
-	return c->dad.parentPortIdentity;
+	return c->dad.pds.parentPortIdentity;
 }
 
 int clock_poll(struct clock *c)

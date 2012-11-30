@@ -313,7 +313,7 @@ static void free_foreign_masters(struct port *p)
 }
 
 static int path_trace_append(struct port *p, struct ptp_message *m,
-			     struct parentDS *dad)
+			     struct parent_ds *dad)
 {
 	struct path_trace_tlv *ptt;
 	int length = 1 + dad->path_length;
@@ -645,7 +645,7 @@ out:
 
 static int port_tx_announce(struct port *p)
 {
-	struct parentDS *dad = clock_parent_ds(p->clock);
+	struct parent_ds *dad = clock_parent_ds(p->clock);
 	struct timePropertiesDS *tp = clock_time_properties(p->clock);
 	struct ptp_message *msg;
 	int cnt, err = 0, pdulen;
@@ -683,10 +683,10 @@ static int port_tx_announce(struct port *p)
 		msg->header.flagField[1] |= FREQ_TRACEABLE;
 
 	msg->announce.currentUtcOffset        = tp->currentUtcOffset;
-	msg->announce.grandmasterPriority1    = dad->grandmasterPriority1;
-	msg->announce.grandmasterClockQuality = dad->grandmasterClockQuality;
-	msg->announce.grandmasterPriority2    = dad->grandmasterPriority2;
-	msg->announce.grandmasterIdentity     = dad->grandmasterIdentity;
+	msg->announce.grandmasterPriority1    = dad->pds.grandmasterPriority1;
+	msg->announce.grandmasterClockQuality = dad->pds.grandmasterClockQuality;
+	msg->announce.grandmasterPriority2    = dad->pds.grandmasterPriority2;
+	msg->announce.grandmasterIdentity     = dad->pds.grandmasterIdentity;
 	msg->announce.stepsRemoved            = clock_steps_removed(p->clock);
 	msg->announce.timeSource              = tp->timeSource;
 
@@ -919,7 +919,7 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 {
 	struct foreign_clock *fc = p->best;
 	struct ptp_message *tmp;
-	struct parentDS *dad;
+	struct parent_ds *dad;
 	struct path_trace_tlv *ptt;
 
 	if (!msg_source_equal(m, fc))
