@@ -224,7 +224,7 @@ static int udp6_send(struct transport *t, struct fdarray *fda, int event, int pe
 	/*
 	 * Get the time stamp right away.
 	 */
-	return event ? sk_receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
+	return event == TRANS_EVENT ? sk_receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static void udp6_release(struct transport *t)

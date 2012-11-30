@@ -286,7 +286,7 @@ static int raw_send(struct transport *t, struct fdarray *fda, int event, int pee
 	/*
 	 * Get the time stamp right away.
 	 */
-	return event ? sk_receive(fd, pkt, len, hwts, MSG_ERRQUEUE) : cnt;
+	return event == TRANS_EVENT ? sk_receive(fd, pkt, len, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static void raw_release(struct transport *t)

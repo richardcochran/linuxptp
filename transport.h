@@ -34,6 +34,16 @@ enum transport_type {
 	TRANS_UDS,
 };
 
+/**
+ * Values for the 'event' parameter in transport_send() and
+ * transport_peer().
+ */
+enum transport_event {
+	TRANS_GENERAL,
+	TRANS_EVENT,
+	TRANS_ONESTEP,
+};
+
 enum timestamp_type {
 	TS_SOFTWARE,
 	TS_HARDWARE,
