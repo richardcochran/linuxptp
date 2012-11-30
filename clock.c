@@ -596,6 +596,17 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 
+	switch (management_action(msg)) {
+	case GET:
+	case SET:
+	case COMMAND:
+		break;
+	case RESPONSE:
+	case ACKNOWLEDGE:
+		/* Ignore responses from other nodes. */
+		return;
+	}
+
 	if (clock_management_response(c, p, mgt->id, msg))
 		return;
 
