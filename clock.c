@@ -148,6 +148,11 @@ static int clock_management_response(struct clock *c, struct port *p, int id,
 	tlv->id = id;
 
 	switch (id) {
+	case DEFAULT_DATA_SET:
+		memcpy(tlv->data, &c->dds, sizeof(c->dds));
+		datalen = sizeof(c->dds);
+		respond = 1;
+		break;
 	case CURRENT_DATA_SET:
 		memcpy(tlv->data, &c->cur, sizeof(c->cur));
 		datalen = sizeof(c->cur);
@@ -624,7 +629,6 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case INITIALIZE:
 	case FAULT_LOG:
 	case FAULT_LOG_RESET:
-	case DEFAULT_DATA_SET:
 	case PARENT_DATA_SET:
 	case TIME_PROPERTIES_DATA_SET:
 	case PRIORITY1:
