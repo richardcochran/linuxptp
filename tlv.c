@@ -40,9 +40,16 @@ static void scaled_ns_h2n(ScaledNs *sns)
 
 static void mgt_post_recv(struct management_tlv *m)
 {
+	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct time_status_np *tsn;
 	switch (m->id) {
+	case DEFAULT_DATA_SET:
+		dds = (struct defaultDS *) m->data;
+		dds->numberPorts = ntohs(dds->numberPorts);
+		dds->clockQuality.offsetScaledLogVariance =
+			ntohs(dds->clockQuality.offsetScaledLogVariance);
+		break;
 	case CURRENT_DATA_SET:
 		cds = (struct currentDS *) m->data;
 		cds->stepsRemoved = ntohs(cds->stepsRemoved);
@@ -64,9 +71,16 @@ static void mgt_post_recv(struct management_tlv *m)
 
 static void mgt_pre_send(struct management_tlv *m)
 {
+	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct time_status_np *tsn;
 	switch (m->id) {
+	case DEFAULT_DATA_SET:
+		dds = (struct defaultDS *) m->data;
+		dds->numberPorts = htons(dds->numberPorts);
+		dds->clockQuality.offsetScaledLogVariance =
+			htons(dds->clockQuality.offsetScaledLogVariance);
+		break;
 	case CURRENT_DATA_SET:
 		cds = (struct currentDS *) m->data;
 		cds->stepsRemoved = htons(cds->stepsRemoved);
