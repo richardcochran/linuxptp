@@ -398,6 +398,7 @@ static int port_management_response(struct port *target, struct port *ingress,
 	int datalen = 0, err, pdulen, respond = 0;
 	struct management_tlv *tlv;
 	struct ptp_message *rsp;
+	struct portDS *pds;
 	struct PortIdentity pid = port_identity(target);
 
 	rsp = port_management_reply(pid, ingress, req);
@@ -411,6 +412,25 @@ static int port_management_response(struct port *target, struct port *ingress,
 	switch (id) {
 	case NULL_MANAGEMENT:
 		datalen = 0;
+		respond = 1;
+		break;
+	case PORT_DATA_SET:
+		pds = (struct portDS *) tlv->data;
+		pds->portIdentity            = target->portIdentity;
+		pds->portState               = target->state;
+		pds->logMinDelayReqInterval  = target->logMinDelayReqInterval;
+		pds->peerMeanPathDelay       = target->peerMeanPathDelay;
+		pds->logAnnounceInterval     = target->logAnnounceInterval;
+		pds->announceReceiptTimeout  = target->announceReceiptTimeout;
+		pds->logSyncInterval         = target->logSyncInterval;
+		if (target->delayMechanism) {
+			pds->delayMechanism = target->delayMechanism;
+		} else {
+			pds->delayMechanism = DM_E2E;
+		}
+		pds->logMinPdelayReqInterval = target->logMinPdelayReqInterval;
+		pds->versionNumber           = target->versionNumber;
+		datalen = sizeof(*pds);
 		respond = 1;
 		break;
 	}
@@ -1598,7 +1618,6 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	}
 	switch (mgt->id) {
 	case CLOCK_DESCRIPTION:
-	case PORT_DATA_SET:
 	case LOG_ANNOUNCE_INTERVAL:
 	case ANNOUNCE_RECEIPT_TIMEOUT:
 	case LOG_SYNC_INTERVAL:
