@@ -669,18 +669,7 @@ static int port_tx_announce(struct port *p)
 	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = p->logAnnounceInterval;
 
-	if (tp->leap61)
-		msg->header.flagField[1] |= LEAP_61;
-	if (tp->leap59)
-		msg->header.flagField[1] |= LEAP_59;
-	if (tp->currentUtcOffsetValid)
-		msg->header.flagField[1] |= UTC_OFF_VALID;
-	if (tp->ptpTimescale)
-		msg->header.flagField[1] |= PTP_TIMESCALE;
-	if (tp->timeTraceable)
-		msg->header.flagField[1] |= TIME_TRACEABLE;
-	if (tp->frequencyTraceable)
-		msg->header.flagField[1] |= FREQ_TRACEABLE;
+	msg->header.flagField[1] = tp->flags;
 
 	msg->announce.currentUtcOffset        = tp->currentUtcOffset;
 	msg->announce.grandmasterPriority1    = dad->pds.grandmasterPriority1;

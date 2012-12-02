@@ -331,12 +331,11 @@ static void clock_update_grandmaster(struct clock *c)
 	pds->grandmasterPriority2               = c->dds.priority2;
 	c->dad.path_length                      = 0;
 	c->tds.currentUtcOffset                 = CURRENT_UTC_OFFSET;
-	c->tds.currentUtcOffsetValid            = FALSE;
-	c->tds.leap61                           = FALSE;
-	c->tds.leap59                           = FALSE;
-	c->tds.timeTraceable                    = FALSE;
-	c->tds.frequencyTraceable               = FALSE;
-	c->tds.ptpTimescale                     = c->utc_timescale ? FALSE : TRUE;
+	if (c->utc_timescale) {
+		c->tds.flags = 0;
+	} else {
+		c->tds.flags = PTP_TIMESCALE;
+	}
 	c->tds.timeSource                       = INTERNAL_OSCILLATOR;
 }
 
@@ -351,14 +350,9 @@ static void clock_update_slave(struct clock *c)
 	pds->grandmasterPriority1      = msg->announce.grandmasterPriority1;
 	pds->grandmasterPriority2      = msg->announce.grandmasterPriority2;
 	c->tds.currentUtcOffset        = msg->announce.currentUtcOffset;
-	c->tds.currentUtcOffsetValid   = field_is_set(msg, 1, UTC_OFF_VALID);
-	c->tds.leap61                  = field_is_set(msg, 1, LEAP_61);
-	c->tds.leap59                  = field_is_set(msg, 1, LEAP_59);
-	c->tds.timeTraceable           = field_is_set(msg, 1, TIME_TRACEABLE);
-	c->tds.frequencyTraceable      = field_is_set(msg, 1, FREQ_TRACEABLE);
-	c->tds.ptpTimescale            = field_is_set(msg, 1, PTP_TIMESCALE);
+	c->tds.flags                   = msg->header.flagField[1];
 	c->tds.timeSource              = msg->announce.timeSource;
-	if (!c->tds.ptpTimescale) {
+	if (!(c->tds.flags & PTP_TIMESCALE)) {
 		pr_warning("foreign master not using PTP timescale");
 	}
 	if (c->tds.currentUtcOffset < CURRENT_UTC_OFFSET) {
@@ -371,9 +365,9 @@ static void clock_utc_correct(struct clock *c)
 	struct timespec offset;
 	if (!c->utc_timescale)
 		return;
-	if (!c->tds.ptpTimescale)
+	if (!(c->tds.flags & PTP_TIMESCALE))
 		return;
-	if (c->tds.currentUtcOffsetValid && c->tds.timeTraceable) {
+	if (c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) {
 		offset.tv_sec = c->tds.currentUtcOffset;
 	} else if (c->tds.currentUtcOffset > CURRENT_UTC_OFFSET) {
 		offset.tv_sec = c->tds.currentUtcOffset;

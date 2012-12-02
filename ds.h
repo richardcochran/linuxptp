@@ -84,14 +84,9 @@ struct parent_ds {
 
 struct timePropertiesDS {
 	Integer16    currentUtcOffset;
-	Boolean      leap61;
-	Boolean      leap59;
-	Boolean      currentUtcOffsetValid;
-	Boolean      ptpTimescale;
-	Boolean      timeTraceable;
-	Boolean      frequencyTraceable;
+	UInteger8    flags;
 	Enumeration8 timeSource;
-};
+} PACKED;
 
 struct port_defaults {
 	Integer8 logAnnounceInterval;
