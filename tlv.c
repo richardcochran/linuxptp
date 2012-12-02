@@ -42,6 +42,7 @@ static void mgt_post_recv(struct management_tlv *m)
 {
 	struct defaultDS *dds;
 	struct currentDS *cds;
+	struct parentDS *pds;
 	struct time_status_np *tsn;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
@@ -55,6 +56,17 @@ static void mgt_post_recv(struct management_tlv *m)
 		cds->stepsRemoved = ntohs(cds->stepsRemoved);
 		cds->offsetFromMaster = net2host64(cds->offsetFromMaster);
 		cds->meanPathDelay = net2host64(cds->meanPathDelay);
+		break;
+	case PARENT_DATA_SET:
+		pds = (struct parentDS *) m->data;
+		pds->parentPortIdentity.portNumber =
+			ntohs(pds->parentPortIdentity.portNumber);
+		pds->observedParentOffsetScaledLogVariance =
+			ntohs(pds->observedParentOffsetScaledLogVariance);
+		pds->observedParentClockPhaseChangeRate =
+			ntohl(pds->observedParentClockPhaseChangeRate);
+		pds->grandmasterClockQuality.offsetScaledLogVariance =
+			ntohs(pds->grandmasterClockQuality.offsetScaledLogVariance);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
@@ -73,6 +85,7 @@ static void mgt_pre_send(struct management_tlv *m)
 {
 	struct defaultDS *dds;
 	struct currentDS *cds;
+	struct parentDS *pds;
 	struct time_status_np *tsn;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
@@ -86,6 +99,17 @@ static void mgt_pre_send(struct management_tlv *m)
 		cds->stepsRemoved = htons(cds->stepsRemoved);
 		cds->offsetFromMaster = host2net64(cds->offsetFromMaster);
 		cds->meanPathDelay = host2net64(cds->meanPathDelay);
+		break;
+	case PARENT_DATA_SET:
+		pds = (struct parentDS *) m->data;
+		pds->parentPortIdentity.portNumber =
+			htons(pds->parentPortIdentity.portNumber);
+		pds->observedParentOffsetScaledLogVariance =
+			htons(pds->observedParentOffsetScaledLogVariance);
+		pds->observedParentClockPhaseChangeRate =
+			htonl(pds->observedParentClockPhaseChangeRate);
+		pds->grandmasterClockQuality.offsetScaledLogVariance =
+			htons(pds->grandmasterClockQuality.offsetScaledLogVariance);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
