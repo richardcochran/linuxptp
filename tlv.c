@@ -43,6 +43,7 @@ static void mgt_post_recv(struct management_tlv *m)
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
+	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
@@ -68,6 +69,10 @@ static void mgt_post_recv(struct management_tlv *m)
 		pds->grandmasterClockQuality.offsetScaledLogVariance =
 			ntohs(pds->grandmasterClockQuality.offsetScaledLogVariance);
 		break;
+	case TIME_PROPERTIES_DATA_SET:
+		tp = (struct timePropertiesDS *) m->data;
+		tp->currentUtcOffset = ntohs(tp->currentUtcOffset);
+		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
 		tsn->master_offset = net2host64(tsn->master_offset);
@@ -86,6 +91,7 @@ static void mgt_pre_send(struct management_tlv *m)
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
+	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
@@ -110,6 +116,10 @@ static void mgt_pre_send(struct management_tlv *m)
 			htonl(pds->observedParentClockPhaseChangeRate);
 		pds->grandmasterClockQuality.offsetScaledLogVariance =
 			htons(pds->grandmasterClockQuality.offsetScaledLogVariance);
+		break;
+	case TIME_PROPERTIES_DATA_SET:
+		tp = (struct timePropertiesDS *) m->data;
+		tp->currentUtcOffset = htons(tp->currentUtcOffset);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
