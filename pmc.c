@@ -201,14 +201,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) mgt->data;
 		fprintf(fp, "DEFAULT_DATA_SET "
-			IFMT "numberPorts             %hu "
-			IFMT "priority1               %hhu "
-			IFMT "clockClass              0x%02hhx "
-			IFMT "clockAccuracy           %hhu "
-			IFMT "offsetScaledLogVariance 0x%04hx "
-			IFMT "priority2               %hhu "
-			IFMT "clockIdentity           %s "
-			IFMT "domainNumber            %hhu ",
+			IFMT "numberPorts             %hu"
+			IFMT "priority1               %hhu"
+			IFMT "clockClass              0x%02hhx"
+			IFMT "clockAccuracy           %hhu"
+			IFMT "offsetScaledLogVariance 0x%04hx"
+			IFMT "priority2               %hhu"
+			IFMT "clockIdentity           %s"
+			IFMT "domainNumber            %hhu",
 			dds->numberPorts,
 			dds->priority1,
 			dds->clockQuality.clockClass,
@@ -221,9 +221,9 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case CURRENT_DATA_SET:
 		cds = (struct currentDS *) mgt->data;
 		fprintf(fp, "CURRENT_DATA_SET "
-			IFMT "stepsRemoved     %hd "
-			IFMT "offsetFromMaster %.1f "
-			IFMT "meanPathDelay    %.1f ",
+			IFMT "stepsRemoved     %hd"
+			IFMT "offsetFromMaster %.1f"
+			IFMT "meanPathDelay    %.1f",
 			cds->stepsRemoved, cds->offsetFromMaster / 65536.0,
 			cds->meanPathDelay / 65536.0);
 		break;
@@ -254,14 +254,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
 		fprintf(fp, "TIME_STATUS_NP "
-			IFMT "master_offset              %lld "
-			IFMT "ingress_time               %lld "
-			IFMT "cumulativeScaledRateOffset %+.9f "
-			IFMT "scaledLastGmPhaseChange    %d "
-			IFMT "gmTimeBaseIndicator        %hu "
-			IFMT "lastGmPhaseChange          0x%04hx'%016llx.%04hx "
-			IFMT "gmPresent                  %s "
-			IFMT "gmIdentity                 %s ",
+			IFMT "master_offset              %lld"
+			IFMT "ingress_time               %lld"
+			IFMT "cumulativeScaledRateOffset %+.9f"
+			IFMT "scaledLastGmPhaseChange    %d"
+			IFMT "gmTimeBaseIndicator        %hu"
+			IFMT "lastGmPhaseChange          0x%04hx'%016llx.%04hx"
+			IFMT "gmPresent                  %s"
+			IFMT "gmIdentity                 %s",
 			tsn->master_offset,
 			tsn->ingress_time,
 			1.0 + (tsn->cumulativeScaledRateOffset + 0.0) / P41,
