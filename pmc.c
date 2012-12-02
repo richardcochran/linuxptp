@@ -64,7 +64,7 @@ struct management_id idtab[] = {
 	{ "INITIALIZE", INITIALIZE, not_supported },
 	{ "FAULT_LOG", FAULT_LOG, not_supported },
 	{ "FAULT_LOG_RESET", FAULT_LOG_RESET, not_supported },
-	{ "DEFAULT_DATA_SET", DEFAULT_DATA_SET, not_supported },
+	{ "DEFAULT_DATA_SET", DEFAULT_DATA_SET, do_get_action },
 	{ "CURRENT_DATA_SET", CURRENT_DATA_SET, do_get_action },
 	{ "PARENT_DATA_SET", PARENT_DATA_SET, not_supported },
 	{ "TIME_PROPERTIES_DATA_SET", TIME_PROPERTIES_DATA_SET, not_supported },
@@ -170,6 +170,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	int action;
 	struct TLV *tlv;
 	struct management_tlv *mgt;
+	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct time_status_np *tsn;
 	if (msg_type(msg) != MANAGEMENT) {
@@ -196,6 +197,26 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 	switch (mgt->id) {
+	case DEFAULT_DATA_SET:
+		dds = (struct defaultDS *) mgt->data;
+		fprintf(fp, "DEFAULT_DATA_SET "
+			IFMT "numberPorts             %hu "
+			IFMT "priority1               %hhu "
+			IFMT "clockClass              0x%02hhx "
+			IFMT "clockAccuracy           %hhu "
+			IFMT "offsetScaledLogVariance 0x%04hx "
+			IFMT "priority2               %hhu "
+			IFMT "clockIdentity           %s "
+			IFMT "domainNumber            %hhu ",
+			dds->numberPorts,
+			dds->priority1,
+			dds->clockQuality.clockClass,
+			dds->clockQuality.clockAccuracy,
+			dds->clockQuality.offsetScaledLogVariance,
+			dds->priority2,
+			cid2str(&dds->clockIdentity),
+			dds->domainNumber);
+		break;
 	case CURRENT_DATA_SET:
 		cds = (struct currentDS *) mgt->data;
 		fprintf(fp, "CURRENT_DATA_SET "
