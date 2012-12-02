@@ -67,7 +67,7 @@ struct management_id idtab[] = {
 	{ "DEFAULT_DATA_SET", DEFAULT_DATA_SET, do_get_action },
 	{ "CURRENT_DATA_SET", CURRENT_DATA_SET, do_get_action },
 	{ "PARENT_DATA_SET", PARENT_DATA_SET, do_get_action },
-	{ "TIME_PROPERTIES_DATA_SET", TIME_PROPERTIES_DATA_SET, not_supported },
+	{ "TIME_PROPERTIES_DATA_SET", TIME_PROPERTIES_DATA_SET, do_get_action },
 	{ "PRIORITY1", PRIORITY1, not_supported },
 	{ "PRIORITY2", PRIORITY2, not_supported },
 	{ "DOMAIN", DOMAIN, not_supported },
@@ -173,6 +173,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
+	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
@@ -250,6 +251,26 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pds->grandmasterClockQuality.offsetScaledLogVariance,
 			pds->grandmasterPriority2,
 			cid2str(&pds->grandmasterIdentity));
+		break;
+	case TIME_PROPERTIES_DATA_SET:
+		tp = (struct timePropertiesDS *) mgt->data;
+		fprintf(fp, "TIME_PROPERTIES_DATA_SET "
+			IFMT "currentUtcOffset      %hd"
+			IFMT "leap61                %d"
+			IFMT "leap59                %d"
+			IFMT "currentUtcOffsetValid %d"
+			IFMT "ptpTimescale          %d"
+			IFMT "timeTraceable         %d"
+			IFMT "frequencyTraceable    %d"
+			IFMT "timeSource            %d",
+			tp->currentUtcOffset,
+			tp->flags & LEAP_61 ? 1 : 0,
+			tp->flags & LEAP_59 ? 1 : 0,
+			tp->flags & UTC_OFF_VALID ? 1 : 0,
+			tp->flags & PTP_TIMESCALE ? 1 : 0,
+			tp->flags & TIME_TRACEABLE ? 1 : 0,
+			tp->flags & FREQ_TRACEABLE ? 1 : 0,
+			tp->timeSource);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
