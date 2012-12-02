@@ -1245,6 +1245,8 @@ calc:
 
 	p->peer_delay = mave_accumulate(p->avg_delay, pd);
 
+	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
+
 	pr_debug("pdelay %hu   %10lld %10lld", portnum(p), p->peer_delay, pd);
 
 	if (p->pod.follow_up_info)
