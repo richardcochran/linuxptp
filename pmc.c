@@ -92,7 +92,7 @@ struct management_id idtab[] = {
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", NULL_MANAGEMENT, null_management },
 	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, not_supported },
-	{ "PORT_DATA_SET", PORT_DATA_SET, not_supported },
+	{ "PORT_DATA_SET", PORT_DATA_SET, do_get_action },
 	{ "LOG_ANNOUNCE_INTERVAL", LOG_ANNOUNCE_INTERVAL, not_supported },
 	{ "ANNOUNCE_RECEIPT_TIMEOUT", ANNOUNCE_RECEIPT_TIMEOUT, not_supported },
 	{ "LOG_SYNC_INTERVAL", LOG_SYNC_INTERVAL, not_supported },
@@ -175,6 +175,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct parentDS *pds;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
+	struct portDS *p;
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
 	}
@@ -293,6 +294,25 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			tsn->lastGmPhaseChange.fractional_nanoseconds,
 			tsn->gmPresent ? "true" : "false",
 			cid2str(&tsn->gmIdentity));
+		break;
+	case PORT_DATA_SET:
+		p = (struct portDS *) mgt->data;
+		fprintf(fp, "PORT_DATA_SET "
+			IFMT "portIdentity            %s"
+			IFMT "portState               %hhu"
+			IFMT "logMinDelayReqInterval  %hhd"
+			IFMT "peerMeanPathDelay       %lld"
+			IFMT "logAnnounceInterval     %hhd"
+			IFMT "announceReceiptTimeout  %hhu"
+			IFMT "logSyncInterval         %hhd"
+			IFMT "delayMechanism          %hhu"
+			IFMT "logMinPdelayReqInterval %hhd"
+			IFMT "versionNumber           %hhu",
+			pid2str(&p->portIdentity), p->portState,
+			p->logMinDelayReqInterval, p->peerMeanPathDelay >> 16,
+			p->logAnnounceInterval, p->announceReceiptTimeout,
+			p->logSyncInterval, p->delayMechanism,
+			p->logMinPdelayReqInterval, p->versionNumber);
 		break;
 	}
 out:
