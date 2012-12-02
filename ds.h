@@ -88,6 +88,19 @@ struct timePropertiesDS {
 	Enumeration8 timeSource;
 } PACKED;
 
+struct portDS {
+	struct PortIdentity portIdentity;
+	Enumeration8        portState;
+	Integer8            logMinDelayReqInterval;
+	TimeInterval        peerMeanPathDelay;
+	Integer8            logAnnounceInterval;
+	UInteger8           announceReceiptTimeout;
+	Integer8            logSyncInterval;
+	Enumeration8        delayMechanism;
+	Integer8            logMinPdelayReqInterval;
+	UInteger8           versionNumber;
+} PACKED;
+
 struct port_defaults {
 	Integer8 logAnnounceInterval;
 	Integer8 logSyncInterval;

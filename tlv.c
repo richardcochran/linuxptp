@@ -44,6 +44,7 @@ static void mgt_post_recv(struct management_tlv *m)
 	struct currentDS *cds;
 	struct parentDS *pds;
 	struct timePropertiesDS *tp;
+	struct portDS *p;
 	struct time_status_np *tsn;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
@@ -73,6 +74,11 @@ static void mgt_post_recv(struct management_tlv *m)
 		tp = (struct timePropertiesDS *) m->data;
 		tp->currentUtcOffset = ntohs(tp->currentUtcOffset);
 		break;
+	case PORT_DATA_SET:
+		p = (struct portDS *) m->data;
+		p->portIdentity.portNumber = ntohs(p->portIdentity.portNumber);
+		p->peerMeanPathDelay = net2host64(p->peerMeanPathDelay);
+		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
 		tsn->master_offset = net2host64(tsn->master_offset);
@@ -92,6 +98,7 @@ static void mgt_pre_send(struct management_tlv *m)
 	struct currentDS *cds;
 	struct parentDS *pds;
 	struct timePropertiesDS *tp;
+	struct portDS *p;
 	struct time_status_np *tsn;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
@@ -120,6 +127,11 @@ static void mgt_pre_send(struct management_tlv *m)
 	case TIME_PROPERTIES_DATA_SET:
 		tp = (struct timePropertiesDS *) m->data;
 		tp->currentUtcOffset = htons(tp->currentUtcOffset);
+		break;
+	case PORT_DATA_SET:
+		p = (struct portDS *) m->data;
+		p->portIdentity.portNumber = htons(p->portIdentity.portNumber);
+		p->peerMeanPathDelay = host2net64(p->peerMeanPathDelay);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
