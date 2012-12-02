@@ -66,7 +66,7 @@ struct management_id idtab[] = {
 	{ "FAULT_LOG_RESET", FAULT_LOG_RESET, not_supported },
 	{ "DEFAULT_DATA_SET", DEFAULT_DATA_SET, do_get_action },
 	{ "CURRENT_DATA_SET", CURRENT_DATA_SET, do_get_action },
-	{ "PARENT_DATA_SET", PARENT_DATA_SET, not_supported },
+	{ "PARENT_DATA_SET", PARENT_DATA_SET, do_get_action },
 	{ "TIME_PROPERTIES_DATA_SET", TIME_PROPERTIES_DATA_SET, not_supported },
 	{ "PRIORITY1", PRIORITY1, not_supported },
 	{ "PRIORITY2", PRIORITY2, not_supported },
@@ -172,6 +172,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct management_tlv *mgt;
 	struct defaultDS *dds;
 	struct currentDS *cds;
+	struct parentDS *pds;
 	struct time_status_np *tsn;
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
@@ -225,6 +226,30 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "meanPathDelay    %.1f ",
 			cds->stepsRemoved, cds->offsetFromMaster / 65536.0,
 			cds->meanPathDelay / 65536.0);
+		break;
+	case PARENT_DATA_SET:
+		pds = (struct parentDS *) mgt->data;
+		fprintf(fp, "PARENT_DATA_SET "
+			IFMT "parentPortIdentity                    %s"
+			IFMT "parentStats                           %hhu"
+			IFMT "observedParentOffsetScaledLogVariance 0x%04hx"
+			IFMT "observedParentClockPhaseChangeRate    %d"
+			IFMT "grandmasterPriority1                  %hhu"
+			IFMT "gm.ClockClass                         0x%02hhx"
+			IFMT "gm.ClockAccuracy                      %hhu"
+			IFMT "gm.OffsetScaledLogVariance            0x%04hx"
+			IFMT "grandmasterPriority2                  %hhu"
+			IFMT "grandmasterIdentity                   %s",
+			pid2str(&pds->parentPortIdentity),
+			pds->parentStats,
+			pds->observedParentOffsetScaledLogVariance,
+			pds->observedParentClockPhaseChangeRate,
+			pds->grandmasterPriority1,
+			pds->grandmasterClockQuality.clockClass,
+			pds->grandmasterClockQuality.clockAccuracy,
+			pds->grandmasterClockQuality.offsetScaledLogVariance,
+			pds->grandmasterPriority2,
+			cid2str(&pds->grandmasterIdentity));
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
