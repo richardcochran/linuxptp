@@ -205,8 +205,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		fprintf(fp, "DEFAULT_DATA_SET "
 			IFMT "numberPorts             %hu"
 			IFMT "priority1               %hhu"
-			IFMT "clockClass              0x%02hhx"
-			IFMT "clockAccuracy           %hhu"
+			IFMT "clockClass              %hhu"
+			IFMT "clockAccuracy           0x%02hhx"
 			IFMT "offsetScaledLogVariance 0x%04hx"
 			IFMT "priority2               %hhu"
 			IFMT "clockIdentity           %s"
@@ -235,10 +235,10 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "parentPortIdentity                    %s"
 			IFMT "parentStats                           %hhu"
 			IFMT "observedParentOffsetScaledLogVariance 0x%04hx"
-			IFMT "observedParentClockPhaseChangeRate    %d"
+			IFMT "observedParentClockPhaseChangeRate    0x%08x"
 			IFMT "grandmasterPriority1                  %hhu"
-			IFMT "gm.ClockClass                         0x%02hhx"
-			IFMT "gm.ClockAccuracy                      %hhu"
+			IFMT "gm.ClockClass                         %hhu"
+			IFMT "gm.ClockAccuracy                      0x%02hhx"
 			IFMT "gm.OffsetScaledLogVariance            0x%04hx"
 			IFMT "grandmasterPriority2                  %hhu"
 			IFMT "grandmasterIdentity                   %s",
@@ -263,7 +263,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "ptpTimescale          %d"
 			IFMT "timeTraceable         %d"
 			IFMT "frequencyTraceable    %d"
-			IFMT "timeSource            %d",
+			IFMT "timeSource            0x%02hhx",
 			tp->currentUtcOffset,
 			tp->flags & LEAP_61 ? 1 : 0,
 			tp->flags & LEAP_59 ? 1 : 0,
