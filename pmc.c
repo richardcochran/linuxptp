@@ -553,7 +553,7 @@ int main(int argc, char *argv[])
 		if (pollfd[0].revents & POLLHUP) {
 			if (tmo == -1) {
 				/* Wait a bit longer for outstanding replies. */
-				tmo = 1000;
+				tmo = 100;
 				pollfd[0].fd = -1;
 				pollfd[0].events = 0;
 			} else {
