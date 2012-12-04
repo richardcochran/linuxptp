@@ -204,6 +204,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) mgt->data;
 		fprintf(fp, "DEFAULT_DATA_SET "
+			IFMT "twoStepFlag             %d"
+			IFMT "slaveOnly               %d"
 			IFMT "numberPorts             %hu"
 			IFMT "priority1               %hhu"
 			IFMT "clockClass              %hhu"
@@ -212,6 +214,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "priority2               %hhu"
 			IFMT "clockIdentity           %s"
 			IFMT "domainNumber            %hhu",
+			dds->flags & DDS_TWO_STEP_FLAG ? 1 : 0,
+			dds->flags & DDS_SLAVE_ONLY ? 1 : 0,
 			dds->numberPorts,
 			dds->priority1,
 			dds->clockQuality.clockClass,
