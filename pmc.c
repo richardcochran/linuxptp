@@ -297,9 +297,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case PORT_DATA_SET:
 		p = (struct portDS *) mgt->data;
+		if (p->portState > PS_SLAVE) {
+			p->portState = 0;
+		}
 		fprintf(fp, "PORT_DATA_SET "
 			IFMT "portIdentity            %s"
-			IFMT "portState               %hhu"
+			IFMT "portState               %s"
 			IFMT "logMinDelayReqInterval  %hhd"
 			IFMT "peerMeanPathDelay       %lld"
 			IFMT "logAnnounceInterval     %hhd"
@@ -308,7 +311,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "delayMechanism          %hhu"
 			IFMT "logMinPdelayReqInterval %hhd"
 			IFMT "versionNumber           %hhu",
-			pid2str(&p->portIdentity), p->portState,
+			pid2str(&p->portIdentity), ps_str[p->portState],
 			p->logMinDelayReqInterval, p->peerMeanPathDelay >> 16,
 			p->logAnnounceInterval, p->announceReceiptTimeout,
 			p->logSyncInterval, p->delayMechanism,
