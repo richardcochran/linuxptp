@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "ds.h"
+#include "fsm.h"
 #include "msg.h"
 #include "print.h"
 #include "tlv.h"
