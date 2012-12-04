@@ -130,8 +130,8 @@ static void clock_freq_est_reset(struct clock *c)
 	c->fest.count = 0;
 };
 
-static int clock_management_response(struct clock *c, struct port *p, int id,
-				     struct ptp_message *req)
+static int clock_management_get_response(struct clock *c, struct port *p,
+					 int id, struct ptp_message *req)
 {
 	int datalen = 0, err, pdulen, respond = 0;
 	struct management_tlv *tlv;
@@ -614,6 +614,9 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 
 	switch (management_action(msg)) {
 	case GET:
+		if (clock_management_get_response(c, p, mgt->id, msg))
+			return;
+		break;
 	case SET:
 	case COMMAND:
 		break;
@@ -622,9 +625,6 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		/* Ignore responses from other nodes. */
 		return;
 	}
-
-	if (clock_management_response(c, p, mgt->id, msg))
-		return;
 
 	switch (mgt->id) {
 	case USER_DESCRIPTION:

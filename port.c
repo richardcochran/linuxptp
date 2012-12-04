@@ -392,8 +392,9 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
-static int port_management_response(struct port *target, struct port *ingress,
-				    int id, struct ptp_message *req)
+static int port_management_get_response(struct port *target,
+					struct port *ingress, int id,
+					struct ptp_message *req)
 {
 	int datalen = 0, err, pdulen, respond = 0;
 	struct management_tlv *tlv;
@@ -1613,9 +1614,23 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 		return 0;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
-	if (port_management_response(p, ingress, mgt->id, msg)) {
-		return 0;
+
+	switch (management_action(msg)) {
+	case GET:
+		if (port_management_get_response(p, ingress, mgt->id, msg))
+			return 0;
+		break;
+	case SET:
+		if (port_managment_error(p->portIdentity, ingress, msg,
+					 NOT_SUPPORTED))
+			pr_err("port %hu: management error failed", portnum(p));
+		break;
+	case COMMAND:
+	case RESPONSE:
+	case ACKNOWLEDGE:
+		return -1;
 	}
+
 	switch (mgt->id) {
 	case CLOCK_DESCRIPTION:
 	case LOG_ANNOUNCE_INTERVAL:
