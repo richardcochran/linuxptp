@@ -30,7 +30,8 @@ CFLAGS	= -Wall $(VER) $(INC) $(DEBUG) $(FEAT_CFLAGS) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
- print.o raw.o servo.o sk.o tlv.o tmtab.o transport.o udp.o udp6.o uds.o util.o
+ print.o raw.o servo.o sk.o tlv.o tmtab.o transport.o udp.o udp6.o uds.o util.o \
+ version.o
 
 OBJECTS	= $(OBJ) pmc.o phc2sys.o hwstamp_ctl.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)
@@ -54,6 +55,15 @@ phc2sys: phc2sys.o sk.o sysoff.o print.o
 
 hwstamp_ctl: hwstamp_ctl.o
 
+version.o: .version version.sh $(filter-out version.d,$(DEPEND))
+
+.version: force
+	@echo $(version) > .version.new; \
+	cmp -s .version .version.new || cp .version.new .version; \
+	rm -f .version.new;
+
+force:
+
 install: $(PRG)
 	mkdir -p $(sbindir) $(man8dir)
 	install $(PRG) $(sbindir)
@@ -64,6 +74,7 @@ clean:
 
 distclean: clean
 	rm -f $(PRG)
+	rm -f .version
 
 # Implicit rule to generate a C source file's dependencies.
 %.d: %.c
@@ -78,3 +89,5 @@ ifneq ($(MAKECMDGOALS), distclean)
 -include $(DEPEND)
 endif
 endif
+
+.PHONY: all force clean distclean
