@@ -25,7 +25,8 @@ endif
 DEBUG	=
 CC	= $(CROSS_COMPILE)gcc
 INC	= -I$(KBUILD_OUTPUT)/usr/include
-CFLAGS	= -Wall $(INC) $(DEBUG) $(FEAT_CFLAGS) $(EXTRA_CFLAGS)
+VER     = -DVER=$(version)
+CFLAGS	= -Wall $(VER) $(INC) $(DEBUG) $(FEAT_CFLAGS) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl
 OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
@@ -35,6 +36,7 @@ OBJECTS	= $(OBJ) pmc.o phc2sys.o hwstamp_ctl.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
+version := $(shell $(srcdir)/version.sh $(srcdir))
 VPATH	= $(srcdir)
 
 prefix	= /usr/local
