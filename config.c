@@ -61,7 +61,12 @@ static enum parser_result parse_pod_setting(const char *option,
 	Integer8 i8;
 	UInteger8 u8;
 
-	if (!strcmp(option, "logAnnounceInterval")) {
+	if (!strcmp(option, "delayAsymmetry")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
+		pod->asymmetry = (Integer64) val << 16;
+
+	} else if (!strcmp(option, "logAnnounceInterval")) {
 		if (1 != sscanf(value, "%hhd", &i8))
 			return BAD_VALUE;
 		pod->logAnnounceInterval = i8;

@@ -102,6 +102,7 @@ struct portDS {
 } PACKED;
 
 struct port_defaults {
+	Integer64 asymmetry;
 	Integer8 logAnnounceInterval;
 	Integer8 logSyncInterval;
 	Integer8 logMinDelayReqInterval;

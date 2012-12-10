@@ -588,6 +588,7 @@ static int port_pdelay_request(struct port *p)
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
+	msg->header.correction         = -p->pod.asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_OTHER;
@@ -636,6 +637,7 @@ static int port_delay_request(struct port *p)
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(p->clock);
+	msg->header.correction         = -p->pod.asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_DELAY_REQ;
@@ -1226,11 +1228,9 @@ static void port_peer_delay(struct port *p)
 	if (rsp->header.sequenceId != ntohs(req->header.sequenceId))
 		return;
 
-	// TODO - add asymmetry value to correctionField.
-
 	t1 = timespec_to_tmv(req->hwts.ts);
 	t4 = timespec_to_tmv(rsp->hwts.ts);
-	c1 = correction_to_tmv(rsp->header.correction);
+	c1 = correction_to_tmv(rsp->header.correction + p->pod.asymmetry);
 
 	/* Process one-step response immediately. */
 	if (one_step(rsp)) {
@@ -1339,7 +1339,7 @@ static void process_sync(struct port *p, struct ptp_message *m)
 		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
 
-	// TODO - add asymmetry value to correctionField.
+	m->header.correction += p->pod.asymmetry;
 
 	if (one_step(m)) {
 		port_synchronize(p, m->hwts.ts, m->ts.pdu,

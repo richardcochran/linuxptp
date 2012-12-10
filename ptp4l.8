@@ -135,6 +135,12 @@ option. An empty port section can be used to replace the command line option.
 .SH PORT OPTIONS
 
 .TP
+.B delayAsymmetry
+The time difference in nanoseconds of the transmit and receive
+paths. This value should be positive when the master-to-slave
+propagation time is longer and negative when the slave-to-master time
+is longer. The default is 0 nanoseconds.
+.TP
 .B logAnnounceInterval
 The mean time interval between Announce messages. A shorter interval makes
 ptp4l react faster to the changes in the master-slave hierarchy. The interval
