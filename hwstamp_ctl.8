@@ -9,6 +9,8 @@ hwstamp_ctl \- set time stamping policy at the driver level
 .BI \-r " rx-filter"
 ] [
 .BI \-t " tx-type"
+] [
+.B \-v
 ]
 
 .SH DESCRIPTION
@@ -50,6 +52,9 @@ Display a help message and list of possible values for
 .I rx-filter
 and
 .IR tx-type .
+.TP
+.B \-v
+Prints the software version and exits.
 
 .SH SEE ALSO
 .BR ioctl (2),

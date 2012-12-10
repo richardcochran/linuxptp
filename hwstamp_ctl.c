@@ -29,6 +29,8 @@
 #include <linux/sockios.h>
 #include <net/if.h>
 
+#include "version.h"
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -53,6 +55,7 @@ static void usage(char *progname)
 		"\t\t%2d PTP v2/802.AS1, any layer, Sync packet\n"
 		"\t\t%2d PTP v2/802.AS1, any layer, Delay_req packet\n"
 		" -t [%d|%d]     disable or enable transmit time stamping\n"
+		" -v           prints the software version and exits\n"
 		"\n",
 		progname,
 		HWTSTAMP_FILTER_NONE, HWTSTAMP_FILTER_PTP_V2_DELAY_REQ,
@@ -85,7 +88,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "hi:r:t:"))) {
+	while (EOF != (c = getopt(argc, argv, "hi:r:t:v"))) {
 		switch (c) {
 		case 'i':
 			device = optarg;
@@ -96,6 +99,9 @@ int main(int argc, char *argv[])
 		case 't':
 			txopt = atoi(optarg);
 			break;
+		case 'v':
+			version_show(stdout);
+			return 0;
 		case 'h':
 			usage(progname);
 			return 0;

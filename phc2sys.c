@@ -35,6 +35,7 @@
 #include "missing.h"
 #include "sk.h"
 #include "sysoff.h"
+#include "version.h"
 
 #define KP 0.7
 #define KI 0.3
@@ -264,6 +265,7 @@ static void usage(char *progname)
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -O [offset]    slave-master time offset (0)\n"
 		" -h             prints this message and exits\n"
+		" -v             prints the software version and exits\n"
 		"\n",
 		progname);
 }
@@ -280,7 +282,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:O:i:"))) {
+	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:O:i:v"))) {
 		switch (c) {
 		case 'c':
 			dst = clock_open(optarg);
@@ -309,6 +311,9 @@ int main(int argc, char *argv[])
 		case 'i':
 			ethdev = optarg;
 			break;
+		case 'v':
+			version_show(stdout);
+			return 0;
 		case 'h':
 			usage(progname);
 			return 0;

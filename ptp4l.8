@@ -31,6 +31,8 @@ ptp4l \- PTP Boundary/Ordinary Clock
 ] [
 .BI \-l " print-level"
 ] [
+.B \-m
+] [
 .B \-q
 ] [
 .B \-v
@@ -84,6 +86,10 @@ Select the legacy hardware time stamping.
 Read configuration from the specified file. No configuration file is read by
 default.
 .TP
+.BI \-i " interface"
+Specify a PTP port, it may be used multiple times. At least one port must be
+specified by this option or in the configuration file.
+.TP
 .BI \-p " phc-device"
 With hardware time stamping, force which PHC device (e.g. /dev/ptp0) should be
 used.
@@ -95,15 +101,14 @@ Enable the slaveOnly mode.
 Set the maximum syslog level of messages which should be printed or sent to
 the system logger. The default is 6 (LOG_INFO).
 .TP
+.B \-m
+Print messages to the standard output.
+.TP
 .B \-q
 Don't send messages to the system logger.
 .TP
 .B \-v
-Print messages to the standard output.
-.TP
-.BI \-i " interface"
-Specify a PTP port, it may be used multiple times. At least one port must be
-specified by this option or in the configuration file.
+Prints the software version and exits.
 .TP
 .BI \-h
 Display a help message.

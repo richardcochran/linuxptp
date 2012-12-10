@@ -33,6 +33,7 @@
 #include "transport.h"
 #include "udp6.h"
 #include "util.h"
+#include "version.h"
 
 int assume_two_step = 0;
 
@@ -119,8 +120,9 @@ static void usage(char *progname)
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
 		" -s        slave only mode (overrides configuration file)\n"
 		" -l [num]  set the logging level to 'num'\n"
+		" -m        print messages to stdout\n"
 		" -q        do not print messages to the syslog\n"
-		" -v        print messages to stdout\n"
+		" -v        prints the software version and exits\n"
 		" -h        prints this message and exits\n"
 		"\n",
 		progname);
@@ -157,7 +159,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "AEP246HSLf:i:p:sl:qvh"))) {
+	while (EOF != (c = getopt(argc, argv, "AEP246HSLf:i:p:sl:mqvh"))) {
 		switch (c) {
 		case 'A':
 			*dm = DM_AUTO;
@@ -213,14 +215,17 @@ int main(int argc, char *argv[])
 			cfg_settings.print_level = atoi(optarg);
 			*cfg_ignore |= CFG_IGNORE_PRINT_LEVEL;
 			break;
+		case 'm':
+			cfg_settings.verbose = 1;
+			*cfg_ignore |= CFG_IGNORE_VERBOSE;
+			break;
 		case 'q':
 			cfg_settings.use_syslog = 0;
 			*cfg_ignore |= CFG_IGNORE_USE_SYSLOG;
 			break;
 		case 'v':
-			cfg_settings.verbose = 1;
-			*cfg_ignore |= CFG_IGNORE_VERBOSE;
-			break;
+			version_show(stdout);
+			return 0;
 		case 'h':
 			usage(progname);
 			return 0;

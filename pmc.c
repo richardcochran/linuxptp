@@ -31,6 +31,7 @@
 #include "tlv.h"
 #include "transport.h"
 #include "util.h"
+#include "version.h"
 
 #define BAD_ACTION   -1
 #define BAD_ID       -1
@@ -459,6 +460,7 @@ static void usage(char *progname)
 		" -i [dev]  interface device to use, default 'eth0'\n"
 		"           for network and '/tmp/pmc' for UDS.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
+		" -v        prints the software version and exits\n"
 		"\n",
 		progname);
 }
@@ -476,7 +478,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:t:"))) {
+	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:t:v"))) {
 		switch (c) {
 		case '2':
 			transport_type = TRANS_IEEE_802_3;
@@ -503,6 +505,9 @@ int main(int argc, char *argv[])
 			if (1 == sscanf(optarg, "%x", &c))
 				transport_specific = c << 4;
 			break;
+		case 'v':
+			version_show(stdout);
+			return 0;
 		case 'h':
 			usage(progname);
 			return 0;

@@ -49,11 +49,11 @@ all: $(PRG)
 
 ptp4l: $(OBJ)
 
-pmc: pmc.o msg.o print.o raw.o sk.o tlv.o transport.o udp.o udp6.o uds.o util.o
+pmc: pmc.o msg.o print.o raw.o sk.o tlv.o transport.o udp.o udp6.o uds.o util.o version.o
 
-phc2sys: phc2sys.o sk.o sysoff.o print.o
+phc2sys: phc2sys.o sk.o sysoff.o print.o version.o
 
-hwstamp_ctl: hwstamp_ctl.o
+hwstamp_ctl: hwstamp_ctl.o version.o
 
 version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 
