@@ -4,7 +4,7 @@
 # local version information from the git version control system.
 # Adapted from scripts/setlocalversion in the Linux kernel sources.
 #
-major=0
+major=1
 minor=0
 extra=
 
