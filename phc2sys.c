@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <linux/pps.h>
 #include <linux/ptp_clock.h>
@@ -141,7 +142,7 @@ static struct servo servo;
 
 static void show_servo(FILE *fp, const char *label, int64_t offset, uint64_t ts)
 {
-	fprintf(fp, "%s %9lld s%d %lld.%09llu drift %.2f\n", label, offset,
+	fprintf(fp, "%s %9" PRId64 " s%d %lld.%09llu drift %.2f\n", label, offset,
 		servo.state, ts / NS_PER_SEC, ts % NS_PER_SEC, servo.drift);
 	fflush(fp);
 }

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "ds.h"
 #include "fsm.h"
@@ -282,12 +283,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
 		fprintf(fp, "TIME_STATUS_NP "
-			IFMT "master_offset              %lld"
-			IFMT "ingress_time               %lld"
+			IFMT "master_offset              %" PRId64
+			IFMT "ingress_time               %" PRId64
 			IFMT "cumulativeScaledRateOffset %+.9f"
 			IFMT "scaledLastGmPhaseChange    %d"
 			IFMT "gmTimeBaseIndicator        %hu"
-			IFMT "lastGmPhaseChange          0x%04hx'%016llx.%04hx"
+			IFMT "lastGmPhaseChange          0x%04hx'%016" PRIx64 ".%04hx"
 			IFMT "gmPresent                  %s"
 			IFMT "gmIdentity                 %s",
 			tsn->master_offset,
@@ -310,7 +311,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "portIdentity            %s"
 			IFMT "portState               %s"
 			IFMT "logMinDelayReqInterval  %hhd"
-			IFMT "peerMeanPathDelay       %lld"
+			IFMT "peerMeanPathDelay       %" PRId64
 			IFMT "logAnnounceInterval     %hhd"
 			IFMT "announceReceiptTimeout  %hhu"
 			IFMT "logSyncInterval         %hhd"
