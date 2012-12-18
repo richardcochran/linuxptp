@@ -331,6 +331,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "can't autodiscover PHC device\n");
 			return -1;
 		}
+		if (ts_info.phc_index < 0) {
+			fprintf(stderr, "interface %s doesn't have a PHC\n", ethdev);
+			return -1;
+		}
 		sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
 		src = clock_open(phc_device);
 	}
