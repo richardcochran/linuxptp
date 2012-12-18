@@ -125,6 +125,7 @@
     | gianfar    | Freescale eTSEC PowerPC | RAW  | Y   | NA  | 3.0 |
     | ptp_ixp46x | Intel IXP465            | RAW  | Y   | NA  | 3.0 |
     | ptp_phc    | Lapis EG20T PCH         | RAW  | Y   | NA  | 3.5 |
+    | sfc        | Solarflare SFC9000      | RAW  | Y   | NA  | 3.7 |
     |------------+-------------------------+------+-----+-----+-----|
 
 *** Software Timestamping
