@@ -34,6 +34,10 @@
 
 * Getting the Code
 
+  You can download the latest released version at Source Forge.
+
+  http://sourceforge.net/projects/linuxptp/files/latest/download
+
   The source code is managed using the git version control system. To
   get your own copy of the project sources, use the following command.
 
