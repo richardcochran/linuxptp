@@ -388,6 +388,13 @@ static int parse_action(char *s)
 static int parse_id(char *s)
 {
 	int i, index = BAD_ID, len = strlen(s);
+	/* check for exact match */
+	for (i = 0; i < ARRAY_SIZE(idtab); i++) {
+		if (strcasecmp(s, idtab[i].name) == 0) {
+			return i;
+		}
+	}
+	/* look for a unique prefix match */
 	for (i = 0; i < ARRAY_SIZE(idtab); i++) {
 		if (0 == strncasecmp(s, idtab[i].name, len)) {
 			if (index == BAD_ID)
