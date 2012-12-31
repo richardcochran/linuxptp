@@ -577,10 +577,36 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 	}
 }
 
+static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_message *msg)
+{
+	int i, pdulen, msg_ready = 0;
+	struct port *fwd;
+	if (forwarding(c, p) && msg->management.boundaryHops) {
+		for (i = 0; i < c->nports + 1; i++) {
+			fwd = c->port[i];
+			if (fwd != p && forwarding(c, fwd)) {
+				/* delay calling msg_pre_send until
+				 * actually forwarding */
+				if (!msg_ready) {
+					msg_ready = 1;
+					pdulen = msg->header.messageLength;
+					msg->management.boundaryHops--;
+					msg_pre_send(msg);
+				}
+				if (port_forward(fwd, msg, pdulen))
+					pr_err("port %d: management forward failed", i);
+			}
+		}
+		if (msg_ready) {
+			msg_post_recv(msg, pdulen);
+			msg->management.boundaryHops++;
+		}
+	}
+}
+
 void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 {
-	int i, pdulen;
-	struct port *fwd;
+	int i;
 	struct management_tlv *mgt;
 	struct PortIdentity pid;
 	struct ClockIdentity *tcid, wildcard = {
@@ -588,19 +614,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	};
 
 	/* Forward this message out all eligible ports. */
-	if (forwarding(c, p) && msg->management.boundaryHops) {
-		pdulen = msg->header.messageLength;
-		msg->management.boundaryHops--;
-		msg_pre_send(msg);
-		for (i = 0; i < c->nports + 1; i++) {
-			fwd = c->port[i];
-			if (fwd != p && forwarding(c, fwd) &&
-			    port_forward(fwd, msg, pdulen))
-				pr_err("port %d: management forward failed", i);
-		}
-		msg_post_recv(msg, pdulen);
-		msg->management.boundaryHops++;
-	}
+	clock_forward_mgmt_msg(c, p, msg);
 
 	/* Apply this message to the local clock and ports. */
 	tcid = &msg->management.targetPortIdentity.clockIdentity;
