@@ -32,6 +32,7 @@
 #include "contain.h"
 #include "print.h"
 #include "sk.h"
+#include "ether.h"
 #include "transport_private.h"
 #include "udp6.h"
 
@@ -45,6 +46,10 @@ unsigned char udp6_scope = 0x0E;
 struct udp6 {
 	struct transport t;
 	int index;
+	uint8_t ip[16];
+	int ip_len;
+	uint8_t mac[MAC_LEN];
+	int mac_len;
 };
 
 static int is_link_local(struct in6_addr *addr)
@@ -159,6 +164,14 @@ static int udp6_open(struct transport *t, char *name, struct fdarray *fda,
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
 	int efd, gfd;
 
+	udp6->mac_len = 0;
+	if (sk_interface_macaddr(name, udp6->mac, MAC_LEN) == 0)
+		udp6->mac_len = MAC_LEN;
+
+	udp6->ip_len = sk_interface_addr(name, AF_INET6, udp6->ip, sizeof(udp6->ip));
+	if (udp6->ip_len == -1)
+		udp6->ip_len = 0;
+
 	if (1 != inet_pton(AF_INET6, PTP_PRIMARY_MCAST_IP6ADDR, &mc6_addr[MC_PRIMARY]))
 		return -1;
 
@@ -233,6 +246,22 @@ static void udp6_release(struct transport *t)
 	free(udp6);
 }
 
+static int udp6_physical_addr(struct transport *t, uint8_t *addr)
+{
+	struct udp6 *udp6 = container_of(t, struct udp6, t);
+	if (udp6->mac_len)
+		memcpy(addr, udp6->mac, udp6->mac_len);
+	return udp6->mac_len;
+}
+
+static int udp6_protocol_addr(struct transport *t, uint8_t *addr)
+{
+	struct udp6 *udp6 = container_of(t, struct udp6, t);
+	if (udp6->ip_len)
+		memcpy(addr, &udp6->ip, udp6->ip_len);
+	return udp6->ip_len;
+}
+
 struct transport *udp6_transport_create(void)
 {
 	struct udp6 *udp6;
@@ -244,5 +273,7 @@ struct transport *udp6_transport_create(void)
 	udp6->t.recv    = udp6_recv;
 	udp6->t.send    = udp6_send;
 	udp6->t.release = udp6_release;
+	udp6->t.physical_addr = udp6_physical_addr;
+	udp6->t.protocol_addr = udp6_protocol_addr;
 	return &udp6->t;
 }
