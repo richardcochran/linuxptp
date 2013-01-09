@@ -64,6 +64,16 @@ int sk_get_ts_info(char *name, struct sk_ts_info *sk_info);
 int sk_interface_macaddr(char *name, unsigned char *mac, int len);
 
 /**
+ * Obtains the first IP address assigned to a network interface.
+ * @param name   The name of the interface
+ * @param family The family of the address to get: AF_INET or AF_INET6
+ * @param addr   Buffer to hold the result
+ * @param len    Length of 'addr'
+ * @return       The number of bytes written to addr on success, -1 otherwise.
+ */
+int sk_interface_addr(char *name, int family, uint8_t *addr, int len);
+
+/**
  * Read a message from a socket.
  * @param fd      An open socket.
  * @param buf     Buffer to receive the message.

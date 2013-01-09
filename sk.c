@@ -26,6 +26,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <ifaddrs.h>
+#include <stdlib.h>
 
 #include "print.h"
 #include "sk.h"
@@ -156,6 +158,42 @@ int sk_interface_macaddr(char *name, unsigned char *mac, int len)
 	memcpy(mac, ifreq.ifr_hwaddr.sa_data, len);
 	close(fd);
 	return 0;
+}
+
+int sk_interface_addr(char *name, int family, uint8_t *addr, int len)
+{
+	struct ifaddrs *ifaddr, *i;
+	int copy_len, result = -1;
+	void *copy_from;
+	if (getifaddrs(&ifaddr) == -1) {
+		pr_err("getifaddrs failed: %m");
+		return -1;
+	}
+	for (i = ifaddr; i; i = i->ifa_next) {
+		if (i->ifa_addr && family == i->ifa_addr->sa_family &&
+			strcmp(name, i->ifa_name) == 0)
+		{
+			switch (family) {
+			case AF_INET:
+				copy_len = 4;
+				copy_from = &((struct sockaddr_in *)i->ifa_addr)->sin_addr.s_addr;
+				break;
+			case AF_INET6:
+				copy_len = 16;
+				copy_from = &((struct sockaddr_in6 *)i->ifa_addr)->sin6_addr.s6_addr;
+				break;
+			default:
+				continue;
+			}
+			if (copy_len > len)
+				copy_len = len;
+			memcpy(addr, copy_from, copy_len);
+			result = copy_len;
+			break;
+		}
+	}
+	free(ifaddr);
+	return result;
 }
 
 int sk_receive(int fd, void *buf, int buflen,
