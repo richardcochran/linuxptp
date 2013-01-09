@@ -23,13 +23,16 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "contain.h"
 #include "print.h"
 #include "sk.h"
+#include "ether.h"
 #include "transport_private.h"
 #include "udp.h"
 
@@ -37,6 +40,14 @@
 #define GENERAL_PORT      320
 #define PTP_PRIMARY_MCAST_IPADDR "224.0.1.129"
 #define PTP_PDELAY_MCAST_IPADDR  "224.0.0.107"
+
+struct udp {
+	struct transport t;
+	uint8_t ip[4];
+	int ip_len;
+	uint8_t mac[MAC_LEN];
+	int mac_len;
+};
 
 static int mcast_bind(int fd, int index)
 {
@@ -140,7 +151,16 @@ static struct in_addr mcast_addr[2];
 static int udp_open(struct transport *t, char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
+	struct udp *udp = container_of(t, struct udp, t);
 	int efd, gfd;
+
+	udp->mac_len = 0;
+	if (sk_interface_macaddr(name, udp->mac, MAC_LEN) == 0)
+		udp->mac_len = MAC_LEN;
+
+	udp->ip_len = sk_interface_addr(name, AF_INET, udp->ip, sizeof(udp->ip));
+	if (udp->ip_len == -1)
+		udp->ip_len = 0;
 
 	if (!inet_aton(PTP_PRIMARY_MCAST_IPADDR, &mcast_addr[MC_PRIMARY]))
 		return -1;
@@ -211,19 +231,37 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event, int pee
 
 static void udp_release(struct transport *t)
 {
-	/* No need for any per-instance deallocation. */
+	struct udp *udp = container_of(t, struct udp, t);
+	free(udp);
 }
 
-static struct transport the_udp_transport = {
-	.close = udp_close,
-	.open  = udp_open,
-	.recv  = udp_recv,
-	.send  = udp_send,
-	.release = udp_release,
-};
+int udp_physical_addr(struct transport *t, uint8_t *addr)
+{
+	struct udp *udp = container_of(t, struct udp, t);
+	if (udp->mac_len)
+		memcpy(addr, udp->mac, udp->mac_len);
+	return udp->mac_len;
+}
+
+int udp_protocol_addr(struct transport *t, uint8_t *addr)
+{
+	struct udp *udp = container_of(t, struct udp, t);
+	if (udp->ip_len)
+		memcpy(addr, &udp->ip, udp->ip_len);
+	return udp->ip_len;
+}
 
 struct transport *udp_transport_create(void)
 {
-	/* No need for any per-instance allocation. */
-	return &the_udp_transport;
+	struct udp *udp = calloc(1, sizeof(*udp));
+	if (!udp)
+		return NULL;
+	udp->t.close = udp_close;
+	udp->t.open  = udp_open;
+	udp->t.recv  = udp_recv;
+	udp->t.send  = udp_send;
+	udp->t.release = udp_release;
+	udp->t.physical_addr = udp_physical_addr;
+	udp->t.protocol_addr = udp_protocol_addr;
+	return &udp->t;
 }
