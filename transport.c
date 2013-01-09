@@ -56,6 +56,8 @@ int transport_peer(struct transport *t, struct fdarray *fda, int event,
 struct transport *transport_create(enum transport_type type)
 {
 	switch (type) {
+	case TRANS_UDS:
+	        return uds_transport_create();
 	case TRANS_UDP_IPV4:
 		return udp_transport_create();
 	case TRANS_UDP_IPV6:
@@ -66,8 +68,6 @@ struct transport *transport_create(enum transport_type type)
 	case TRANS_CONTROLNET:
 	case TRANS_PROFINET:
 		break;
-	case TRANS_UDS:
-		return uds_transport_create();
 	}
 	return NULL;
 }

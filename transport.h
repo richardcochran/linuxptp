@@ -24,14 +24,16 @@
 
 #include "fd.h"
 
+/* Values from networkProtocol enumeration 7.4.1 Table 3 */
 enum transport_type {
-	TRANS_UDP_IPV4,
+	/* 0 is Reserved in spec. Use it for UDS */
+	TRANS_UDS = 0,
+	TRANS_UDP_IPV4 = 1,
 	TRANS_UDP_IPV6,
 	TRANS_IEEE_802_3,
 	TRANS_DEVICENET,
 	TRANS_CONTROLNET,
 	TRANS_PROFINET,
-	TRANS_UDS,
 };
 
 /**
