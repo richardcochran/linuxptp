@@ -53,23 +53,51 @@ int transport_peer(struct transport *t, struct fdarray *fda, int event,
 	return t->send(t, fda, event, 1, buf, buflen, hwts);
 }
 
+int transport_physical_addr(struct transport *t, uint8_t *addr)
+{
+	if (t->physical_addr) {
+		return t->physical_addr(t, addr);
+	}
+	return 0;
+}
+
+int transport_protocol_addr(struct transport *t, uint8_t *addr)
+{
+	if (t->protocol_addr) {
+		return t->protocol_addr(t, addr);
+	}
+	return 0;
+}
+
+enum transport_type transport_type(struct transport *t)
+{
+	return t->type;
+}
+
 struct transport *transport_create(enum transport_type type)
 {
+	struct transport *t = NULL;
 	switch (type) {
 	case TRANS_UDS:
-	        return uds_transport_create();
+		t = uds_transport_create();
+		break;
 	case TRANS_UDP_IPV4:
-		return udp_transport_create();
+		t = udp_transport_create();
+		break;
 	case TRANS_UDP_IPV6:
-		return udp6_transport_create();
+		t = udp6_transport_create();
+		break;
 	case TRANS_IEEE_802_3:
-		return raw_transport_create();
+		t = raw_transport_create();
+		break;
 	case TRANS_DEVICENET:
 	case TRANS_CONTROLNET:
 	case TRANS_PROFINET:
 		break;
 	}
-	return NULL;
+	if (t)
+		t->type = type;
+	return t;
 }
 
 void transport_destroy(struct transport *t)

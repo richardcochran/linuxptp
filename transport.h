@@ -21,6 +21,7 @@
 #define HAVE_TRANSPORT_H
 
 #include <time.h>
+#include <inttypes.h>
 
 #include "fd.h"
 
@@ -73,6 +74,31 @@ int transport_send(struct transport *t, struct fdarray *fda, int event,
 
 int transport_peer(struct transport *t, struct fdarray *fda, int event,
 		   void *buf, int buflen, struct hw_timestamp *hwts);
+
+/**
+ * Returns the transport's type.
+ */
+enum transport_type transport_type(struct transport *t);
+
+#define TRANSPORT_ADDR_LEN 16
+
+/**
+ * Gets the transport's physical address.
+ * @param t    The transport.
+ * @param addr The address will be written to this buffer.
+ * @return     The number of bytes written to the buffer. Will be 0-16
+ *             bytes
+ */
+int transport_physical_addr(struct transport *t, uint8_t *addr);
+
+/**
+ * Gets the transport's protocol address.
+ * @param t    The transport.
+ * @param addr The address will be written to this buffer.
+ * @return     The number of bytes written to the buffer. Will be 0-16
+ *             bytes
+ */
+int transport_protocol_addr(struct transport *t, uint8_t *addr);
 
 /**
  * Allocate an instance of the specified transport.

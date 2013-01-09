@@ -26,6 +26,8 @@
 #include "transport.h"
 
 struct transport {
+	enum transport_type type;
+
 	int (*close)(struct transport *t, struct fdarray *fda);
 
 	int (*open)(struct transport *t, char *name, struct fdarray *fda,
@@ -38,6 +40,10 @@ struct transport {
 		    void *buf, int buflen, struct hw_timestamp *hwts);
 
 	void (*release)(struct transport *t);
+
+	int (*physical_addr)(struct transport *t, uint8_t *addr);
+
+	int (*protocol_addr)(struct transport *t, uint8_t *addr);
 };
 
 #endif
