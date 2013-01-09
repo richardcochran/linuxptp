@@ -295,6 +295,20 @@ static void raw_release(struct transport *t)
 	free(raw);
 }
 
+static int raw_physical_addr(struct transport *t, uint8_t *addr)
+{
+	struct raw *raw = container_of(t, struct raw, t);
+	memcpy(addr, raw->ptp_addr.src, MAC_LEN);
+	return MAC_LEN;
+}
+
+static int raw_protocol_addr(struct transport *t, uint8_t *addr)
+{
+	struct raw *raw = container_of(t, struct raw, t);
+	memcpy(addr, raw->ptp_addr.src, MAC_LEN);
+	return MAC_LEN;
+}
+
 struct transport *raw_transport_create(void)
 {
 	struct raw *raw;
@@ -306,5 +320,7 @@ struct transport *raw_transport_create(void)
 	raw->t.recv    = raw_recv;
 	raw->t.send    = raw_send;
 	raw->t.release = raw_release;
+	raw->t.physical_addr = raw_physical_addr;
+	raw->t.protocol_addr = raw_protocol_addr;
 	return &raw->t;
 }
