@@ -34,6 +34,8 @@
 #include <linux/ptp_clock.h>
 
 #include "missing.h"
+#include "pi.h"
+#include "servo.h"
 #include "sk.h"
 #include "sysoff.h"
 #include "version.h"
@@ -43,7 +45,6 @@
 #define NS_PER_SEC 1000000000LL
 
 #define max_ppb  512000
-#define min_ppb -512000
 
 static clockid_t clock_open(char *device)
 {
@@ -129,62 +130,35 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
 	return 1;
 }
 
-struct servo {
-	uint64_t saved_ts;
-	int64_t saved_offset;
-	double drift;
-	enum {
-		SAMPLE_0, SAMPLE_1, SAMPLE_2, SAMPLE_3, SAMPLE_N
-	} state;
+struct clock {
+	clockid_t clkid;
+	struct servo *servo;
+	FILE *log_file;
+	const char *source_label;
 };
 
-static struct servo servo;
-
-static void show_servo(FILE *fp, const char *label, int64_t offset, uint64_t ts)
+static void update_clock(struct clock *clock, int64_t offset, uint64_t ts)
 {
-	fprintf(fp, "%s %9" PRId64 " s%d %lld.%09llu drift %.2f\n", label, offset,
-		servo.state, ts / NS_PER_SEC, ts % NS_PER_SEC, servo.drift);
-	fflush(fp);
-}
+	enum servo_state state;
+	double ppb;
 
-static void do_servo(struct servo *srv, clockid_t dst,
-		     int64_t offset, uint64_t ts, double kp, double ki)
-{
-	double ki_term, ppb;
+	ppb = servo_sample(clock->servo, offset, ts, &state);
 
-	switch (srv->state) {
-	case SAMPLE_0:
-		clock_ppb(dst, 0.0);
-		srv->saved_offset = offset;
-		srv->saved_ts = ts;
-		srv->state = SAMPLE_1;
+	switch (state) {
+	case SERVO_UNLOCKED:
 		break;
-	case SAMPLE_1:
-		srv->state = SAMPLE_2;
-		break;
-	case SAMPLE_2:
-		srv->state = SAMPLE_3;
-		break;
-	case SAMPLE_3:
-		srv->drift = (offset - srv->saved_offset) * 1e9 /
-			(ts - srv->saved_ts);
-		clock_ppb(dst, -srv->drift);
-		clock_step(dst, -offset);
-		srv->state = SAMPLE_N;
-		break;
-	case SAMPLE_N:
-		ki_term = ki * offset;
-		ppb = kp * offset + srv->drift + ki_term;
-		if (ppb < min_ppb) {
-			ppb = min_ppb;
-		} else if (ppb > max_ppb) {
-			ppb = max_ppb;
-		} else {
-			srv->drift += ki_term;
-		}
-		clock_ppb(dst, -ppb);
+	case SERVO_JUMP:
+		clock_step(clock->clkid, -offset);
+		/* Fall through. */
+	case SERVO_LOCKED:
+		clock_ppb(clock->clkid, -ppb);
 		break;
 	}
+
+	fprintf(clock->log_file, "%s %9" PRId64 " s%d %lld.%09llu adj %.2f\n",
+		clock->source_label, offset, state,
+		ts / NS_PER_SEC, ts % NS_PER_SEC, ppb);
+	fflush(clock->log_file);
 }
 
 static int read_pps(int fd, int64_t *offset, uint64_t *ts)
@@ -209,11 +183,13 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 	return 1;
 }
 
-static int do_pps_loop(char *pps_device, double kp, double ki, clockid_t dst)
+static int do_pps_loop(struct clock *clock, char *pps_device)
 {
 	int64_t pps_offset;
 	uint64_t pps_ts;
 	int fd;
+
+	clock->source_label = "pps";
 
 	fd = open(pps_device, O_RDONLY);
 	if (fd < 0) {
@@ -224,20 +200,21 @@ static int do_pps_loop(char *pps_device, double kp, double ki, clockid_t dst)
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
 			continue;
 		}
-		do_servo(&servo, dst, pps_offset, pps_ts, kp, ki);
-		show_servo(stdout, "pps", pps_offset, pps_ts);
+		update_clock(clock, pps_offset, pps_ts);
 	}
 	close(fd);
 	return 0;
 }
 
-static int do_sysoff_loop(clockid_t src, clockid_t dst,
-			  int rate, int n_readings, int sync_offset,
-			  double kp, double ki)
+static int do_sysoff_loop(struct clock *clock, clockid_t src,
+			  int rate, int n_readings, int sync_offset)
 {
 	uint64_t ts;
 	int64_t offset;
 	int err = 0, fd = CLOCKID_TO_FD(src);
+
+	clock->source_label = "sys";
+
 	while (1) {
 		usleep(1000000 / rate);
 		if (sysoff_measure(fd, n_readings, &offset, &ts)) {
@@ -245,8 +222,7 @@ static int do_sysoff_loop(clockid_t src, clockid_t dst,
 			break;
 		}
 		offset -= sync_offset * NS_PER_SEC;
-		do_servo(&servo, dst, offset, ts, kp, ki);
-		show_servo(stdout, "sys", offset, ts);
+		update_clock(clock, offset, ts);
 	}
 	return err;
 }
@@ -273,12 +249,18 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	double kp = KP, ki = KI;
 	char *device = NULL, *progname, *ethdev = NULL;
-	clockid_t src = CLOCK_INVALID, dst = CLOCK_REALTIME;
+	clockid_t src = CLOCK_INVALID;
 	uint64_t phc_ts;
 	int64_t phc_offset;
 	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0;
+	struct clock dst_clock = {
+		.clkid = CLOCK_REALTIME,
+		.log_file = stdout
+	};
+
+	configured_pi_kp = KP;
+	configured_pi_ki = KI;
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
@@ -286,7 +268,7 @@ int main(int argc, char *argv[])
 	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:O:i:v"))) {
 		switch (c) {
 		case 'c':
-			dst = clock_open(optarg);
+			dst_clock.clkid = clock_open(optarg);
 			break;
 		case 'd':
 			device = optarg;
@@ -295,10 +277,10 @@ int main(int argc, char *argv[])
 			src = clock_open(optarg);
 			break;
 		case 'P':
-			kp = atof(optarg);
+			configured_pi_kp = atof(optarg);
 			break;
 		case 'I':
-			ki = atof(optarg);
+			configured_pi_ki = atof(optarg);
 			break;
 		case 'R':
 			phc_rate = atoi(optarg);
@@ -338,7 +320,8 @@ int main(int argc, char *argv[])
 		sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
 		src = clock_open(phc_device);
 	}
-	if (!(device || src != CLOCK_INVALID) || dst == CLOCK_INVALID) {
+	if (!(device || src != CLOCK_INVALID) ||
+	    dst_clock.clkid == CLOCK_INVALID) {
 		usage(progname);
 		return -1;
 	}
@@ -347,26 +330,31 @@ int main(int argc, char *argv[])
 		if (clock_gettime(src, &now))
 			perror("clock_gettime");
 		now.tv_sec += sync_offset;
-		if (clock_settime(dst, &now))
+		if (clock_settime(dst_clock.clkid, &now))
 			perror("clock_settime");
 	}
 
-	if (device)
-		return do_pps_loop(device, kp, ki, dst);
+	clock_ppb(dst_clock.clkid, 0.0);
 
-	if (dst == CLOCK_REALTIME &&
+	dst_clock.servo = servo_create(CLOCK_SERVO_PI, 0.0, max_ppb, 0);
+
+	if (device)
+		return do_pps_loop(&dst_clock, device);
+
+	if (dst_clock.clkid == CLOCK_REALTIME &&
 	    SYSOFF_SUPPORTED == sysoff_probe(CLOCKID_TO_FD(src), phc_readings))
-		return do_sysoff_loop(src, dst, phc_rate,
-				      phc_readings, sync_offset, kp, ki);
+		return do_sysoff_loop(&dst_clock, src, phc_rate,
+				      phc_readings, sync_offset);
+
+	dst_clock.source_label = "phc";
 
 	while (1) {
 		usleep(1000000 / phc_rate);
-		if (!read_phc(src, dst, phc_readings, &phc_offset, &phc_ts)) {
+		if (!read_phc(src, dst_clock.clkid, phc_readings, &phc_offset, &phc_ts)) {
 			continue;
 		}
 		phc_offset -= sync_offset * NS_PER_SEC;
-		do_servo(&servo, dst, phc_offset, phc_ts, kp, ki);
-		show_servo(stdout, "phc", phc_offset, phc_ts);
+		update_clock(&dst_clock, phc_offset, phc_ts);
 	}
 	return 0;
 }
