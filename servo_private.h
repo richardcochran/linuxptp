@@ -26,7 +26,7 @@ struct servo {
 	void (*destroy)(struct servo *servo);
 
 	double (*sample)(struct servo *servo,
-			 double offset, double local_ts,
+			 int64_t offset, uint64_t local_ts,
 			 enum servo_state *state);
 };
 

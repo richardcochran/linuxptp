@@ -20,6 +20,8 @@
 #ifndef HAVE_SERVO_H
 #define HAVE_SERVO_H
 
+#include <stdint.h>
+
 /** Opaque type */
 struct servo;
 
@@ -80,8 +82,8 @@ void servo_destroy(struct servo *servo);
  * @return The clock adjustment in parts per billion.
  */
 double servo_sample(struct servo *servo,
-		    double offset,
-		    double local_ts,
+		    int64_t offset,
+		    uint64_t local_ts,
 		    enum servo_state *state);
 
 #endif

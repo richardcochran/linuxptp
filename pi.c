@@ -38,8 +38,8 @@ double configured_pi_offset = 0.0;
 
 struct pi_servo {
 	struct servo servo;
-	double offset[2];
-	double local[2];
+	int64_t offset[2];
+	uint64_t local[2];
 	double drift;
 	double maxppb;
 	double kp;
@@ -55,8 +55,8 @@ static void pi_destroy(struct servo *servo)
 }
 
 static double pi_sample(struct servo *servo,
-			double offset,
-			double local_ts,
+			int64_t offset,
+			uint64_t local_ts,
 			enum servo_state *state)
 {
 	double ki_term, ppb = 0.0;
