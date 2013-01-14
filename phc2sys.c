@@ -76,6 +76,18 @@ static void clock_ppb(clockid_t clkid, double ppb)
 		fprintf(stderr, "failed to adjust the clock: %m\n");
 }
 
+static double clock_ppb_read(clockid_t clkid)
+{
+	double f = 0.0;
+	struct timex tx;
+	memset(&tx, 0, sizeof(tx));
+	if (clock_adjtime(clkid, &tx) < 0)
+		fprintf(stderr, "failed to read out the clock frequency adjustment: %m\n");
+	else
+		f = tx.freq / 65.536;
+	return f;
+}
+
 static void clock_step(clockid_t clkid, int64_t ns)
 {
 	struct timex tx;
@@ -271,6 +283,7 @@ int main(int argc, char *argv[])
 	char *device = NULL, *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID;
 	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0;
+	double ppb;
 	struct clock dst_clock = {
 		.clkid = CLOCK_REALTIME,
 		.log_file = stdout
@@ -351,9 +364,12 @@ int main(int argc, char *argv[])
 			perror("clock_settime");
 	}
 
-	clock_ppb(dst_clock.clkid, 0.0);
+	ppb = clock_ppb_read(dst_clock.clkid);
+	/* The reading may silently fail and return 0, reset the frequency to
+	   make sure ppb is the actual frequency of the clock. */
+	clock_ppb(dst_clock.clkid, ppb);
 
-	dst_clock.servo = servo_create(CLOCK_SERVO_PI, 0.0, max_ppb, 0);
+	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 
 	if (device)
 		return do_pps_loop(&dst_clock, device);
