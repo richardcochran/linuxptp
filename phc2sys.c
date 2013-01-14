@@ -227,6 +227,25 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 	return err;
 }
 
+static int do_phc_loop(struct clock *clock, clockid_t src,
+		       int rate, int n_readings, int sync_offset)
+{
+	uint64_t ts;
+	int64_t offset;
+
+	clock->source_label = "phc";
+
+	while (1) {
+		usleep(1000000 / rate);
+		if (!read_phc(src, clock->clkid, n_readings, &offset, &ts)) {
+			continue;
+		}
+		offset -= sync_offset * NS_PER_SEC;
+		update_clock(clock, offset, ts);
+	}
+	return 0;
+}
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -251,8 +270,6 @@ int main(int argc, char *argv[])
 {
 	char *device = NULL, *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID;
-	uint64_t phc_ts;
-	int64_t phc_offset;
 	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0;
 	struct clock dst_clock = {
 		.clkid = CLOCK_REALTIME,
@@ -346,15 +363,6 @@ int main(int argc, char *argv[])
 		return do_sysoff_loop(&dst_clock, src, phc_rate,
 				      phc_readings, sync_offset);
 
-	dst_clock.source_label = "phc";
-
-	while (1) {
-		usleep(1000000 / phc_rate);
-		if (!read_phc(src, dst_clock.clkid, phc_readings, &phc_offset, &phc_ts)) {
-			continue;
-		}
-		phc_offset -= sync_offset * NS_PER_SEC;
-		update_clock(&dst_clock, phc_offset, phc_ts);
-	}
-	return 0;
+	return do_phc_loop(&dst_clock, src, phc_rate,
+			   phc_readings, sync_offset);
 }
