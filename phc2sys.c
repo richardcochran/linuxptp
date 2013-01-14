@@ -195,7 +195,8 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 	return 1;
 }
 
-static int do_pps_loop(struct clock *clock, char *pps_device)
+static int do_pps_loop(struct clock *clock, char *pps_device,
+		       clockid_t src, int n_readings, int sync_offset)
 {
 	int64_t pps_offset;
 	uint64_t pps_ts;
@@ -208,6 +209,16 @@ static int do_pps_loop(struct clock *clock, char *pps_device)
 		fprintf(stderr, "cannot open '%s': %m\n", pps_device);
 		return -1;
 	}
+
+	/* Make the initial sync from PHC if available. */
+	if (src != CLOCK_INVALID) {
+		if (!read_phc(src, clock->clkid, n_readings,
+			      &pps_offset, &pps_ts))
+			return -1;
+		pps_offset -= sync_offset * NS_PER_SEC;
+		clock_step(clock->clkid, -pps_offset);
+	}
+
 	while (1) {
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
 			continue;
@@ -355,14 +366,6 @@ int main(int argc, char *argv[])
 		usage(progname);
 		return -1;
 	}
-	if (src != CLOCK_INVALID) {
-		struct timespec now;
-		if (clock_gettime(src, &now))
-			perror("clock_gettime");
-		now.tv_sec += sync_offset;
-		if (clock_settime(dst_clock.clkid, &now))
-			perror("clock_settime");
-	}
 
 	ppb = clock_ppb_read(dst_clock.clkid);
 	/* The reading may silently fail and return 0, reset the frequency to
@@ -372,7 +375,8 @@ int main(int argc, char *argv[])
 	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 
 	if (device)
-		return do_pps_loop(&dst_clock, device);
+		return do_pps_loop(&dst_clock, device, src,
+				   phc_readings, sync_offset);
 
 	if (dst_clock.clkid == CLOCK_REALTIME &&
 	    SYSOFF_SUPPORTED == sysoff_probe(CLOCKID_TO_FD(src), phc_readings))
