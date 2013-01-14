@@ -87,6 +87,7 @@ static double pi_sample(struct servo *servo,
 		break;
 	case 3:
 		*state = SERVO_JUMP;
+		ppb = s->drift;
 		s->count = 4;
 		break;
 	case 4:

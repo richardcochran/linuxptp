@@ -867,6 +867,7 @@ enum servo_state clock_synchronize(struct clock *c,
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
+		clock_ppb(c->clkid, -adj);
 		clock_step(c->clkid, -c->master_offset);
 		c->t1 = tmv_zero();
 		c->t2 = tmv_zero();
