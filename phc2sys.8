@@ -60,8 +60,8 @@ option should be used too.
 Specify the master clock by device (e.g. /dev/ptp0) or name (e.g. CLOCK_REALTIME
 for the system clock). When this option is used together with the
 .B \-d
-option, the master clock is read only on start to fix an offset over 0.5
-seconds which cannot be fixed with PPS alone.
+option, the master clock is used only to correct the offset by whole number of
+seconds, which cannot be fixed with PPS alone.
 .TP
 .BI \-i " interface"
 Similar to the

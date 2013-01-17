@@ -46,6 +46,8 @@
 
 #define max_ppb  512000
 
+#define PHC_PPS_OFFSET_LIMIT 10000000
+
 static clockid_t clock_open(char *device)
 {
 	int fd;
@@ -198,8 +200,8 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 static int do_pps_loop(struct clock *clock, char *pps_device,
 		       clockid_t src, int n_readings, int sync_offset)
 {
-	int64_t pps_offset;
-	uint64_t pps_ts;
+	int64_t pps_offset, phc_offset;
+	uint64_t pps_ts, phc_ts;
 	int fd;
 
 	clock->source_label = "pps";
@@ -210,19 +212,33 @@ static int do_pps_loop(struct clock *clock, char *pps_device,
 		return -1;
 	}
 
-	/* Make the initial sync from PHC if available. */
-	if (src != CLOCK_INVALID) {
-		if (!read_phc(src, clock->clkid, n_readings,
-			      &pps_offset, &pps_ts))
-			return -1;
-		pps_offset -= sync_offset * NS_PER_SEC;
-		clock_step(clock->clkid, -pps_offset);
-	}
-
 	while (1) {
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
 			continue;
 		}
+
+		/* If a PHC is available, use it to get the whole number
+		   of seconds in the offset and PPS for the rest. */
+		if (src != CLOCK_INVALID) {
+			if (!read_phc(src, clock->clkid, n_readings,
+				      &phc_offset, &phc_ts))
+				return -1;
+			
+			/* Convert the time stamp to the PHC time. */
+			phc_ts -= phc_offset;
+
+			/* Check if it is close to the start of the second. */
+			if (phc_ts % NS_PER_SEC > PHC_PPS_OFFSET_LIMIT) {
+				fprintf(stderr, "PPS is not in sync with PHC"
+					" (0.%09lld)\n", phc_ts % NS_PER_SEC);
+				continue;
+			}
+
+			phc_ts = phc_ts / NS_PER_SEC * NS_PER_SEC;
+			pps_offset = pps_ts - phc_ts;
+			pps_offset -= sync_offset * NS_PER_SEC;
+		}
+
 		update_clock(clock, pps_offset, pps_ts);
 	}
 	close(fd);
