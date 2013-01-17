@@ -378,7 +378,8 @@ int main(int argc, char *argv[])
 		src = clock_open(phc_device);
 	}
 	if (!(device || src != CLOCK_INVALID) ||
-	    dst_clock.clkid == CLOCK_INVALID) {
+	    dst_clock.clkid == CLOCK_INVALID ||
+	    (device && dst_clock.clkid != CLOCK_REALTIME)) {
 		usage(progname);
 		return -1;
 	}
