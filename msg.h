@@ -273,7 +273,8 @@ void msg_get(struct ptp_message *m);
 
 /**
  * Process messages after reception.
- * @param m  A message obtained using @ref msg_allocate().
+ * @param m    A message obtained using @ref msg_allocate().
+ * @param cnt  The size of 'm' in bytes.
  * @return   Zero on success, non-zero if the message is invalid.
  */
 int msg_post_recv(struct ptp_message *m, int cnt);
