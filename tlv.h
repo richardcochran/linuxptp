@@ -180,8 +180,9 @@ struct time_status_np {
 /**
  * Converts recognized value sub-fields into host byte order.
  * @param tlv Pointer to a Type Length Value field.
+ * @return Zero if successful, otherwise non-zero
  */
-void tlv_post_recv(struct TLV *tlv);
+int tlv_post_recv(struct TLV *tlv);
 
 /**
  * Converts recognized value sub-fields into network byte order.

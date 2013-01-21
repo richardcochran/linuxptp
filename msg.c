@@ -157,16 +157,18 @@ static int suffix_post_recv(uint8_t *ptr, int len)
 		tlv->type = ntohs(tlv->type);
 		tlv->length = ntohs(tlv->length);
 		if (tlv->length % 2) {
-			break;
+			return -1;
 		}
 		len -= sizeof(struct TLV);
 		ptr += sizeof(struct TLV);
 		if (tlv->length > len) {
-			break;
+			return -1;
 		}
 		len -= tlv->length;
 		ptr += tlv->length;
-		tlv_post_recv(tlv);
+		if (tlv_post_recv(tlv)) {
+			return -1;
+		}
 	}
 	return cnt;
 }
@@ -343,6 +345,9 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	}
 
 	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen);
+	if (m->tlv_count == -1) {
+		return -1;
+	}
 
 	return 0;
 }

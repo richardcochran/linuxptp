@@ -22,6 +22,9 @@
 #include "port.h"
 #include "tlv.h"
 
+#define TLV_LENGTH_INVALID(tlv, type) \
+	(tlv->length < sizeof(struct type) - sizeof(struct TLV))
+
 uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };
 
 static void scaled_ns_n2h(ScaledNs *sns)
@@ -38,7 +41,7 @@ static void scaled_ns_h2n(ScaledNs *sns)
 	sns->fractional_nanoseconds = htons(sns->fractional_nanoseconds);
 }
 
-static void mgt_post_recv(struct management_tlv *m)
+static int mgt_post_recv(struct management_tlv *m, uint16_t data_len)
 {
 	struct defaultDS *dds;
 	struct currentDS *cds;
@@ -48,18 +51,24 @@ static void mgt_post_recv(struct management_tlv *m)
 	struct time_status_np *tsn;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
+		if (data_len != sizeof(struct defaultDS))
+			goto bad_length;
 		dds = (struct defaultDS *) m->data;
 		dds->numberPorts = ntohs(dds->numberPorts);
 		dds->clockQuality.offsetScaledLogVariance =
 			ntohs(dds->clockQuality.offsetScaledLogVariance);
 		break;
 	case CURRENT_DATA_SET:
+		if (data_len != sizeof(struct currentDS))
+			goto bad_length;
 		cds = (struct currentDS *) m->data;
 		cds->stepsRemoved = ntohs(cds->stepsRemoved);
 		cds->offsetFromMaster = net2host64(cds->offsetFromMaster);
 		cds->meanPathDelay = net2host64(cds->meanPathDelay);
 		break;
 	case PARENT_DATA_SET:
+		if (data_len != sizeof(struct parentDS))
+			goto bad_length;
 		pds = (struct parentDS *) m->data;
 		pds->parentPortIdentity.portNumber =
 			ntohs(pds->parentPortIdentity.portNumber);
@@ -71,15 +80,21 @@ static void mgt_post_recv(struct management_tlv *m)
 			ntohs(pds->grandmasterClockQuality.offsetScaledLogVariance);
 		break;
 	case TIME_PROPERTIES_DATA_SET:
+		if (data_len != sizeof(struct timePropertiesDS))
+			goto bad_length;
 		tp = (struct timePropertiesDS *) m->data;
 		tp->currentUtcOffset = ntohs(tp->currentUtcOffset);
 		break;
 	case PORT_DATA_SET:
+		if (data_len != sizeof(struct portDS))
+			goto bad_length;
 		p = (struct portDS *) m->data;
 		p->portIdentity.portNumber = ntohs(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = net2host64(p->peerMeanPathDelay);
 		break;
 	case TIME_STATUS_NP:
+		if (data_len != sizeof(struct time_status_np))
+			goto bad_length;
 		tsn = (struct time_status_np *) m->data;
 		tsn->master_offset = net2host64(tsn->master_offset);
 		tsn->ingress_time = net2host64(tsn->ingress_time);
@@ -90,6 +105,9 @@ static void mgt_post_recv(struct management_tlv *m)
 		tsn->gmPresent = ntohl(tsn->gmPresent);
 		break;
 	}
+	return 0;
+bad_length:
+	return -1;
 }
 
 static void mgt_pre_send(struct management_tlv *m)
@@ -146,16 +164,18 @@ static void mgt_pre_send(struct management_tlv *m)
 	}
 }
 
-static void org_post_recv(struct organization_tlv *org)
+static int org_post_recv(struct organization_tlv *org)
 {
 	struct follow_up_info_tlv *f;
 
 	if (0 == memcmp(org->id, ieee8021_id, sizeof(ieee8021_id))) {
 		if (org->subtype[0] || org->subtype[1]) {
-			return;
+			return 0;
 		}
 		switch (org->subtype[2]) {
 		case 1:
+			if (org->length + sizeof(struct TLV) != sizeof(struct follow_up_info_tlv))
+				goto bad_length;
 			f = (struct follow_up_info_tlv *) org;
 			f->cumulativeScaledRateOffset = ntohl(f->cumulativeScaledRateOffset);
 			f->gmTimeBaseIndicator = ntohs(f->gmTimeBaseIndicator);
@@ -164,6 +184,9 @@ static void org_post_recv(struct organization_tlv *org)
 			break;
 		}
 	}
+	return 0;
+bad_length:
+	return -1;
 }
 
 static void org_pre_send(struct organization_tlv *org)
@@ -186,25 +209,33 @@ static void org_pre_send(struct organization_tlv *org)
 	}
 }
 
-void tlv_post_recv(struct TLV *tlv)
+int tlv_post_recv(struct TLV *tlv)
 {
+	int result = 0;
 	struct management_tlv *mgt;
 	struct management_error_status *mes;
 	struct path_trace_tlv *ptt;
 
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
+		if (TLV_LENGTH_INVALID(tlv, management_tlv))
+			goto bad_length;
 		mgt = (struct management_tlv *) tlv;
 		mgt->id = ntohs(mgt->id);
-		mgt_post_recv(mgt);
+		if (tlv->length > sizeof(mgt->id))
+			result = mgt_post_recv(mgt, tlv->length - sizeof(mgt->id));
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:
+		if (TLV_LENGTH_INVALID(tlv, management_error_status))
+			goto bad_length;
 		mes = (struct management_error_status *) tlv;
 		mes->error = ntohs(mes->error);
 		mes->id = ntohs(mes->id);
 		break;
 	case TLV_ORGANIZATION_EXTENSION:
-		org_post_recv((struct organization_tlv *) tlv);
+		if (TLV_LENGTH_INVALID(tlv, organization_tlv))
+			goto bad_length;
+		result = org_post_recv((struct organization_tlv *) tlv);
 		break;
 	case TLV_REQUEST_UNICAST_TRANSMISSION:
 	case TLV_GRANT_UNICAST_TRANSMISSION:
@@ -225,6 +256,9 @@ void tlv_post_recv(struct TLV *tlv)
 	default:
 		break;
 	}
+	return result;
+bad_length:
+	return -1;
 }
 
 void tlv_pre_send(struct TLV *tlv)
