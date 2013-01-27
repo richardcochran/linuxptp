@@ -392,6 +392,11 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+static int port_is_ieee8021as(struct port *p)
+{
+	return p->pod.follow_up_info ? 1 : 0;
+}
+
 static int port_management_get_response(struct port *target,
 					struct port *ingress, int id,
 					struct ptp_message *req)
@@ -592,7 +597,7 @@ static int port_pdelay_request(struct port *p)
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_OTHER;
-	msg->header.logMessageInterval = p->pod.follow_up_info ?
+	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logMinPdelayReqInterval : 0x7f;
 
 	if (msg_pre_send(msg))
