@@ -36,6 +36,7 @@
 #include "tmv.h"
 #include "util.h"
 
+#define ALLOWED_LOST_RESPONSES 3
 #define PORT_MAVE_LENGTH 10
 
 struct nrate_estimator {
@@ -69,6 +70,7 @@ struct port {
 	struct mave *avg_delay;
 	int log_sync_interval;
 	struct nrate_estimator nrate;
+	unsigned int pdr_missing;
 	/* portDS */
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
@@ -89,6 +91,9 @@ struct port {
 #define portnum(p) (p->portIdentity.portNumber)
 
 #define NSEC2SEC 1000000000LL
+
+static int port_capable(struct port *p);
+static int port_is_ieee8021as(struct port *p);
 
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
 {
@@ -314,7 +319,12 @@ static void free_foreign_masters(struct port *p)
 
 static int incapable_ignore(struct port *p, struct ptp_message *m)
 {
-	/* For now, we are always capable. */
+	if (port_capable(p)) {
+		return 0;
+	}
+	if (msg_type(m) == ANNOUNCE || msg_type(m) == SYNC) {
+		return 1;
+	}
 	return 0;
 }
 
@@ -366,7 +376,16 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 
 static int port_capable(struct port *p)
 {
-	/* For now, we are always capable. */
+	if (!port_is_ieee8021as(p)) {
+		/* Normal 1588 ports are always capable. */
+		return 1;
+	}
+	/*
+	 * TODO - Compare p->peer_delay with neighborPropDelayThresh.
+	 */
+	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
+		return 0;
+	}
 	return 1;
 }
 
@@ -504,6 +523,9 @@ static void port_nrate_initialize(struct port *p)
 
 	if (shift < 0)
 		shift = 0;
+
+	/* We start in the 'incapable' state. */
+	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
 
 	p->nrate.origin1 = tmv_zero();
 	p->nrate.ingress1 = tmv_zero();
