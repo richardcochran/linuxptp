@@ -1431,6 +1431,9 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		next = port_initialize(p) ? PS_FAULTY : PS_LISTENING;
 		port_show_transition(p, next, event);
 		p->state = next;
+		if (next == PS_LISTENING && p->delayMechanism == DM_P2P) {
+			port_set_delay_tmo(p);
+		}
 		return;
 	}
 
