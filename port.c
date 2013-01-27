@@ -515,6 +515,11 @@ static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 	n->ingress1 = t4;
 	n->origin1 = origin2;
 	n->count = 0;
+	/*
+	 * We experienced a successful series of exchanges of peer
+	 * delay request and response, and so the port is now capable.
+	 */
+	p->pdr_missing = 0;
 }
 
 static void port_nrate_initialize(struct port *p)
@@ -650,9 +655,12 @@ static int port_pdelay_request(struct port *p)
 		goto out;
 	}
 
-	if (p->peer_delay_req)
+	if (p->peer_delay_req) {
+		if (port_capable(p)) {
+			p->pdr_missing++;
+		}
 		msg_put(p->peer_delay_req);
-
+	}
 	p->peer_delay_req = msg;
 	return 0;
 out:
@@ -1324,22 +1332,27 @@ calc:
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, p->nrate.ratio);
 	}
+
+	msg_put(p->peer_delay_req);
+	p->peer_delay_req = NULL;
 }
 
 static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
-	if (!p->peer_delay_req) {
-		pr_err("port %hu: rogue peer delay response", portnum(p));
-		return -1;
-	}
 	if (p->peer_delay_resp) {
 		if (!source_pid_eq(p->peer_delay_resp, m)) {
 			pr_err("port %hu: multiple peer responses", portnum(p));
 			return -1;
 		}
-		msg_put(p->peer_delay_resp);
+	}
+	if (!p->peer_delay_req) {
+		pr_err("port %hu: rogue peer delay response", portnum(p));
+		return -1;
 	}
 
+	if (p->peer_delay_resp) {
+		msg_put(p->peer_delay_resp);
+	}
 	msg_get(m);
 	p->peer_delay_resp = m;
 	port_peer_delay(p);
