@@ -312,6 +312,12 @@ static void free_foreign_masters(struct port *p)
 	}
 }
 
+static int incapable_ignore(struct port *p, struct ptp_message *m)
+{
+	/* For now, we are always capable. */
+	return 0;
+}
+
 static int path_trace_append(struct port *p, struct ptp_message *m,
 			     struct parent_ds *dad)
 {
@@ -358,6 +364,12 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+static int port_capable(struct port *p)
+{
+	/* For now, we are always capable. */
+	return 1;
+}
+
 static int port_clr_tmo(int fd)
 {
 	struct itimerspec tmo = {
@@ -370,6 +382,9 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 {
 	struct ClockIdentity c1, c2;
 
+	if (incapable_ignore(p, m)) {
+		return 1;
+	}
 	if (path_trace_ignore(p, m)) {
 		return 1;
 	}
@@ -678,6 +693,9 @@ static int port_tx_announce(struct port *p)
 	struct ptp_message *msg;
 	int cnt, err = 0, pdulen;
 
+	if (!port_capable(p)) {
+		return 0;
+	}
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
@@ -727,6 +745,9 @@ static int port_tx_sync(struct port *p)
 	int cnt, err = 0, pdulen;
 	int event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
 
+	if (!port_capable(p)) {
+		return 0;
+	}
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
