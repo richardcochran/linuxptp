@@ -123,6 +123,7 @@
     | Driver     | Hardware                | SOTS | PHC | PHY | VER |
     |------------+-------------------------+------+-----+-----+-----|
     | bfin_mac   | Analog Blackfin         | RAW  | Y   | NA  | 3.8 |
+    | e1000e     | Intel 82574, 82583      | RAW  | Y   | NA  | 3.9 |
     | igb        | Intel 82576, 82580      | RAW  | Y   | NA  | 3.5 |
     | ixgbe      | Intel 82599             | RAW  | Y   | NA  | 3.5 |
     | dp83640    | Nat Semi PHYTER         | RAW  | Y   | NA  | 3.0 |
