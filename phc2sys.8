@@ -27,6 +27,8 @@ phc2sys \- synchronize two clocks
 ] [
 .BI \-O " offset"
 ] [
+.B \-w
+] [
 .B \-v
 ]
 
@@ -90,8 +92,16 @@ minimize the error caused by random delays in scheduling and bus utilization.
 The default is 5.
 .TP
 .BI \-O " offset"
-Specify the offset between the slave and master times in seconds.
-The default is 0 seconds.
+Specify the offset between the slave and master times in seconds. With the
+.B \-w
+option the default value is set automatically according to the currentUtcOffset
+value obtained from ptp4l and the direction of the clock synchronization.
+Without
+.B \-w
+the default is 0.
+.TP
+.B \-w
+Wait until ptp4l is in a synchronized state.
 .TP
 .BI \-h
 Display a help message.

@@ -52,7 +52,8 @@ ptp4l: $(OBJ)
 pmc: msg.o pmc.o pmc_common.o print.o raw.o sk.o tlv.o transport.o udp.o \
  udp6.o uds.o util.o version.o
 
-phc2sys: phc2sys.o pi.o servo.o sk.o sysoff.o print.o version.o
+phc2sys: msg.o phc2sys.o pmc_common.o print.o pi.o servo.o raw.o sk.o sysoff.o \
+ tlv.o transport.o udp.o udp6.o uds.o util.o version.o
 
 hwstamp_ctl: hwstamp_ctl.o version.o
 
