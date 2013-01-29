@@ -27,6 +27,12 @@
 static int verbose = 0;
 static int print_level = LOG_INFO;
 static int use_syslog = 1;
+static const char *progname;
+
+void print_set_progname(const char *name)
+{
+	progname = name;
+}
 
 void print_set_syslog(int value)
 {
@@ -59,7 +65,8 @@ void print(int level, char const *format, ...)
 	va_end(ap);
 
 	if (verbose) {
-		fprintf(stdout, "ptp4l[%ld.%03ld]: %s\n",
+		fprintf(stdout, "%s[%ld.%03ld]: %s\n",
+			progname ? progname : "",
 			ts.tv_sec, ts.tv_nsec / 1000000, buf);
 		fflush(stdout);
 	}

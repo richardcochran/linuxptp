@@ -246,6 +246,7 @@ int main(int argc, char *argv[])
 		ds->clockQuality.clockClass = 255;
 	}
 
+	print_set_progname(progname);
 	print_set_verbose(cfg_settings.verbose);
 	print_set_syslog(cfg_settings.use_syslog);
 	print_set_level(cfg_settings.print_level);

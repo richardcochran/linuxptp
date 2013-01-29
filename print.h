@@ -27,6 +27,7 @@
 
 void print(int level, char const *format, ...);
 
+void print_set_progname(const char *name);
 void print_set_syslog(int value);
 void print_set_level(int level);
 void print_set_verbose(int value);

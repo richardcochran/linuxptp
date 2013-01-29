@@ -553,6 +553,7 @@ int main(int argc, char *argv[])
 	pollfd[1].fd = fdarray.fd[FD_GENERAL];
 	pollfd[1].events = POLLIN|POLLPRI;
 
+	print_set_progname(progname);
 	print_set_syslog(1);
 	print_set_verbose(1);
 
