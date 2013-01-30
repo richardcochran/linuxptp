@@ -33,7 +33,7 @@ OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
  print.o raw.o servo.o sk.o tlv.o tmtab.o transport.o udp.o udp6.o uds.o util.o \
  version.o
 
-OBJECTS	= $(OBJ) pmc.o phc2sys.o hwstamp_ctl.o sysoff.o
+OBJECTS	= $(OBJ) hwstamp_ctl.o phc2sys.o pmc.o pmc_common.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
@@ -49,7 +49,8 @@ all: $(PRG)
 
 ptp4l: $(OBJ)
 
-pmc: pmc.o msg.o print.o raw.o sk.o tlv.o transport.o udp.o udp6.o uds.o util.o version.o
+pmc: msg.o pmc.o pmc_common.o print.o raw.o sk.o tlv.o transport.o udp.o \
+ udp6.o uds.o util.o version.o
 
 phc2sys: phc2sys.o pi.o servo.o sk.o sysoff.o print.o version.o
 

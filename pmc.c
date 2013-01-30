@@ -27,10 +27,9 @@
 
 #include "ds.h"
 #include "fsm.h"
-#include "msg.h"
+#include "pmc_common.h"
 #include "print.h"
 #include "tlv.h"
-#include "transport.h"
 #include "util.h"
 #include "version.h"
 
@@ -40,14 +39,7 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define P41 ((double)(1ULL << 41))
 
-static UInteger16 sequence_id;
-static UInteger8 boundary_hops = 1;
-static UInteger8 domain_number;
-static UInteger8 transport_specific;
-static struct PortIdentity port_identity;
-
-static struct transport *transport;
-static struct fdarray fdarray;
+static struct pmc *pmc;
 
 static void do_get_action(int action, int index);
 static void not_supported(int action, int index);
@@ -111,52 +103,6 @@ struct management_id idtab[] = {
 	{ "DELAY_MECHANISM", DELAY_MECHANISM, not_supported },
 	{ "LOG_MIN_PDELAY_REQ_INTERVAL", LOG_MIN_PDELAY_REQ_INTERVAL, not_supported },
 };
-
-static struct ptp_message *pmc_message(uint8_t action)
-{
-	struct ptp_message *msg;
-	int pdulen;
-
-	msg = msg_allocate();
-	if (!msg)
-		return NULL;
-
-	pdulen = sizeof(struct management_msg);
-	msg->hwts.type = TS_SOFTWARE;
-
-	msg->header.tsmt               = MANAGEMENT | transport_specific;
-	msg->header.ver                = PTP_VERSION;
-	msg->header.messageLength      = pdulen;
-	msg->header.domainNumber       = domain_number;
-	msg->header.sourcePortIdentity = port_identity;
-	msg->header.sequenceId         = sequence_id++;
-	msg->header.control            = CTL_MANAGEMENT;
-	msg->header.logMessageInterval = 0x7f;
-
-	memset(&msg->management.targetPortIdentity, 0xff,
-	       sizeof(msg->management.targetPortIdentity));
-	msg->management.startingBoundaryHops = boundary_hops;
-	msg->management.boundaryHops = boundary_hops;
-	msg->management.flags = action;
-
-	return msg;
-}
-
-static int pmc_send(struct ptp_message *msg, int pdulen)
-{
-	int cnt, err;
-	err = msg_pre_send(msg);
-	if (err) {
-		fprintf(stderr, "msg_pre_send failed\n");
-		return -1;
-	}
-	cnt = transport_send(transport, &fdarray, 0, msg, pdulen, &msg->hwts);
-	if (cnt < 0) {
-		fprintf(stderr, "failed to send message\n");
-		return -1;
-	}
-	return 0;
-}
 
 static char *action_string[] = {
 	"GET",
@@ -330,30 +276,10 @@ out:
 	fflush(fp);
 }
 
-static void get_action(int id)
-{
-	int pdulen;
-	struct ptp_message *msg;
-	struct management_tlv *mgt;
-	msg = pmc_message(GET);
-	if (!msg) {
-		return;
-	}
-	mgt = (struct management_tlv *) msg->management.suffix;
-	mgt->type = TLV_MANAGEMENT;
-	mgt->length = 2;
-	mgt->id = id;
-	pdulen = msg->header.messageLength + sizeof(*mgt);
-	msg->header.messageLength = pdulen;
-	msg->tlv_count = 1;
-	pmc_send(msg, pdulen);
-	msg_put(msg);
-}
-
 static void do_get_action(int action, int index)
 {
 	if (action == GET)
-		get_action(idtab[index].code);
+		pmc_send_get_action(pmc, idtab[index].code);
 	else
 		fprintf(stderr, "%s only allows GET\n", idtab[index].name);
 }
@@ -366,7 +292,7 @@ static void not_supported(int action, int index)
 static void null_management(int action, int index)
 {
 	if (action == GET)
-		get_action(idtab[index].code);
+		pmc_send_get_action(pmc, idtab[index].code);
 	else
 		puts("non-get actions still todo");
 }
@@ -479,6 +405,7 @@ int main(int argc, char *argv[])
 	int c, cnt, length, tmo = -1;
 	char line[1024];
 	enum transport_type transport_type = TRANS_UDP_IPV4;
+	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
 #define N_FD 2
 	struct pollfd pollfd[N_FD];
@@ -531,31 +458,21 @@ int main(int argc, char *argv[])
 	if (!iface_name) {
 		iface_name = transport_type == TRANS_UDS ? "/tmp/pmc" : "eth0";
 	}
-	if (transport_type != TRANS_UDS &&
-	    generate_clock_identity(&port_identity.clockIdentity, iface_name)) {
-		fprintf(stderr, "failed to generate a clock identity\n");
-		return -1;
-	}
-	port_identity.portNumber = 1;
-	transport = transport_create(transport_type);
-	if (!transport) {
-		fprintf(stderr, "failed to create transport\n");
-		return -1;
-	}
-	if (transport_open(transport, iface_name, &fdarray, TS_SOFTWARE)) {
-		fprintf(stderr, "failed to open transport\n");
-		transport_destroy(transport);
+
+	print_set_progname(progname);
+	print_set_syslog(1);
+	print_set_verbose(1);
+
+	pmc = pmc_create(transport_type, iface_name, boundary_hops, domain_number, transport_specific);
+	if (!pmc) {
+		fprintf(stderr, "failed to create pmc\n");
 		return -1;
 	}
 
 	pollfd[0].fd = STDIN_FILENO;
 	pollfd[0].events = POLLIN|POLLPRI;
-	pollfd[1].fd = fdarray.fd[FD_GENERAL];
+	pollfd[1].fd = pmc_get_transport_fd(pmc);
 	pollfd[1].events = POLLIN|POLLPRI;
-
-	print_set_progname(progname);
-	print_set_syslog(1);
-	print_set_verbose(1);
 
 	while (1) {
 		cnt = poll(pollfd, N_FD, tmo);
@@ -593,26 +510,14 @@ int main(int argc, char *argv[])
 			}
 		}
 		if (pollfd[1].revents & (POLLIN|POLLPRI)) {
-			msg = msg_allocate();
-			if (!msg) {
-				fprintf(stderr, "low memory\n");
-				return -1;
-			}
-			msg->hwts.type = TS_SOFTWARE;
-			cnt = transport_recv(transport, pollfd[1].fd, msg,
-					     sizeof(msg->data), &msg->hwts);
-			if (cnt <= 0) {
-				fprintf(stderr, "recv message failed\n");
-			} else if (msg_post_recv(msg, cnt)) {
-				fprintf(stderr, "bad message\n");
-			} else {
+			msg = pmc_recv(pmc);
+			if (msg) {
 				pmc_show(msg, stdout);
+				msg_put(msg);
 			}
-			msg_put(msg);
 		}
 	}
 
-	transport_close(transport, &fdarray);
-	transport_destroy(transport);
+	pmc_destroy(pmc);
 	return 0;
 }
