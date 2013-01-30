@@ -150,7 +150,7 @@ static int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 		      &m2->header.sourcePortIdentity);
 }
 
-static int set_tmo(int fd, unsigned int scale, int log_seconds)
+int set_tmo(int fd, unsigned int scale, int log_seconds)
 {
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
@@ -1419,7 +1419,8 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		next = ptp_fsm(p->state, event, mdiff);
 	}
 
-	if (PS_INITIALIZING == next) {
+	if (PS_INITIALIZING == next ||
+	    (PS_FAULTY == next && FRI_ASAP == p->pod.fault_reset_interval)) {
 		/*
 		 * This is a special case. Since we initialize the
 		 * port immediately, we can skip right to listening

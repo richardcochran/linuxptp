@@ -155,4 +155,20 @@ struct port *port_open(int phc_index,
  */
 enum port_state port_state(struct port *port);
 
+/**
+ * Utility function for setting or resetting a file descriptor timer.
+ *
+ * This function sets the timer 'fd' to the value M(2^N), where M is
+ * the value of the 'scale' parameter and N in the value of the
+ * 'log_seconds' parameter.
+ *
+ * Passing both 'scale' and 'log_seconds' as zero disables the timer.
+ *
+ * @param fd A file descriptor previously opened with timerfd_create(2).
+ * @param scale The multiplicative factor for the timer.
+ * @param log_seconds The exponential factor for the timer.
+ * @return Zero on success, non-zero otherwise.
+ */
+int set_tmo(int fd, unsigned int scale, int log_seconds);
+
 #endif

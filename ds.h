@@ -101,6 +101,8 @@ struct portDS {
 	UInteger8           versionNumber;
 } PACKED;
 
+#define FRI_ASAP (-128)
+
 struct port_defaults {
 	Integer64 asymmetry;
 	Integer8 logAnnounceInterval;
@@ -112,6 +114,7 @@ struct port_defaults {
 	int path_trace_enabled;
 	int follow_up_info;
 	int freq_est_interval; /*log seconds*/
+	int fault_reset_interval; /*log seconds*/
 };
 
 #endif

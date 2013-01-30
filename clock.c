@@ -37,7 +37,6 @@
 #include "util.h"
 
 #define CLK_N_PORTS (MAX_PORTS + 1) /* plus one for the UDS interface */
-#define FAULT_RESET_SECONDS 15
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define MAVE_LENGTH 10
 #define POW2_41 ((double)(1ULL << 41))
@@ -65,7 +64,7 @@ struct clock {
 	struct port *port[CLK_N_PORTS];
 	struct pollfd pollfd[CLK_N_PORTS*N_CLOCK_PFD];
 	int fault_fd[CLK_N_PORTS];
-	time_t fault_timeout;
+	int8_t fault_timeout[CLK_N_PORTS];
 	int nports; /* does not include the UDS port */
 	int free_running;
 	int freq_est_interval;
@@ -110,17 +109,18 @@ void clock_destroy(struct clock *c)
 
 static int clock_fault_timeout(struct clock *c, int index, int set)
 {
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
+	int log_seconds = 0;
+	unsigned int scale = 0;
+
 	if (set) {
-		pr_debug("waiting %d seconds to clear fault on port %d",
-			 c->fault_timeout, index);
-		tmo.it_value.tv_sec = c->fault_timeout;
+		pr_debug("waiting 2^{%d} seconds to clear fault on port %d",
+			 c->fault_timeout[index], index);
+		log_seconds = c->fault_timeout[index];
+		scale = 1;
 	} else {
 		pr_debug("clearing fault on port %d", index);
 	}
-	return timerfd_settime(c->fault_fd[index], 0, &tmo, NULL);
+	return set_tmo(c->fault_fd[index], scale, log_seconds);
 }
 
 static void clock_freq_est_reset(struct clock *c)
@@ -479,10 +479,10 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		c->pollfd[i].events = 0;
 	}
 
-	c->fault_timeout = FAULT_RESET_SECONDS;
 	c->fest.max_count = 2;
 
 	for (i = 0; i < count; i++) {
+		c->fault_timeout[i] = iface[i].pod.fault_reset_interval;
 		c->port[i] = port_open(phc_index, timestamping, 1+i, &iface[i], c);
 		if (!c->port[i]) {
 			pr_err("failed to open port %s", iface[i].name);
@@ -722,6 +722,7 @@ int clock_poll(struct clock *c)
 				/* Clear any fault after a little while. */
 				if (PS_FAULTY == port_state(c->port[i])) {
 					clock_fault_timeout(c, i, 1);
+					break;
 				}
 			}
 		}

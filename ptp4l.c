@@ -64,6 +64,7 @@ static struct config cfg_settings = {
 		.path_trace_enabled = 0,
 		.follow_up_info = 0,
 		.freq_est_interval = 1,
+		.fault_reset_interval = 4,
 	},
 
 	.timestamping = TS_HARDWARE,

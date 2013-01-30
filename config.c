@@ -106,6 +106,15 @@ static enum parser_result parse_pod_setting(const char *option,
 			return BAD_VALUE;
 		pod->follow_up_info = val ? 1 : 0;
 
+	} else if (!strcmp(option, "fault_reset_interval")) {
+		if (!strcasecmp("ASAP", value)) {
+			pod->fault_reset_interval = FRI_ASAP;
+		} else if (1 == sscanf(value, "%hhd", &i8)) {
+			pod->fault_reset_interval = i8;
+		} else {
+			return BAD_VALUE;
+		}
+
 	} else
 		return NOT_PARSED;
 

@@ -181,6 +181,13 @@ The default is 0 (disabled).
 Include the 802.1AS data in the Follow_Up messages if enabled.
 The default is 0 (disabled).
 .TP
+.B fault_reset_interval
+The time in seconds between the detection of a port's fault and the fault
+being reset. This value is expressed as a power of two. Setting this
+value to -128 or to the special key word "ASAP" will let the fault be
+reset immediately.
+The default is 4 (16 seconds).
+.TP
 .B delay_mechanism
 Select the delay mechanism. Possible values are E2E, P2P and Auto.
 The default is E2E.
