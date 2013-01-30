@@ -719,6 +719,10 @@ int clock_poll(struct clock *c)
 				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event)
 					lost = 1;
 				port_dispatch(c->port[i], event, 0);
+				/* Clear any fault after a little while. */
+				if (PS_FAULTY == port_state(c->port[i])) {
+					clock_fault_timeout(c, i, 1);
+				}
 			}
 		}
 
@@ -727,11 +731,6 @@ int clock_poll(struct clock *c)
 		if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
 			clock_fault_timeout(c, i, 0);
 			port_dispatch(c->port[i], EV_FAULT_CLEARED, 0);
-		}
-
-		/* Clear any fault after a little while. */
-		if (PS_FAULTY == port_state(c->port[i])) {
-			clock_fault_timeout(c, i, 1);
 		}
 	}
 
