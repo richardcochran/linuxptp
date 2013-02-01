@@ -1406,7 +1406,7 @@ struct foreign_clock *port_compute_best(struct port *p)
 	return p->best;
 }
 
-void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
+int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next;
 
@@ -1432,11 +1432,11 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		next = port_initialize(p) ? PS_FAULTY : PS_LISTENING;
 		port_show_transition(p, next, event);
 		p->state = next;
-		return;
+		return 1;
 	}
 
 	if (next == p->state)
-		return;
+		return 0;
 
 	port_show_transition(p, next, event);
 
@@ -1493,6 +1493,7 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		};
 	}
 	p->state = next;
+	return 0;
 }
 
 enum fsm_event port_event(struct port *p, int fd_index)
