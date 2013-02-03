@@ -22,6 +22,7 @@
 #include "config.h"
 #include "ether.h"
 #include "print.h"
+#include "util.h"
 
 enum config_section {
 	GLOBAL_SECTION,
@@ -157,6 +158,17 @@ static enum parser_result parse_port_setting(const char *option,
 	return PARSED_OK;
 }
 
+static int count_char(const char *str, char c)
+{
+	int num = 0;
+	char s;
+	while ((s = *(str++))) {
+		if (s == c)
+			num++;
+	}
+	return num;
+}
+
 static enum parser_result parse_global_setting(const char *option,
 					       const char *value,
 					       struct config *cfg)
@@ -166,6 +178,7 @@ static enum parser_result parse_global_setting(const char *option,
 	UInteger16 u16;
 	UInteger8 u8;
 	unsigned char mac[MAC_LEN];
+	unsigned char oui[OUI_LEN];
 
 	struct defaultDS *dds = &cfg->dds.dds;
 	struct port_defaults *pod = &cfg->pod;
@@ -341,6 +354,29 @@ static enum parser_result parse_global_setting(const char *option,
 			cfg->clock_servo = CLOCK_SERVO_PI;
 		else
 			return BAD_VALUE;
+
+	} else if (!strcmp(option, "productDescription")) {
+		if (count_char(value, ';') != 2)
+			return BAD_VALUE;
+		if (static_ptp_text_set(&cfg->dds.clock_desc.productDescription, value) != 0)
+			return BAD_VALUE;
+
+	} else if (!strcmp(option, "revisionData")) {
+		if (count_char(value, ';') != 2)
+			return BAD_VALUE;
+		if (static_ptp_text_set(&cfg->dds.clock_desc.revisionData, value) != 0)
+			return BAD_VALUE;
+
+	} else if (!strcmp(option, "userDescription")) {
+		if (static_ptp_text_set(&cfg->dds.clock_desc.userDescription, value) != 0)
+			return BAD_VALUE;
+
+	} else if (!strcmp(option, "manufacturerIdentity")) {
+		if (OUI_LEN != sscanf(value, "%hhx:%hhx:%hhx",
+				      &oui[0], &oui[1], &oui[2]))
+			return BAD_VALUE;
+		for (i = 0; i < OUI_LEN; i++)
+			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
 
 	} else
 		return NOT_PARSED;

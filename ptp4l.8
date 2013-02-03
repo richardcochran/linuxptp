@@ -310,6 +310,26 @@ The default is 1 (enabled).
 .B time_stamping
 The time stamping method. The allowed values are hardware, software and legacy.
 The default is hardware.
+.TP
+.B productDescription
+The product description string. Allowed values must be of the form
+manufacturerName;modelNumber;instanceIdentifier and contain at most 64
+utf8 symbols. The default is ";;".
+.TP
+.B revisionData
+The revision description string which contains the revisions for node
+hardware (HW), firmware (FW), and software (SW). Allowed values are of
+the form HW;FW;SW and contain at most 32 utf8 symbols. The default is
+an ";;".
+.TP
+.B userDescription
+The user description string. Allowed values are of the form
+name;location and contain at most 128 utf8 symbols. The default is an
+empty string.
+.TP
+.B manufacturerIdentity
+The manufacturer id which should be an OUI owned by the manufacturer.
+The default is 00:00:00.
 
 .SH SEE ALSO
 .BR pmc (8),
