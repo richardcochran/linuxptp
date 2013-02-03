@@ -36,6 +36,7 @@
 #include "tmv.h"
 #include "util.h"
 
+#define ALLOWED_LOST_RESPONSES 3
 #define PORT_MAVE_LENGTH 10
 
 struct nrate_estimator {
@@ -69,6 +70,7 @@ struct port {
 	struct mave *avg_delay;
 	int log_sync_interval;
 	struct nrate_estimator nrate;
+	unsigned int pdr_missing;
 	/* portDS */
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
@@ -89,6 +91,9 @@ struct port {
 #define portnum(p) (p->portIdentity.portNumber)
 
 #define NSEC2SEC 1000000000LL
+
+static int port_capable(struct port *p);
+static int port_is_ieee8021as(struct port *p);
 
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
 {
@@ -312,6 +317,17 @@ static void free_foreign_masters(struct port *p)
 	}
 }
 
+static int incapable_ignore(struct port *p, struct ptp_message *m)
+{
+	if (port_capable(p)) {
+		return 0;
+	}
+	if (msg_type(m) == ANNOUNCE || msg_type(m) == SYNC) {
+		return 1;
+	}
+	return 0;
+}
+
 static int path_trace_append(struct port *p, struct ptp_message *m,
 			     struct parent_ds *dad)
 {
@@ -358,6 +374,21 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+static int port_capable(struct port *p)
+{
+	if (!port_is_ieee8021as(p)) {
+		/* Normal 1588 ports are always capable. */
+		return 1;
+	}
+	/*
+	 * TODO - Compare p->peer_delay with neighborPropDelayThresh.
+	 */
+	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
+		return 0;
+	}
+	return 1;
+}
+
 static int port_clr_tmo(int fd)
 {
 	struct itimerspec tmo = {
@@ -370,6 +401,9 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 {
 	struct ClockIdentity c1, c2;
 
+	if (incapable_ignore(p, m)) {
+		return 1;
+	}
 	if (path_trace_ignore(p, m)) {
 		return 1;
 	}
@@ -390,6 +424,11 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 		return 1;
 	}
 	return 0;
+}
+
+static int port_is_ieee8021as(struct port *p)
+{
+	return p->pod.follow_up_info ? 1 : 0;
 }
 
 static int port_management_get_response(struct port *target,
@@ -476,6 +515,11 @@ static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 	n->ingress1 = t4;
 	n->origin1 = origin2;
 	n->count = 0;
+	/*
+	 * We experienced a successful series of exchanges of peer
+	 * delay request and response, and so the port is now capable.
+	 */
+	p->pdr_missing = 0;
 }
 
 static void port_nrate_initialize(struct port *p)
@@ -484,6 +528,9 @@ static void port_nrate_initialize(struct port *p)
 
 	if (shift < 0)
 		shift = 0;
+
+	/* We start in the 'incapable' state. */
+	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
 
 	p->nrate.origin1 = tmv_zero();
 	p->nrate.ingress1 = tmv_zero();
@@ -592,7 +639,7 @@ static int port_pdelay_request(struct port *p)
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_OTHER;
-	msg->header.logMessageInterval = p->pod.follow_up_info ?
+	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logMinPdelayReqInterval : 0x7f;
 
 	if (msg_pre_send(msg))
@@ -608,9 +655,12 @@ static int port_pdelay_request(struct port *p)
 		goto out;
 	}
 
-	if (p->peer_delay_req)
+	if (p->peer_delay_req) {
+		if (port_capable(p)) {
+			p->pdr_missing++;
+		}
 		msg_put(p->peer_delay_req);
-
+	}
 	p->peer_delay_req = msg;
 	return 0;
 out:
@@ -673,6 +723,9 @@ static int port_tx_announce(struct port *p)
 	struct ptp_message *msg;
 	int cnt, err = 0, pdulen;
 
+	if (!port_capable(p)) {
+		return 0;
+	}
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
@@ -722,6 +775,9 @@ static int port_tx_sync(struct port *p)
 	int cnt, err = 0, pdulen;
 	int event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
 
+	if (!port_capable(p)) {
+		return 0;
+	}
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
@@ -1276,22 +1332,27 @@ calc:
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, p->nrate.ratio);
 	}
+
+	msg_put(p->peer_delay_req);
+	p->peer_delay_req = NULL;
 }
 
 static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
-	if (!p->peer_delay_req) {
-		pr_err("port %hu: rogue peer delay response", portnum(p));
-		return -1;
-	}
 	if (p->peer_delay_resp) {
 		if (!source_pid_eq(p->peer_delay_resp, m)) {
 			pr_err("port %hu: multiple peer responses", portnum(p));
 			return -1;
 		}
-		msg_put(p->peer_delay_resp);
+	}
+	if (!p->peer_delay_req) {
+		pr_err("port %hu: rogue peer delay response", portnum(p));
+		return -1;
 	}
 
+	if (p->peer_delay_resp) {
+		msg_put(p->peer_delay_resp);
+	}
 	msg_get(m);
 	p->peer_delay_resp = m;
 	port_peer_delay(p);
@@ -1432,6 +1493,9 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		next = port_initialize(p) ? PS_FAULTY : PS_LISTENING;
 		port_show_transition(p, next, event);
 		p->state = next;
+		if (next == PS_LISTENING && p->delayMechanism == DM_P2P) {
+			port_set_delay_tmo(p);
+		}
 		return 1;
 	}
 
