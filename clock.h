@@ -215,4 +215,11 @@ void clock_sync_interval(struct clock *c, int n);
  */
 struct timePropertiesDS *clock_time_properties(struct clock *c);
 
+/**
+ * Obtain a clock's description.
+ * @param c  The clock instance.
+ * @return   A pointer to the clock_description of the clock.
+ */
+struct clock_description *clock_description(struct clock *c);
+
 #endif

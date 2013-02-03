@@ -39,10 +39,19 @@ struct defaultDS {
 	UInteger8            reserved2;
 } PACKED;
 
+#define OUI_LEN 3
+struct clock_description {
+	struct static_ptp_text productDescription;
+	struct static_ptp_text revisionData;
+	struct static_ptp_text userDescription;
+	Octet manufacturerIdentity[OUI_LEN];
+};
+
 struct default_ds {
 	struct defaultDS dds;
 	int free_running;
 	int freq_est_interval; /*log seconds*/
+	struct clock_description clock_desc;
 };
 
 struct dataset {

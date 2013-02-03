@@ -79,6 +79,7 @@ struct clock {
 	tmv_t c2;
 	tmv_t t1;
 	tmv_t t2;
+	struct clock_description desc;
 };
 
 struct clock the_clock;
@@ -430,6 +431,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	c->free_running = dds->free_running;
 	c->freq_est_interval = dds->freq_est_interval;
+	c->desc = dds->clock_desc;
 
 	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
@@ -950,4 +952,9 @@ static void handle_state_decision_event(struct clock *c)
 		}
 		port_dispatch(c->port[i], event, fresh_best);
 	}
+}
+
+struct clock_description *clock_description(struct clock *c)
+{
+	return &c->desc;
 }

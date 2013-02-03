@@ -52,6 +52,18 @@ static struct config cfg_settings = {
 		},
 		.free_running = 0,
 		.freq_est_interval = 1,
+		.clock_desc = {
+			.productDescription = {
+				.max_symbols = 64,
+				.text = ";;"
+			},
+			.revisionData = {
+				.max_symbols = 32,
+				.text = ";;"
+			},
+			.userDescription      = { .max_symbols = 128 },
+			.manufacturerIdentity = { 0, 0, 0 },
+		},
 	},
 
 	.pod = {
