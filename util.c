@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <stdio.h>
+#include <string.h>
 
 #include "sk.h"
 #include "util.h"
@@ -89,4 +90,61 @@ int generate_clock_identity(struct ClockIdentity *ci, char *name)
 	ci->id[6] = mac[4];
 	ci->id[7] = mac[5];
 	return 0;
+}
+
+/* Naive count of utf8 symbols. Doesn't detect invalid UTF-8 and
+ * probably doesn't count combining characters correctly. */
+static size_t strlen_utf8(const Octet *s)
+{
+	size_t len = 0;
+	char c;
+	while ((c = *(s++))) {
+		if ((c & 0xC0) != 0x80)
+			len++;
+	}
+	return len;
+}
+
+int static_ptp_text_copy(struct static_ptp_text *dst, const struct PTPText *src)
+{
+	int len = src->length;
+	if (dst->max_symbols > 0 && strlen_utf8(src->text) > dst->max_symbols)
+		return -1;
+	dst->length = len;
+	memcpy(dst->text, src->text, len);
+	dst->text[len] = '\0';
+	return 0;
+}
+
+void ptp_text_copy(struct PTPText *dst, const struct static_ptp_text *src)
+{
+	dst->length = src->length;
+	dst->text = (Octet *)src->text;
+}
+
+int ptp_text_set(struct PTPText *dst, const char *src)
+{
+	size_t len;
+	if (src) {
+		len = strlen(src);
+		if (len > MAX_PTP_OCTETS)
+			return -1;
+		dst->length = len;
+		dst->text = (Octet *)src;
+	} else {
+		dst->length = 0;
+		dst->text = NULL;
+	}
+	return 0;
+}
+
+int static_ptp_text_set(struct static_ptp_text *dst, const char *src)
+{
+	struct PTPText t;
+	size_t len = strlen(src);
+	if (len > MAX_PTP_OCTETS)
+		return -1;
+	t.length = len;
+	t.text = (Octet *)src;
+	return static_ptp_text_copy(dst, &t);
 }

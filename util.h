@@ -56,4 +56,42 @@ char *pid2str(struct PortIdentity *id);
 
 int generate_clock_identity(struct ClockIdentity *ci, char *name);
 
+/**
+ * Copies a PTPText to a static_ptp_text. This copies the text into
+ * the static_ptp_text.o
+ * @param dst The static_ptp_text to copy to
+ * @param src The PTPText to copy from
+ * @return Zero on success, -1 if text in src is too long or not valid
+ * UTF8
+ */
+int static_ptp_text_copy(struct static_ptp_text *dst, const struct PTPText *src);
+
+/**
+ * Copies a static_ptp_text to a PTPText. This makes the PTPText point
+ * to the memory inside the static_ptp_text.
+ * @param dst The PTPText to copy to
+ * @param src The static_ptp_text to copy from
+ */
+void ptp_text_copy(struct PTPText *dst, const struct static_ptp_text *src);
+
+/**
+ * Sets a PTPText from a null-terminated char*. After returning, the
+ * PTPText field points to the same memory as str, so str should not
+ * be modified and should remain valid as long as the PTPText can be
+ * used.
+ * @param dst The PTPText to copy to
+ * @param src The text to copy from
+ * @return Zero on success, -1 if src is too long
+ */
+int ptp_text_set(struct PTPText *dst, const char *src);
+
+/**
+ * Sets a static_ptp_text from a null-terminated char*.
+ * @param dst The static_ptp_text to copy to
+ * @param src The text to copy from
+ * @return Zero on success, -1 if text in src is too long or not valid
+ * UTF8
+ */
+int static_ptp_text_set(struct static_ptp_text *dst, const char *src);
+
 #endif

@@ -71,6 +71,21 @@ struct PTPText {
 	Octet    *text;
 };
 
+/* A static_ptp_text is like a PTPText but includes space to store the
+ * text inside the struct. The text array must always be
+ * null-terminated. Also tracks a maximum number of symbols. Note in
+ * UTF-8, # symbols != # bytes.
+ */
+#define MAX_PTP_OCTETS 255
+struct static_ptp_text {
+	/* null-terminated array of UTF-8 symbols */
+	Octet text[MAX_PTP_OCTETS + 1];
+	/* number of used bytes in text, not including trailing null */
+	int length;
+	/* max number of UTF-8 symbols that can be in text */
+	int max_symbols;
+};
+
 struct FaultRecord {
 	UInteger16       faultRecordLength;
 	struct Timestamp faultTime;
