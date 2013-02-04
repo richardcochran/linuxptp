@@ -1714,13 +1714,15 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 			return 0;
 		break;
 	case COMMAND:
-	case RESPONSE:
-	case ACKNOWLEDGE:
+		break;
+	default:
 		return -1;
 	}
 
 	switch (mgt->id) {
+	case NULL_MANAGEMENT:
 	case CLOCK_DESCRIPTION:
+	case PORT_DATA_SET:
 	case LOG_ANNOUNCE_INTERVAL:
 	case ANNOUNCE_RECEIPT_TIMEOUT:
 	case LOG_SYNC_INTERVAL:

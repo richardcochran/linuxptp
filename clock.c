@@ -656,9 +656,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		break;
 	case COMMAND:
 		break;
-	case RESPONSE:
-	case ACKNOWLEDGE:
-		/* Ignore responses from other nodes. */
+	default:
 		return;
 	}
 
@@ -669,6 +667,10 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case INITIALIZE:
 	case FAULT_LOG:
 	case FAULT_LOG_RESET:
+	case DEFAULT_DATA_SET:
+	case CURRENT_DATA_SET:
+	case PARENT_DATA_SET:
+	case TIME_PROPERTIES_DATA_SET:
 	case PRIORITY1:
 	case PRIORITY2:
 	case DOMAIN:
@@ -689,6 +691,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case ALTERNATE_TIME_OFFSET_PROPERTIES:
 	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case PRIMARY_DOMAIN:
+	case TIME_STATUS_NP:
 		clock_management_send_error(p, msg, NOT_SUPPORTED);
 		break;
 	default:
