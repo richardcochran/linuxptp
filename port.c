@@ -1725,6 +1725,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 		port_management_send_error(p, ingress, msg, NOT_SUPPORTED);
 		break;
 	default:
+		port_management_send_error(p, ingress, msg, NO_SUCH_ID);
 		return -1;
 	}
 	return 0;
