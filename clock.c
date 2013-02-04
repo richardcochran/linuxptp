@@ -131,6 +131,13 @@ static void clock_freq_est_reset(struct clock *c)
 	c->fest.count = 0;
 };
 
+static void clock_management_send_error(struct port *p,
+					struct ptp_message *msg, int error_id)
+{
+	if (port_management_error(port_identity(p), p, msg, error_id))
+		pr_err("failed to send management error status");
+}
+
 static int clock_management_get_response(struct clock *c, struct port *p,
 					 int id, struct ptp_message *req)
 {
@@ -610,7 +617,6 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 {
 	int i;
 	struct management_tlv *mgt;
-	struct PortIdentity pid;
 	struct ClockIdentity *tcid, wildcard = {
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 	};
@@ -669,9 +675,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case ALTERNATE_TIME_OFFSET_PROPERTIES:
 	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case PRIMARY_DOMAIN:
-		pid = port_identity(p);
-		if (port_management_error(pid, p, msg, NOT_SUPPORTED))
-			pr_err("failed to send management error status");
+		clock_management_send_error(p, msg, NOT_SUPPORTED);
 		break;
 	default:
 		for (i = 0; i < c->nports; i++) {

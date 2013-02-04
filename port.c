@@ -431,6 +431,13 @@ static int port_is_ieee8021as(struct port *p)
 	return p->pod.follow_up_info ? 1 : 0;
 }
 
+static void port_management_send_error(struct port *p, struct port *ingress,
+				       struct ptp_message *msg, int error_id)
+{
+	if (port_management_error(p->portIdentity, ingress, msg, error_id))
+		pr_err("port %hu: management error failed", portnum(p));
+}
+
 static int port_management_get_response(struct port *target,
 					struct port *ingress, int id,
 					struct ptp_message *req)
@@ -1691,9 +1698,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 			return 0;
 		break;
 	case SET:
-		if (port_management_error(p->portIdentity, ingress, msg,
-					 NOT_SUPPORTED))
-			pr_err("port %hu: management error failed", portnum(p));
+		port_management_send_error(p, ingress, msg, NOT_SUPPORTED);
 		break;
 	case COMMAND:
 	case RESPONSE:
@@ -1717,9 +1722,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	case TRANSPARENT_CLOCK_PORT_DATA_SET:
 	case DELAY_MECHANISM:
 	case LOG_MIN_PDELAY_REQ_INTERVAL:
-		if (port_management_error(p->portIdentity, ingress, msg,
-					 NOT_SUPPORTED))
-			pr_err("port %hu: management error failed", portnum(p));
+		port_management_send_error(p, ingress, msg, NOT_SUPPORTED);
 		break;
 	default:
 		return -1;
