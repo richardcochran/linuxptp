@@ -1691,7 +1691,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 			return 0;
 		break;
 	case SET:
-		if (port_managment_error(p->portIdentity, ingress, msg,
+		if (port_management_error(p->portIdentity, ingress, msg,
 					 NOT_SUPPORTED))
 			pr_err("port %hu: management error failed", portnum(p));
 		break;
@@ -1717,7 +1717,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	case TRANSPARENT_CLOCK_PORT_DATA_SET:
 	case DELAY_MECHANISM:
 	case LOG_MIN_PDELAY_REQ_INTERVAL:
-		if (port_managment_error(p->portIdentity, ingress, msg,
+		if (port_management_error(p->portIdentity, ingress, msg,
 					 NOT_SUPPORTED))
 			pr_err("port %hu: management error failed", portnum(p));
 		break;
@@ -1727,8 +1727,8 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	return 0;
 }
 
-int port_managment_error(struct PortIdentity pid, struct port *ingress,
-			 struct ptp_message *req, Enumeration16 error_id)
+int port_management_error(struct PortIdentity pid, struct port *ingress,
+			  struct ptp_message *req, Enumeration16 error_id)
 {
 	struct ptp_message *msg;
 	struct management_tlv *mgt;

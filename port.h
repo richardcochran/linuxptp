@@ -116,8 +116,8 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg);
  * @param error_id  One of the management error ID values.
  * @return          Zero on success, non-zero otherwise.
  */
-int port_managment_error(struct PortIdentity pid, struct port *ingress,
-			 struct ptp_message *req, Enumeration16 error_id);
+int port_management_error(struct PortIdentity pid, struct port *ingress,
+			  struct ptp_message *req, Enumeration16 error_id);
 
 /**
  * Allocate a reply to a management message.

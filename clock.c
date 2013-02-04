@@ -670,7 +670,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case PRIMARY_DOMAIN:
 		pid = port_identity(p);
-		if (port_managment_error(pid, p, msg, NOT_SUPPORTED))
+		if (port_management_error(pid, p, msg, NOT_SUPPORTED))
 			pr_err("failed to send management error status");
 		break;
 	default:
