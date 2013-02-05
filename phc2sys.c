@@ -220,7 +220,7 @@ static int do_pps_loop(struct clock *clock, int fd,
 			if (!read_phc(src, clock->clkid, n_readings,
 				      &phc_offset, &phc_ts))
 				return -1;
-			
+
 			/* Convert the time stamp to the PHC time. */
 			phc_ts -= phc_offset;
 
