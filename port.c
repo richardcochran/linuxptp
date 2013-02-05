@@ -1490,6 +1490,79 @@ struct foreign_clock *port_compute_best(struct port *p)
 	return p->best;
 }
 
+static void port_e2e_transition(struct port *p, enum port_state next)
+{
+	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
+
+	switch (next) {
+	case PS_INITIALIZING:
+		break;
+	case PS_FAULTY:
+	case PS_DISABLED:
+		port_disable(p);
+		break;
+	case PS_LISTENING:
+		port_set_announce_tmo(p);
+		break;
+	case PS_PRE_MASTER:
+		port_set_qualification_tmo(p);
+		break;
+	case PS_MASTER:
+	case PS_GRAND_MASTER:
+		port_set_manno_tmo(p);
+		port_set_sync_tmo(p);
+		break;
+	case PS_PASSIVE:
+		port_set_announce_tmo(p);
+		break;
+	case PS_UNCALIBRATED:
+	case PS_SLAVE:
+		port_set_announce_tmo(p);
+		port_set_delay_tmo(p);
+		break;
+	};
+}
+
+static void port_p2p_transition(struct port *p, enum port_state next)
+{
+	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+	/* Leave FD_DELAY_TIMER running. */
+	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
+
+	switch (next) {
+	case PS_INITIALIZING:
+		break;
+	case PS_FAULTY:
+	case PS_DISABLED:
+		port_disable(p);
+		break;
+	case PS_LISTENING:
+		port_set_announce_tmo(p);
+		break;
+	case PS_PRE_MASTER:
+		port_set_qualification_tmo(p);
+		break;
+	case PS_MASTER:
+	case PS_GRAND_MASTER:
+		port_set_manno_tmo(p);
+		port_set_sync_tmo(p);
+		break;
+	case PS_PASSIVE:
+		port_set_announce_tmo(p);
+		break;
+	case PS_UNCALIBRATED:
+	case PS_SLAVE:
+		port_set_announce_tmo(p);
+		break;
+	};
+}
+
 int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next;
@@ -1527,58 +1600,12 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 
 	port_show_transition(p, next, event);
 
-	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
-
-	switch (next) {
-	case PS_INITIALIZING:
-		break;
-	case PS_FAULTY:
-	case PS_DISABLED:
-		port_disable(p);
-		break;
-	case PS_LISTENING:
-		port_set_announce_tmo(p);
-		break;
-	case PS_PRE_MASTER:
-		port_set_qualification_tmo(p);
-		break;
-	case PS_MASTER:
-	case PS_GRAND_MASTER:
-		port_set_manno_tmo(p);
-		port_set_sync_tmo(p);
-		break;
-	case PS_PASSIVE:
-		port_set_announce_tmo(p);
-		break;
-	case PS_UNCALIBRATED:
-	case PS_SLAVE:
-		port_set_announce_tmo(p);
-		port_set_delay_tmo(p);
-		break;
-	};
 	if (p->delayMechanism == DM_P2P) {
-		switch (next) {
-		case PS_INITIALIZING:
-		case PS_FAULTY:
-		case PS_DISABLED:
-			break;
-		case PS_LISTENING:
-		case PS_PRE_MASTER:
-		case PS_MASTER:
-		case PS_GRAND_MASTER:
-		case PS_PASSIVE:
-			port_set_delay_tmo(p);
-			break;
-		case PS_UNCALIBRATED:
-		case PS_SLAVE:
-			/*already set above*/
-			break;
-		};
+		port_p2p_transition(p, next);
+	} else {
+		port_e2e_transition(p, next);
 	}
+
 	p->state = next;
 	return 0;
 }
