@@ -73,6 +73,12 @@ static double pi_sample(struct servo *servo,
 		s->offset[1] = offset;
 		s->local[1] = local_ts;
 
+		/* Make sure the first sample is older than the second. */
+		if (s->local[0] >= s->local[1]) {
+			s->count = 0;
+			break;
+		}
+
 		s->drift += (s->offset[1] - s->offset[0]) * 1e9 /
 			(s->local[1] - s->local[0]);
 		if (s->drift < -s->maxppb)
