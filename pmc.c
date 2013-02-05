@@ -381,7 +381,7 @@ static int do_command(char *str)
 static void usage(char *progname)
 {
 	fprintf(stderr,
-		"\nusage: %s [options]\n\n"
+		"\nusage: %s [options] [commands]\n\n"
 		" Network Transport\n\n"
 		" -2        IEEE 802.3\n"
 		" -4        UDP IPV4 (default)\n"
@@ -402,8 +402,8 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *iface_name = NULL, *progname;
-	int c, cnt, length, tmo = -1;
-	char line[1024];
+	int c, cnt, length, tmo = -1, batch_mode = 0;
+	char line[1024], *command = NULL;
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
@@ -458,6 +458,9 @@ int main(int argc, char *argv[])
 	if (!iface_name) {
 		iface_name = transport_type == TRANS_UDS ? "/var/run/pmc" : "eth0";
 	}
+	if (optind < argc) {
+		batch_mode = 1;
+	}
 
 	print_set_progname(progname);
 	print_set_syslog(1);
@@ -469,12 +472,28 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	pollfd[0].fd = STDIN_FILENO;
-	pollfd[0].events = POLLIN|POLLPRI;
+	pollfd[0].fd = batch_mode ? -1 : STDIN_FILENO;
 	pollfd[1].fd = pmc_get_transport_fd(pmc);
-	pollfd[1].events = POLLIN|POLLPRI;
 
 	while (1) {
+		if (batch_mode && !command) {
+			if (optind < argc) {
+				command = argv[optind++];
+			} else {
+				/* No more commands, wait a bit for
+				   any outstanding replies and exit. */
+				tmo = 100;
+			}
+		}
+
+		pollfd[0].events = 0;
+		pollfd[1].events = POLLIN | POLLPRI;
+
+		if (!batch_mode && !command)
+			pollfd[0].events |= POLLIN | POLLPRI;
+		if (command)
+			pollfd[1].events |= POLLOUT;
+
 		cnt = poll(pollfd, N_FD, tmo);
 		if (cnt < 0) {
 			if (EINTR == errno) {
@@ -505,9 +524,13 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			line[length - 1] = 0;
-			if (do_command(line)) {
-				fprintf(stderr, "bad command: %s\n", line);
+			command = line;
+		}
+		if (pollfd[1].revents & POLLOUT) {
+			if (do_command(command)) {
+				fprintf(stderr, "bad command: %s\n", command);
 			}
+			command = NULL;
 		}
 		if (pollfd[1].revents & (POLLIN|POLLPRI)) {
 			msg = pmc_recv(pmc);

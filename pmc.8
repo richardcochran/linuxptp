@@ -22,14 +22,14 @@ pmc \- PTP management client
 .BI \-t " transport-specific-field"
 ] [
 .B \-v
-]
+] [ command ] ...
 
 .SH DESCRIPTION
 .B pmc
 is a program which implements a PTP management client according to IEEE
-standard 1588. The program reads from the standard input actions specified by
-name and management ID, sends them over the selected transport and prints any
-received replies. There are three actions supported: 
+standard 1588. The program reads from the standard input or from the command
+line actions specified by name and management ID, sends them over the selected
+transport and prints any received replies. There are three actions supported:
 .B GET
 retrieves the specified information,
 .B SET
