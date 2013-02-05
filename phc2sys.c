@@ -203,20 +203,13 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 	return 1;
 }
 
-static int do_pps_loop(struct clock *clock, char *pps_device,
+static int do_pps_loop(struct clock *clock, int fd,
 		       clockid_t src, int n_readings, int sync_offset)
 {
 	int64_t pps_offset, phc_offset;
 	uint64_t pps_ts, phc_ts;
-	int fd;
 
 	clock->source_label = "pps";
-
-	fd = open(pps_device, O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "cannot open '%s': %m\n", pps_device);
-		return -1;
-	}
 
 	while (1) {
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
@@ -433,9 +426,9 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *device = NULL, *progname, *ethdev = NULL;
+	char *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID;
-	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0;
+	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0, pps_fd = -1;
 	int wait_sync = 0, forced_sync_offset = 0;
 	double ppb;
 	struct clock dst_clock = {
@@ -455,7 +448,12 @@ int main(int argc, char *argv[])
 			dst_clock.clkid = clock_open(optarg);
 			break;
 		case 'd':
-			device = optarg;
+			pps_fd = open(optarg, O_RDONLY);
+			if (pps_fd < 0) {
+				fprintf(stderr,
+					"cannot open '%s': %m\n", optarg);
+				return -1;
+			}
 			break;
 		case 's':
 			src = clock_open(optarg);
@@ -511,9 +509,9 @@ int main(int argc, char *argv[])
 		sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
 		src = clock_open(phc_device);
 	}
-	if (!(device || src != CLOCK_INVALID) ||
+	if (!(pps_fd >= 0 || src != CLOCK_INVALID) ||
 	    dst_clock.clkid == CLOCK_INVALID ||
-	    (device && dst_clock.clkid != CLOCK_REALTIME)) {
+	    (pps_fd >= 0 && dst_clock.clkid != CLOCK_REALTIME)) {
 		usage(progname);
 		return -1;
 	}
@@ -544,8 +542,8 @@ int main(int argc, char *argv[])
 
 	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 
-	if (device)
-		return do_pps_loop(&dst_clock, device, src,
+	if (pps_fd >= 0)
+		return do_pps_loop(&dst_clock, pps_fd, src,
 				   phc_readings, sync_offset);
 
 	if (dst_clock.clkid == CLOCK_REALTIME &&
