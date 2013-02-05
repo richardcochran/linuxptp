@@ -54,6 +54,7 @@ void print(int level, char const *format, ...)
 	struct timespec ts;
 	va_list ap;
 	char buf[1024];
+	FILE *f;
 
 	if (level > print_level)
 		return;
@@ -65,10 +66,11 @@ void print(int level, char const *format, ...)
 	va_end(ap);
 
 	if (verbose) {
-		fprintf(stdout, "%s[%ld.%03ld]: %s\n",
+		f = level >= LOG_NOTICE ? stdout : stderr;
+		fprintf(f, "%s[%ld.%03ld]: %s\n",
 			progname ? progname : "",
 			ts.tv_sec, ts.tv_nsec / 1000000, buf);
-		fflush(stdout);
+		fflush(f);
 	}
 	if (use_syslog) {
 		syslog(level, "[%ld.%03ld] %s",
