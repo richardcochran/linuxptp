@@ -420,6 +420,7 @@ static void usage(char *progname)
 		" -i [iface]     master clock by network interface\n"
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
+		" -S [step]      step threshold (disabled)\n"
 		" -R [rate]      slave clock update rate in HZ (1)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -O [offset]    slave-master time offset (0)\n"
@@ -448,7 +449,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:R:N:O:i:wv"))) {
+	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:S:R:N:O:i:wv"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -464,6 +465,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'I':
 			configured_pi_ki = atof(optarg);
+			break;
+		case 'S':
+			configured_pi_offset = atof(optarg);
 			break;
 		case 'R':
 			phc_rate = atoi(optarg);
