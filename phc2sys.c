@@ -331,7 +331,7 @@ static int run_pmc(int wait_sync, int *utc_offset)
 		TIME_PROPERTIES_DATA_SET
 	};
 
-	pmc = pmc_create(TRANS_UDS, "/tmp/phc2sys", 0, 0, 0);
+	pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0, 0, 0);
 	if (!pmc) {
 		fprintf(stderr, "failed to create pmc\n");
 		return -1;

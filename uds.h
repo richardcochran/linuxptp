@@ -26,7 +26,7 @@
 /**
  * Address of the server.
  */
-#define UDS_PATH "/tmp/ptp4l"
+#define UDS_PATH "/var/run/ptp4l"
 
 /**
  * Allocate an instance of a UDS transport.

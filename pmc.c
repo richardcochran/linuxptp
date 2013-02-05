@@ -392,7 +392,7 @@ static void usage(char *progname)
 		" -d [num]  domain number, default 0\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
-		"           for network and '/tmp/pmc' for UDS.\n"
+		"           for network and '/var/run/pmc' for UDS.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
 		" -v        prints the software version and exits\n"
 		"\n",
@@ -456,7 +456,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!iface_name) {
-		iface_name = transport_type == TRANS_UDS ? "/tmp/pmc" : "eth0";
+		iface_name = transport_type == TRANS_UDS ? "/var/run/pmc" : "eth0";
 	}
 
 	print_set_progname(progname);
