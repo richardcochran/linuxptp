@@ -94,7 +94,7 @@ static double pi_sample(struct servo *servo,
 		/*
 		 * reset the clock servo when offset is greater than the max
 		 * offset value. Note that the clock jump will be performed in
-		 * step 3, so it is not necessary to have clock jump
+		 * step 1, so it is not necessary to have clock jump
 		 * immediately. This allows re-calculating drift as in initial
 		 * clock startup.
 		 */
