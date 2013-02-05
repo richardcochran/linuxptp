@@ -29,6 +29,12 @@ phc2sys \- synchronize two clocks
 ] [
 .B \-w
 ] [
+.BI \-l " print-level"
+] [
+.B \-m
+] [
+.B \-q
+] [
 .B \-v
 ]
 
@@ -108,6 +114,16 @@ the default is 0.
 .TP
 .B \-w
 Wait until ptp4l is in a synchronized state.
+.TP
+.BI \-l " print-level"
+Set the maximum syslog level of messages which should be printed or sent to
+the system logger. The default is 6 (LOG_INFO).
+.TP
+.B \-m
+Print messages to the standard output.
+.TP
+.B \-q
+Don't send messages to the system logger.
 .TP
 .BI \-h
 Display a help message.

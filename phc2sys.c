@@ -81,7 +81,7 @@ static void clock_ppb(clockid_t clkid, double ppb)
 	tx.modes = ADJ_FREQUENCY;
 	tx.freq = (long) (ppb * 65.536);
 	if (clock_adjtime(clkid, &tx) < 0)
-		fprintf(stderr, "failed to adjust the clock: %m\n");
+		pr_err("failed to adjust the clock: %m");
 }
 
 static double clock_ppb_read(clockid_t clkid)
@@ -90,7 +90,7 @@ static double clock_ppb_read(clockid_t clkid)
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
 	if (clock_adjtime(clkid, &tx) < 0)
-		fprintf(stderr, "failed to read out the clock frequency adjustment: %m\n");
+		pr_err("failed to read out the clock frequency adjustment: %m");
 	else
 		f = tx.freq / 65.536;
 	return f;
@@ -117,7 +117,7 @@ static void clock_step(clockid_t clkid, int64_t ns)
 		tx.time.tv_usec += 1000000000;
 	}
 	if (clock_adjtime(clkid, &tx) < 0)
-		fprintf(stderr, "failed to step clock: %m\n");
+		pr_err("failed to step clock: %m");
 }
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
@@ -132,7 +132,7 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
 		if (clock_gettime(sysclk, &tdst1) ||
 				clock_gettime(clkid, &tsrc) ||
 				clock_gettime(sysclk, &tdst2)) {
-			perror("clock_gettime");
+			pr_err("failed to read clock: %m");
 			return 0;
 		}
 
@@ -153,7 +153,6 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
 struct clock {
 	clockid_t clkid;
 	struct servo *servo;
-	FILE *log_file;
 	const char *source_label;
 };
 
@@ -175,10 +174,9 @@ static void update_clock(struct clock *clock, int64_t offset, uint64_t ts)
 		break;
 	}
 
-	fprintf(clock->log_file, "%s %9" PRId64 " s%d %lld.%09llu adj %.2f\n",
+	pr_info("%s %9" PRId64 " s%d %lld.%09llu adj %.2f",
 		clock->source_label, offset, state,
 		ts / NS_PER_SEC, ts % NS_PER_SEC, ppb);
-	fflush(clock->log_file);
 }
 
 static int read_pps(int fd, int64_t *offset, uint64_t *ts)
@@ -189,7 +187,7 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 	pfd.timeout.nsec = 0;
 	pfd.timeout.flags = ~PPS_TIME_INVALID;
 	if (ioctl(fd, PPS_FETCH, &pfd)) {
-		perror("ioctl PPS_FETCH");
+		pr_err("failed to fetch PPS: %m");
 		return 0;
 	}
 
@@ -228,8 +226,8 @@ static int do_pps_loop(struct clock *clock, int fd,
 
 			/* Check if it is close to the start of the second. */
 			if (phc_ts % NS_PER_SEC > PHC_PPS_OFFSET_LIMIT) {
-				fprintf(stderr, "PPS is not in sync with PHC"
-					" (0.%09lld)\n", phc_ts % NS_PER_SEC);
+				pr_warning("PPS is not in sync with PHC"
+					   " (0.%09lld)", phc_ts % NS_PER_SEC);
 				continue;
 			}
 
@@ -326,7 +324,7 @@ static int run_pmc(int wait_sync, int *utc_offset)
 
 	pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0, 0, 0);
 	if (!pmc) {
-		fprintf(stderr, "failed to create pmc\n");
+		pr_err("failed to create pmc");
 		return -1;
 	}
 
@@ -338,13 +336,13 @@ static int run_pmc(int wait_sync, int *utc_offset)
 
 		cnt = poll(pollfd, N_FD, 1000);
 		if (cnt < 0) {
-			fprintf(stderr, "poll failed\n");
+			pr_err("poll failed");
 			return -1;
 		}
 		if (!cnt) {
 			/* Request the data set again. */
 			ds_requested = 0;
-			fprintf(stderr, "Waiting for ptp4l...\n");
+			pr_notice("Waiting for ptp4l...");
 			continue;
 		}
 
@@ -430,11 +428,9 @@ int main(int argc, char *argv[])
 	clockid_t src = CLOCK_INVALID;
 	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0, pps_fd = -1;
 	int wait_sync = 0, forced_sync_offset = 0;
+	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	double ppb;
-	struct clock dst_clock = {
-		.clkid = CLOCK_REALTIME,
-		.log_file = stdout
-	};
+	struct clock dst_clock = { .clkid = CLOCK_REALTIME };
 
 	configured_pi_kp = KP;
 	configured_pi_ki = KI;
@@ -442,7 +438,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:S:R:N:O:i:wv"))) {
+	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:S:R:N:O:i:wl:mqv"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -483,6 +479,15 @@ int main(int argc, char *argv[])
 		case 'w':
 			wait_sync = 1;
 			break;
+		case 'l':
+			print_level = atoi(optarg);
+			break;
+		case 'm':
+			verbose = 1;
+			break;
+		case 'q':
+			use_syslog = 0;
+			break;
 		case 'v':
 			version_show(stdout);
 			return 0;
@@ -517,8 +522,9 @@ int main(int argc, char *argv[])
 	}
 
 	print_set_progname(progname);
-	print_set_verbose(1);
-	print_set_syslog(0);
+	print_set_verbose(verbose);
+	print_set_syslog(use_syslog);
+	print_set_level(print_level);
 
 	if (wait_sync) {
 		int ptp_utc_offset;
