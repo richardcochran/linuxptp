@@ -1,0 +1,101 @@
+
+* General
+
+  For this project, we are using the Linux kernel coding style, with a
+  bit of latitude, as described below. The kernel style can be quickly
+  summarized like this:
+
+  - text width is 80 columns
+  - indentation by tabs
+  - tab width is 8 spaces
+  - identifiers are lower case with underscores
+  - macros are upper case
+  - braces and spacing follow K&R style
+
+* Using checkpatch.pl
+
+  You can use the Linux kernel's checkpatch.pl script to sanity check
+  your work. Sometimes that script warns about code which is in fact
+  fine, so use your good taste. I use the following code as my
+  pre-commit hook.
+
+#+BEGIN_EXAMPLE
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+git diff --cached $against -- | ../linux/scripts/checkpatch.pl \
+	--ignore BRACES \
+	--ignore PREFER_PR_LEVEL \
+	--no-signoff \
+	-
+#+END_EXAMPLE
+
+* Exceptions
+
+** Use of lowerCamelCase and UpperCamelCase
+
+   The messages and data sets in the PTP and gPTP standards are full
+   of stuff that looks a bit like C-language pseudo code, and all this
+   is unfortunately in camel case. In those cases where the linuxptp
+   code is closely related to these fields, we retain the camel case,
+   even though it hurts our eyes to look at.
+
+   The alternative would have been to convert the field names into
+   lower case underscore, but that would have over extended the
+   already ridiculously long names, such as logMinPdelayReqInterval
+   and observedParentOffsetScaledLogVariance.
+
+   The exception permitting CamelCase applies primarily to the
+   declarations found in the following header files.
+
+   - ddt.h
+   - ds.h
+   - msg.h
+   - pdt.h
+   - tlv.h
+
+** Braces around single if-else bodies
+
+   In the Linux kernel style, if-else bodies containing just a single
+   line are not placed within curly braces. Therefore you will often
+   see code like the following example.
+
+#+BEGIN_EXAMPLE
+	if (!x)
+		do_zero();
+	else
+		do_nonzero();
+#+END_EXAMPLE
+
+   In this situation we still like to see the braces, the rationale
+   being that the if-else bodies tend to accumulate new statements
+   over time, especially on the error path. Using the strict kernel
+   style thus results in patches (and annotated views) that show a
+   bogus change in the test expression, and this requires extra mental
+   effort when reviewing patches, just to realize that no logical
+   change has occurred. Additionally, having the braces hardly uses up
+   more vertical space than not having them, so we generally include
+   them as shown in the following example.
+
+#+BEGIN_EXAMPLE
+	if (!x) {
+		do_zero();
+	} else {
+		do_nonzero();
+	}
+#+END_EXAMPLE
+
+** Line lengths
+
+   We try to keep the line length to 80 characters wide. However,
+   sometimes it happens that, no matter how hard we try, we find
+   ourselves going a bit over that limit. This is especially true in
+   connection with the long CamelCase identifiers mentioned above.
+   Breaking a statement over two lines can look even worse than having
+   one line too long, so please exercise judgement when applying the
+   line length rule.
