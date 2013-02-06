@@ -383,7 +383,6 @@ static int run_pmc(int wait_sync, int *utc_offset)
 
 			switch (((struct portDS *)data)->portState) {
 			case PS_MASTER:
-			case PS_GRAND_MASTER:
 			case PS_SLAVE:
 				ds_done = 1;
 				break;

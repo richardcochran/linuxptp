@@ -28,10 +28,10 @@ enum port_state {
 	PS_LISTENING,
 	PS_PRE_MASTER,
 	PS_MASTER,
-	PS_GRAND_MASTER,
 	PS_PASSIVE,
 	PS_UNCALIBRATED,
 	PS_SLAVE,
+	PS_GRAND_MASTER, /*non-standard extension*/
 };
 
 /** Defines the events for the port state machine. */

@@ -457,7 +457,11 @@ static int port_management_get_response(struct port *target,
 	case PORT_DATA_SET:
 		pds = (struct portDS *) tlv->data;
 		pds->portIdentity            = target->portIdentity;
-		pds->portState               = target->state;
+		if (target->state == PS_GRAND_MASTER) {
+			pds->portState = PS_MASTER;
+		} else {
+			pds->portState = target->state;
+		}
 		pds->logMinDelayReqInterval  = target->logMinDelayReqInterval;
 		pds->peerMeanPathDelay       = target->peerMeanPathDelay;
 		pds->logAnnounceInterval     = target->logAnnounceInterval;
