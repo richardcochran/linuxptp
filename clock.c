@@ -211,6 +211,17 @@ out:
 	return respond ? 1 : 0;
 }
 
+static int clock_management_set(struct clock *c, struct port *p,
+				int id, struct ptp_message *req)
+{
+	int respond = 0;
+	switch (id) {
+	}
+	if (respond && !clock_management_get_response(c, p, id, req))
+		pr_err("failed to send management set response");
+	return respond ? 1 : 0;
+}
+
 static int clock_master_lost(struct clock *c)
 {
 	int i;
@@ -640,6 +651,9 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 			return;
 		break;
 	case SET:
+		if (clock_management_set(c, p, mgt->id, msg))
+			return;
+		break;
 	case COMMAND:
 		break;
 	case RESPONSE:

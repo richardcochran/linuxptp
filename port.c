@@ -501,6 +501,18 @@ out:
 	return respond ? 1 : 0;
 }
 
+static int port_management_set(struct port *target,
+			       struct port *ingress, int id,
+			       struct ptp_message *req)
+{
+	int respond = 0;
+	switch (id) {
+	}
+	if (respond && !port_management_get_response(target, ingress, id, req))
+		pr_err("port %hu: failed to send management set response", portnum(target));
+	return respond ? 1 : 0;
+}
+
 static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 {
 	tmv_t origin2;
@@ -1698,7 +1710,8 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 			return 0;
 		break;
 	case SET:
-		port_management_send_error(p, ingress, msg, NOT_SUPPORTED);
+		if (port_management_set(p, ingress, mgt->id, msg))
+			return 0;
 		break;
 	case COMMAND:
 	case RESPONSE:
