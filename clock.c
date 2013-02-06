@@ -645,16 +645,34 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 
+	/*
+	  The correct length according to the management ID is checked
+	  in tlv.c, but management TLVs with empty bodies are also
+	  received successfully to support GETs and CMDs. At this
+	  point the TLV either has the correct length or length 2.
+	*/
 	switch (management_action(msg)) {
 	case GET:
+		if (mgt->length != 2) {
+			clock_management_send_error(p, msg, WRONG_LENGTH);
+			return;
+		}
 		if (clock_management_get_response(c, p, mgt->id, msg))
 			return;
 		break;
 	case SET:
+		if (mgt->length == 2 && mgt->id != NULL_MANAGEMENT) {
+			clock_management_send_error(p, msg, WRONG_LENGTH);
+			return;
+		}
 		if (clock_management_set(c, p, mgt->id, msg))
 			return;
 		break;
 	case COMMAND:
+		if (mgt->length != 2) {
+			clock_management_send_error(p, msg, WRONG_LENGTH);
+			return;
+		}
 		break;
 	default:
 		return;
