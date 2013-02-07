@@ -31,6 +31,7 @@
 #include "phc.h"
 #include "port.h"
 #include "servo.h"
+#include "stats.h"
 #include "print.h"
 #include "tlv.h"
 #include "uds.h"
@@ -48,6 +49,13 @@ struct freq_estimator {
 	tmv_t ingress1;
 	unsigned int max_count;
 	unsigned int count;
+};
+
+struct clock_stats {
+	struct stats *offset;
+	struct stats *freq;
+	struct stats *delay;
+	int max_count;
 };
 
 struct clock {
@@ -80,6 +88,8 @@ struct clock {
 	tmv_t t1;
 	tmv_t t2;
 	struct clock_description desc;
+	struct clock_stats stats;
+	int stats_interval;
 };
 
 struct clock the_clock;
@@ -104,6 +114,9 @@ void clock_destroy(struct clock *c)
 	}
 	servo_destroy(c->servo);
 	mave_destroy(c->avg_delay);
+	stats_destroy(c->stats.offset);
+	stats_destroy(c->stats.freq);
+	stats_destroy(c->stats.delay);
 	memset(c, 0, sizeof(*c));
 	msg_cleanup();
 }
@@ -232,6 +245,40 @@ static int clock_master_lost(struct clock *c)
 	return 1;
 }
 
+static void clock_stats_update(struct clock_stats *s,
+			       int64_t offset, double freq)
+{
+	struct stats_result offset_stats, freq_stats, delay_stats;
+
+	stats_add_value(s->offset, offset);
+	stats_add_value(s->freq, freq);
+
+	if (stats_get_num_values(s->offset) < s->max_count)
+		return;
+
+	stats_get_result(s->offset, &offset_stats);
+	stats_get_result(s->freq, &freq_stats);
+
+	/* Path delay stats are updated separately, they may be empty. */
+	if (!stats_get_result(s->delay, &delay_stats)) {
+		pr_info("rms %4.0f max %4.0f "
+			"freq %+6.0f +/- %3.0f "
+			"delay %5.0f +/- %3.0f",
+			offset_stats.rms, offset_stats.max_abs,
+			freq_stats.mean, freq_stats.stddev,
+			delay_stats.mean, delay_stats.stddev);
+	} else {
+		pr_info("rms %4.0f max %4.0f "
+			"freq %+6.0f +/- %3.0f",
+			offset_stats.rms, offset_stats.max_abs,
+			freq_stats.mean, freq_stats.stddev);
+	}
+
+	stats_reset(s->offset);
+	stats_reset(s->freq);
+	stats_reset(s->delay);
+}
+
 static enum servo_state clock_no_adjust(struct clock *c)
 {
 	double fui;
@@ -278,9 +325,13 @@ static enum servo_state clock_no_adjust(struct clock *c)
 		tmv_dbl(tmv_sub(c->t2, f->ingress1));
 	freq = (1.0 - ratio) * 1e9;
 
-	pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
-		"path delay %9" PRId64,
-		c->master_offset, state, freq, c->path_delay);
+	if (c->stats.max_count > 1) {
+		clock_stats_update(&c->stats, c->master_offset, freq);
+	} else {
+		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
+			"path delay %9" PRId64,
+			c->master_offset, state, freq, c->path_delay);
+	}
 
 	fui = 1.0 + (c->status.cumulativeScaledRateOffset + 0.0) / POW2_41;
 
@@ -433,7 +484,7 @@ UInteger8 clock_class(struct clock *c)
 
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			   enum timestamp_type timestamping, struct default_ds *dds,
-			   enum servo_type servo)
+			   enum servo_type servo, int stats_interval)
 {
 	int i, fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
@@ -484,6 +535,14 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	c->avg_delay = mave_create(MAVE_LENGTH);
 	if (!c->avg_delay) {
 		pr_err("Failed to create moving average");
+		return NULL;
+	}
+	c->stats_interval = stats_interval;
+	c->stats.offset = stats_create();
+	c->stats.freq = stats_create();
+	c->stats.delay = stats_create();
+	if (!c->stats.offset || !c->stats.freq || !c->stats.delay) {
+		pr_err("failed to create stats");
 		return NULL;
 	}
 
@@ -834,12 +893,18 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
 
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
+
+	if (c->stats.delay)
+		stats_add_value(c->stats.delay, pd);
 }
 
 void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
 {
 	c->path_delay = ppd;
 	c->nrr = nrr;
+
+	if (c->stats.delay)
+		stats_add_value(c->stats.delay, ppd);
 }
 
 void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
@@ -903,9 +968,13 @@ enum servo_state clock_synchronize(struct clock *c,
 
 	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
 
-	pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
-		"path delay %9" PRId64,
-		c->master_offset, state, adj, c->path_delay);
+	if (c->stats.max_count > 1) {
+		clock_stats_update(&c->stats, c->master_offset, adj);
+	} else {
+		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
+			"path delay %9" PRId64,
+			c->master_offset, state, adj, c->path_delay);
+	}
 
 	switch (state) {
 	case SERVO_UNLOCKED:
@@ -925,12 +994,17 @@ enum servo_state clock_synchronize(struct clock *c,
 
 void clock_sync_interval(struct clock *c, int n)
 {
-	int shift = c->freq_est_interval - n;
+	int shift;
 
+	shift = c->freq_est_interval - n;
 	if (shift < 0)
 		shift = 0;
-
 	c->fest.max_count = (1 << shift);
+
+	shift = c->stats_interval - n;
+	if (shift < 0)
+		shift = 0;
+	c->stats.max_count = (1 << shift);
 }
 
 struct timePropertiesDS *clock_time_properties(struct clock *c)

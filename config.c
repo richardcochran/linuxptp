@@ -378,6 +378,11 @@ static enum parser_result parse_global_setting(const char *option,
 		for (i = 0; i < OUI_LEN; i++)
 			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
 
+	} else if (!strcmp(option, "summary_interval")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
+		cfg->summary_interval = val;
+
 	} else
 		return NOT_PARSED;
 

@@ -67,11 +67,12 @@ UInteger8 clock_class(struct clock *c);
  * @param timestamping The timestamping mode for this clock.
  * @param dds          A pointer to a default data set for the clock.
  * @param servo        The servo that this clock will use.
+ * @param stats_interval Interval in which are printed clock statistics.
  * @return             A pointer to the single global clock instance.
  */
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			   enum timestamp_type timestamping, struct default_ds *dds,
-			   enum servo_type servo);
+			   enum servo_type servo, int stats_interval);
 
 /**
  * Obtains a clock's default data set.

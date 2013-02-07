@@ -76,6 +76,7 @@ struct config {
 	int print_level;
 	int use_syslog;
 	int verbose;
+	int summary_interval;
 };
 
 int config_read(char *name, struct config *cfg);

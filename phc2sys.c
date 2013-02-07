@@ -42,6 +42,7 @@
 #include "print.h"
 #include "servo.h"
 #include "sk.h"
+#include "stats.h"
 #include "sysoff.h"
 #include "tlv.h"
 #include "version.h"
@@ -155,7 +156,46 @@ struct clock {
 	clockid_t clkid;
 	struct servo *servo;
 	const char *source_label;
+	struct stats *offset_stats;
+	struct stats *freq_stats;
+	struct stats *delay_stats;
+	int stats_max_count;
 };
+
+static void update_clock_stats(struct clock *clock,
+			       int64_t offset, double freq, int64_t delay)
+{
+	struct stats_result offset_stats, freq_stats, delay_stats;
+
+	stats_add_value(clock->offset_stats, offset);
+	stats_add_value(clock->freq_stats, freq);
+	if (delay >= 0)
+		stats_add_value(clock->delay_stats, delay);
+
+	if (stats_get_num_values(clock->offset_stats) < clock->stats_max_count)
+		return;
+
+	stats_get_result(clock->offset_stats, &offset_stats);
+	stats_get_result(clock->freq_stats, &freq_stats);
+
+	if (!stats_get_result(clock->delay_stats, &delay_stats)) {
+		pr_info("rms %4.0f max %4.0f "
+			"freq %+6.0f +/- %3.0f "
+			"delay %5.0f +/- %3.0f",
+			offset_stats.rms, offset_stats.max_abs,
+			freq_stats.mean, freq_stats.stddev,
+			delay_stats.mean, delay_stats.stddev);
+	} else {
+		pr_info("rms %4.0f max %4.0f "
+			"freq %+6.0f +/- %3.0f",
+			offset_stats.rms, offset_stats.max_abs,
+			freq_stats.mean, freq_stats.stddev);
+	}
+
+	stats_reset(clock->offset_stats);
+	stats_reset(clock->freq_stats);
+	stats_reset(clock->delay_stats);
+}
 
 static void update_clock(struct clock *clock,
 			 int64_t offset, uint64_t ts, int64_t delay)
@@ -176,13 +216,17 @@ static void update_clock(struct clock *clock,
 		break;
 	}
 
-	if (delay >= 0) {
-		pr_info("%s offset %9" PRId64 " s%d freq %+7.0f "
-			"delay %6" PRId64,
-			clock->source_label, offset, state, ppb, delay);
+	if (clock->offset_stats) {
+		update_clock_stats(clock, offset, ppb, delay);
 	} else {
-		pr_info("%s offset %9" PRId64 " s%d freq %+7.0f",
-			clock->source_label, offset, state, ppb);
+		if (delay >= 0) {
+			pr_info("%s offset %9" PRId64 " s%d freq %+7.0f "
+				"delay %6" PRId64,
+				clock->source_label, offset, state, ppb, delay);
+		} else {
+			pr_info("%s offset %9" PRId64 " s%d freq %+7.0f",
+				clock->source_label, offset, state, ppb);
+		}
 	}
 }
 
@@ -423,6 +467,7 @@ static void usage(char *progname)
 		" -R [rate]      slave clock update rate in HZ (1)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -O [offset]    slave-master time offset (0)\n"
+		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -w             wait for ptp4l\n"
 		" -h             prints this message and exits\n"
 		" -v             prints the software version and exits\n"
@@ -446,7 +491,8 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "c:d:hs:P:I:S:R:N:O:i:wl:mqv"))) {
+	while (EOF != (c = getopt(argc, argv,
+				  "c:d:hs:P:I:S:R:N:O:i:u:wl:mqv"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -483,6 +529,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			ethdev = optarg;
+			break;
+		case 'u':
+			dst_clock.stats_max_count = atoi(optarg);
 			break;
 		case 'w':
 			wait_sync = 1;
@@ -527,6 +576,18 @@ int main(int argc, char *argv[])
 	    (pps_fd >= 0 && dst_clock.clkid != CLOCK_REALTIME)) {
 		usage(progname);
 		return -1;
+	}
+
+	if (dst_clock.stats_max_count > 0) {
+		dst_clock.offset_stats = stats_create();
+		dst_clock.freq_stats = stats_create();
+		dst_clock.delay_stats = stats_create();
+		if (!dst_clock.offset_stats ||
+		    !dst_clock.freq_stats ||
+		    !dst_clock.delay_stats) {
+			fprintf(stderr, "failed to create stats");
+			return -1;
+		}
 	}
 
 	print_set_progname(progname);

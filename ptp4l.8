@@ -307,6 +307,16 @@ The default is 0 (disabled).
 Print messages to the system log if enabled.
 The default is 1 (enabled).
 .TP
+.B summary_interval
+The time interval in which are printed summary statistics of the clock. It is
+specified as a power of two in seconds. The statistics include offset root mean
+square (RMS), maximum absolute offset, frequency offset mean and standard
+deviation, and path delay mean and standard deviation. The units are
+nanoseconds and parts per billion (ppb). If there is only one clock update in
+the interval, the sample will be printed instead of the statistics. The
+messages are printed at the LOG_INFO level.
+The default is 0 (1 second).
+.TP
 .B time_stamping
 The time stamping method. The allowed values are hardware, software and legacy.
 The default is hardware.
