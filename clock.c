@@ -235,7 +235,7 @@ static int clock_master_lost(struct clock *c)
 static enum servo_state clock_no_adjust(struct clock *c)
 {
 	double fui;
-	double ratio;
+	double ratio, freq;
 	tmv_t origin2;
 	struct freq_estimator *f = &c->fest;
 	enum servo_state state = SERVO_UNLOCKED;
@@ -276,9 +276,11 @@ static enum servo_state clock_no_adjust(struct clock *c)
 
 	ratio = tmv_dbl(tmv_sub(origin2, f->origin1)) /
 		tmv_dbl(tmv_sub(c->t2, f->ingress1));
+	freq = (1.0 - ratio) * 1e9;
 
-	pr_info("master offset %10lld s%d ratio %.9f path delay %10lld",
-		c->master_offset, state, ratio, c->path_delay);
+	pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
+		"path delay %9" PRId64,
+		c->master_offset, state, freq, c->path_delay);
 
 	fui = 1.0 + (c->status.cumulativeScaledRateOffset + 0.0) / POW2_41;
 
@@ -901,7 +903,8 @@ enum servo_state clock_synchronize(struct clock *c,
 
 	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
 
-	pr_info("master offset %10lld s%d adj %+7.0f path delay %10lld",
+	pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
+		"path delay %9" PRId64,
 		c->master_offset, state, adj, c->path_delay);
 
 	switch (state) {

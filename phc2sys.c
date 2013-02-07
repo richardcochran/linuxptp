@@ -174,7 +174,7 @@ static void update_clock(struct clock *clock, int64_t offset, uint64_t ts)
 		break;
 	}
 
-	pr_info("%s %9" PRId64 " s%d %lld.%09llu adj %.2f",
+	pr_info("%s %9" PRId64 " s%d %lld.%09llu freq %+7.0f",
 		clock->source_label, offset, state,
 		ts / NS_PER_SEC, ts % NS_PER_SEC, ppb);
 }
