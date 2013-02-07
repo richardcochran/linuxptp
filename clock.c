@@ -499,7 +499,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		c->pollfd[i].events = 0;
 	}
 
-	c->fest.max_count = 2;
+	clock_sync_interval(c, 0);
 
 	for (i = 0; i < count; i++) {
 		c->fault_timeout[i] = iface[i].pod.fault_reset_interval;
