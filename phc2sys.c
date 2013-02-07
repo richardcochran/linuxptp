@@ -121,7 +121,7 @@ static void clock_step(clockid_t clkid, int64_t ns)
 }
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
-		    int64_t *offset, uint64_t *ts)
+		    int64_t *offset, uint64_t *ts, int64_t *delay)
 {
 	struct timespec tdst1, tdst2, tsrc;
 	int i;
@@ -146,6 +146,7 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
 			*ts = tdst2.tv_sec * NS_PER_SEC + tdst2.tv_nsec;
 		}
 	}
+	*delay = best_interval;
 
 	return 1;
 }
@@ -156,7 +157,8 @@ struct clock {
 	const char *source_label;
 };
 
-static void update_clock(struct clock *clock, int64_t offset, uint64_t ts)
+static void update_clock(struct clock *clock,
+			 int64_t offset, uint64_t ts, int64_t delay)
 {
 	enum servo_state state;
 	double ppb;
@@ -174,9 +176,14 @@ static void update_clock(struct clock *clock, int64_t offset, uint64_t ts)
 		break;
 	}
 
-	pr_info("%s %9" PRId64 " s%d %lld.%09llu freq %+7.0f",
-		clock->source_label, offset, state,
-		ts / NS_PER_SEC, ts % NS_PER_SEC, ppb);
+	if (delay >= 0) {
+		pr_info("%s offset %9" PRId64 " s%d freq %+7.0f "
+			"delay %6" PRId64,
+			clock->source_label, offset, state, ppb, delay);
+	} else {
+		pr_info("%s offset %9" PRId64 " s%d freq %+7.0f",
+			clock->source_label, offset, state, ppb);
+	}
 }
 
 static int read_pps(int fd, int64_t *offset, uint64_t *ts)
@@ -204,7 +211,7 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 static int do_pps_loop(struct clock *clock, int fd,
 		       clockid_t src, int n_readings, int sync_offset)
 {
-	int64_t pps_offset, phc_offset;
+	int64_t pps_offset, phc_offset, phc_delay;
 	uint64_t pps_ts, phc_ts;
 
 	clock->source_label = "pps";
@@ -218,7 +225,7 @@ static int do_pps_loop(struct clock *clock, int fd,
 		   of seconds in the offset and PPS for the rest. */
 		if (src != CLOCK_INVALID) {
 			if (!read_phc(src, clock->clkid, n_readings,
-				      &phc_offset, &phc_ts))
+				      &phc_offset, &phc_ts, &phc_delay))
 				return -1;
 
 			/* Convert the time stamp to the PHC time. */
@@ -236,7 +243,7 @@ static int do_pps_loop(struct clock *clock, int fd,
 			pps_offset -= sync_offset * NS_PER_SEC;
 		}
 
-		update_clock(clock, pps_offset, pps_ts);
+		update_clock(clock, pps_offset, pps_ts, -1);
 	}
 	close(fd);
 	return 0;
@@ -246,19 +253,19 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 			  int rate, int n_readings, int sync_offset)
 {
 	uint64_t ts;
-	int64_t offset;
+	int64_t offset, delay;
 	int err = 0, fd = CLOCKID_TO_FD(src);
 
 	clock->source_label = "sys";
 
 	while (1) {
 		usleep(1000000 / rate);
-		if (sysoff_measure(fd, n_readings, &offset, &ts)) {
+		if (sysoff_measure(fd, n_readings, &offset, &ts, &delay)) {
 			err = -1;
 			break;
 		}
 		offset -= sync_offset * NS_PER_SEC;
-		update_clock(clock, offset, ts);
+		update_clock(clock, offset, ts, delay);
 	}
 	return err;
 }
@@ -267,17 +274,18 @@ static int do_phc_loop(struct clock *clock, clockid_t src,
 		       int rate, int n_readings, int sync_offset)
 {
 	uint64_t ts;
-	int64_t offset;
+	int64_t offset, delay;
 
 	clock->source_label = "phc";
 
 	while (1) {
 		usleep(1000000 / rate);
-		if (!read_phc(src, clock->clkid, n_readings, &offset, &ts)) {
+		if (!read_phc(src, clock->clkid, n_readings,
+			      &offset, &ts, &delay)) {
 			continue;
 		}
 		offset -= sync_offset * NS_PER_SEC;
-		update_clock(clock, offset, ts);
+		update_clock(clock, offset, ts, delay);
 	}
 	return 0;
 }

@@ -39,6 +39,8 @@ int sysoff_probe(int fd, int n_samples);
  * @param n_samples  The number of consecutive readings to make.
  * @param result     The estimated offset in nanoseconds.
  * @param ts         The system time corresponding to the 'result'.
+ * @param delay      The delay in reading of the clock in nanoseconds.
  * @return  One of the SYSOFF_ enumeration values.
  */
-int sysoff_measure(int fd, int n_samples, int64_t *result, uint64_t *ts);
+int sysoff_measure(int fd, int n_samples,
+		   int64_t *result, uint64_t *ts, int64_t *delay);
