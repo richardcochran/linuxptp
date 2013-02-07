@@ -30,10 +30,10 @@ char *ps_str[] = {
 	"LISTENING",
 	"PRE_MASTER",
 	"MASTER",
-	"GRAND_MASTER",
 	"PASSIVE",
 	"UNCALIBRATED",
 	"SLAVE",
+	"GRAND_MASTER",
 };
 
 char *ev_str[] = {
