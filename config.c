@@ -381,7 +381,7 @@ static enum parser_result parse_global_setting(const char *option,
 	} else if (!strcmp(option, "summary_interval")) {
 		if (1 != sscanf(value, "%d", &val))
 			return BAD_VALUE;
-		cfg->summary_interval = val;
+		cfg->dds.stats_interval = val;
 
 	} else
 		return NOT_PARSED;

@@ -484,7 +484,7 @@ UInteger8 clock_class(struct clock *c)
 
 struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			   enum timestamp_type timestamping, struct default_ds *dds,
-			   enum servo_type servo, int stats_interval)
+			   enum servo_type servo)
 {
 	int i, fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
@@ -537,7 +537,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		pr_err("Failed to create moving average");
 		return NULL;
 	}
-	c->stats_interval = stats_interval;
+	c->stats_interval = dds->stats_interval;
 	c->stats.offset = stats_create();
 	c->stats.freq = stats_create();
 	c->stats.delay = stats_create();

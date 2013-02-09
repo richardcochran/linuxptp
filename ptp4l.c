@@ -52,6 +52,7 @@ static struct config cfg_settings = {
 		},
 		.free_running = 0,
 		.freq_est_interval = 1,
+		.stats_interval = 0,
 		.clock_desc = {
 			.productDescription = {
 				.max_symbols = 64,
@@ -99,7 +100,6 @@ static struct config cfg_settings = {
 	.print_level = LOG_INFO,
 	.use_syslog = 1,
 	.verbose = 0,
-	.summary_interval = 0,
 
 	.cfg_ignore = 0,
 };
@@ -352,8 +352,7 @@ int main(int argc, char *argv[])
 
 	clock = clock_create(phc_index, iface, cfg_settings.nports,
 			     *timestamping, &cfg_settings.dds,
-			     cfg_settings.clock_servo,
-			     cfg_settings.summary_interval);
+			     cfg_settings.clock_servo);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;
