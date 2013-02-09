@@ -56,11 +56,13 @@ static struct config cfg_settings = {
 		.clock_desc = {
 			.productDescription = {
 				.max_symbols = 64,
-				.text = ";;"
+				.text = ";;",
+				.length = 2,
 			},
 			.revisionData = {
 				.max_symbols = 32,
-				.text = ";;"
+				.text = ";;",
+				.length = 2,
 			},
 			.userDescription      = { .max_symbols = 128 },
 			.manufacturerIdentity = { 0, 0, 0 },
