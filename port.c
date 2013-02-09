@@ -43,8 +43,8 @@ struct nrate_estimator {
 	double ratio;
 	tmv_t origin1;
 	tmv_t ingress1;
-	int max_count;
-	int count;
+	unsigned int max_count;
+	unsigned int count;
 };
 
 struct port {
