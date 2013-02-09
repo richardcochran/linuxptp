@@ -24,6 +24,7 @@
 #include "tlv.h"
 #include "transport.h"
 #include "util.h"
+#include "pmc_common.h"
 
 struct pmc {
 	UInteger16 sequence_id;
