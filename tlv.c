@@ -269,7 +269,8 @@ void tlv_pre_send(struct TLV *tlv)
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
 		mgt = (struct management_tlv *) tlv;
-		mgt_pre_send(mgt);
+		if (tlv->length > sizeof(mgt->id))
+			mgt_pre_send(mgt);
 		mgt->id = htons(mgt->id);
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:
