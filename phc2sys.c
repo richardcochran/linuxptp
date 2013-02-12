@@ -159,7 +159,7 @@ struct clock {
 	struct stats *offset_stats;
 	struct stats *freq_stats;
 	struct stats *delay_stats;
-	int stats_max_count;
+	unsigned int stats_max_count;
 };
 
 static void update_clock_stats(struct clock *clock,

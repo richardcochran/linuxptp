@@ -55,7 +55,7 @@ struct clock_stats {
 	struct stats *offset;
 	struct stats *freq;
 	struct stats *delay;
-	int max_count;
+	unsigned int max_count;
 };
 
 struct clock {
