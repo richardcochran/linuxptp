@@ -999,11 +999,19 @@ void clock_sync_interval(struct clock *c, int n)
 	shift = c->freq_est_interval - n;
 	if (shift < 0)
 		shift = 0;
+	else if (shift >= sizeof(int) * 8) {
+		shift = sizeof(int) * 8 - 1;
+		pr_warning("freq_est_interval is too long");
+	}
 	c->fest.max_count = (1 << shift);
 
 	shift = c->stats_interval - n;
 	if (shift < 0)
 		shift = 0;
+	else if (shift >= sizeof(int) * 8) {
+		shift = sizeof(int) * 8 - 1;
+		pr_warning("summary_interval is too long");
+	}
 	c->stats.max_count = (1 << shift);
 }
 

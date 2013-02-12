@@ -551,6 +551,10 @@ static void port_nrate_initialize(struct port *p)
 
 	if (shift < 0)
 		shift = 0;
+	else if (shift >= sizeof(int) * 8) {
+		shift = sizeof(int) * 8 - 1;
+		pr_warning("freq_est_interval is too long");
+	}
 
 	/* We start in the 'incapable' state. */
 	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
