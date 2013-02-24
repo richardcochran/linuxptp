@@ -438,6 +438,9 @@ static void port_management_send_error(struct port *p, struct port *ingress,
 		pr_err("port %hu: management error failed", portnum(p));
 }
 
+static const Octet profile_id_drr[] = {0x00, 0x1B, 0x19, 0x00, 0x01, 0x00};
+static const Octet profile_id_p2p[] = {0x00, 0x1B, 0x19, 0x00, 0x02, 0x00};
+
 static int port_management_get_response(struct port *target,
 					struct port *ingress, int id,
 					struct ptp_message *req)
@@ -447,6 +450,10 @@ static int port_management_get_response(struct port *target,
 	struct ptp_message *rsp;
 	struct portDS *pds;
 	struct PortIdentity pid = port_identity(target);
+	struct clock_description *desc;
+	struct mgmt_clock_description *cd;
+	uint8_t *buf;
+	uint16_t u16;
 
 	rsp = port_management_reply(pid, ingress, req);
 	if (!rsp) {
@@ -459,6 +466,72 @@ static int port_management_get_response(struct port *target,
 	switch (id) {
 	case NULL_MANAGEMENT:
 		datalen = 0;
+		respond = 1;
+		break;
+	case CLOCK_DESCRIPTION:
+		cd = &rsp->last_tlv.cd;
+		buf = tlv->data;
+		cd->clockType = (UInteger16 *) buf;
+		buf += sizeof(*cd->clockType);
+		if (clock_num_ports(target->clock) > 1) {
+			*cd->clockType = CLOCK_TYPE_BOUNDARY;
+		} else {
+			*cd->clockType = CLOCK_TYPE_ORDINARY;
+		}
+
+		cd->physicalLayerProtocol = (struct PTPText *) buf;
+		switch(transport_type(target->trp)) {
+		case TRANS_UDP_IPV4:
+		case TRANS_UDP_IPV6:
+		case TRANS_IEEE_802_3:
+			ptp_text_set(cd->physicalLayerProtocol, "IEEE 802.3");
+			break;
+		default:
+			ptp_text_set(cd->physicalLayerProtocol, NULL);
+			break;
+		}
+		buf += sizeof(struct PTPText) + cd->physicalLayerProtocol->length;
+
+		cd->physicalAddress = (struct PhysicalAddress *) buf;
+		u16 = transport_physical_addr(target->trp,
+                                              cd->physicalAddress->address);
+		memcpy(&cd->physicalAddress->length, &u16, 2);
+		buf += sizeof(struct PhysicalAddress) + u16;
+
+		cd->protocolAddress = (struct PortAddress *) buf;
+		u16 = transport_type(target->trp);
+		memcpy(&cd->protocolAddress->networkProtocol, &u16, 2);
+		u16 = transport_protocol_addr(target->trp,
+                                              cd->protocolAddress->address);
+		memcpy(&cd->protocolAddress->addressLength, &u16, 2);
+		buf += sizeof(struct PortAddress) + u16;
+
+		desc = clock_description(target->clock);
+		cd->manufacturerIdentity = buf;
+		memcpy(cd->manufacturerIdentity,
+                       desc->manufacturerIdentity, OUI_LEN);
+		buf += OUI_LEN;
+		*(buf++) = 0; /* reserved */
+
+		cd->productDescription = (struct PTPText *) buf;
+		ptp_text_copy(cd->productDescription, &desc->productDescription);
+		buf += sizeof(struct PTPText) + cd->productDescription->length;
+
+		cd->revisionData = (struct PTPText *) buf;
+		ptp_text_copy(cd->revisionData, &desc->revisionData);
+		buf += sizeof(struct PTPText) + cd->revisionData->length;
+
+		cd->userDescription = (struct PTPText *) buf;
+		ptp_text_copy(cd->userDescription, &desc->userDescription);
+		buf += sizeof(struct PTPText) + cd->userDescription->length;
+
+		if (target->delayMechanism == DM_P2P) {
+			memcpy(buf, profile_id_p2p, PROFILE_ID_LEN);
+		} else {
+			memcpy(buf, profile_id_drr, PROFILE_ID_LEN);
+		}
+		buf += PROFILE_ID_LEN;
+		datalen = buf - tlv->data;
 		respond = 1;
 		break;
 	case PORT_DATA_SET:
@@ -486,6 +559,10 @@ static int port_management_get_response(struct port *target,
 		break;
 	}
 	if (respond) {
+		if (datalen % 2) {
+			tlv->data[datalen] = 0;
+			datalen++;
+		}
 		tlv->length = sizeof(tlv->id) + datalen;
 		pdulen = rsp->header.messageLength + sizeof(*tlv) + datalen;
 		rsp->header.messageLength = pdulen;

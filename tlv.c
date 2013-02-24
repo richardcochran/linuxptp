@@ -42,6 +42,14 @@ static void scaled_ns_h2n(ScaledNs *sns)
 	sns->fractional_nanoseconds = htons(sns->fractional_nanoseconds);
 }
 
+static uint16_t flip16(uint16_t *p) {
+	uint16_t v;
+	memcpy(&v, p, sizeof(v));
+	v = htons(v);
+	memcpy(p, &v, sizeof(v));
+	return v;
+}
+
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
                          struct tlv_extra *extra)
 {
@@ -51,8 +59,55 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct timePropertiesDS *tp;
 	struct portDS *p;
 	struct time_status_np *tsn;
+	struct mgmt_clock_description *cd;
 	int extra_len = 0;
+	uint8_t *buf;
+	uint16_t u16;
 	switch (m->id) {
+	case CLOCK_DESCRIPTION:
+		cd = &extra->cd;
+		buf = m->data;
+
+		cd->clockType = (UInteger16 *) buf;
+		flip16(cd->clockType);
+		buf += sizeof(*cd->clockType);
+
+		cd->physicalLayerProtocol = (struct PTPText *) buf;
+		buf += sizeof(struct PTPText);
+                buf += cd->physicalLayerProtocol->length;
+
+		cd->physicalAddress = (struct PhysicalAddress *) buf;
+		u16 = flip16(&cd->physicalAddress->length);
+		if (u16 > TRANSPORT_ADDR_LEN)
+			goto bad_length;
+		buf += sizeof(struct PhysicalAddress) + u16;
+
+		cd->protocolAddress = (struct PortAddress *) buf;
+		flip16(&cd->protocolAddress->networkProtocol);
+		u16 = flip16(&cd->protocolAddress->addressLength);
+		if (u16 > TRANSPORT_ADDR_LEN)
+			goto bad_length;
+		buf += sizeof(struct PortAddress) + u16;
+
+		cd->manufacturerIdentity = buf;
+		buf += OUI_LEN + 1;
+
+		cd->productDescription = (struct PTPText *) buf;
+		buf += sizeof(struct PTPText) + cd->productDescription->length;
+		cd->revisionData = (struct PTPText *) buf;
+		buf += sizeof(struct PTPText) + cd->revisionData->length;
+		cd->userDescription = (struct PTPText *) buf;
+		buf += sizeof(struct PTPText) + cd->userDescription->length;
+
+		cd->profileIdentity = buf;
+		buf += PROFILE_ID_LEN;
+		extra_len = buf - m->data;
+		break;
+	case USER_DESCRIPTION:
+          extra->cd.userDescription = (struct PTPText *) m->data;
+		extra_len = sizeof(struct PTPText);
+                extra_len += extra->cd.userDescription->length;
+		break;
 	case DEFAULT_DATA_SET:
 		if (data_len != sizeof(struct defaultDS))
 			goto bad_length;
@@ -127,7 +182,17 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct timePropertiesDS *tp;
 	struct portDS *p;
 	struct time_status_np *tsn;
+	struct mgmt_clock_description *cd;
 	switch (m->id) {
+	case CLOCK_DESCRIPTION:
+		if (extra) {
+			cd = &extra->cd;
+			flip16(cd->clockType);
+			flip16(&cd->physicalAddress->length);
+			flip16(&cd->protocolAddress->networkProtocol);
+			flip16(&cd->protocolAddress->addressLength);
+		}
+		break;
 	case DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) m->data;
 		dds->numberPorts = htons(dds->numberPorts);

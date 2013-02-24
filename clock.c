@@ -159,6 +159,7 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 	struct ptp_message *rsp;
 	struct time_status_np *tsn;
 	struct PortIdentity pid = port_identity(p);
+	struct PTPText *text;
 
 	rsp = port_management_reply(pid, p, req);
 	if (!rsp) {
@@ -169,6 +170,13 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 	tlv->id = id;
 
 	switch (id) {
+	case USER_DESCRIPTION:
+		text = (struct PTPText *) tlv->data;
+		text->length = c->desc.userDescription.length;
+		memcpy(text->text, c->desc.userDescription.text, text->length);
+		datalen = 1 + text->length;
+		respond = 1;
+		break;
 	case DEFAULT_DATA_SET:
 		memcpy(tlv->data, &c->dds, sizeof(c->dds));
 		datalen = sizeof(c->dds);
@@ -209,6 +217,10 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 		break;
 	}
 	if (respond) {
+		if (datalen % 2) {
+			tlv->data[datalen] = 0;
+			datalen++;
+		}
 		tlv->length = sizeof(tlv->id) + datalen;
 		pdulen = rsp->header.messageLength + sizeof(*tlv) + datalen;
 		rsp->header.messageLength = pdulen;
@@ -1081,4 +1093,9 @@ static void handle_state_decision_event(struct clock *c)
 struct clock_description *clock_description(struct clock *c)
 {
 	return &c->desc;
+}
+
+int clock_num_ports(struct clock *c)
+{
+	return c->nports;
 }

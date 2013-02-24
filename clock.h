@@ -222,4 +222,11 @@ struct timePropertiesDS *clock_time_properties(struct clock *c);
  */
 struct clock_description *clock_description(struct clock *c);
 
+/**
+ * Obtain the number of ports a clock has, excluding the UDS port.
+ * @param c  The clock instance.
+ * @return   The number of ports.
+ */
+int clock_num_ports(struct clock *c);
+
 #endif
