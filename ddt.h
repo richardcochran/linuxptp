@@ -51,8 +51,13 @@ struct PortIdentity {
 struct PortAddress {
 	Enumeration16 networkProtocol;
 	UInteger16    addressLength;
-	Octet        *address;
-};
+	Octet         address[0];
+} PACKED;
+
+struct PhysicalAddress {
+	UInteger16 length;
+	Octet      address[0];
+} PACKED;
 
 struct ClockQuality {
 	UInteger8     clockClass;
@@ -68,8 +73,8 @@ struct TLV {
 
 struct PTPText {
 	UInteger8 length;
-	Octet    *text;
-};
+	Octet     text[0];
+} PACKED;
 
 /* A static_ptp_text is like a PTPText but includes space to store the
  * text inside the struct. The text array must always be

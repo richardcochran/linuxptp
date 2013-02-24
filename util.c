@@ -119,7 +119,7 @@ int static_ptp_text_copy(struct static_ptp_text *dst, const struct PTPText *src)
 void ptp_text_copy(struct PTPText *dst, const struct static_ptp_text *src)
 {
 	dst->length = src->length;
-	dst->text = (Octet *)src->text;
+	memcpy(dst->text, src->text, src->length);
 }
 
 int ptp_text_set(struct PTPText *dst, const char *src)
@@ -130,21 +130,22 @@ int ptp_text_set(struct PTPText *dst, const char *src)
 		if (len > MAX_PTP_OCTETS)
 			return -1;
 		dst->length = len;
-		dst->text = (Octet *)src;
+		memcpy(dst->text, src, len);
 	} else {
 		dst->length = 0;
-		dst->text = NULL;
 	}
 	return 0;
 }
 
 int static_ptp_text_set(struct static_ptp_text *dst, const char *src)
 {
-	struct PTPText t;
-	size_t len = strlen(src);
+	int len = strlen(src);
 	if (len > MAX_PTP_OCTETS)
 		return -1;
-	t.length = len;
-	t.text = (Octet *)src;
-	return static_ptp_text_copy(dst, &t);
+	if (dst->max_symbols > 0 && strlen_utf8((Octet *) src) > dst->max_symbols)
+		return -1;
+	dst->length = len;
+	memcpy(dst->text, src, len);
+	dst->text[len] = '\0';
+	return 0;
 }

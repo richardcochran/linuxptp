@@ -21,6 +21,7 @@
 #define HAVE_TLV_H
 
 #include "ddt.h"
+#include "ds.h"
 
 /* TLV types */
 #define TLV_MANAGEMENT					0x0001
@@ -176,10 +177,31 @@ struct time_status_np {
 	struct ClockIdentity gmIdentity;
 } PACKED;
 
+enum clock_type {
+	CLOCK_TYPE_ORDINARY   = 0x80,
+	CLOCK_TYPE_BOUNDARY   = 0x40,
+	CLOCK_TYPE_P2P        = 0x20,
+	CLOCK_TYPE_E2E        = 0x10,
+	CLOCK_TYPE_MANAGEMENT = 0x08,
+};
+
+#define PROFILE_ID_LEN 6
+
+struct mgmt_clock_description {
+	UInteger16             *clockType;
+	struct PTPText         *physicalLayerProtocol;
+	struct PhysicalAddress *physicalAddress;
+	struct PortAddress     *protocolAddress;
+	Octet                  *manufacturerIdentity;
+	struct PTPText         *productDescription;
+	struct PTPText         *revisionData;
+	struct PTPText         *userDescription;
+	Octet                  *profileIdentity;
+};
+
 struct tlv_extra {
 	union {
-		/* Empty for now, but will contain structs for the
-		 * TLVs that use the tlv_extra support. */
+		struct mgmt_clock_description cd;
 	};
 };
 
