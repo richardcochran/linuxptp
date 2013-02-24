@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <arpa/inet.h>
 
 #include "ds.h"
 #include "fsm.h"
@@ -53,7 +54,7 @@ struct management_id {
 
 struct management_id idtab[] = {
 /* Clock management ID values */
-	{ "USER_DESCRIPTION", USER_DESCRIPTION, not_supported },
+	{ "USER_DESCRIPTION", USER_DESCRIPTION, do_get_action },
 	{ "SAVE_IN_NON_VOLATILE_STORAGE", SAVE_IN_NON_VOLATILE_STORAGE, not_supported },
 	{ "RESET_NON_VOLATILE_STORAGE", RESET_NON_VOLATILE_STORAGE, not_supported },
 	{ "INITIALIZE", INITIALIZE, not_supported },
@@ -86,7 +87,7 @@ struct management_id idtab[] = {
 	{ "TIME_STATUS_NP", TIME_STATUS_NP, do_get_action },
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", NULL_MANAGEMENT, null_management },
-	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, not_supported },
+	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, do_get_action },
 	{ "PORT_DATA_SET", PORT_DATA_SET, do_get_action },
 	{ "LOG_ANNOUNCE_INTERVAL", LOG_ANNOUNCE_INTERVAL, not_supported },
 	{ "ANNOUNCE_RECEIPT_TIMEOUT", ANNOUNCE_RECEIPT_TIMEOUT, not_supported },
@@ -114,6 +115,61 @@ static char *action_string[] = {
 
 #define IFMT "\n\t\t"
 
+static char *text2str(struct PTPText *text) {
+	static struct static_ptp_text s;
+	s.max_symbols = -1;
+	static_ptp_text_copy(&s, text);
+	return (char*)(s.text);
+}
+
+#define MAX_PRINT_BYTES 16
+#define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
+
+static char *bin2str_impl(Octet *data, int len, char *buf, int buf_len) {
+	int i, offset = 0;
+	if (len > MAX_PRINT_BYTES)
+		len = MAX_PRINT_BYTES;
+	buf[0] = '\0';
+	if (len)
+		offset += snprintf(buf, buf_len, "%02hhx", data[0]);
+	for (i = 1; i < len; i++) {
+		if (offset >= buf_len)
+			/* truncated output */
+			break;
+		offset += snprintf(buf + offset, buf_len - offset, ":%02hhx", data[i]);
+	}
+	return buf;
+}
+
+static char *bin2str(Octet *data, int len) {
+	static char buf[BIN_BUF_SIZE];
+	return bin2str_impl(data, len, buf, sizeof(buf));
+}
+
+static uint16_t align16(uint16_t *p) {
+	uint16_t v;
+	memcpy(&v, p, sizeof(v));
+	return v;
+}
+
+static char *portaddr2str(struct PortAddress *addr) {
+	static char buf[BIN_BUF_SIZE];
+	switch(align16(&addr->networkProtocol)) {
+	case TRANS_UDP_IPV4:
+		if (align16(&addr->addressLength) == 4
+			&& inet_ntop(AF_INET, addr->address, buf, sizeof(buf)))
+			return buf;
+		break;
+	case TRANS_UDP_IPV6:
+		if (align16(&addr->addressLength) == 16
+			&& inet_ntop(AF_INET6, addr->address, buf, sizeof(buf)))
+			return buf;
+		break;
+	}
+	bin2str_impl(addr->address, align16(&addr->addressLength), buf, sizeof(buf));
+	return buf;
+}
+
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
 	int action;
@@ -124,6 +180,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct parentDS *pds;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
+	struct mgmt_clock_description *cd;
 	struct portDS *p;
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
@@ -149,6 +206,35 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 	switch (mgt->id) {
+	case CLOCK_DESCRIPTION:
+		cd = &msg->last_tlv.cd;
+		fprintf(fp, "CLOCK_DESCRIPTION "
+			IFMT "clockType             0x%hx"
+			IFMT "physicalLayerProtocol %s"
+			IFMT "physicalAddress       %s"
+			IFMT "protocolAddress       %hu %s",
+			align16(cd->clockType),
+                        text2str(cd->physicalLayerProtocol),
+			bin2str(cd->physicalAddress->address,
+                                align16(&cd->physicalAddress->length)),
+			align16(&cd->protocolAddress->networkProtocol),
+			portaddr2str(cd->protocolAddress));
+		fprintf(fp, IFMT "manufacturerId        %s"
+                        IFMT "productDescription    %s",
+			bin2str(cd->manufacturerIdentity, OUI_LEN),
+			text2str(cd->productDescription));
+		fprintf(fp, IFMT "revisionData          %s",
+                        text2str(cd->revisionData));
+		fprintf(fp, IFMT "userDescription       %s"
+                        IFMT "profileId             %s",
+			text2str(cd->userDescription),
+			bin2str(cd->profileIdentity, PROFILE_ID_LEN));
+		break;
+	case USER_DESCRIPTION:
+		fprintf(fp, "USER_DESCRIPTION "
+			IFMT "userDescription  %s",
+			text2str(msg->last_tlv.cd.userDescription));
+		break;
 	case DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) mgt->data;
 		fprintf(fp, "DEFAULT_DATA_SET "
