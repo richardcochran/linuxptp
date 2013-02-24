@@ -21,7 +21,6 @@
 #define HAVE_TLV_H
 
 #include "ddt.h"
-#include "msg.h"
 
 /* TLV types */
 #define TLV_MANAGEMENT					0x0001
@@ -177,17 +176,28 @@ struct time_status_np {
 	struct ClockIdentity gmIdentity;
 } PACKED;
 
+struct tlv_extra {
+	union {
+		/* Empty for now, but will contain structs for the
+		 * TLVs that use the tlv_extra support. */
+	};
+};
+
 /**
  * Converts recognized value sub-fields into host byte order.
  * @param tlv Pointer to a Type Length Value field.
+ * @param extra Additional struct where data from tlv will be saved,
+ * can be NULL.
  * @return Zero if successful, otherwise non-zero
  */
-int tlv_post_recv(struct TLV *tlv);
+int tlv_post_recv(struct TLV *tlv, struct tlv_extra *extra);
 
 /**
  * Converts recognized value sub-fields into network byte order.
  * @param tlv Pointer to a Type Length Value field.
+ * @param extra Additional struct containing tlv data to send, can be
+ * NULL.
  */
-void tlv_pre_send(struct TLV *tlv);
+void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra);
 
 #endif

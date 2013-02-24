@@ -21,6 +21,7 @@
 
 #include "port.h"
 #include "tlv.h"
+#include "msg.h"
 
 #define TLV_LENGTH_INVALID(tlv, type) \
 	(tlv->length < sizeof(struct type) - sizeof(struct TLV))
@@ -41,7 +42,8 @@ static void scaled_ns_h2n(ScaledNs *sns)
 	sns->fractional_nanoseconds = htons(sns->fractional_nanoseconds);
 }
 
-static int mgt_post_recv(struct management_tlv *m, uint16_t data_len)
+static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
+                         struct tlv_extra *extra)
 {
 	struct defaultDS *dds;
 	struct currentDS *cds;
@@ -49,6 +51,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len)
 	struct timePropertiesDS *tp;
 	struct portDS *p;
 	struct time_status_np *tsn;
+	int extra_len = 0;
 	switch (m->id) {
 	case DEFAULT_DATA_SET:
 		if (data_len != sizeof(struct defaultDS))
@@ -105,12 +108,18 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len)
 		tsn->gmPresent = ntohl(tsn->gmPresent);
 		break;
 	}
+	if (extra_len) {
+		if (extra_len % 2)
+			extra_len++;
+		if (extra_len + sizeof(m->id) != m->length)
+			goto bad_length;
+	}
 	return 0;
 bad_length:
 	return -1;
 }
 
-static void mgt_pre_send(struct management_tlv *m)
+static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
 	struct defaultDS *dds;
 	struct currentDS *cds;
@@ -209,12 +218,15 @@ static void org_pre_send(struct organization_tlv *org)
 	}
 }
 
-int tlv_post_recv(struct TLV *tlv)
+int tlv_post_recv(struct TLV *tlv, struct tlv_extra *extra)
 {
 	int result = 0;
 	struct management_tlv *mgt;
 	struct management_error_status *mes;
 	struct path_trace_tlv *ptt;
+	struct tlv_extra dummy_extra;
+	if (!extra)
+		extra = &dummy_extra;
 
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
@@ -223,7 +235,7 @@ int tlv_post_recv(struct TLV *tlv)
 		mgt = (struct management_tlv *) tlv;
 		mgt->id = ntohs(mgt->id);
 		if (tlv->length > sizeof(mgt->id))
-			result = mgt_post_recv(mgt, tlv->length - sizeof(mgt->id));
+			result = mgt_post_recv(mgt, tlv->length - sizeof(mgt->id), extra);
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:
 		if (TLV_LENGTH_INVALID(tlv, management_error_status))
@@ -261,7 +273,7 @@ bad_length:
 	return -1;
 }
 
-void tlv_pre_send(struct TLV *tlv)
+void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)
 {
 	struct management_tlv *mgt;
 	struct management_error_status *mes;
@@ -270,7 +282,7 @@ void tlv_pre_send(struct TLV *tlv)
 	case TLV_MANAGEMENT:
 		mgt = (struct management_tlv *) tlv;
 		if (tlv->length > sizeof(mgt->id))
-			mgt_pre_send(mgt);
+			mgt_pre_send(mgt, extra);
 		mgt->id = htons(mgt->id);
 		break;
 	case TLV_MANAGEMENT_ERROR_STATUS:

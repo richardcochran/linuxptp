@@ -144,7 +144,7 @@ static void port_id_pre_send(struct PortIdentity *pid)
 	pid->portNumber = htons(pid->portNumber);
 }
 
-static int suffix_post_recv(uint8_t *ptr, int len)
+static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
 {
 	int cnt;
 	struct TLV *tlv;
@@ -166,14 +166,14 @@ static int suffix_post_recv(uint8_t *ptr, int len)
 		}
 		len -= tlv->length;
 		ptr += tlv->length;
-		if (tlv_post_recv(tlv)) {
+		if (tlv_post_recv(tlv, len ? NULL : last)) {
 			return -1;
 		}
 	}
 	return cnt;
 }
 
-static void suffix_pre_send(uint8_t *ptr, int cnt)
+static void suffix_pre_send(uint8_t *ptr, int cnt, struct tlv_extra *last)
 {
 	int i;
 	struct TLV *tlv;
@@ -183,7 +183,7 @@ static void suffix_pre_send(uint8_t *ptr, int cnt)
 
 	for (i = 0; i < cnt; i++) {
 		tlv = (struct TLV *) ptr;
-		tlv_pre_send(tlv);
+		tlv_pre_send(tlv, i == cnt - 1 ? last : NULL);
 		ptr += sizeof(struct TLV) + tlv->length;
 		tlv->type = htons(tlv->type);
 		tlv->length = htons(tlv->length);
@@ -344,7 +344,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		return -1;
 	}
 
-	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen);
+	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen, &m->last_tlv);
 	if (m->tlv_count == -1) {
 		return -1;
 	}
@@ -401,7 +401,7 @@ int msg_pre_send(struct ptp_message *m)
 	default:
 		return -1;
 	}
-	suffix_pre_send(suffix, m->tlv_count);
+	suffix_pre_send(suffix, m->tlv_count, &m->last_tlv);
 	return 0;
 }
 
