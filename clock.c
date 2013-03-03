@@ -234,6 +234,12 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
+	case TIMESCALE_PROPERTIES:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = c->tds.flags & PTP_TIMESCALE;
+		datalen = sizeof(*mtd);
+		respond = 1;
+		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
 		tsn->master_offset = c->master_offset;
