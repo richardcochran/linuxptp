@@ -69,7 +69,7 @@ struct management_id idtab[] = {
 	{ "DOMAIN", DOMAIN, do_get_action },
 	{ "SLAVE_ONLY", SLAVE_ONLY, do_get_action },
 	{ "TIME", TIME, not_supported },
-	{ "CLOCK_ACCURACY", CLOCK_ACCURACY, not_supported },
+	{ "CLOCK_ACCURACY", CLOCK_ACCURACY, do_get_action },
 	{ "UTC_PROPERTIES", UTC_PROPERTIES, not_supported },
 	{ "TRACEABILITY_PROPERTIES", TRACEABILITY_PROPERTIES, not_supported },
 	{ "TIMESCALE_PROPERTIES", TIMESCALE_PROPERTIES, not_supported },
@@ -332,6 +332,11 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "SLAVE_ONLY "
 			IFMT "slaveOnly %d", mtd->val & DDS_SLAVE_ONLY ? 1 : 0);
+		break;
+	case CLOCK_ACCURACY:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "CLOCK_ACCURACY "
+			IFMT "clockAccuracy 0x%02hhx", mtd->val);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
