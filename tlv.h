@@ -114,6 +114,11 @@ struct management_tlv {
 	Octet         data[0];
 } PACKED;
 
+struct management_tlv_datum {
+	uint8_t val;
+	uint8_t reserved;
+} PACKED;
+
 struct management_error_status {
 	Enumeration16 type;
 	UInteger16    length;
