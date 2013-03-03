@@ -156,6 +156,7 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 {
 	int datalen = 0, err, pdulen, respond = 0;
 	struct management_tlv *tlv;
+	struct management_tlv_datum *mtd;
 	struct ptp_message *rsp;
 	struct time_status_np *tsn;
 	struct PortIdentity pid = port_identity(p);
@@ -195,6 +196,12 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 	case TIME_PROPERTIES_DATA_SET:
 		memcpy(tlv->data, &c->tds, sizeof(c->tds));
 		datalen = sizeof(c->tds);
+		respond = 1;
+		break;
+	case PRIORITY1:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = c->dds.priority1;
+		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
 	case TIME_STATUS_NP:

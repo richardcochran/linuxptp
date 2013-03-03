@@ -64,7 +64,7 @@ struct management_id idtab[] = {
 	{ "CURRENT_DATA_SET", CURRENT_DATA_SET, do_get_action },
 	{ "PARENT_DATA_SET", PARENT_DATA_SET, do_get_action },
 	{ "TIME_PROPERTIES_DATA_SET", TIME_PROPERTIES_DATA_SET, do_get_action },
-	{ "PRIORITY1", PRIORITY1, not_supported },
+	{ "PRIORITY1", PRIORITY1, do_get_action },
 	{ "PRIORITY2", PRIORITY2, not_supported },
 	{ "DOMAIN", DOMAIN, not_supported },
 	{ "SLAVE_ONLY", SLAVE_ONLY, not_supported },
@@ -175,6 +175,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	int action;
 	struct TLV *tlv;
 	struct management_tlv *mgt;
+	struct management_tlv_datum *mtd;
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
@@ -311,6 +312,11 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			tp->flags & TIME_TRACEABLE ? 1 : 0,
 			tp->flags & FREQ_TRACEABLE ? 1 : 0,
 			tp->timeSource);
+		break;
+	case PRIORITY1:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "PRIORITY1 "
+			IFMT "priority1 %hhu", mtd->val);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
