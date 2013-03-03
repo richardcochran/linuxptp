@@ -71,7 +71,7 @@ struct management_id idtab[] = {
 	{ "TIME", TIME, not_supported },
 	{ "CLOCK_ACCURACY", CLOCK_ACCURACY, do_get_action },
 	{ "UTC_PROPERTIES", UTC_PROPERTIES, not_supported },
-	{ "TRACEABILITY_PROPERTIES", TRACEABILITY_PROPERTIES, not_supported },
+	{ "TRACEABILITY_PROPERTIES", TRACEABILITY_PROPERTIES, do_get_action },
 	{ "TIMESCALE_PROPERTIES", TIMESCALE_PROPERTIES, not_supported },
 	{ "PATH_TRACE_LIST", PATH_TRACE_LIST, not_supported },
 	{ "PATH_TRACE_ENABLE", PATH_TRACE_ENABLE, not_supported },
@@ -337,6 +337,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "CLOCK_ACCURACY "
 			IFMT "clockAccuracy 0x%02hhx", mtd->val);
+		break;
+	case TRACEABILITY_PROPERTIES:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "TRACEABILITY_PROPERTIES "
+			IFMT "timeTraceable      %d"
+			IFMT "frequencyTraceable %d",
+			mtd->val & TIME_TRACEABLE ? 1 : 0,
+			mtd->val & FREQ_TRACEABLE ? 1 : 0);
 		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
