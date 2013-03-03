@@ -204,6 +204,12 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
+	case PRIORITY2:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = c->dds.priority2;
+		datalen = sizeof(*mtd);
+		respond = 1;
+		break;
 	case TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
 		tsn->master_offset = c->master_offset;
