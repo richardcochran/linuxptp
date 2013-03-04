@@ -582,6 +582,15 @@ static int port_management_get_response(struct port *target,
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
+	case DELAY_MECHANISM:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		if (target->delayMechanism)
+			mtd->val = target->delayMechanism;
+		else
+			mtd->val = DM_E2E;
+		datalen = sizeof(*mtd);
+		respond = 1;
+		break;
 	}
 	if (respond) {
 		if (datalen % 2) {

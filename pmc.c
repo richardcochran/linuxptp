@@ -101,7 +101,7 @@ struct management_id idtab[] = {
 	{ "ACCEPTABLE_MASTER_TABLE_ENABLED", ACCEPTABLE_MASTER_TABLE_ENABLED, not_supported },
 	{ "ALTERNATE_MASTER", ALTERNATE_MASTER, not_supported },
 	{ "TRANSPARENT_CLOCK_PORT_DATA_SET", TRANSPARENT_CLOCK_PORT_DATA_SET, not_supported },
-	{ "DELAY_MECHANISM", DELAY_MECHANISM, not_supported },
+	{ "DELAY_MECHANISM", DELAY_MECHANISM, do_get_action },
 	{ "LOG_MIN_PDELAY_REQ_INTERVAL", LOG_MIN_PDELAY_REQ_INTERVAL, not_supported },
 };
 
@@ -414,6 +414,11 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "VERSION_NUMBER "
 			IFMT "versionNumber %hhu", mtd->val);
+		break;
+	case DELAY_MECHANISM:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "DELAY_MECHANISM "
+			IFMT "delayMechanism %hhu", mtd->val);
 		break;
 	}
 out:
