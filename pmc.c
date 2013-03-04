@@ -90,7 +90,7 @@ struct management_id idtab[] = {
 	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, do_get_action },
 	{ "PORT_DATA_SET", PORT_DATA_SET, do_get_action },
 	{ "LOG_ANNOUNCE_INTERVAL", LOG_ANNOUNCE_INTERVAL, do_get_action },
-	{ "ANNOUNCE_RECEIPT_TIMEOUT", ANNOUNCE_RECEIPT_TIMEOUT, not_supported },
+	{ "ANNOUNCE_RECEIPT_TIMEOUT", ANNOUNCE_RECEIPT_TIMEOUT, do_get_action },
 	{ "LOG_SYNC_INTERVAL", LOG_SYNC_INTERVAL, not_supported },
 	{ "VERSION_NUMBER", VERSION_NUMBER, not_supported },
 	{ "ENABLE_PORT", ENABLE_PORT, not_supported },
@@ -399,6 +399,11 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "LOG_ANNOUNCE_INTERVAL "
 			IFMT "logAnnounceInterval %hhd", mtd->val);
+		break;
+	case ANNOUNCE_RECEIPT_TIMEOUT:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "ANNOUNCE_RECEIPT_TIMEOUT "
+			IFMT "announceReceiptTimeout %hhu", mtd->val);
 		break;
 	}
 out:

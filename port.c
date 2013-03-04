@@ -564,6 +564,12 @@ static int port_management_get_response(struct port *target,
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
+	case ANNOUNCE_RECEIPT_TIMEOUT:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = target->announceReceiptTimeout;
+		datalen = sizeof(*mtd);
+		respond = 1;
+		break;
 	}
 	if (respond) {
 		if (datalen % 2) {
