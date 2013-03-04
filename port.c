@@ -447,6 +447,7 @@ static int port_management_get_response(struct port *target,
 {
 	int datalen = 0, err, pdulen, respond = 0;
 	struct management_tlv *tlv;
+	struct management_tlv_datum *mtd;
 	struct ptp_message *rsp;
 	struct portDS *pds;
 	struct PortIdentity pid = port_identity(target);
@@ -555,6 +556,12 @@ static int port_management_get_response(struct port *target,
 		pds->logMinPdelayReqInterval = target->logMinPdelayReqInterval;
 		pds->versionNumber           = target->versionNumber;
 		datalen = sizeof(*pds);
+		respond = 1;
+		break;
+	case LOG_ANNOUNCE_INTERVAL:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = target->logAnnounceInterval;
+		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
 	}
