@@ -420,6 +420,11 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		fprintf(fp, "DELAY_MECHANISM "
 			IFMT "delayMechanism %hhu", mtd->val);
 		break;
+	case LOG_MIN_PDELAY_REQ_INTERVAL:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "LOG_MIN_PDELAY_REQ_INTERVAL "
+			IFMT "logMinPdelayReqInterval %hhd", mtd->val);
+		break;
 	}
 out:
 	fprintf(fp, "\n");

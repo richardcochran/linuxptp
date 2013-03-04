@@ -591,6 +591,12 @@ static int port_management_get_response(struct port *target,
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
+	case LOG_MIN_PDELAY_REQ_INTERVAL:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = target->logMinPdelayReqInterval;
+		datalen = sizeof(*mtd);
+		respond = 1;
+		break;
 	}
 	if (respond) {
 		if (datalen % 2) {
