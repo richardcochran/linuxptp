@@ -382,11 +382,13 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	freq = (1.0 - ratio) * 1e9;
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats, c->master_offset, freq);
+		clock_stats_update(&c->stats,
+				   tmv_to_nanoseconds(c->master_offset), freq);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
-			c->master_offset, state, freq, c->path_delay);
+			tmv_to_nanoseconds(c->master_offset), state, freq,
+			tmv_to_nanoseconds(c->path_delay));
 	}
 
 	fui = 1.0 + (c->status.cumulativeScaledRateOffset + 0.0) / POW2_41;
@@ -905,7 +907,7 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay, pd);
+		stats_add_value(c->stats.delay, tmv_to_nanoseconds(pd));
 }
 
 void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
@@ -914,7 +916,7 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
 	c->nrr = nrr;
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay, ppd);
+		stats_add_value(c->stats.delay, tmv_to_nanoseconds(ppd));
 }
 
 void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
@@ -976,14 +978,17 @@ enum servo_state clock_synchronize(struct clock *c,
 	if (c->free_running)
 		return clock_no_adjust(c);
 
-	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
+	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
+			   tmv_to_nanoseconds(ingress), &state);
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats, c->master_offset, adj);
+		clock_stats_update(&c->stats,
+				   tmv_to_nanoseconds(c->master_offset), adj);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
-			c->master_offset, state, adj, c->path_delay);
+			tmv_to_nanoseconds(c->master_offset), state, adj,
+			tmv_to_nanoseconds(c->path_delay));
 	}
 
 	switch (state) {
@@ -991,7 +996,7 @@ enum servo_state clock_synchronize(struct clock *c,
 		break;
 	case SERVO_JUMP:
 		clockadj_set_freq(c->clkid, -adj);
-		clockadj_step(c->clkid, -c->master_offset);
+		clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset));
 		c->t1 = tmv_zero();
 		c->t2 = tmv_zero();
 		break;
