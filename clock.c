@@ -24,6 +24,7 @@
 
 #include "bmc.h"
 #include "clock.h"
+#include "clockadj.h"
 #include "foreign.h"
 #include "mave.h"
 #include "missing.h"
@@ -404,52 +405,6 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	return state;
 }
 
-static void clock_ppb(clockid_t clkid, double ppb)
-{
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_FREQUENCY;
-	tx.freq = (long) (ppb * 65.536);
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to adjust the clock: %m");
-}
-
-static double clock_ppb_read(clockid_t clkid)
-{
-	double f = 0.0;
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to read out the clock frequency adjustment: %m");
-	else
-		f = tx.freq / 65.536;
-	return f;
-}
-
-static void clock_step(clockid_t clkid, int64_t ns)
-{
-	struct timex tx;
-	int sign = 1;
-	if (ns < 0) {
-		sign = -1;
-		ns *= -1;
-	}
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_SETOFFSET | ADJ_NANO;
-	tx.time.tv_sec  = sign * (ns / NS_PER_SEC);
-	tx.time.tv_usec = sign * (ns % NS_PER_SEC);
-	/*
-	 * The value of a timeval is the sum of its fields, but the
-	 * field tv_usec must always be non-negative.
-	 */
-	if (tx.time.tv_usec < 0) {
-		tx.time.tv_sec  -= 1;
-		tx.time.tv_usec += 1000000000;
-	}
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to step clock: %m");
-}
-
 static void clock_update_grandmaster(struct clock *c)
 {
 	struct parentDS *pds = &c->dad.pds;
@@ -580,7 +535,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	}
 
 	if (c->clkid != CLOCK_INVALID) {
-		fadj = (int) clock_ppb_read(c->clkid);
+		fadj = (int) clockadj_get_freq(c->clkid);
 	}
 	c->servo = servo_create(servo, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
@@ -1035,13 +990,13 @@ enum servo_state clock_synchronize(struct clock *c,
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
-		clock_ppb(c->clkid, -adj);
-		clock_step(c->clkid, -c->master_offset);
+		clockadj_set_freq(c->clkid, -adj);
+		clockadj_step(c->clkid, -c->master_offset);
 		c->t1 = tmv_zero();
 		c->t2 = tmv_zero();
 		break;
 	case SERVO_LOCKED:
-		clock_ppb(c->clkid, -adj);
+		clockadj_set_freq(c->clkid, -adj);
 		break;
 	}
 	return state;

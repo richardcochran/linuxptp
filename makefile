@@ -29,9 +29,9 @@ VER     = -DVER=$(version)
 CFLAGS	= -Wall $(VER) $(INC) $(DEBUG) $(FEAT_CFLAGS) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl
-OBJ	= bmc.o clock.o config.o fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o \
- print.o raw.o servo.o sk.o stats.o tlv.o tmtab.o transport.o udp.o udp6.o \
- uds.o util.o version.o
+OBJ	= bmc.o clock.o clockadj.o config.o fsm.o ptp4l.o mave.o msg.o phc.o \
+ pi.o port.o print.o raw.o servo.o sk.o stats.o tlv.o tmtab.o transport.o \
+ udp.o udp6.o uds.o util.o version.o
 
 OBJECTS	= $(OBJ) hwstamp_ctl.o phc2sys.o pmc.o pmc_common.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)
@@ -52,8 +52,8 @@ ptp4l: $(OBJ)
 pmc: msg.o pmc.o pmc_common.o print.o raw.o sk.o tlv.o transport.o udp.o \
  udp6.o uds.o util.o version.o
 
-phc2sys: msg.o phc2sys.o pmc_common.o print.o pi.o servo.o raw.o sk.o stats.o \
- sysoff.o tlv.o transport.o udp.o udp6.o uds.o util.o version.o
+phc2sys: clockadj.o msg.o phc2sys.o pmc_common.o print.o pi.o servo.o raw.o \
+ sk.o stats.o sysoff.o tlv.o transport.o udp.o udp6.o uds.o util.o version.o
 
 hwstamp_ctl: hwstamp_ctl.o version.o
 

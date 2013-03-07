@@ -27,13 +27,13 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
 
 #include <linux/pps.h>
 #include <linux/ptp_clock.h>
 
+#include "clockadj.h"
 #include "ds.h"
 #include "fsm.h"
 #include "missing.h"
@@ -76,52 +76,6 @@ static clockid_t clock_open(char *device)
 		return CLOCK_INVALID;
 	}
 	return FD_TO_CLOCKID(fd);
-}
-
-static void clock_ppb(clockid_t clkid, double ppb)
-{
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_FREQUENCY;
-	tx.freq = (long) (ppb * 65.536);
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to adjust the clock: %m");
-}
-
-static double clock_ppb_read(clockid_t clkid)
-{
-	double f = 0.0;
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to read out the clock frequency adjustment: %m");
-	else
-		f = tx.freq / 65.536;
-	return f;
-}
-
-static void clock_step(clockid_t clkid, int64_t ns)
-{
-	struct timex tx;
-	int sign = 1;
-	if (ns < 0) {
-		sign = -1;
-		ns *= -1;
-	}
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_SETOFFSET | ADJ_NANO;
-	tx.time.tv_sec  = sign * (ns / NS_PER_SEC);
-	tx.time.tv_usec = sign * (ns % NS_PER_SEC);
-	/*
-	 * The value of a timeval is the sum of its fields, but the
-	 * field tv_usec must always be non-negative.
-	 */
-	if (tx.time.tv_usec < 0) {
-		tx.time.tv_sec  -= 1;
-		tx.time.tv_usec += 1000000000;
-	}
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to step clock: %m");
 }
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
@@ -224,10 +178,10 @@ static void update_clock(struct clock *clock,
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
-		clock_step(clock->clkid, -offset);
+		clockadj_step(clock->clkid, -offset);
 		/* Fall through. */
 	case SERVO_LOCKED:
-		clock_ppb(clock->clkid, -ppb);
+		clockadj_set_freq(clock->clkid, -ppb);
 		break;
 	}
 
@@ -669,10 +623,10 @@ int main(int argc, char *argv[])
 			close_pmc(&dst_clock);
 	}
 
-	ppb = clock_ppb_read(dst_clock.clkid);
+	ppb = clockadj_get_freq(dst_clock.clkid);
 	/* The reading may silently fail and return 0, reset the frequency to
 	   make sure ppb is the actual frequency of the clock. */
-	clock_ppb(dst_clock.clkid, ppb);
+	clockadj_set_freq(dst_clock.clkid, ppb);
 
 	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 
