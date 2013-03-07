@@ -32,9 +32,9 @@
 #define VERSION      0x02
 
 /*
- * Head room fits a VLAN Ethernet header, and 'msg' is 32 bit aligned.
+ * Head room fits a VLAN Ethernet header, and 'msg' is 64 bit aligned.
  */
-#define MSG_HEADROOM 20
+#define MSG_HEADROOM 24
 
 struct message_storage {
 	unsigned char reserved[MSG_HEADROOM];
