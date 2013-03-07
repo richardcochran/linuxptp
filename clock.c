@@ -78,6 +78,8 @@ struct clock {
 	int free_running;
 	int freq_est_interval;
 	int utc_timescale;
+	int leap_set;
+	enum servo_state servo_state;
 	tmv_t master_offset;
 	tmv_t path_delay;
 	struct mave *avg_delay;
@@ -449,23 +451,66 @@ static void clock_update_slave(struct clock *c)
 	}
 }
 
-static void clock_utc_correct(struct clock *c)
+static int clock_utc_correct(struct clock *c, tmv_t ingress)
 {
 	struct timespec offset;
+	int utc_offset, leap, clock_leap;
+	uint64_t ts;
+
 	if (!c->utc_timescale)
-		return;
-	if (!(c->tds.flags & PTP_TIMESCALE))
-		return;
+		return 0;
+
 	if (c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) {
-		offset.tv_sec = c->tds.currentUtcOffset;
+		utc_offset = c->tds.currentUtcOffset;
 	} else if (c->tds.currentUtcOffset > CURRENT_UTC_OFFSET) {
-		offset.tv_sec = c->tds.currentUtcOffset;
+		utc_offset = c->tds.currentUtcOffset;
 	} else {
-		offset.tv_sec = CURRENT_UTC_OFFSET;
+		utc_offset = CURRENT_UTC_OFFSET;
 	}
+
+	if (c->tds.flags & LEAP_61) {
+		leap = 1;
+	} else if (c->tds.flags & LEAP_59) {
+		leap = -1;
+	} else {
+		leap = 0;
+	}
+
+	/* Handle leap seconds. */
+	if ((leap || c->leap_set) && c->clkid == CLOCK_REALTIME) {
+		/* If the clock will be stepped, the time stamp has to be the
+		   target time. Ignore possible 1 second error in utc_offset. */
+		if (c->servo_state == SERVO_UNLOCKED) {
+			ts = tmv_to_nanoseconds(tmv_sub(ingress,
+							c->master_offset));
+			if (c->tds.flags & PTP_TIMESCALE)
+				ts -= utc_offset * NS_PER_SEC;
+		} else {
+			ts = tmv_to_nanoseconds(ingress);
+		}
+
+		/* Suspend clock updates in the last second before midnight. */
+		if (is_utc_ambiguous(ts)) {
+			pr_info("clock update suspended due to leap second");
+			return -1;
+		}
+
+		clock_leap = leap_second_status(ts, c->leap_set,
+						&leap, &utc_offset);
+		if (c->leap_set != clock_leap) {
+			clockadj_set_leap(c->clkid, clock_leap);
+			c->leap_set = clock_leap;
+		}
+	}
+
+	if (!(c->tds.flags & PTP_TIMESCALE))
+		return 0;
+
+	offset.tv_sec = utc_offset;
 	offset.tv_nsec = 0;
 	/* Local clock is UTC, but master is TAI. */
 	c->master_offset = tmv_add(c->master_offset, timespec_to_tmv(offset));
+	return 0;
 }
 
 static int forwarding(struct clock *c, struct port *p)
@@ -534,7 +579,10 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		c->clkid = CLOCK_REALTIME;
 		c->utc_timescale = 1;
 		max_adj = 512000;
+		clockadj_set_leap(c->clkid, 0);
 	}
+	c->leap_set = 0;
+	c->kernel_leap = dds->kernel_leap;
 
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clockadj_get_freq(c->clkid);
@@ -544,6 +592,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		pr_err("Failed to create clock servo");
 		return NULL;
 	}
+	c->servo_state = SERVO_UNLOCKED;
 	c->avg_delay = mave_create(MAVE_LENGTH);
 	if (!c->avg_delay) {
 		pr_err("Failed to create moving average");
@@ -968,18 +1017,20 @@ enum servo_state clock_synchronize(struct clock *c,
 	c->master_offset = tmv_sub(ingress,
 		tmv_add(origin, tmv_add(c->path_delay, tmv_add(c->c1, c->c2))));
 
-	clock_utc_correct(c);
-
-	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
-
 	if (!c->path_delay)
 		return state;
+
+	if (clock_utc_correct(c, ingress))
+		return c->servo_state;
+
+	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
 
 	if (c->free_running)
 		return clock_no_adjust(c);
 
 	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
 			   tmv_to_nanoseconds(ingress), &state);
+	c->servo_state = state;
 
 	if (c->stats.max_count > 1) {
 		clock_stats_update(&c->stats,
