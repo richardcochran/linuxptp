@@ -106,13 +106,10 @@ minimize the error caused by random delays in scheduling and bus utilization.
 The default is 5.
 .TP
 .BI \-O " offset"
-Specify the offset between the slave and master times in seconds. With the
+Specify the offset between the slave and master times in seconds. The default
+is set automatically with the
 .B \-w
-option the default value is set automatically according to the currentUtcOffset
-value obtained from ptp4l and the direction of the clock synchronization.
-Without
-.B \-w
-the default is 0.
+option, 0 otherwise.
 .TP
 .BI \-u " summary-updates"
 Specify the number of clock updates included in summary statistics. The
@@ -124,7 +121,11 @@ statistics. The messages are printed at the LOG_INFO level.
 The default is 0 (disabled).
 .TP
 .B \-w
-Wait until ptp4l is in a synchronized state.
+Wait until ptp4l is in a synchronized state. If the
+.B \-O
+option is not used, also keep the offset between the slave and master
+times updated according to the currentUtcOffset value obtained from ptp4l and
+the direction of the clock synchronization.
 .TP
 .BI \-l " print-level"
 Set the maximum syslog level of messages which should be printed or sent to
