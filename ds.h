@@ -52,6 +52,7 @@ struct default_ds {
 	int free_running;
 	int freq_est_interval; /*log seconds*/
 	int stats_interval; /*log seconds*/
+	int kernel_leap;
 	struct clock_description clock_desc;
 };
 

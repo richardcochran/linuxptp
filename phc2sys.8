@@ -31,6 +31,8 @@ phc2sys \- synchronize two clocks
 ] [
 .B \-w
 ] [
+.B \-x
+] [
 .BI \-l " print-level"
 ] [
 .B \-m
@@ -126,6 +128,13 @@ Wait until ptp4l is in a synchronized state. If the
 option is not used, also keep the offset between the slave and master
 times updated according to the currentUtcOffset value obtained from ptp4l and
 the direction of the clock synchronization.
+.TP
+.B \-x
+When a leap second is announced, don't apply it in the kernel by stepping the
+clock, but let the servo correct the one-second offset slowly by changing the
+clock frequency (unless the
+.B \-S
+option is used).
 .TP
 .BI \-l " print-level"
 Set the maximum syslog level of messages which should be printed or sent to

@@ -124,6 +124,7 @@ struct clock {
 	int sync_offset_direction;
 	int leap;
 	int leap_set;
+	int kernel_leap;
 	struct pmc *pmc;
 	int pmc_ds_idx;
 	int pmc_ds_requested;
@@ -500,7 +501,7 @@ static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
 
 	if (clock->leap_set != clock_leap) {
 		/* Only the system clock can leap. */
-		if (clock->clkid == CLOCK_REALTIME)
+		if (clock->clkid == CLOCK_REALTIME && clock->kernel_leap)
 			clockadj_set_leap(clock->clkid, clock_leap);
 		clock->leap_set = clock_leap;
 	}
@@ -525,6 +526,7 @@ static void usage(char *progname)
 		" -O [offset]    slave-master time offset (0)\n"
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -w             wait for ptp4l\n"
+		" -x             apply leap seconds by servo instead of kernel\n"
 		" -h             prints this message and exits\n"
 		" -v             prints the software version and exits\n"
 		"\n",
@@ -542,6 +544,7 @@ int main(int argc, char *argv[])
 	struct clock dst_clock = {
 		.clkid = CLOCK_REALTIME,
 		.servo_state = SERVO_UNLOCKED,
+		.kernel_leap = 1,
 	};
 
 	configured_pi_kp = KP;
@@ -551,7 +554,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "c:d:hs:P:I:S:R:N:O:i:u:wl:mqv"))) {
+				  "c:d:hs:P:I:S:R:N:O:i:u:wxl:mqv"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -595,6 +598,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'w':
 			wait_sync = 1;
+			break;
+		case 'x':
+			dst_clock.kernel_leap = 0;
 			break;
 		case 'l':
 			print_level = atoi(optarg);

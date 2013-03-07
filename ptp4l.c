@@ -53,6 +53,7 @@ static struct config cfg_settings = {
 		.free_running = 0,
 		.freq_est_interval = 1,
 		.stats_interval = 0,
+		.kernel_leap = 1,
 		.clock_desc = {
 			.productDescription = {
 				.max_symbols = 64,

@@ -383,6 +383,11 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		cfg->dds.stats_interval = val;
 
+	} else if (!strcmp(option, "kernel_leap")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
+		cfg->dds.kernel_leap = val;
+
 	} else
 		return NOT_PARSED;
 
