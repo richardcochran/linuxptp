@@ -94,4 +94,24 @@ int ptp_text_set(struct PTPText *dst, const char *src);
  */
 int static_ptp_text_set(struct static_ptp_text *dst, const char *src);
 
+/**
+ * Check if UTC time stamp can be both before and after a leap second.
+ *
+ * @param ts UTC time stamp in nanoseconds.
+ * @return   0 if not, 1 if yes.
+ */
+int is_utc_ambiguous(uint64_t ts);
+
+/**
+ * Get leap second status in given time.
+ *
+ * @param ts         UTC time stamp in nanoseconds.
+ * @param leap_set   Previous leap second status (+1/0/-1).
+ * @param leap       Announced leap second (+1/0/-1), will be corrected if
+ *                   early/late.
+ * @param utc_offset Announced UTC offset, will be corrected if early/late.
+ * @return           0 if the leap second passed, +1 if leap second will be
+ *                   inserted, -1 if leap second will be deleted.
+ */
+int leap_second_status(uint64_t ts, int leap_set, int *leap, int *utc_offset);
 #endif

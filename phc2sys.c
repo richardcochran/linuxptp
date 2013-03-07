@@ -45,6 +45,7 @@
 #include "stats.h"
 #include "sysoff.h"
 #include "tlv.h"
+#include "util.h"
 #include "version.h"
 
 #define KP 0.7
@@ -54,9 +55,10 @@
 #define max_ppb  512000
 
 #define PHC_PPS_OFFSET_LIMIT 10000000
+#define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
 
 struct clock;
-static int update_sync_offset(struct clock *clock);
+static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts);
 
 static clockid_t clock_open(char *device)
 {
@@ -112,6 +114,7 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
 struct clock {
 	clockid_t clkid;
 	struct servo *servo;
+	enum servo_state servo_state;
 	const char *source_label;
 	struct stats *offset_stats;
 	struct stats *freq_stats;
@@ -119,9 +122,12 @@ struct clock {
 	unsigned int stats_max_count;
 	int sync_offset;
 	int sync_offset_direction;
+	int leap;
+	int leap_set;
 	struct pmc *pmc;
 	int pmc_ds_idx;
 	int pmc_ds_requested;
+	uint64_t pmc_last_update;
 };
 
 static void update_clock_stats(struct clock *clock,
@@ -165,7 +171,7 @@ static void update_clock(struct clock *clock,
 	enum servo_state state;
 	double ppb;
 
-	if (update_sync_offset(clock))
+	if (update_sync_offset(clock, offset, ts))
 		return;
 
 	if (clock->sync_offset_direction)
@@ -173,6 +179,7 @@ static void update_clock(struct clock *clock,
 			clock->sync_offset_direction;
 
 	ppb = servo_sample(clock->servo, offset, ts, &state);
+	clock->servo_state = state;
 
 	switch (state) {
 	case SERVO_UNLOCKED:
@@ -419,6 +426,12 @@ static int run_pmc(struct clock *clock, int timeout,
 		case TIME_PROPERTIES_DATA_SET:
 			clock->sync_offset = ((struct timePropertiesDS *)data)->
 				currentUtcOffset;
+			if (((struct timePropertiesDS *)data)->flags & LEAP_61)
+				clock->leap = 1;
+			else if (((struct timePropertiesDS *)data)->flags & LEAP_59)
+				clock->leap = -1;
+			else
+				clock->leap = 0;
 			ds_done = 1;
 			break;
 		}
@@ -441,11 +454,57 @@ static void close_pmc(struct clock *clock)
 	clock->pmc = NULL;
 }
 
-static int update_sync_offset(struct clock *clock)
+static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
 {
-	if (clock->pmc) {
-		run_pmc(clock, 0, 0, 1);
+	int clock_leap;
+
+	if (clock->pmc &&
+	    !(ts > clock->pmc_last_update &&
+	      ts - clock->pmc_last_update < PMC_UPDATE_INTERVAL)) {
+		if (run_pmc(clock, 0, 0, 1) > 0)
+			clock->pmc_last_update = ts;
 	}
+
+	/* Handle leap seconds. */
+
+	if (!clock->leap && !clock->leap_set)
+		return 0;
+
+	/* If the system clock is the master clock, get a time stamp from
+	   it, as it is the clock which will include the leap second. */
+	if (clock->clkid != CLOCK_REALTIME) {
+		struct timespec tp;
+		if (clock_gettime(CLOCK_REALTIME, &tp)) {
+			pr_err("failed to read clock: %m");
+			return -1;
+		}
+		ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
+	}
+
+	/* If the clock will be stepped, the time stamp has to be the
+	   target time. Ignore possible 1 second error in UTC offset. */
+	if (clock->clkid == CLOCK_REALTIME &&
+	    clock->servo_state == SERVO_UNLOCKED) {
+		ts -= offset + clock->sync_offset * NS_PER_SEC *
+			clock->sync_offset_direction;
+	}
+
+	/* Suspend clock updates in the last second before midnight. */
+	if (is_utc_ambiguous(ts)) {
+		pr_info("clock update suspended due to leap second");
+		return -1;
+	}
+
+	clock_leap = leap_second_status(ts, clock->leap_set,
+					&clock->leap, &clock->sync_offset);
+
+	if (clock->leap_set != clock_leap) {
+		/* Only the system clock can leap. */
+		if (clock->clkid == CLOCK_REALTIME)
+			clockadj_set_leap(clock->clkid, clock_leap);
+		clock->leap_set = clock_leap;
+	}
+
 	return 0;
 }
 
@@ -480,7 +539,10 @@ int main(int argc, char *argv[])
 	int r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	double ppb;
-	struct clock dst_clock = { .clkid = CLOCK_REALTIME };
+	struct clock dst_clock = {
+		.clkid = CLOCK_REALTIME,
+		.servo_state = SERVO_UNLOCKED,
+	};
 
 	configured_pi_kp = KP;
 	configured_pi_ki = KI;
@@ -627,6 +689,7 @@ int main(int argc, char *argv[])
 	/* The reading may silently fail and return 0, reset the frequency to
 	   make sure ppb is the actual frequency of the clock. */
 	clockadj_set_freq(dst_clock.clkid, ppb);
+	clockadj_set_leap(dst_clock.clkid, 0);
 
 	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 

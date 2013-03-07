@@ -70,3 +70,27 @@ void clockadj_step(clockid_t clkid, int64_t step)
 	if (clock_adjtime(clkid, &tx) < 0)
 		pr_err("failed to step clock: %m");
 }
+
+void clockadj_set_leap(clockid_t clkid, int leap)
+{
+	struct timex tx;
+	const char *m = NULL;
+	memset(&tx, 0, sizeof(tx));
+	tx.modes = ADJ_STATUS;
+	switch (leap) {
+	case -1:
+		tx.status = STA_DEL;
+		m = "clock set to delete leap second at midnight (UTC)";
+		break;
+	case 1:
+		tx.status = STA_INS;
+		m = "clock set to insert leap second at midnight (UTC)";
+		break;
+	default:
+		tx.status = 0;
+	}
+	if (clock_adjtime(clkid, &tx) < 0)
+		pr_err("failed to set the clock status: %m");
+	else if (m)
+		pr_notice(m);
+}

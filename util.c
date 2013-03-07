@@ -22,6 +22,10 @@
 #include "sk.h"
 #include "util.h"
 
+#define NS_PER_SEC 1000000000LL
+#define NS_PER_HOUR (3600 * NS_PER_SEC)
+#define NS_PER_DAY (24 * NS_PER_HOUR)
+
 char *ps_str[] = {
 	"NONE",
 	"INITIALIZING",
@@ -148,4 +152,41 @@ int static_ptp_text_set(struct static_ptp_text *dst, const char *src)
 	memcpy(dst->text, src, len);
 	dst->text[len] = '\0';
 	return 0;
+}
+
+int is_utc_ambiguous(uint64_t ts)
+{
+	/* The Linux kernel inserts leap second by stepping the clock backwards
+	   at 0:00 UTC, the last second before midnight is played twice. */
+	if (NS_PER_DAY - ts % NS_PER_DAY <= NS_PER_SEC)
+		return 1;
+	return 0;
+}
+
+int leap_second_status(uint64_t ts, int leap_set, int *leap, int *utc_offset)
+{
+	int leap_status = leap_set;
+
+	/* The leap bits obtained by PTP should be set at most 12 hours before
+	   midnight and unset at most 2 announce intervals after midnight.
+	   Split updates which are too early and which are too late at 6 hours
+	   after midnight. */
+	if (ts % NS_PER_DAY > 6 * NS_PER_HOUR) {
+		if (!leap_status)
+			leap_status = *leap;
+	} else {
+		if (leap_status)
+			leap_status = 0;
+	}
+
+	/* Fix early or late update of leap and utc_offset. */
+	if (!*leap && leap_status) {
+		*utc_offset -= leap_status;
+		*leap = leap_status;
+	} else if (*leap && !leap_status) {
+		*utc_offset += *leap;
+		*leap = leap_status;
+	}
+
+	return leap_status;
 }
