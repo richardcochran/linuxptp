@@ -130,6 +130,8 @@ static char *bin2str_impl(Octet *data, int len, char *buf, int buf_len) {
 	if (len > MAX_PRINT_BYTES)
 		len = MAX_PRINT_BYTES;
 	buf[0] = '\0';
+	if (!data)
+		return buf;
 	if (len)
 		offset += snprintf(buf, buf_len, "%02hhx", data[0]);
 	for (i = 1; i < len; i++) {
@@ -206,6 +208,10 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		fprintf(fp, "unknown-tlv ");
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
+	if (mgt->length == 2 && mgt->id != NULL_MANAGEMENT) {
+		fprintf(fp, "empty-tlv ");
+		goto out;
+	}
 	switch (mgt->id) {
 	case CLOCK_DESCRIPTION:
 		cd = &msg->last_tlv.cd;
