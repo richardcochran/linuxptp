@@ -820,6 +820,16 @@ static int port_delay_request(struct port *p)
 	struct ptp_message *msg;
 	int cnt, pdulen;
 
+	/* Time to send a new request, forget current pdelay resp and fup */
+	if (p->peer_delay_resp) {
+		msg_put(p->peer_delay_resp);
+		p->peer_delay_resp = NULL;
+	}
+	if (p->peer_delay_fup) {
+		msg_put(p->peer_delay_fup);
+		p->peer_delay_fup = NULL;
+	}
+
 	if (p->delayMechanism == DM_P2P)
 		return port_pdelay_request(p);
 
