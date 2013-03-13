@@ -107,6 +107,11 @@ static enum parser_result parse_pod_setting(const char *option,
 			return BAD_VALUE;
 		pod->follow_up_info = val ? 1 : 0;
 
+	} else if (!strcmp(option, "neighborPropDelayThresh")) {
+		if (1 != sscanf(value, "%d", &val))
+			return BAD_VALUE;
+		pod->neighborPropDelayThresh = val;
+
 	} else if (!strcmp(option, "fault_reset_interval")) {
 		if (!strcasecmp("ASAP", value)) {
 			pod->fault_reset_interval = FRI_ASAP;

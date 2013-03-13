@@ -83,6 +83,7 @@ struct port {
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;
+	UInteger32          neighborPropDelayThresh;
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
@@ -380,9 +381,11 @@ static int port_capable(struct port *p)
 		/* Normal 1588 ports are always capable. */
 		return 1;
 	}
-	/*
-	 * TODO - Compare p->peer_delay with neighborPropDelayThresh.
-	 */
+
+	if (tmv_to_nanoseconds(p->peer_delay) >	p->neighborPropDelayThresh) {
+		return 0;
+	}
+
 	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
 		return 0;
 	}
@@ -1071,6 +1074,7 @@ static int port_initialize(struct port *p)
 	p->transportSpecific       = p->pod.transportSpecific;
 	p->logSyncInterval         = p->pod.logSyncInterval;
 	p->logMinPdelayReqInterval = p->pod.logMinPdelayReqInterval;
+	p->neighborPropDelayThresh = p->pod.neighborPropDelayThresh;
 
 	tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
 

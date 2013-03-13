@@ -195,6 +195,10 @@ The default is E2E.
 .B network_transport
 Select the network transport. Possible values are UDPv4, UDPv6 and L2.
 The default is UDPv4.
+.TP
+.B neighborPropDelayThresh
+Upper limit for peer delay in nanoseconds. If the estimated peer delay is
+greater than this value the port is marked as not 802.1AS capable.
 
 .SH PROGRAM AND CLOCK OPTIONS
 

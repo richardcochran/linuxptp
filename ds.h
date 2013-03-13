@@ -125,6 +125,7 @@ struct port_defaults {
 	int follow_up_info;
 	int freq_est_interval; /*log seconds*/
 	int fault_reset_interval; /*log seconds*/
+	UInteger32 neighborPropDelayThresh; /*nanoseconds*/
 };
 
 #endif
