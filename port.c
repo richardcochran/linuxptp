@@ -75,6 +75,7 @@ struct port {
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
+	int                 asCapable;
 	Integer8            logMinDelayReqInterval;
 	TimeInterval        peerMeanPathDelay;
 	Integer8            logAnnounceInterval;
@@ -379,17 +380,34 @@ static int port_capable(struct port *p)
 {
 	if (!port_is_ieee8021as(p)) {
 		/* Normal 1588 ports are always capable. */
-		return 1;
+		goto capable;
 	}
 
 	if (tmv_to_nanoseconds(p->peer_delay) >	p->neighborPropDelayThresh) {
-		return 0;
+		if (p->asCapable)
+			pr_debug("port %hu: peer_delay (%lld) > neighborPropDelayThresh "
+				"(%lld), resetting asCapable", portnum(p),
+				tmv_to_nanoseconds(p->peer_delay),
+				p->neighborPropDelayThresh);
+		goto not_capable;
 	}
 
 	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
-		return 0;
+		if (p->asCapable)
+			pr_debug("port %hu: missed %d peer delay resp, "
+				"resetting asCapable", portnum(p), p->pdr_missing);
+		goto not_capable;
 	}
+
+capable:
+	if (!p->asCapable)
+		pr_debug("port %hu: setting asCapable", portnum(p));
+	p->asCapable = 1;
 	return 1;
+
+not_capable:
+	p->asCapable = 0;
+	return 0;
 }
 
 static int port_clr_tmo(int fd)
@@ -678,6 +696,7 @@ static void port_nrate_initialize(struct port *p)
 
 	/* We start in the 'incapable' state. */
 	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
+	p->asCapable = 0;
 
 	p->nrate.origin1 = tmv_zero();
 	p->nrate.ingress1 = tmv_zero();
