@@ -134,7 +134,7 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 	} else {
 		pr_debug("clearing fault on port %d", index);
 	}
-	return set_tmo(c->fault_fd[index], scale, log_seconds);
+	return set_tmo_log(c->fault_fd[index], scale, log_seconds);
 }
 
 static void clock_freq_est_reset(struct clock *c)

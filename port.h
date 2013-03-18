@@ -171,6 +171,19 @@ enum port_state port_state(struct port *port);
  * @param log_seconds The exponential factor for the timer.
  * @return Zero on success, non-zero otherwise.
  */
-int set_tmo(int fd, unsigned int scale, int log_seconds);
+int set_tmo_log(int fd, unsigned int scale, int log_seconds);
+
+/**
+ * Utility function for setting or resetting a file descriptor timer.
+ *
+ * This function sets the timer 'fd' to the value of the 'seconds' parameter.
+ *
+ * Passing 'seconds' as zero disables the timer.
+ *
+ * @param fd A file descriptor previously opened with timerfd_create(2).
+ * @param seconds The timeout value for the timer.
+ * @return Zero on success, non-zero otherwise.
+ */
+int set_tmo_lin(int fd, int seconds);
 
 #endif

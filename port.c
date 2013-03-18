@@ -160,7 +160,7 @@ static int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 		      &m2->header.sourcePortIdentity);
 }
 
-int set_tmo(int fd, unsigned int scale, int log_seconds)
+int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 {
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
@@ -184,6 +184,16 @@ int set_tmo(int fd, unsigned int scale, int log_seconds)
 	} else
 		tmo.it_value.tv_sec = scale * (1 << log_seconds);
 
+	return timerfd_settime(fd, 0, &tmo, NULL);
+}
+
+int set_tmo_lin(int fd, int seconds)
+{
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+
+	tmo.it_value.tv_sec = seconds;
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
@@ -720,7 +730,7 @@ static void port_nrate_initialize(struct port *p)
 
 static int port_set_announce_tmo(struct port *p)
 {
-	return set_tmo(p->fda.fd[FD_ANNOUNCE_TIMER],
+	return set_tmo_log(p->fda.fd[FD_ANNOUNCE_TIMER],
 		       p->announceReceiptTimeout, p->logAnnounceInterval);
 }
 
@@ -731,7 +741,7 @@ static int port_set_delay_tmo(struct port *p)
 	};
 	int index;
 	if (p->delayMechanism == DM_P2P) {
-		return set_tmo(p->fda.fd[FD_DELAY_TIMER], 1,
+		return set_tmo_log(p->fda.fd[FD_DELAY_TIMER], 1,
 			       p->logMinPdelayReqInterval);
 	}
 	index = random() % TMTAB_MAX;
@@ -741,18 +751,18 @@ static int port_set_delay_tmo(struct port *p)
 
 static int port_set_manno_tmo(struct port *p)
 {
-	return set_tmo(p->fda.fd[FD_MANNO_TIMER], 1, p->logAnnounceInterval);
+	return set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, p->logAnnounceInterval);
 }
 
 static int port_set_qualification_tmo(struct port *p)
 {
-	return set_tmo(p->fda.fd[FD_QUALIFICATION_TIMER],
+	return set_tmo_log(p->fda.fd[FD_QUALIFICATION_TIMER],
 		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
 }
 
 static int port_set_sync_tmo(struct port *p)
 {
-	return set_tmo(p->fda.fd[FD_SYNC_TIMER], 1, p->logSyncInterval);
+	return set_tmo_log(p->fda.fd[FD_SYNC_TIMER], 1, p->logSyncInterval);
 }
 
 static void port_show_transition(struct port *p,
