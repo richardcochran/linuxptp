@@ -60,6 +60,8 @@ struct port {
 	struct ptp_message *peer_delay_req;
 	struct ptp_message *peer_delay_resp;
 	struct ptp_message *peer_delay_fup;
+	int peer_portid_valid;
+	struct PortIdentity peer_portid;
 	struct {
 		UInteger16 announce;
 		UInteger16 delayreq;
@@ -96,6 +98,7 @@ struct port {
 
 static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
+static void port_nrate_initialize(struct port *p);
 
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
 {
@@ -399,6 +402,13 @@ static int port_capable(struct port *p)
 		goto not_capable;
 	}
 
+	if (!p->peer_portid_valid) {
+		if (p->asCapable)
+			pr_debug("port %hu: invalid peer port id, "
+				"resetting asCapable", portnum(p));
+		goto not_capable;
+	}
+
 capable:
 	if (!p->asCapable)
 		pr_debug("port %hu: setting asCapable", portnum(p));
@@ -406,6 +416,8 @@ capable:
 	return 1;
 
 not_capable:
+	if (p->asCapable)
+		port_nrate_initialize(p);
 	p->asCapable = 0;
 	return 0;
 }
@@ -697,6 +709,8 @@ static void port_nrate_initialize(struct port *p)
 	/* We start in the 'incapable' state. */
 	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
 	p->asCapable = 0;
+
+	p->peer_portid_valid = 0;
 
 	p->nrate.origin1 = tmv_zero();
 	p->nrate.ingress1 = tmv_zero();
@@ -1363,6 +1377,21 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		pr_info("port %hu: peer detected, switch to P2P", portnum(p));
 		p->delayMechanism = DM_P2P;
 	}
+	if (p->peer_portid_valid) {
+		if (!pid_eq(&p->peer_portid, &m->header.sourcePortIdentity)) {
+			pr_err("port %hu: received pdelay_req msg with "
+				"unexpected peer port id %s",
+				portnum(p),
+				pid2str(&m->header.sourcePortIdentity));
+			p->peer_portid_valid = 0;
+			port_capable(p);
+		}
+	} else {
+		p->peer_portid_valid = 1;
+		p->peer_portid = m->header.sourcePortIdentity;
+		pr_debug("port %hu: peer port id set to %s", portnum(p),
+			pid2str(&p->peer_portid));
+	}
 
 	rsp = msg_allocate();
 	if (!rsp)
@@ -1525,6 +1554,21 @@ static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 	if (!p->peer_delay_req) {
 		pr_err("port %hu: rogue peer delay response", portnum(p));
 		return -1;
+	}
+	if (p->peer_portid_valid) {
+		if (!pid_eq(&p->peer_portid, &m->header.sourcePortIdentity)) {
+			pr_err("port %hu: received pdelay_resp msg with "
+				"unexpected peer port id %s",
+				portnum(p),
+				pid2str(&m->header.sourcePortIdentity));
+			p->peer_portid_valid = 0;
+			port_capable(p);
+		}
+	} else {
+		p->peer_portid_valid = 1;
+		p->peer_portid = m->header.sourcePortIdentity;
+		pr_debug("port %hu: peer port id set to %s", portnum(p),
+			pid2str(&p->peer_portid));
 	}
 
 	if (p->peer_delay_resp) {
