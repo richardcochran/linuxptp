@@ -73,6 +73,8 @@ struct port {
 	int log_sync_interval;
 	struct nrate_estimator nrate;
 	unsigned int pdr_missing;
+	unsigned int multiple_seq_pdr_count;
+	unsigned int multiple_pdr_detected;
 	/* portDS */
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
@@ -427,6 +429,13 @@ static int port_capable(struct port *p)
 		if (p->asCapable)
 			pr_debug("port %hu: missed %d peer delay resp, "
 				"resetting asCapable", portnum(p), p->pdr_missing);
+		goto not_capable;
+	}
+
+	if (p->multiple_seq_pdr_count) {
+		if (p->asCapable)
+			pr_debug("port %hu: multiple sequential peer delay resp, "
+				"resetting asCapable", portnum(p));
 		goto not_capable;
 	}
 
@@ -838,6 +847,11 @@ static int port_pdelay_request(struct port *p)
 	struct ptp_message *msg;
 	int cnt, pdulen;
 
+	/* If multiple pdelay resp were not detected the counter can be reset */
+	if (!p->multiple_pdr_detected)
+		p->multiple_seq_pdr_count = 0;
+	p->multiple_pdr_detected = 0;
+
 	msg = msg_allocate();
 	if (!msg)
 		return -1;
@@ -1144,6 +1158,8 @@ static int port_initialize(struct port *p)
 {
 	int fd[N_TIMER_FDS], i;
 
+	p->multiple_seq_pdr_count  = 0;
+	p->multiple_pdr_detected   = 0;
 	p->last_fault_type         = FT_UNSPECIFIED;
 	p->logMinDelayReqInterval  = p->pod.logMinDelayReqInterval;
 	p->peerMeanPathDelay       = 0;
@@ -1583,7 +1599,14 @@ static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 	if (p->peer_delay_resp) {
 		if (!source_pid_eq(p->peer_delay_resp, m)) {
 			pr_err("port %hu: multiple peer responses", portnum(p));
-			return -1;
+			if (!p->multiple_pdr_detected) {
+				p->multiple_pdr_detected = 1;
+				p->multiple_seq_pdr_count++;
+			}
+			if (p->multiple_seq_pdr_count >= 3) {
+				p->last_fault_type = FT_BAD_PEER_NETWORK;
+				return -1;
+			}
 		}
 	}
 	if (!p->peer_delay_req) {

@@ -112,6 +112,16 @@ static enum parser_result parse_pod_setting(const char *option,
 			return BAD_VALUE;
 		pod->neighborPropDelayThresh = val;
 
+	} else if (!strcmp(option, "fault_badpeernet_interval")) {
+		pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].type = FTMO_LINEAR_SECONDS;
+		if (!strcasecmp("ASAP", value)) {
+			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = 0;
+		} else if (1 != sscanf(value, "%d", &val)) {
+			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = val;
+		} else {
+			return BAD_VALUE;
+		}
+
 	} else if (!strcmp(option, "fault_reset_interval")) {
 		pod->flt_interval_pertype[FT_UNSPECIFIED].type = FTMO_LOG2_SECONDS;
 		if (!strcasecmp("ASAP", value)) {
