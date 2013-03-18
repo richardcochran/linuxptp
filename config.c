@@ -113,10 +113,11 @@ static enum parser_result parse_pod_setting(const char *option,
 		pod->neighborPropDelayThresh = val;
 
 	} else if (!strcmp(option, "fault_reset_interval")) {
+		pod->flt_interval_pertype[FT_UNSPECIFIED].type = FTMO_LOG2_SECONDS;
 		if (!strcasecmp("ASAP", value)) {
-			pod->fault_reset_interval = FRI_ASAP;
+			pod->flt_interval_pertype[FT_UNSPECIFIED].val = FRI_ASAP;
 		} else if (1 == sscanf(value, "%hhd", &i8)) {
-			pod->fault_reset_interval = i8;
+			pod->flt_interval_pertype[FT_UNSPECIFIED].val = i8;
 		} else {
 			return BAD_VALUE;
 		}

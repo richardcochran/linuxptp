@@ -186,4 +186,24 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds);
  */
 int set_tmo_lin(int fd, int seconds);
 
+/**
+ * Returns a port's last fault type.
+ *
+ * @param port  A port instance.
+ * @return      One of the @ref fault_type values.
+ */
+enum fault_type last_fault_type(struct port *port);
+
+/**
+ * Fills passed in struct fault_interval with the value associated to a
+ * port and fault type.
+ *
+ * @param port        A port instance.
+ * @param ft          Fault type.
+ * @param i           Pointer to the struct which will be filled in.
+ * @return Zero on success, non-zero otherwise.
+ */
+int fault_interval(struct port *port, enum fault_type ft,
+	struct fault_interval *i);
+
 #endif

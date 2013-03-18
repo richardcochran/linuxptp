@@ -21,6 +21,7 @@
 #define HAVE_DS_H
 
 #include "ddt.h"
+#include "fault.h"
 
 /* clock data sets */
 
@@ -124,7 +125,7 @@ struct port_defaults {
 	int path_trace_enabled;
 	int follow_up_info;
 	int freq_est_interval; /*log seconds*/
-	int fault_reset_interval; /*log seconds*/
+	struct fault_interval flt_interval_pertype[FT_CNT];
 	UInteger32 neighborPropDelayThresh; /*nanoseconds*/
 };
 

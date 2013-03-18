@@ -79,7 +79,6 @@ static struct config cfg_settings = {
 		.path_trace_enabled = 0,
 		.follow_up_info = 0,
 		.freq_est_interval = 1,
-		.fault_reset_interval = 4,
 		/* Default to very a large neighborPropDelay threshold */
 		.neighborPropDelayThresh = 20000000,
 	},
@@ -172,6 +171,12 @@ int main(int argc, char *argv[])
 	if (SIG_ERR == signal(SIGTERM, handle_int_quit_term)) {
 		fprintf(stderr, "cannot handle SIGTERM\n");
 		return -1;
+	}
+
+	/* Set fault timeouts to a default value */
+	for (i = 0; i < FT_CNT; i++) {
+		cfg_settings.pod.flt_interval_pertype[i].type = FTMO_LOG2_SECONDS;
+		cfg_settings.pod.flt_interval_pertype[i].val = 4;
 	}
 
 	/* Process the command line arguments. */

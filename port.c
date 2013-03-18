@@ -87,6 +87,7 @@ struct port {
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;
 	UInteger32          neighborPropDelayThresh;
+	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
@@ -158,6 +159,23 @@ static int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 {
 	return pid_eq(&m1->header.sourcePortIdentity,
 		      &m2->header.sourcePortIdentity);
+}
+
+enum fault_type last_fault_type(struct port *port)
+{
+	return port->last_fault_type;
+}
+
+int fault_interval(struct port *port, enum fault_type ft,
+	struct fault_interval *i)
+{
+	if (!port || !i)
+		return -EINVAL;
+	if (ft < 0 || ft >= FT_CNT)
+		return -EINVAL;
+	i->type = port->pod.flt_interval_pertype[ft].type;
+	i->val = port->pod.flt_interval_pertype[ft].val;
+	return 0;
 }
 
 int set_tmo_log(int fd, unsigned int scale, int log_seconds)
@@ -768,8 +786,14 @@ static int port_set_sync_tmo(struct port *p)
 static void port_show_transition(struct port *p,
 				 enum port_state next, enum fsm_event event)
 {
-	pr_notice("port %hu: %s to %s on %s", portnum(p),
-		  ps_str[p->state], ps_str[next], ev_str[event]);
+	if (event == EV_FAULT_DETECTED) {
+		pr_notice("port %hu: %s to %s on %s (%s)", portnum(p),
+			  ps_str[p->state], ps_str[next], ev_str[event],
+			  ft_str(last_fault_type(p)));
+	} else {
+		pr_notice("port %hu: %s to %s on %s", portnum(p),
+			  ps_str[p->state], ps_str[next], ev_str[event]);
+	}
 }
 
 static void port_slave_priority_warning(struct port *p)
@@ -1120,6 +1144,7 @@ static int port_initialize(struct port *p)
 {
 	int fd[N_TIMER_FDS], i;
 
+	p->last_fault_type         = FT_UNSPECIFIED;
 	p->logMinDelayReqInterval  = p->pod.logMinDelayReqInterval;
 	p->peerMeanPathDelay       = 0;
 	p->logAnnounceInterval     = p->pod.logAnnounceInterval;
@@ -1774,6 +1799,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next;
+	struct fault_interval i;
 
 	if (clock_slave_only(p->clock)) {
 		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER) {
@@ -1784,8 +1810,10 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		next = ptp_fsm(p->state, event, mdiff);
 	}
 
-	if (PS_INITIALIZING == next ||
-	    (PS_FAULTY == next && FRI_ASAP == p->pod.fault_reset_interval)) {
+	fault_interval(p, last_fault_type(p), &i);
+	int fri_asap = (i.val == FRI_ASAP && i.type == FTMO_LOG2_SECONDS) ||
+		(i.val == 0 && i.type == FTMO_LINEAR_SECONDS);
+	if (PS_INITIALIZING == next || (PS_FAULTY == next && fri_asap)) {
 		/*
 		 * This is a special case. Since we initialize the
 		 * port immediately, we can skip right to listening

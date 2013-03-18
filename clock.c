@@ -72,7 +72,6 @@ struct clock {
 	struct port *port[CLK_N_PORTS];
 	struct pollfd pollfd[CLK_N_PORTS*N_CLOCK_PFD];
 	int fault_fd[CLK_N_PORTS];
-	int8_t fault_timeout[CLK_N_PORTS];
 	int nports; /* does not include the UDS port */
 	int free_running;
 	int freq_est_interval;
@@ -123,18 +122,27 @@ void clock_destroy(struct clock *c)
 
 static int clock_fault_timeout(struct clock *c, int index, int set)
 {
-	int log_seconds = 0;
-	unsigned int scale = 0;
+	struct fault_interval i;
 
-	if (set) {
-		pr_debug("waiting 2^{%d} seconds to clear fault on port %d",
-			 c->fault_timeout[index], index);
-		log_seconds = c->fault_timeout[index];
-		scale = 1;
-	} else {
+	if (!set) {
 		pr_debug("clearing fault on port %d", index);
+		return set_tmo_lin(c->fault_fd[index], 0);
 	}
-	return set_tmo_log(c->fault_fd[index], scale, log_seconds);
+
+	fault_interval(c->port[index], last_fault_type(c->port[index]), &i);
+
+	if (i.type == FTMO_LINEAR_SECONDS) {
+		pr_debug("waiting %d seconds to clear fault on port %d",
+			 i.val, index);
+		return set_tmo_lin(c->fault_fd[index], i.val);
+	} else if (i.type == FTMO_LOG2_SECONDS) {
+		pr_debug("waiting 2^{%d} seconds to clear fault on port %d",
+			 i.val, index);
+		return set_tmo_log(c->fault_fd[index], 1, i.val);
+	}
+
+	pr_err("Unsupported fault interval type %d", i.type);
+	return -1;
 }
 
 static void clock_freq_est_reset(struct clock *c)
@@ -618,7 +626,6 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	clock_sync_interval(c, 0);
 
 	for (i = 0; i < count; i++) {
-		c->fault_timeout[i] = iface[i].pod.fault_reset_interval;
 		c->port[i] = port_open(phc_index, timestamping, 1+i, &iface[i], c);
 		if (!c->port[i]) {
 			pr_err("failed to open port %s", iface[i].name);
