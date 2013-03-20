@@ -27,13 +27,13 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
 
 #include <linux/pps.h>
 #include <linux/ptp_clock.h>
 
+#include "clockadj.h"
 #include "ds.h"
 #include "fsm.h"
 #include "missing.h"
@@ -45,6 +45,7 @@
 #include "stats.h"
 #include "sysoff.h"
 #include "tlv.h"
+#include "util.h"
 #include "version.h"
 
 #define KP 0.7
@@ -54,6 +55,10 @@
 #define max_ppb  512000
 
 #define PHC_PPS_OFFSET_LIMIT 10000000
+#define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
+
+struct clock;
+static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts);
 
 static clockid_t clock_open(char *device)
 {
@@ -73,52 +78,6 @@ static clockid_t clock_open(char *device)
 		return CLOCK_INVALID;
 	}
 	return FD_TO_CLOCKID(fd);
-}
-
-static void clock_ppb(clockid_t clkid, double ppb)
-{
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_FREQUENCY;
-	tx.freq = (long) (ppb * 65.536);
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to adjust the clock: %m");
-}
-
-static double clock_ppb_read(clockid_t clkid)
-{
-	double f = 0.0;
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to read out the clock frequency adjustment: %m");
-	else
-		f = tx.freq / 65.536;
-	return f;
-}
-
-static void clock_step(clockid_t clkid, int64_t ns)
-{
-	struct timex tx;
-	int sign = 1;
-	if (ns < 0) {
-		sign = -1;
-		ns *= -1;
-	}
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_SETOFFSET | ADJ_NANO;
-	tx.time.tv_sec  = sign * (ns / NS_PER_SEC);
-	tx.time.tv_usec = sign * (ns % NS_PER_SEC);
-	/*
-	 * The value of a timeval is the sum of its fields, but the
-	 * field tv_usec must always be non-negative.
-	 */
-	if (tx.time.tv_usec < 0) {
-		tx.time.tv_sec  -= 1;
-		tx.time.tv_usec += 1000000000;
-	}
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to step clock: %m");
 }
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
@@ -155,11 +114,21 @@ static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
 struct clock {
 	clockid_t clkid;
 	struct servo *servo;
+	enum servo_state servo_state;
 	const char *source_label;
 	struct stats *offset_stats;
 	struct stats *freq_stats;
 	struct stats *delay_stats;
 	unsigned int stats_max_count;
+	int sync_offset;
+	int sync_offset_direction;
+	int leap;
+	int leap_set;
+	int kernel_leap;
+	struct pmc *pmc;
+	int pmc_ds_idx;
+	int pmc_ds_requested;
+	uint64_t pmc_last_update;
 };
 
 static void update_clock_stats(struct clock *clock,
@@ -203,16 +172,24 @@ static void update_clock(struct clock *clock,
 	enum servo_state state;
 	double ppb;
 
+	if (update_sync_offset(clock, offset, ts))
+		return;
+
+	if (clock->sync_offset_direction)
+		offset += clock->sync_offset * NS_PER_SEC *
+			clock->sync_offset_direction;
+
 	ppb = servo_sample(clock->servo, offset, ts, &state);
+	clock->servo_state = state;
 
 	switch (state) {
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
-		clock_step(clock->clkid, -offset);
+		clockadj_step(clock->clkid, -offset);
 		/* Fall through. */
 	case SERVO_LOCKED:
-		clock_ppb(clock->clkid, -ppb);
+		clockadj_set_freq(clock->clkid, -ppb);
 		break;
 	}
 
@@ -253,12 +230,16 @@ static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 }
 
 static int do_pps_loop(struct clock *clock, int fd,
-		       clockid_t src, int n_readings, int sync_offset)
+		       clockid_t src, int n_readings)
 {
 	int64_t pps_offset, phc_offset, phc_delay;
 	uint64_t pps_ts, phc_ts;
 
 	clock->source_label = "pps";
+
+	/* The sync offset can't be applied with PPS alone. */
+	if (src == CLOCK_INVALID)
+		clock->sync_offset_direction = 0;
 
 	while (1) {
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
@@ -284,7 +265,6 @@ static int do_pps_loop(struct clock *clock, int fd,
 
 			phc_ts = phc_ts / NS_PER_SEC * NS_PER_SEC;
 			pps_offset = pps_ts - phc_ts;
-			pps_offset -= sync_offset * NS_PER_SEC;
 		}
 
 		update_clock(clock, pps_offset, pps_ts, -1);
@@ -294,7 +274,7 @@ static int do_pps_loop(struct clock *clock, int fd,
 }
 
 static int do_sysoff_loop(struct clock *clock, clockid_t src,
-			  int rate, int n_readings, int sync_offset)
+			  int rate, int n_readings)
 {
 	uint64_t ts;
 	int64_t offset, delay;
@@ -308,14 +288,13 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 			err = -1;
 			break;
 		}
-		offset -= sync_offset * NS_PER_SEC;
 		update_clock(clock, offset, ts, delay);
 	}
 	return err;
 }
 
 static int do_phc_loop(struct clock *clock, clockid_t src,
-		       int rate, int n_readings, int sync_offset)
+		       int rate, int n_readings)
 {
 	uint64_t ts;
 	int64_t offset, delay;
@@ -328,7 +307,6 @@ static int do_phc_loop(struct clock *clock, clockid_t src,
 			      &offset, &ts, &delay)) {
 			continue;
 		}
-		offset -= sync_offset * NS_PER_SEC;
 		update_clock(clock, offset, ts, delay);
 	}
 	return 0;
@@ -360,58 +338,75 @@ static void *get_mgt_data(struct ptp_message *msg)
 	return ((struct management_tlv *) msg->management.suffix)->data;
 }
 
-static int run_pmc(int wait_sync, int *utc_offset)
+static int init_pmc(struct clock *clock)
+{
+	clock->pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0, 0, 0);
+	if (!clock->pmc) {
+		pr_err("failed to create pmc");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int run_pmc(struct clock *clock, int timeout,
+		   int wait_sync, int get_utc_offset)
 {
 	struct ptp_message *msg;
-	struct pmc *pmc;
 	void *data;
 #define N_FD 1
 	struct pollfd pollfd[N_FD];
+	int cnt, ds_done;
 #define N_ID 2
-	int cnt, i = 0, ds_done, ds_requested = 0;
 	int ds_ids[N_ID] = {
 		PORT_DATA_SET,
 		TIME_PROPERTIES_DATA_SET
 	};
 
-	pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0, 0, 0);
-	if (!pmc) {
-		pr_err("failed to create pmc");
-		return -1;
-	}
+	while (clock->pmc_ds_idx < N_ID) {
+		/* Check if the data set is really needed. */
+		if ((ds_ids[clock->pmc_ds_idx] == PORT_DATA_SET &&
+		     !wait_sync) ||
+		    (ds_ids[clock->pmc_ds_idx] == TIME_PROPERTIES_DATA_SET &&
+		     !get_utc_offset)) {
+			clock->pmc_ds_idx++;
+			continue;
+		}
 
-	while (i < N_ID) {
-		pollfd[0].fd = pmc_get_transport_fd(pmc);
+		pollfd[0].fd = pmc_get_transport_fd(clock->pmc);
 		pollfd[0].events = POLLIN|POLLPRI;
-		if (!ds_requested)
+		if (!clock->pmc_ds_requested)
 			pollfd[0].events |= POLLOUT;
 
-		cnt = poll(pollfd, N_FD, 1000);
+		cnt = poll(pollfd, N_FD, timeout);
 		if (cnt < 0) {
 			pr_err("poll failed");
 			return -1;
 		}
 		if (!cnt) {
-			/* Request the data set again. */
-			ds_requested = 0;
-			pr_notice("Waiting for ptp4l...");
-			continue;
+			/* Request the data set again in the next run. */
+			clock->pmc_ds_requested = 0;
+			return 0;
 		}
 
-		if (pollfd[0].revents & POLLOUT) {
-			pmc_send_get_action(pmc, ds_ids[i]);
-			ds_requested = 1;
+		/* Send a new request if there are no pending messages. */
+		if ((pollfd[0].revents & POLLOUT) &&
+		    !(pollfd[0].revents & (POLLIN|POLLPRI))) {
+			pmc_send_get_action(clock->pmc,
+					    ds_ids[clock->pmc_ds_idx]);
+			clock->pmc_ds_requested = 1;
 		}
 
 		if (!(pollfd[0].revents & (POLLIN|POLLPRI)))
 			continue;
 
-		msg = pmc_recv(pmc);
+		msg = pmc_recv(clock->pmc);
 
 		if (!msg)
 			continue;
 
-		if (!is_msg_mgt(msg) || get_mgt_id(msg) != ds_ids[i]) {
+		if (!is_msg_mgt(msg) ||
+		    get_mgt_id(msg) != ds_ids[clock->pmc_ds_idx]) {
 			msg_put(msg);
 			continue;
 		}
@@ -421,9 +416,6 @@ static int run_pmc(int wait_sync, int *utc_offset)
 
 		switch (get_mgt_id(msg)) {
 		case PORT_DATA_SET:
-			if (!wait_sync)
-				ds_done = 1;
-
 			switch (((struct portDS *)data)->portState) {
 			case PS_MASTER:
 			case PS_SLAVE:
@@ -433,21 +425,86 @@ static int run_pmc(int wait_sync, int *utc_offset)
 
 			break;
 		case TIME_PROPERTIES_DATA_SET:
-			*utc_offset = ((struct timePropertiesDS *)data)->
-					currentUtcOffset;
+			clock->sync_offset = ((struct timePropertiesDS *)data)->
+				currentUtcOffset;
+			if (((struct timePropertiesDS *)data)->flags & LEAP_61)
+				clock->leap = 1;
+			else if (((struct timePropertiesDS *)data)->flags & LEAP_59)
+				clock->leap = -1;
+			else
+				clock->leap = 0;
 			ds_done = 1;
 			break;
 		}
 
 		if (ds_done) {
 			/* Proceed with the next data set. */
-			i++;
-			ds_requested = 0;
+			clock->pmc_ds_idx++;
+			clock->pmc_ds_requested = 0;
 		}
 		msg_put(msg);
 	}
 
-	pmc_destroy(pmc);
+	clock->pmc_ds_idx = 0;
+	return 1;
+}
+
+static void close_pmc(struct clock *clock)
+{
+	pmc_destroy(clock->pmc);
+	clock->pmc = NULL;
+}
+
+static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
+{
+	int clock_leap;
+
+	if (clock->pmc &&
+	    !(ts > clock->pmc_last_update &&
+	      ts - clock->pmc_last_update < PMC_UPDATE_INTERVAL)) {
+		if (run_pmc(clock, 0, 0, 1) > 0)
+			clock->pmc_last_update = ts;
+	}
+
+	/* Handle leap seconds. */
+
+	if (!clock->leap && !clock->leap_set)
+		return 0;
+
+	/* If the system clock is the master clock, get a time stamp from
+	   it, as it is the clock which will include the leap second. */
+	if (clock->clkid != CLOCK_REALTIME) {
+		struct timespec tp;
+		if (clock_gettime(CLOCK_REALTIME, &tp)) {
+			pr_err("failed to read clock: %m");
+			return -1;
+		}
+		ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
+	}
+
+	/* If the clock will be stepped, the time stamp has to be the
+	   target time. Ignore possible 1 second error in UTC offset. */
+	if (clock->clkid == CLOCK_REALTIME &&
+	    clock->servo_state == SERVO_UNLOCKED) {
+		ts -= offset + clock->sync_offset * NS_PER_SEC *
+			clock->sync_offset_direction;
+	}
+
+	/* Suspend clock updates in the last second before midnight. */
+	if (is_utc_ambiguous(ts)) {
+		pr_info("clock update suspended due to leap second");
+		return -1;
+	}
+
+	clock_leap = leap_second_status(ts, clock->leap_set,
+					&clock->leap, &clock->sync_offset);
+
+	if (clock->leap_set != clock_leap) {
+		/* Only the system clock can leap. */
+		if (clock->clkid == CLOCK_REALTIME && clock->kernel_leap)
+			clockadj_set_leap(clock->clkid, clock_leap);
+		clock->leap_set = clock_leap;
+	}
 
 	return 0;
 }
@@ -469,6 +526,7 @@ static void usage(char *progname)
 		" -O [offset]    slave-master time offset (0)\n"
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -w             wait for ptp4l\n"
+		" -x             apply leap seconds by servo instead of kernel\n"
 		" -h             prints this message and exits\n"
 		" -v             prints the software version and exits\n"
 		"\n",
@@ -479,11 +537,15 @@ int main(int argc, char *argv[])
 {
 	char *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID;
-	int c, phc_readings = 5, phc_rate = 1, sync_offset = 0, pps_fd = -1;
-	int wait_sync = 0, forced_sync_offset = 0;
+	int c, phc_readings = 5, phc_rate = 1, pps_fd = -1;
+	int r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	double ppb;
-	struct clock dst_clock = { .clkid = CLOCK_REALTIME };
+	struct clock dst_clock = {
+		.clkid = CLOCK_REALTIME,
+		.servo_state = SERVO_UNLOCKED,
+		.kernel_leap = 1,
+	};
 
 	configured_pi_kp = KP;
 	configured_pi_ki = KI;
@@ -492,7 +554,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "c:d:hs:P:I:S:R:N:O:i:u:wl:mqv"))) {
+				  "c:d:hs:P:I:S:R:N:O:i:u:wxl:mqv"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -524,7 +586,8 @@ int main(int argc, char *argv[])
 			phc_readings = atoi(optarg);
 			break;
 		case 'O':
-			sync_offset = atoi(optarg);
+			dst_clock.sync_offset = atoi(optarg);
+			dst_clock.sync_offset_direction = -1;
 			forced_sync_offset = 1;
 			break;
 		case 'i':
@@ -535,6 +598,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'w':
 			wait_sync = 1;
+			break;
+		case 'x':
+			dst_clock.kernel_leap = 0;
 			break;
 		case 'l':
 			print_level = atoi(optarg);
@@ -596,36 +662,49 @@ int main(int argc, char *argv[])
 	print_set_level(print_level);
 
 	if (wait_sync) {
-		int ptp_utc_offset;
+		if (init_pmc(&dst_clock))
+			return -1;
 
-		run_pmc(wait_sync, &ptp_utc_offset);
+		while (1) {
+			r = run_pmc(&dst_clock, 1000,
+				    wait_sync, !forced_sync_offset);
+			if (r < 0)
+				return -1;
+			else if (r > 0)
+				break;
+			else
+				pr_notice("Waiting for ptp4l...");
+		}
 
 		if (!forced_sync_offset) {
 			if (src != CLOCK_REALTIME &&
 			    dst_clock.clkid == CLOCK_REALTIME)
-				sync_offset = -ptp_utc_offset;
+				dst_clock.sync_offset_direction = 1;
 			else if (src == CLOCK_REALTIME &&
 			    dst_clock.clkid != CLOCK_REALTIME)
-				sync_offset = ptp_utc_offset;
+				dst_clock.sync_offset_direction = -1;
+			else
+				dst_clock.sync_offset_direction = 0;
 		}
+
+		if (forced_sync_offset || !dst_clock.sync_offset_direction)
+			close_pmc(&dst_clock);
 	}
 
-	ppb = clock_ppb_read(dst_clock.clkid);
+	ppb = clockadj_get_freq(dst_clock.clkid);
 	/* The reading may silently fail and return 0, reset the frequency to
 	   make sure ppb is the actual frequency of the clock. */
-	clock_ppb(dst_clock.clkid, ppb);
+	clockadj_set_freq(dst_clock.clkid, ppb);
+	clockadj_set_leap(dst_clock.clkid, 0);
 
 	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 
 	if (pps_fd >= 0)
-		return do_pps_loop(&dst_clock, pps_fd, src,
-				   phc_readings, sync_offset);
+		return do_pps_loop(&dst_clock, pps_fd, src, phc_readings);
 
 	if (dst_clock.clkid == CLOCK_REALTIME &&
 	    SYSOFF_SUPPORTED == sysoff_probe(CLOCKID_TO_FD(src), phc_readings))
-		return do_sysoff_loop(&dst_clock, src, phc_rate,
-				      phc_readings, sync_offset);
+		return do_sysoff_loop(&dst_clock, src, phc_rate, phc_readings);
 
-	return do_phc_loop(&dst_clock, src, phc_rate,
-			   phc_readings, sync_offset);
+	return do_phc_loop(&dst_clock, src, phc_rate, phc_readings);
 }

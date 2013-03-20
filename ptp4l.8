@@ -351,6 +351,14 @@ empty string.
 .B manufacturerIdentity
 The manufacturer id which should be an OUI owned by the manufacturer.
 The default is 00:00:00.
+.TP
+.B kernel_leap
+When a leap second is announced, let the kernel apply it by stepping the clock
+instead of correcting the one-second offset with servo, which would correct the
+one-second offset slowly by changing the clock frequency (unless the
+.B pi_offset_const
+option is set to correct such offset by stepping).
+Relevant only with software time stamping. The default is 1 (enabled).
 
 .SH SEE ALSO
 .BR pmc (8),

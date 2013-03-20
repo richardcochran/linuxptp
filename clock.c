@@ -24,6 +24,7 @@
 
 #include "bmc.h"
 #include "clock.h"
+#include "clockadj.h"
 #include "foreign.h"
 #include "mave.h"
 #include "missing.h"
@@ -76,6 +77,9 @@ struct clock {
 	int free_running;
 	int freq_est_interval;
 	int utc_timescale;
+	int leap_set;
+	int kernel_leap;
+	enum servo_state servo_state;
 	tmv_t master_offset;
 	tmv_t path_delay;
 	struct mave *avg_delay;
@@ -389,11 +393,13 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	freq = (1.0 - ratio) * 1e9;
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats, c->master_offset, freq);
+		clock_stats_update(&c->stats,
+				   tmv_to_nanoseconds(c->master_offset), freq);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
-			c->master_offset, state, freq, c->path_delay);
+			tmv_to_nanoseconds(c->master_offset), state, freq,
+			tmv_to_nanoseconds(c->path_delay));
 	}
 
 	fui = 1.0 + (c->status.cumulativeScaledRateOffset + 0.0) / POW2_41;
@@ -410,52 +416,6 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	f->count = 0;
 
 	return state;
-}
-
-static void clock_ppb(clockid_t clkid, double ppb)
-{
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_FREQUENCY;
-	tx.freq = (long) (ppb * 65.536);
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to adjust the clock: %m");
-}
-
-static double clock_ppb_read(clockid_t clkid)
-{
-	double f = 0.0;
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to read out the clock frequency adjustment: %m");
-	else
-		f = tx.freq / 65.536;
-	return f;
-}
-
-static void clock_step(clockid_t clkid, int64_t ns)
-{
-	struct timex tx;
-	int sign = 1;
-	if (ns < 0) {
-		sign = -1;
-		ns *= -1;
-	}
-	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_SETOFFSET | ADJ_NANO;
-	tx.time.tv_sec  = sign * (ns / NS_PER_SEC);
-	tx.time.tv_usec = sign * (ns % NS_PER_SEC);
-	/*
-	 * The value of a timeval is the sum of its fields, but the
-	 * field tv_usec must always be non-negative.
-	 */
-	if (tx.time.tv_usec < 0) {
-		tx.time.tv_sec  -= 1;
-		tx.time.tv_usec += 1000000000;
-	}
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to step clock: %m");
 }
 
 static void clock_update_grandmaster(struct clock *c)
@@ -500,23 +460,67 @@ static void clock_update_slave(struct clock *c)
 	}
 }
 
-static void clock_utc_correct(struct clock *c)
+static int clock_utc_correct(struct clock *c, tmv_t ingress)
 {
 	struct timespec offset;
+	int utc_offset, leap, clock_leap;
+	uint64_t ts;
+
 	if (!c->utc_timescale)
-		return;
-	if (!(c->tds.flags & PTP_TIMESCALE))
-		return;
+		return 0;
+
 	if (c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) {
-		offset.tv_sec = c->tds.currentUtcOffset;
+		utc_offset = c->tds.currentUtcOffset;
 	} else if (c->tds.currentUtcOffset > CURRENT_UTC_OFFSET) {
-		offset.tv_sec = c->tds.currentUtcOffset;
+		utc_offset = c->tds.currentUtcOffset;
 	} else {
-		offset.tv_sec = CURRENT_UTC_OFFSET;
+		utc_offset = CURRENT_UTC_OFFSET;
 	}
+
+	if (c->tds.flags & LEAP_61) {
+		leap = 1;
+	} else if (c->tds.flags & LEAP_59) {
+		leap = -1;
+	} else {
+		leap = 0;
+	}
+
+	/* Handle leap seconds. */
+	if ((leap || c->leap_set) && c->clkid == CLOCK_REALTIME) {
+		/* If the clock will be stepped, the time stamp has to be the
+		   target time. Ignore possible 1 second error in utc_offset. */
+		if (c->servo_state == SERVO_UNLOCKED) {
+			ts = tmv_to_nanoseconds(tmv_sub(ingress,
+							c->master_offset));
+			if (c->tds.flags & PTP_TIMESCALE)
+				ts -= utc_offset * NS_PER_SEC;
+		} else {
+			ts = tmv_to_nanoseconds(ingress);
+		}
+
+		/* Suspend clock updates in the last second before midnight. */
+		if (is_utc_ambiguous(ts)) {
+			pr_info("clock update suspended due to leap second");
+			return -1;
+		}
+
+		clock_leap = leap_second_status(ts, c->leap_set,
+						&leap, &utc_offset);
+		if (c->leap_set != clock_leap) {
+			if (c->kernel_leap)
+				clockadj_set_leap(c->clkid, clock_leap);
+			c->leap_set = clock_leap;
+		}
+	}
+
+	if (!(c->tds.flags & PTP_TIMESCALE))
+		return 0;
+
+	offset.tv_sec = utc_offset;
 	offset.tv_nsec = 0;
 	/* Local clock is UTC, but master is TAI. */
 	c->master_offset = tmv_add(c->master_offset, timespec_to_tmv(offset));
+	return 0;
 }
 
 static int forwarding(struct clock *c, struct port *p)
@@ -565,6 +569,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	c->free_running = dds->free_running;
 	c->freq_est_interval = dds->freq_est_interval;
+	c->kernel_leap = dds->kernel_leap;
 	c->desc = dds->clock_desc;
 
 	if (c->free_running) {
@@ -585,16 +590,20 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		c->clkid = CLOCK_REALTIME;
 		c->utc_timescale = 1;
 		max_adj = 512000;
+		clockadj_set_leap(c->clkid, 0);
 	}
+	c->leap_set = 0;
+	c->kernel_leap = dds->kernel_leap;
 
 	if (c->clkid != CLOCK_INVALID) {
-		fadj = (int) clock_ppb_read(c->clkid);
+		fadj = (int) clockadj_get_freq(c->clkid);
 	}
 	c->servo = servo_create(servo, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
 		return NULL;
 	}
+	c->servo_state = SERVO_UNLOCKED;
 	c->avg_delay = mave_create(MAVE_LENGTH);
 	if (!c->avg_delay) {
 		pr_err("Failed to create moving average");
@@ -957,7 +966,7 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	pr_debug("path delay    %10lld %10lld", c->path_delay, pd);
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay, pd);
+		stats_add_value(c->stats.delay, tmv_to_nanoseconds(pd));
 }
 
 void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
@@ -966,7 +975,7 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
 	c->nrr = nrr;
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay, ppd);
+		stats_add_value(c->stats.delay, tmv_to_nanoseconds(ppd));
 }
 
 void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
@@ -1018,37 +1027,42 @@ enum servo_state clock_synchronize(struct clock *c,
 	c->master_offset = tmv_sub(ingress,
 		tmv_add(origin, tmv_add(c->path_delay, tmv_add(c->c1, c->c2))));
 
-	clock_utc_correct(c);
-
-	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
-
 	if (!c->path_delay)
 		return state;
+
+	if (clock_utc_correct(c, ingress))
+		return c->servo_state;
+
+	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
 
 	if (c->free_running)
 		return clock_no_adjust(c);
 
-	adj = servo_sample(c->servo, c->master_offset, ingress, &state);
+	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
+			   tmv_to_nanoseconds(ingress), &state);
+	c->servo_state = state;
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats, c->master_offset, adj);
+		clock_stats_update(&c->stats,
+				   tmv_to_nanoseconds(c->master_offset), adj);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
-			c->master_offset, state, adj, c->path_delay);
+			tmv_to_nanoseconds(c->master_offset), state, adj,
+			tmv_to_nanoseconds(c->path_delay));
 	}
 
 	switch (state) {
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
-		clock_ppb(c->clkid, -adj);
-		clock_step(c->clkid, -c->master_offset);
+		clockadj_set_freq(c->clkid, -adj);
+		clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset));
 		c->t1 = tmv_zero();
 		c->t2 = tmv_zero();
 		break;
 	case SERVO_LOCKED:
-		clock_ppb(c->clkid, -adj);
+		clockadj_set_freq(c->clkid, -adj);
 		break;
 	}
 	return state;
