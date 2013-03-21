@@ -102,7 +102,7 @@ struct management_id idtab[] = {
 	{ "ALTERNATE_MASTER", ALTERNATE_MASTER, not_supported },
 	{ "TRANSPARENT_CLOCK_PORT_DATA_SET", TRANSPARENT_CLOCK_PORT_DATA_SET, not_supported },
 	{ "DELAY_MECHANISM", DELAY_MECHANISM, do_get_action },
-	{ "LOG_MIN_PDELAY_REQ_INTERVAL", LOG_MIN_PDELAY_REQ_INTERVAL, not_supported },
+	{ "LOG_MIN_PDELAY_REQ_INTERVAL", LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
 };
 
 static char *action_string[] = {
