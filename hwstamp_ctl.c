@@ -139,10 +139,14 @@ int main(int argc, char *argv[])
 	}
 
 	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
-	if (err < 0)
+	if (err < 0) {
+		err = errno;
 		perror("SIOCSHWTSTAMP failed");
+		if (err == ERANGE)
+			fprintf(stderr, "The requested time stamping mode is not supported by the hardware.\n");
+	}
 
 	printf("tx_type %d\n" "rx_filter %d\n", cfg.tx_type, cfg.rx_filter);
 
-	return err ? errno : 0;
+	return err;
 }
