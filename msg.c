@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <arpa/inet.h>
+#include <errno.h>
 #include <malloc.h>
 #include <string.h>
 #include <time.h>
@@ -90,7 +91,7 @@ int64_t net2host64(int64_t val)
 static int hdr_post_recv(struct ptp_header *m)
 {
 	if ((m->ver & VERSION_MASK) != VERSION)
-		return -1;
+		return -EPROTO;
 	m->messageLength = ntohs(m->messageLength);
 	m->correction = net2host64(m->correction);
 	m->sourcePortIdentity.portNumber = ntohs(m->sourcePortIdentity.portNumber);
@@ -107,33 +108,6 @@ static int hdr_pre_send(struct ptp_header *m)
 	return 0;
 }
 
-static char *msg_type_string(int type)
-{
-	switch (type) {
-	case SYNC:
-		return "SYNC";
-	case DELAY_REQ:
-		return "DELAY_REQ";
-	case PDELAY_REQ:
-		return "PDELAY_REQ";
-	case PDELAY_RESP:
-		return "PDELAY_RESP";
-	case FOLLOW_UP:
-		return "FOLLOW_UP";
-	case DELAY_RESP:
-		return "DELAY_RESP";
-	case PDELAY_RESP_FOLLOW_UP:
-		return "PDELAY_RESP_FOLLOW_UP";
-	case ANNOUNCE:
-		return "ANNOUNCE";
-	case SIGNALING:
-		return "SIGNALING";
-	case MANAGEMENT:
-		return "MANAGEMENT";
-	}
-	return "unknown";
-}
-
 static void port_id_post_recv(struct PortIdentity *pid)
 {
 	pid->portNumber = ntohs(pid->portNumber);
@@ -146,7 +120,7 @@ static void port_id_pre_send(struct PortIdentity *pid)
 
 static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
 {
-	int cnt;
+	int cnt, err;
 	struct TLV *tlv;
 
 	if (!ptr)
@@ -157,18 +131,18 @@ static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
 		tlv->type = ntohs(tlv->type);
 		tlv->length = ntohs(tlv->length);
 		if (tlv->length % 2) {
-			return -1;
+			return -EBADMSG;
 		}
 		len -= sizeof(struct TLV);
 		ptr += sizeof(struct TLV);
 		if (tlv->length > len) {
-			return -1;
+			return -EBADMSG;
 		}
 		len -= tlv->length;
 		ptr += tlv->length;
-		if (tlv_post_recv(tlv, len ? NULL : last)) {
-			return -1;
-		}
+		err = tlv_post_recv(tlv, len ? NULL : last);
+		if (err)
+			return err;
 	}
 	return cnt;
 }
@@ -251,14 +225,15 @@ void msg_get(struct ptp_message *m)
 
 int msg_post_recv(struct ptp_message *m, int cnt)
 {
-	int pdulen, type;
+	int pdulen, type, err;
 	uint8_t *suffix = NULL;
 
 	if (cnt < sizeof(struct ptp_header))
-		return -1;
+		return -EBADMSG;
 
-	if (hdr_post_recv(&m->header))
-		return -1;
+	err = hdr_post_recv(&m->header);
+	if (err)
+		return err;
 
 	type = msg_type(m);
 
@@ -294,11 +269,11 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		pdulen = sizeof(struct management_msg);
 		break;
 	default:
-		return -1;
+		return -EBADMSG;
 	}
 
 	if (cnt < pdulen)
-		return -1;
+		return -EBADMSG;
 
 	switch (type) {
 	case SYNC:
@@ -339,15 +314,12 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	}
 
-	if (msg_sots_missing(m)) {
-		pr_err("received %s without timestamp", msg_type_string(type));
-		return -1;
-	}
+	if (msg_sots_missing(m))
+		return -ETIME;
 
 	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen, &m->last_tlv);
-	if (m->tlv_count == -1) {
-		return -1;
-	}
+	if (m->tlv_count < 0)
+		return m->tlv_count;
 
 	return 0;
 }
@@ -403,6 +375,33 @@ int msg_pre_send(struct ptp_message *m)
 	}
 	suffix_pre_send(suffix, m->tlv_count, &m->last_tlv);
 	return 0;
+}
+
+char *msg_type_string(int type)
+{
+	switch (type) {
+	case SYNC:
+		return "SYNC";
+	case DELAY_REQ:
+		return "DELAY_REQ";
+	case PDELAY_REQ:
+		return "PDELAY_REQ";
+	case PDELAY_RESP:
+		return "PDELAY_RESP";
+	case FOLLOW_UP:
+		return "FOLLOW_UP";
+	case DELAY_RESP:
+		return "DELAY_RESP";
+	case PDELAY_RESP_FOLLOW_UP:
+		return "PDELAY_RESP_FOLLOW_UP";
+	case ANNOUNCE:
+		return "ANNOUNCE";
+	case SIGNALING:
+		return "SIGNALING";
+	case MANAGEMENT:
+		return "MANAGEMENT";
+	}
+	return "unknown";
 }
 
 void msg_print(struct ptp_message *m, FILE *fp)

@@ -17,6 +17,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -163,7 +164,7 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 struct ptp_message *pmc_recv(struct pmc *pmc)
 {
 	struct ptp_message *msg;
-	int cnt;
+	int cnt, err;
 
 	msg = msg_allocate();
 	if (!msg) {
@@ -176,8 +177,20 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 	if (cnt <= 0) {
 		pr_err("recv message failed");
 		goto failed;
-	} else if (msg_post_recv(msg, cnt)) {
-		pr_err("bad message");
+	}
+	err = msg_post_recv(msg, cnt);
+	if (err) {
+		switch (err) {
+		case -EBADMSG:
+			pr_err("bad message");
+			break;
+		case -ETIME:
+			pr_err("received %s without timestamp",
+					msg_type_string(msg_type(msg)));
+			break;
+		case -EPROTO:
+			pr_debug("ignoring message");
+		}
 		goto failed;
 	}
 

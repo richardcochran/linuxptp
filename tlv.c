@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <arpa/inet.h>
+#include <errno.h>
 #include <string.h>
 
 #include "port.h"
@@ -171,7 +172,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	}
 	return 0;
 bad_length:
-	return -1;
+	return -EBADMSG;
 }
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
@@ -260,7 +261,7 @@ static int org_post_recv(struct organization_tlv *org)
 	}
 	return 0;
 bad_length:
-	return -1;
+	return -EBADMSG;
 }
 
 static void org_pre_send(struct organization_tlv *org)
@@ -335,7 +336,7 @@ int tlv_post_recv(struct TLV *tlv, struct tlv_extra *extra)
 	}
 	return result;
 bad_length:
-	return -1;
+	return -EBADMSG;
 }
 
 void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)

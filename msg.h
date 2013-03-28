@@ -295,6 +295,13 @@ int msg_pre_send(struct ptp_message *m);
 
 /**
  * Print messages for debugging purposes.
+ * @param type  Value of the messageType field as returned by @ref msg_type().
+ * @return      String describing the message type.
+ */
+char *msg_type_string(int type);
+
+/**
+ * Print messages for debugging purposes.
  * @param m   A message obtained using @ref msg_allocate().
  * @param fp  An open file pointer.
  */
