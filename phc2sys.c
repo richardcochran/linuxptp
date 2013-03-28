@@ -527,8 +527,11 @@ static void usage(char *progname)
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -w             wait for ptp4l\n"
 		" -x             apply leap seconds by servo instead of kernel\n"
-		" -h             prints this message and exits\n"
+		" -l [num]       set the logging level to 'num' (6)\n"
+		" -m             print messages to stdout\n"
+		" -q             do not print messages to the syslog\n"
 		" -v             prints the software version and exits\n"
+		" -h             prints this message and exits\n"
 		"\n",
 		progname);
 }
