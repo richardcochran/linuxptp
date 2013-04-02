@@ -1096,6 +1096,11 @@ struct timePropertiesDS *clock_time_properties(struct clock *c)
 	return &c->tds;
 }
 
+void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds)
+{
+	c->tds = tds;
+}
+
 static void handle_state_decision_event(struct clock *c)
 {
 	struct foreign_clock *best = NULL, *fc;

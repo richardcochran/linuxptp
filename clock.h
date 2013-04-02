@@ -216,6 +216,13 @@ void clock_sync_interval(struct clock *c, int n);
 struct timePropertiesDS *clock_time_properties(struct clock *c);
 
 /**
+ * Update a clock's time properties data set.
+ * @param c   The clock instance.
+ * @param tds The new time properties data set for the clock.
+ */
+void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds);
+
+/**
  * Obtain a clock's description.
  * @param c  The clock instance.
  * @return   A pointer to the clock_description of the clock.
