@@ -1231,9 +1231,15 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 	struct ptp_message *tmp;
 	struct parent_ds *dad;
 	struct path_trace_tlv *ptt;
+	struct timePropertiesDS tds;
 
 	if (!msg_source_equal(m, fc))
 		return add_foreign_master(p, m);
+
+	tds.currentUtcOffset = m->announce.currentUtcOffset;
+	tds.flags = m->header.flagField[1];
+	tds.timeSource = m->announce.timeSource;
+	clock_update_time_properties(p->clock, tds);
 
 	if (p->pod.path_trace_enabled) {
 		ptt = (struct path_trace_tlv *) m->announce.suffix;
