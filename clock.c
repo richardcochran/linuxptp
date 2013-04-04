@@ -597,6 +597,10 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clockadj_get_freq(c->clkid);
+		/* Due to a bug in older kernels, the reading may silently fail
+		   and return 0. Set the frequency back to make sure fadj is
+		   the actual frequency of the clock. */
+		clockadj_set_freq(c->clkid, fadj);
 	}
 	c->servo = servo_create(servo, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
