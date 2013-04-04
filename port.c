@@ -1829,6 +1829,7 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next;
 	struct fault_interval i;
+	int fri_asap = 0;
 
 	if (clock_slave_only(p->clock)) {
 		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER) {
@@ -1839,9 +1840,10 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		next = ptp_fsm(p->state, event, mdiff);
 	}
 
-	fault_interval(p, last_fault_type(p), &i);
-	int fri_asap = (i.val == FRI_ASAP && i.type == FTMO_LOG2_SECONDS) ||
-		(i.val == 0 && i.type == FTMO_LINEAR_SECONDS);
+	if (!fault_interval(p, last_fault_type(p), &i) &&
+	    ((i.val == FRI_ASAP && i.type == FTMO_LOG2_SECONDS) ||
+	     (i.val == 0 && i.type == FTMO_LINEAR_SECONDS)))
+		fri_asap = 1;
 	if (PS_INITIALIZING == next || (PS_FAULTY == next && fri_asap)) {
 		/*
 		 * This is a special case. Since we initialize the

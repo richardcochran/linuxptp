@@ -436,7 +436,7 @@ int config_read(char *name, struct config *cfg)
 	enum parser_result parser_res;
 	FILE *fp;
 	char buf[1024], *line, *c, *option, *value;
-	int current_port, line_num;
+	int current_port = 0, line_num;
 
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
 

@@ -200,7 +200,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	       struct hw_timestamp *hwts, int flags)
 {
 	char control[256];
-	int cnt, level, try_again, type;
+	int cnt = 0, level, try_again, type;
 	struct cmsghdr *cm;
 	struct iovec iov = { buf, buflen };
 	struct msghdr msg;
@@ -272,7 +272,7 @@ int sk_receive(int fd, void *buf, int buflen,
 int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
 			 enum transport_type transport)
 {
-	int err, filter1, filter2, flags, one_step;
+	int err, filter1, filter2 = 0, flags, one_step;
 
 	switch (type) {
 	case TS_SOFTWARE:

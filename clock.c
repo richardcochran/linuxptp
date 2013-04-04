@@ -735,7 +735,7 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 
 static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_message *msg)
 {
-	int i, pdulen, msg_ready = 0;
+	int i, pdulen = 0, msg_ready = 0;
 	struct port *fwd;
 	if (forwarding(c, p) && msg->management.boundaryHops) {
 		for (i = 0; i < c->nports + 1; i++) {

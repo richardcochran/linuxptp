@@ -330,12 +330,14 @@ static int is_msg_mgt(struct ptp_message *msg)
 
 static int get_mgt_id(struct ptp_message *msg)
 {
-	return ((struct management_tlv *) msg->management.suffix)->id;
+	struct management_tlv *mgt = (struct management_tlv *) msg->management.suffix;
+	return mgt->id;
 }
 
 static void *get_mgt_data(struct ptp_message *msg)
 {
-	return ((struct management_tlv *) msg->management.suffix)->data;
+	struct management_tlv *mgt = (struct management_tlv *) msg->management.suffix;
+	return mgt->data;
 }
 
 static int init_pmc(struct clock *clock)
