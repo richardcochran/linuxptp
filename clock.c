@@ -589,7 +589,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	} else {
 		c->clkid = CLOCK_REALTIME;
 		c->utc_timescale = 1;
-		max_adj = 512000;
+		max_adj = clockadj_get_max_freq(c->clkid);
 		clockadj_set_leap(c->clkid, 0);
 	}
 	c->leap_set = 0;

@@ -51,4 +51,11 @@ void clockadj_step(clockid_t clkid, int64_t step);
  *              0 to reset the leap state.
  */
 void clockadj_set_leap(clockid_t clkid, int leap);
+
+/*
+ * Read clock's maximum frequency adjustment.
+ * @param clkid CLOCK_REALTIME.
+ * @return      The maximum frequency adjustment in parts per billion (ppb).
+ */
+int clockadj_get_max_freq(clockid_t clkid);
 #endif
