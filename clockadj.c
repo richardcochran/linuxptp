@@ -95,8 +95,9 @@ void clockadj_set_leap(clockid_t clkid, int leap)
 		pr_notice(m);
 }
 
-int clockadj_get_max_freq(clockid_t clkid)
+int sysclk_max_freq(void)
 {
+	clockid_t clkid = CLOCK_REALTIME;
 	int f = 0;
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
