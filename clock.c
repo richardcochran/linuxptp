@@ -574,6 +574,9 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
+		if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
+			c->utc_timescale = 1;
+		}
 	} else if (phc_index >= 0) {
 		snprintf(phc, 31, "/dev/ptp%d", phc_index);
 		c->clkid = phc_open(phc);
