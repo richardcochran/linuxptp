@@ -23,28 +23,28 @@
 #include <inttypes.h>
 #include <time.h>
 
-/*
+/**
  * Set clock's frequency offset.
  * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @param freq  The frequency offset in parts per billion (ppb).
  */
 void clockadj_set_freq(clockid_t clkid, double freq);
 
-/*
+/**
  * Read clock's frequency offset.
  * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @return      The frequency offset in parts per billion (ppb).
  */
 double clockadj_get_freq(clockid_t clkid);
 
-/*
+/**
  * Step clock's time.
  * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @param step  The time step in nanoseconds.
  */
 void clockadj_step(clockid_t clkid, int64_t step);
 
-/*
+/**
  * Insert/delete leap second at midnight.
  * @param clkid CLOCK_REALTIME.
  * @param leap  +1 to insert leap second, -1 to delete leap second,
@@ -52,7 +52,7 @@ void clockadj_step(clockid_t clkid, int64_t step);
  */
 void clockadj_set_leap(clockid_t clkid, int leap);
 
-/*
+/**
  * Read clock's maximum frequency adjustment.
  * @param clkid CLOCK_REALTIME.
  * @return      The maximum frequency adjustment in parts per billion (ppb).
