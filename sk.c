@@ -28,13 +28,14 @@
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <stdlib.h>
+#include <poll.h>
 
 #include "print.h"
 #include "sk.h"
 
 /* globals */
 
-int sk_tx_retries = 100;
+int sk_tx_timeout = 1;
 
 /* private methods */
 
@@ -200,7 +201,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	       struct hw_timestamp *hwts, int flags)
 {
 	char control[256];
-	int cnt = 0, level, try_again, type;
+	int cnt = 0, res = 0, level, type;
 	struct cmsghdr *cm;
 	struct iovec iov = { buf, buflen };
 	struct msghdr msg;
@@ -213,28 +214,22 @@ int sk_receive(int fd, void *buf, int buflen,
 	msg.msg_control = control;
 	msg.msg_controllen = sizeof(control);
 
-	try_again = flags == MSG_ERRQUEUE ? sk_tx_retries : 1;
-
-	for ( ; try_again; try_again--) {
-		cnt = recvmsg(fd, &msg, flags);
-		if (cnt >= 0) {
-			break;
-		}
-		if (errno == EINTR) {
-			try_again++;
-		} else if (errno == EAGAIN) {
-			usleep(1);
-		} else {
-			break;
+	if (flags == MSG_ERRQUEUE) {
+		struct pollfd pfd = { fd, 0, 0 };
+		res = poll(&pfd, 1, sk_tx_timeout);
+		if (res < 1) {
+			pr_err("poll tx timestamp failed: %m");
+			return res;
+		} else if (!(pfd.revents & POLLERR)) {
+			pr_err("poll tx woke up on non ERR event");
+			return -1;
 		}
 	}
 
-	if (cnt < 1) {
-		if (flags == MSG_ERRQUEUE)
-			pr_err("recvmsg tx timestamp failed: %m");
-		else
-			pr_err("recvmsg failed: %m");
-	}
+	cnt = recvmsg(fd, &msg, flags);
+	if (cnt < 1)
+		pr_err("recvmsg%sfailed: %m",
+		       flags == MSG_ERRQUEUE ? " tx timestamp " : " ");
 
 	for (cm = CMSG_FIRSTHDR(&msg); cm != NULL; cm = CMSG_NXTHDR(&msg, cm)) {
 		level = cm->cmsg_level;

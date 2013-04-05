@@ -270,10 +270,10 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		*cfg->assume_two_step = val ? 1 : 0;
 
-	} else if (!strcmp(option, "tx_timestamp_retries")) {
+	} else if (!strcmp(option, "tx_timestamp_timeout")) {
 		if (1 != sscanf(value, "%u", &val) || !(val > 0))
 			return BAD_VALUE;
-		*cfg->tx_timestamp_retries = val;
+		*cfg->tx_timestamp_timeout = val;
 
 	} else if (!strcmp(option, "pi_proportional_const")) {
 		if (1 != sscanf(value, "%lf", &df) || !(df >= 0.0 && df < 1.0))

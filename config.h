@@ -61,7 +61,7 @@ struct config {
 	struct default_ds dds;
 	struct port_defaults pod;
 	int *assume_two_step;
-	int *tx_timestamp_retries;
+	int *tx_timestamp_timeout;
 
 	enum servo_type clock_servo;
 

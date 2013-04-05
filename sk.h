@@ -97,9 +97,9 @@ int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
 			 enum transport_type transport);
 
 /**
- * Limits the number of RECVMSG(2) calls when attempting to obtain a
- * transmit time stamp on an event message.
+ * Limits the time that RECVMSG(2) will poll while waiting for the tx timestamp
+ * if MSG_ERRQUEUE is set. Specified in milliseconds.
  */
-extern int sk_tx_retries;
+extern int sk_tx_timeout;
 
 #endif

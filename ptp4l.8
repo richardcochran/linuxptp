@@ -264,10 +264,10 @@ Treat one-step responses as two-step if enabled. It is used to work around
 buggy 802.1AS switches.
 The default is 0 (disabled).
 .TP
-.B tx_timestamp_retries
-The number of retries to fetch the tx time stamp from the kernel when a message
-is sent.
-The default is 100.
+.B tx_timestamp_timeout
+The number of milliseconds to poll waiting for the tx time stamp from the kernel
+when a message has recently been sent.
+The default is 1.
 .TP
 .B clock_servo
 The servo which is used to synchronize the local clock. Currently only one

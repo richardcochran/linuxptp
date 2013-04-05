@@ -89,7 +89,7 @@ static struct config cfg_settings = {
 	.transport = TRANS_UDP_IPV4,
 
 	.assume_two_step = &assume_two_step,
-	.tx_timestamp_retries = &sk_tx_retries,
+	.tx_timestamp_timeout = &sk_tx_timeout,
 
 	.clock_servo = CLOCK_SERVO_PI,
 
