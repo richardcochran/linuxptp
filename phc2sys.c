@@ -61,7 +61,7 @@ static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts);
 
 static clockid_t clock_open(char *device)
 {
-	int fd;
+	int clkid;
 
 	if (device[0] != '/') {
 		if (!strcasecmp(device, "CLOCK_REALTIME"))
@@ -71,12 +71,10 @@ static clockid_t clock_open(char *device)
 		return CLOCK_INVALID;
 	}
 
-	fd = open(device, O_RDWR);
-	if (fd < 0) {
+	clkid = phc_open(device);
+	if (clkid == CLOCK_INVALID)
 		fprintf(stderr, "cannot open %s: %m\n", device);
-		return CLOCK_INVALID;
-	}
-	return FD_TO_CLOCKID(fd);
+	return clkid;
 }
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
