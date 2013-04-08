@@ -37,6 +37,7 @@
 #include "ds.h"
 #include "fsm.h"
 #include "missing.h"
+#include "phc.h"
 #include "pi.h"
 #include "pmc_common.h"
 #include "print.h"
@@ -51,8 +52,6 @@
 #define KP 0.7
 #define KI 0.3
 #define NS_PER_SEC 1000000000LL
-
-#define max_ppb  512000
 
 #define PHC_PPS_OFFSET_LIMIT 10000000
 #define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
@@ -543,7 +542,7 @@ int main(int argc, char *argv[])
 	char *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID;
 	int c, phc_readings = 5, phc_rate = 1, pps_fd = -1;
-	int r, wait_sync = 0, forced_sync_offset = 0;
+	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	double ppb;
 	struct clock dst_clock = {
@@ -701,6 +700,15 @@ int main(int argc, char *argv[])
 	   make sure ppb is the actual frequency of the clock. */
 	clockadj_set_freq(dst_clock.clkid, ppb);
 	clockadj_set_leap(dst_clock.clkid, 0);
+	if (dst_clock.clkid == CLOCK_REALTIME) {
+		max_ppb = sysclk_max_freq();
+	} else {
+		max_ppb = phc_max_adj(dst_clock.clkid);
+		if (!max_ppb) {
+			pr_err("clock is not adjustable");
+			return -1;
+		}
+	}
 
 	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 
