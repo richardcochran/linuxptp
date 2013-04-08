@@ -715,7 +715,7 @@ int main(int argc, char *argv[])
 	if (pps_fd >= 0)
 		return do_pps_loop(&dst_clock, pps_fd, src, phc_readings);
 
-	if (dst_clock.clkid == CLOCK_REALTIME &&
+	if (dst_clock.clkid == CLOCK_REALTIME && src != CLOCK_REALTIME &&
 	    SYSOFF_SUPPORTED == sysoff_probe(CLOCKID_TO_FD(src), phc_readings))
 		return do_sysoff_loop(&dst_clock, src, phc_rate, phc_readings);
 
