@@ -502,7 +502,7 @@ static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
 	if (clock->leap_set != clock_leap) {
 		/* Only the system clock can leap. */
 		if (clock->clkid == CLOCK_REALTIME && clock->kernel_leap)
-			clockadj_set_leap(clock->clkid, clock_leap);
+			sysclk_set_leap(clock_leap);
 		clock->leap_set = clock_leap;
 	}
 
@@ -702,8 +702,8 @@ int main(int argc, char *argv[])
 	/* The reading may silently fail and return 0, reset the frequency to
 	   make sure ppb is the actual frequency of the clock. */
 	clockadj_set_freq(dst_clock.clkid, ppb);
-	clockadj_set_leap(dst_clock.clkid, 0);
 	if (dst_clock.clkid == CLOCK_REALTIME) {
+		sysclk_set_leap(0);
 		max_ppb = sysclk_max_freq();
 	} else {
 		max_ppb = phc_max_adj(dst_clock.clkid);

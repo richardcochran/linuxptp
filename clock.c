@@ -508,7 +508,7 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 						&leap, &utc_offset);
 		if (c->leap_set != clock_leap) {
 			if (c->kernel_leap)
-				clockadj_set_leap(c->clkid, clock_leap);
+				sysclk_set_leap(clock_leap);
 			c->leap_set = clock_leap;
 		}
 	}
@@ -593,7 +593,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		c->clkid = CLOCK_REALTIME;
 		c->utc_timescale = 1;
 		max_adj = sysclk_max_freq();
-		clockadj_set_leap(c->clkid, 0);
+		sysclk_set_leap(0);
 	}
 	c->leap_set = 0;
 	c->kernel_leap = dds->kernel_leap;

@@ -45,12 +45,11 @@ double clockadj_get_freq(clockid_t clkid);
 void clockadj_step(clockid_t clkid, int64_t step);
 
 /**
- * Insert/delete leap second at midnight.
- * @param clkid CLOCK_REALTIME.
+ * Set the system clock to insert/delete leap second at midnight.
  * @param leap  +1 to insert leap second, -1 to delete leap second,
  *              0 to reset the leap state.
  */
-void clockadj_set_leap(clockid_t clkid, int leap);
+void sysclk_set_leap(int leap);
 
 /**
  * Read maximum frequency adjustment of the system clock (CLOCK_REALTIME).

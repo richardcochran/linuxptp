@@ -71,8 +71,9 @@ void clockadj_step(clockid_t clkid, int64_t step)
 		pr_err("failed to step clock: %m");
 }
 
-void clockadj_set_leap(clockid_t clkid, int leap)
+void sysclk_set_leap(int leap)
 {
+	clockid_t clkid = CLOCK_REALTIME;
 	struct timex tx;
 	const char *m = NULL;
 	memset(&tx, 0, sizeof(tx));
