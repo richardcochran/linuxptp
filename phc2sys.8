@@ -31,6 +31,8 @@ phc2sys \- synchronize two clocks
 ] [
 .B \-w
 ] [
+.BI \-n " domain-number"
+] [
 .B \-x
 ] [
 .BI \-l " print-level"
@@ -128,6 +130,9 @@ Wait until ptp4l is in a synchronized state. If the
 option is not used, also keep the offset between the slave and master
 times updated according to the currentUtcOffset value obtained from ptp4l and
 the direction of the clock synchronization.
+.TP
+.BI \-n " domain-number"
+Specify the domain number used by ptp4l. The default is 0.
 .TP
 .B \-x
 When a leap second is announced, don't apply it in the kernel by stepping the

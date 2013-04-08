@@ -337,9 +337,10 @@ static void *get_mgt_data(struct ptp_message *msg)
 	return mgt->data;
 }
 
-static int init_pmc(struct clock *clock)
+static int init_pmc(struct clock *clock, int domain_number)
 {
-	clock->pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0, 0, 0);
+	clock->pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0,
+				domain_number, 0);
 	if (!clock->pmc) {
 		pr_err("failed to create pmc");
 		return -1;
@@ -525,6 +526,7 @@ static void usage(char *progname)
 		" -O [offset]    slave-master time offset (0)\n"
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -w             wait for ptp4l\n"
+		" -n [num]       domain number (0)\n"
 		" -x             apply leap seconds by servo instead of kernel\n"
 		" -l [num]       set the logging level to 'num' (6)\n"
 		" -m             print messages to stdout\n"
@@ -539,7 +541,7 @@ int main(int argc, char *argv[])
 {
 	char *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID;
-	int c, phc_readings = 5, phc_rate = 1, pps_fd = -1;
+	int c, domain_number = 0, phc_readings = 5, phc_rate = 1, pps_fd = -1;
 	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	double ppb;
@@ -556,7 +558,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "c:d:hs:P:I:S:R:N:O:i:u:wxl:mqv"))) {
+				  "c:d:hs:P:I:S:R:N:O:i:u:wn:xl:mqv"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -600,6 +602,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'w':
 			wait_sync = 1;
+			break;
+		case 'n':
+			domain_number = atoi(optarg);
 			break;
 		case 'x':
 			dst_clock.kernel_leap = 0;
@@ -664,7 +669,7 @@ int main(int argc, char *argv[])
 	print_set_level(print_level);
 
 	if (wait_sync) {
-		if (init_pmc(&dst_clock))
+		if (init_pmc(&dst_clock, domain_number))
 			return -1;
 
 		while (1) {
