@@ -57,4 +57,9 @@ void sysclk_set_leap(int leap);
  */
 int sysclk_max_freq(void);
 
+/**
+ * Mark the system clock as synchronized to let the kernel synchronize
+ * the real-time clock (RTC) to it.
+ */
+void sysclk_set_sync(void);
 #endif

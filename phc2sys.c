@@ -187,6 +187,8 @@ static void update_clock(struct clock *clock,
 		/* Fall through. */
 	case SERVO_LOCKED:
 		clockadj_set_freq(clock->clkid, -ppb);
+		if (clock->clkid == CLOCK_REALTIME)
+			sysclk_set_sync();
 		break;
 	}
 

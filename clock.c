@@ -1070,6 +1070,8 @@ enum servo_state clock_synchronize(struct clock *c,
 		break;
 	case SERVO_LOCKED:
 		clockadj_set_freq(c->clkid, -adj);
+		if (c->clkid == CLOCK_REALTIME)
+			sysclk_set_sync();
 		break;
 	}
 	return state;
