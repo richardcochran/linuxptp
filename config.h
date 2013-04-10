@@ -68,6 +68,7 @@ struct config {
 	double *pi_proportional_const;
 	double *pi_integral_const;
 	double *pi_offset_const;
+	int *pi_max_frequency;
 
 	unsigned char *ptp_dst_mac;
 	unsigned char *p2p_dst_mac;

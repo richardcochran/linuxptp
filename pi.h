@@ -42,6 +42,12 @@ extern double configured_pi_ki;
  */
 extern double configured_pi_offset;
 
+/**
+ * When set to a non-zero value, this variable sets an additional limit for
+ * the frequency adjustment of the clock. It's in ppb.
+ */
+extern int configured_pi_max_freq;
+
 struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts);
 
 #endif

@@ -292,6 +292,12 @@ frequency instead of stepping the clock. When set to 0.0, the controller will
 never step the clock.
 The default is 0.0.
 .TP
+.B pi_max_frequency
+The maximum allowed frequency adjustment of the clock in parts per billion
+(ppb). This is an additional limit to the maximum allowed by the hardware. When
+set to 0, the hardware limit will be used.
+The default is 900000000 (90%).
+.TP
 .B ptp_dst_mac
 The MAC address where should be PTP messages sent.
 Relevant only with L2 transport. The default is 01:1B:19:00:00:00.

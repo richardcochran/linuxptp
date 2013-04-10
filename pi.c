@@ -31,10 +31,11 @@
 
 #define NSEC_PER_SEC 1000000000
 
-/* These two take their values from the configuration file. (see ptp4l.c) */
+/* These take their values from the configuration file. (see ptp4l.c) */
 double configured_pi_kp = 0.0;
 double configured_pi_ki = 0.0;
 double configured_pi_offset = 0.0;
+int configured_pi_max_freq = 900000000;
 
 struct pi_servo {
 	struct servo servo;
@@ -148,6 +149,10 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 		s->max_offset = configured_pi_offset * NSEC_PER_SEC;
 	} else {
 		s->max_offset = 0.0;
+	}
+
+	if (configured_pi_max_freq && s->maxppb > configured_pi_max_freq) {
+		s->maxppb = configured_pi_max_freq;
 	}
 
 	return &s->servo;
