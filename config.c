@@ -234,7 +234,7 @@ static enum parser_result parse_global_setting(const char *option,
 		dds->priority2 = u8;
 
 	} else if (!strcmp(option, "domainNumber")) {
-		if (1 != sscanf(value, "%hhu", &u8) || !(u8 < 128))
+		if (1 != sscanf(value, "%hhu", &u8) || u8 > 127)
 			return BAD_VALUE;
 		dds->domainNumber = u8;
 
@@ -260,7 +260,7 @@ static enum parser_result parse_global_setting(const char *option,
 		cfg->dds.free_running = val ? 1 : 0;
 
 	} else if (!strcmp(option, "freq_est_interval")) {
-		if (1 != sscanf(value, "%d", &val) || !(val >= 0))
+		if (1 != sscanf(value, "%d", &val) || val < 0)
 			return BAD_VALUE;
 		cfg->dds.freq_est_interval = val;
 		pod->freq_est_interval = val;
@@ -271,27 +271,27 @@ static enum parser_result parse_global_setting(const char *option,
 		*cfg->assume_two_step = val ? 1 : 0;
 
 	} else if (!strcmp(option, "tx_timestamp_timeout")) {
-		if (1 != sscanf(value, "%u", &val) || !(val > 0))
+		if (1 != sscanf(value, "%u", &val) || val <= 0)
 			return BAD_VALUE;
 		*cfg->tx_timestamp_timeout = val;
 
 	} else if (!strcmp(option, "pi_proportional_const")) {
-		if (1 != sscanf(value, "%lf", &df) || !(df >= 0.0 && df < 1.0))
+		if (1 != sscanf(value, "%lf", &df) || df < 0.0 || df >= 1.0)
 			return BAD_VALUE;
 		*cfg->pi_proportional_const = df;
 
 	} else if (!strcmp(option, "pi_integral_const")) {
-		if (1 != sscanf(value, "%lf", &df) || !(df >= 0.0 && df < 1.0))
+		if (1 != sscanf(value, "%lf", &df) || df < 0.0 || df >= 1.0)
 			return BAD_VALUE;
 		*cfg->pi_integral_const = df;
 
 	} else if (!strcmp(option, "pi_offset_const")) {
-		if (1 != sscanf(value, "%lf", &df) || !(df >= 0.0))
+		if (1 != sscanf(value, "%lf", &df) || df < 0.0)
 			return BAD_VALUE;
 		*cfg->pi_offset_const = df;
 
 	} else if (!strcmp(option, "pi_max_frequency")) {
-		if (1 != sscanf(value, "%d", &val) || !(val >= 0))
+		if (1 != sscanf(value, "%d", &val) || val < 0)
 			return BAD_VALUE;
 		*cfg->pi_max_frequency = val;
 
@@ -316,7 +316,7 @@ static enum parser_result parse_global_setting(const char *option,
 
 	} else if (!strcmp(option, "logging_level")) {
 		if (1 != sscanf(value, "%d", &val) ||
-				!(val >= PRINT_LEVEL_MIN && val <= PRINT_LEVEL_MAX))
+		    val < PRINT_LEVEL_MIN || val > PRINT_LEVEL_MAX)
 			return BAD_VALUE;
 		if (!(cfg_ignore & CFG_IGNORE_PRINT_LEVEL)) {
 			cfg->print_level = val;
