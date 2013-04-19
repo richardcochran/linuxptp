@@ -206,6 +206,16 @@ static void update_clock(struct clock *clock,
 	}
 }
 
+static void enable_pps_output(clockid_t src)
+{
+	int enable = 1;
+
+	if (!phc_has_pps(src))
+		return;
+	if (ioctl(CLOCKID_TO_FD(src), PTP_ENABLE_PPS, enable) < 0)
+		pr_warning("failed to enable PPS output");
+}
+
 static int read_pps(int fd, int64_t *offset, uint64_t *ts)
 {
 	struct pps_fdata pfd;
@@ -236,9 +246,12 @@ static int do_pps_loop(struct clock *clock, int fd,
 
 	clock->source_label = "pps";
 
-	/* The sync offset can't be applied with PPS alone. */
-	if (src == CLOCK_INVALID)
+	if (src == CLOCK_INVALID) {
+		/* The sync offset can't be applied with PPS alone. */
 		clock->sync_offset_direction = 0;
+	} else {
+		enable_pps_output(src);
+	}
 
 	while (1) {
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {

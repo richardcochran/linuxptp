@@ -51,15 +51,23 @@ void phc_close(clockid_t clkid)
 	close(CLOCKID_TO_FD(clkid));
 }
 
+static int phc_get_caps(clockid_t clkid, struct ptp_clock_caps *caps)
+{
+	int fd = CLOCKID_TO_FD(clkid), err;
+
+	err = ioctl(fd, PTP_CLOCK_GETCAPS, caps);
+	if (err)
+		perror("PTP_CLOCK_GETCAPS");
+	return err;
+}
+
 int phc_max_adj(clockid_t clkid)
 {
-	int fd = CLOCKID_TO_FD(clkid), max;
+	int max;
 	struct ptp_clock_caps caps;
 
-	if (ioctl(fd, PTP_CLOCK_GETCAPS, &caps)) {
-		perror("PTP_CLOCK_GETCAPS");
+	if (phc_get_caps(clkid, &caps))
 		return 0;
-	}
 
 	max = caps.max_adj;
 
@@ -67,4 +75,13 @@ int phc_max_adj(clockid_t clkid)
 		max = MAX_PPB_32;
 
 	return max;
+}
+
+int phc_has_pps(clockid_t clkid)
+{
+	struct ptp_clock_caps caps;
+
+	if (phc_get_caps(clkid, &caps))
+		return 0;
+	return caps.pps;
 }

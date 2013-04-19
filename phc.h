@@ -46,4 +46,14 @@ void phc_close(clockid_t clkid);
  */
 int phc_max_adj(clockid_t clkid);
 
+/**
+ * Checks whether the given PTP hardware clock device supports PPS output.
+ *
+ * @param clkid A clock ID obtained using phc_open().
+ *
+ * @return Zero if PPS output is not supported by the clock, non-zero
+ * otherwise.
+ */
+int phc_has_pps(clockid_t clkid);
+
 #endif
