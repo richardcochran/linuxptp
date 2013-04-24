@@ -286,7 +286,7 @@ static int do_pps_loop(struct clock *clock, int fd,
 }
 
 static int do_sysoff_loop(struct clock *clock, clockid_t src,
-			  int rate, int n_readings)
+			  double rate, int n_readings)
 {
 	uint64_t ts;
 	int64_t offset, delay;
@@ -306,7 +306,7 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 }
 
 static int do_phc_loop(struct clock *clock, clockid_t src,
-		       int rate, int n_readings)
+		       double rate, int n_readings)
 {
 	uint64_t ts;
 	int64_t offset, delay;
@@ -539,7 +539,7 @@ static void usage(char *progname)
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
 		" -S [step]      step threshold (disabled)\n"
-		" -R [rate]      slave clock update rate in HZ (1)\n"
+		" -R [rate]      slave clock update rate in HZ (1.0)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -O [offset]    slave-master time offset (0)\n"
 		" -u [num]       number of clock updates in summary stats (0)\n"
@@ -559,10 +559,10 @@ int main(int argc, char *argv[])
 {
 	char *progname, *ethdev = NULL;
 	clockid_t src = CLOCK_INVALID;
-	int c, domain_number = 0, phc_readings = 5, phc_rate = 1, pps_fd = -1;
+	int c, domain_number = 0, phc_readings = 5, pps_fd = -1;
 	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
-	double ppb;
+	double ppb, phc_rate = 1.0;
 	struct clock dst_clock = {
 		.clkid = CLOCK_REALTIME,
 		.servo_state = SERVO_UNLOCKED,
@@ -602,7 +602,7 @@ int main(int argc, char *argv[])
 			configured_pi_offset = atof(optarg);
 			break;
 		case 'R':
-			phc_rate = atoi(optarg);
+			phc_rate = atof(optarg);
 			break;
 		case 'N':
 			phc_readings = atoi(optarg);
