@@ -276,12 +276,12 @@ static enum parser_result parse_global_setting(const char *option,
 		*cfg->tx_timestamp_timeout = val;
 
 	} else if (!strcmp(option, "pi_proportional_const")) {
-		if (1 != sscanf(value, "%lf", &df) || df < 0.0 || df >= 1.0)
+		if (1 != sscanf(value, "%lf", &df) || df < 0.0)
 			return BAD_VALUE;
 		*cfg->pi_proportional_const = df;
 
 	} else if (!strcmp(option, "pi_integral_const")) {
-		if (1 != sscanf(value, "%lf", &df) || df < 0.0 || df >= 1.0)
+		if (1 != sscanf(value, "%lf", &df) || df < 0.0)
 			return BAD_VALUE;
 		*cfg->pi_integral_const = df;
 
