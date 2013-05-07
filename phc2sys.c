@@ -368,6 +368,7 @@ static int run_pmc(struct clock *clock, int timeout,
 		   int wait_sync, int get_utc_offset)
 {
 	struct ptp_message *msg;
+	struct timePropertiesDS *tds;
 	void *data;
 #define N_FD 1
 	struct pollfd pollfd[N_FD];
@@ -440,14 +441,16 @@ static int run_pmc(struct clock *clock, int timeout,
 
 			break;
 		case TIME_PROPERTIES_DATA_SET:
-			clock->sync_offset = ((struct timePropertiesDS *)data)->
-				currentUtcOffset;
-			if (((struct timePropertiesDS *)data)->flags & LEAP_61)
-				clock->leap = 1;
-			else if (((struct timePropertiesDS *)data)->flags & LEAP_59)
-				clock->leap = -1;
-			else
-				clock->leap = 0;
+			tds = (struct timePropertiesDS *)data;
+			if (tds->flags & PTP_TIMESCALE) {
+				clock->sync_offset = tds->currentUtcOffset;
+				if (tds->flags & LEAP_61)
+					clock->leap = 1;
+				else if (tds->flags & LEAP_59)
+					clock->leap = -1;
+				else
+					clock->leap = 0;
+			}
 			ds_done = 1;
 			break;
 		}
