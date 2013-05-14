@@ -663,9 +663,23 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!(pps_fd >= 0 || src != CLOCK_INVALID) ||
-	    dst_clock.clkid == CLOCK_INVALID ||
-	    (pps_fd >= 0 && dst_clock.clkid != CLOCK_REALTIME)) {
+	if (pps_fd < 0 && src == CLOCK_INVALID) {
+		fprintf(stderr,
+			"valid source clock must be selected.\n");
+		usage(progname);
+		return -1;
+	}
+
+	if (dst_clock.clkid == CLOCK_INVALID) {
+		fprintf(stderr,
+			"valid destination clock must be selected.\n");
+		usage(progname);
+		return -1;
+	}
+
+	if (pps_fd >= 0 && dst_clock.clkid != CLOCK_REALTIME) {
+		fprintf(stderr,
+			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		usage(progname);
 		return -1;
 	}
