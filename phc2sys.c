@@ -61,17 +61,32 @@ static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts);
 
 static clockid_t clock_open(char *device)
 {
+	struct sk_ts_info ts_info;
+	char phc_device[16];
 	int clkid;
 
-	if (device[0] != '/') {
-		if (!strcasecmp(device, "CLOCK_REALTIME"))
-			return CLOCK_REALTIME;
+	/* check if device is CLOCK_REALTIME */
+	if (!strcasecmp(device, "CLOCK_REALTIME"))
+		return CLOCK_REALTIME;
 
-		fprintf(stderr, "unknown clock %s\n", device);
+	/* check if device is valid phc device */
+	clkid = phc_open(device);
+	if (clkid != CLOCK_INVALID)
+		return clkid;
+
+	/* check if device is a valid ethernet device */
+	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
+		fprintf(stderr, "unknown clock %s: %m\n", device);
 		return CLOCK_INVALID;
 	}
 
-	clkid = phc_open(device);
+	if (ts_info.phc_index < 0) {
+		fprintf(stderr, "interface %s does not have a PHC\n", device);
+		return CLOCK_INVALID;
+	}
+
+	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
+	clkid = phc_open(phc_device);
 	if (clkid == CLOCK_INVALID)
 		fprintf(stderr, "cannot open %s: %m\n", device);
 	return clkid;
@@ -535,7 +550,6 @@ static void usage(char *progname)
 		" -c [dev|name]  slave clock (CLOCK_REALTIME)\n"
 		" -d [dev]       master PPS device\n"
 		" -s [dev|name]  master clock\n"
-		" -i [iface]     master clock by network interface\n"
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
 		" -S [step]      step threshold (disabled)\n"
@@ -557,7 +571,7 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *progname, *ethdev = NULL;
+	char *progname;
 	clockid_t src = CLOCK_INVALID;
 	int c, domain_number = 0, phc_readings = 5, pps_fd = -1;
 	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
@@ -590,6 +604,9 @@ int main(int argc, char *argv[])
 				return -1;
 			}
 			break;
+		case 'i':
+			fprintf(stderr,
+				"'-i' has been deprecated. please use '-s' instead.\n");
 		case 's':
 			src = clock_open(optarg);
 			break;
@@ -612,9 +629,6 @@ int main(int argc, char *argv[])
 			dst_clock.sync_offset = atoi(optarg);
 			dst_clock.sync_offset_direction = -1;
 			forced_sync_offset = 1;
-			break;
-		case 'i':
-			ethdev = optarg;
 			break;
 		case 'u':
 			dst_clock.stats_max_count = atoi(optarg);
@@ -649,20 +663,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (src == CLOCK_INVALID && ethdev) {
-		struct sk_ts_info ts_info;
-		char phc_device[16];
-		if (sk_get_ts_info(ethdev, &ts_info) || !ts_info.valid) {
-			fprintf(stderr, "can't autodiscover PHC device\n");
-			return -1;
-		}
-		if (ts_info.phc_index < 0) {
-			fprintf(stderr, "interface %s doesn't have a PHC\n", ethdev);
-			return -1;
-		}
-		sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
-		src = clock_open(phc_device);
-	}
 	if (!(pps_fd >= 0 || src != CLOCK_INVALID) ||
 	    dst_clock.clkid == CLOCK_INVALID ||
 	    (pps_fd >= 0 && dst_clock.clkid != CLOCK_REALTIME)) {

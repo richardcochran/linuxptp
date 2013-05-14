@@ -4,18 +4,12 @@ phc2sys \- synchronize two clocks
 
 .SH SYNOPSIS
 .B phc2sys
-{
-.BI \-d " pps-device"
 [
-.BI \-s " phc-device"
-|
-.BI \-i " interface"
-] |
-.BI \-s " phc-device"
-|
-.BI \-i " interface"
-} [
-.BI \-c " phc-device"
+.BI \-d " pps-device"
+] [
+.BI \-s " device"
+] [
+.BI \-c " device"
 ] [
 .BI \-P " kp"
 ] [
@@ -71,21 +65,26 @@ is started or the
 option should be used too. This option can be used only with the system clock as
 the slave clock.
 .TP
-.BI \-s " phc-device"
-Specify the master clock by device (e.g. /dev/ptp0) or name (e.g. CLOCK_REALTIME
-for the system clock). When this option is used together with the
+.BI \-s " device"
+Specify the master clock by device (e.g. dev/ptp0) or interface (e.g. eth0) or
+by name (e.g. CLOCK_REALTIME for the system clock). When this option is used
+together with the
 .B \-d
 option, the master clock is used only to correct the offset by whole number of
 seconds, which cannot be fixed with PPS alone.
 .TP
 .BI \-i " interface"
-Similar to the
+Performs the exact same function as
 .B \-s
-option, but specified by the interface which provides the master clock.
+for compatibility reasons. Previously enabled specifying master clock by network
+interface. However, this can now be done using
+.B \-s
+and this option is no longer necessary. As such it has been deprecated, and
+should no longer be used.
 .TP
-.BI \-c " phc-device"
-Specify the slave clock by device (e.g. /dev/ptp1) or name. The default is
-CLOCK_REALTIME (the system clock).
+.BI \-c " device"
+Specify the slave clock by device (e.g. /dev/ptp1) or interface (e.g. eth1) or
+by  name. The default is CLOCK_REALTIME (the system clock).
 .TP
 .BI \-P " kp"
 Specify the proportional constant of the PI controller. The default is 0.7.
