@@ -218,7 +218,8 @@ int sk_receive(int fd, void *buf, int buflen,
 		struct pollfd pfd = { fd, 0, 0 };
 		res = poll(&pfd, 1, sk_tx_timeout);
 		if (res < 1) {
-			pr_err("poll tx timestamp failed: %m");
+			pr_err(res ? "poll tx timestamp failed: %m" :
+			             "poll tx timestamp timeout");
 			return res;
 		} else if (!(pfd.revents & POLLERR)) {
 			pr_err("poll tx woke up on non ERR event");
