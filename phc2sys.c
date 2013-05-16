@@ -286,7 +286,7 @@ static int do_pps_loop(struct clock *clock, int fd,
 }
 
 static int do_sysoff_loop(struct clock *clock, clockid_t src,
-			  double rate, int n_readings)
+			  struct timespec *interval, int n_readings)
 {
 	uint64_t ts;
 	int64_t offset, delay;
@@ -295,7 +295,7 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 	clock->source_label = "sys";
 
 	while (1) {
-		usleep(1000000 / rate);
+		clock_nanosleep(CLOCK_MONOTONIC, 0, interval, NULL);
 		if (sysoff_measure(fd, n_readings, &offset, &ts, &delay)) {
 			err = -1;
 			break;
@@ -306,7 +306,7 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 }
 
 static int do_phc_loop(struct clock *clock, clockid_t src,
-		       double rate, int n_readings)
+		       struct timespec *interval, int n_readings)
 {
 	uint64_t ts;
 	int64_t offset, delay;
@@ -314,7 +314,7 @@ static int do_phc_loop(struct clock *clock, clockid_t src,
 	clock->source_label = "phc";
 
 	while (1) {
-		usleep(1000000 / rate);
+		clock_nanosleep(CLOCK_MONOTONIC, 0, interval, NULL);
 		if (!read_phc(src, clock->clkid, n_readings,
 			      &offset, &ts, &delay)) {
 			continue;
@@ -562,7 +562,8 @@ int main(int argc, char *argv[])
 	int c, domain_number = 0, phc_readings = 5, pps_fd = -1;
 	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
-	double ppb, phc_rate = 1.0;
+	double ppb, phc_interval = 1.0;
+	struct timespec phc_interval_tp;
 	struct clock dst_clock = {
 		.clkid = CLOCK_REALTIME,
 		.servo_state = SERVO_UNLOCKED,
@@ -602,7 +603,7 @@ int main(int argc, char *argv[])
 			configured_pi_offset = atof(optarg);
 			break;
 		case 'R':
-			phc_rate = atof(optarg);
+			phc_interval = 1.0 / atof(optarg);
 			break;
 		case 'N':
 			phc_readings = atoi(optarg);
@@ -736,9 +737,13 @@ int main(int argc, char *argv[])
 	if (pps_fd >= 0)
 		return do_pps_loop(&dst_clock, pps_fd, src, phc_readings);
 
+	phc_interval_tp.tv_sec = phc_interval;
+	phc_interval_tp.tv_nsec = (phc_interval - phc_interval_tp.tv_sec) * 1e9;
+
 	if (dst_clock.clkid == CLOCK_REALTIME && src != CLOCK_REALTIME &&
 	    SYSOFF_SUPPORTED == sysoff_probe(CLOCKID_TO_FD(src), phc_readings))
-		return do_sysoff_loop(&dst_clock, src, phc_rate, phc_readings);
+		return do_sysoff_loop(&dst_clock, src, &phc_interval_tp,
+				      phc_readings);
 
-	return do_phc_loop(&dst_clock, src, phc_rate, phc_readings);
+	return do_phc_loop(&dst_clock, src, &phc_interval_tp, phc_readings);
 }
