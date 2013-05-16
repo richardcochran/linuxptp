@@ -1127,6 +1127,8 @@ void clock_sync_interval(struct clock *c, int n)
 		pr_warning("summary_interval is too long");
 	}
 	c->stats.max_count = (1 << shift);
+
+	servo_sync_interval(c->servo, n < 0 ? 1.0 / (1 << -n) : 1 << n);
 }
 
 struct timePropertiesDS *clock_time_properties(struct clock *c)

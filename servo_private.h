@@ -28,6 +28,8 @@ struct servo {
 	double (*sample)(struct servo *servo,
 			 int64_t offset, uint64_t local_ts,
 			 enum servo_state *state);
+
+	void (*sync_interval)(struct servo *servo, double interval);
 };
 
 #endif

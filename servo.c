@@ -41,3 +41,8 @@ double servo_sample(struct servo *servo,
 {
 	return servo->sample(servo, offset, local_ts, state);
 }
+
+void servo_sync_interval(struct servo *servo, double interval)
+{
+	servo->sync_interval(servo, interval);
+}

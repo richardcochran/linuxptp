@@ -86,4 +86,11 @@ double servo_sample(struct servo *servo,
 		    uint64_t local_ts,
 		    enum servo_state *state);
 
+/**
+ * Inform a clock servo about the master's sync interval.
+ * @param servo   Pointer to a servo obtained via @ref servo_create().
+ * @param interval The sync interval in seconds.
+ */
+void servo_sync_interval(struct servo *servo, double interval);
+
 #endif
