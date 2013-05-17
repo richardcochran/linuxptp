@@ -684,6 +684,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (!wait_sync && !forced_sync_offset) {
+		fprintf(stderr,
+			"time offset must be specified using -w or -O\n");
+		usage(progname);
+		return -1;
+	}
+
 	if (dst_clock.stats_max_count > 0) {
 		dst_clock.offset_stats = stats_create();
 		dst_clock.freq_stats = stats_create();
