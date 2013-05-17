@@ -366,6 +366,22 @@ one-second offset slowly by changing the clock frequency (unless the
 option is set to correct such offset by stepping).
 Relevant only with software time stamping. The default is 1 (enabled).
 
+.SH TIME SCALE USAGE
+
+.B ptp4l
+as domain master either uses PTP or UTC time scale depending on time stamping
+mode.  In software and legacy time stamping modes it announces Arbitrary time
+scale mode, which is effectively UTC here, in hardware time stamping mode it
+announces use of PTP time scale.
+
+When
+.B ptp4l
+is the domain master using hardware time stamping, it is up to
+.B phc2sys
+to maintain the correct offset between UTC and PTP times. See
+.BR phc2sys (8)
+manual page for more details.
+
 .SH SEE ALSO
 .BR pmc (8),
 .BR phc2sys (8)

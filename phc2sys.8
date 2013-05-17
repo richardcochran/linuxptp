@@ -156,5 +156,72 @@ Display a help message.
 .B \-v
 Prints the software version and exits.
 
+.SH TIME SCALE USAGE
+
+.B Ptp4l
+uses either PTP time scale or UTC (Coordinated Universal Time) time
+scale.  PTP time scale is continuous and shifted against UTC by a few tens of
+seconds as PTP time scale does not apply leap seconds.
+
+In hardware time stamping mode,
+.B ptp4l
+announces use of PTP time scale and PHC
+is used for the stamps.  That means PHC must follow PTP time scale while system
+clock follows UTC.  Time offset between these two is maintained by
+.BR phc2sys .
+
+.B Phc2sys
+acquires the offset value either by reading it from ptp4l when
+.B \-w
+is in effect or from command line when
+.B \-O
+is supplied.  Failure to maintain the correct offset can result in local system
+clock being off some seconds to domain master system clock when in slave mode,
+or incorect PTP time announced to the network in case the host is the domain
+master.
+
+.SH EXAMPLES
+
+The host is a domain master, PTP clock is synchronized to system clock and the
+time offset is obtained from
+.BR ptp4l .
+.B Phc2sys
+waits for
+.B ptp4l
+to get at least one port in master or slave mode before starting the
+synchronization.
+
+.RS
+\f(CWphc2sys \-c /dev/ptp0 \-s CLOCK_REALTIME \-w\fP
+.RE
+
+Same as above, time offset is provided on command line and
+.B phc2sys
+does not wait for
+.BR ptp4l .
+
+.RS
+\f(CWphc2sys \-c /dev/ptp0 \-s CLOCK_REALTIME \-O 35\fP
+.RE
+
+The host is in slave mode, system clock is synchronized from PTP clock,
+.B phc2sys
+waits for
+.B ptp4l
+and the offset is set automatically.
+
+.RS
+\f(CWphc2sys \-s /dev/ptp0 \-w\fP
+.RE
+
+Same as above, PTP clock id is read from the network interface, the offset is
+provided on command line
+.B phc2sys
+does not wait.
+
+.RS
+\f(CWphc2sys \-s eth0 \-O \-35\fP
+.RE
+
 .SH SEE ALSO
 .BR ptp4l (8)
