@@ -1132,6 +1132,7 @@ static void handle_state_decision_event(struct clock *c)
 	if (!cid_eq(&best->dataset.identity, &c->best_id)) {
 		clock_freq_est_reset(c);
 		mave_reset(c->avg_delay);
+		c->path_delay = 0;
 		fresh_best = 1;
 	}
 
