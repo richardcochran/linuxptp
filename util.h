@@ -160,4 +160,41 @@ enum parser_result get_ranged_uint(const char *str_val, unsigned int *result, un
  *                   OUT_OF_RANGE if str_val is out of range.
  */
 enum parser_result get_ranged_double(const char *str_val, double *result, double min, double max);
+
+/**
+ * Common procedure to get an int value from argument for ptp4l and phc2sys.
+ *
+ * @param op     Character code of an option.
+ * @param optarg Option argument string.
+ * @param val    Parsed value is stored in here.
+ * @param min    Lower limit. Return -1 if parsed value is less than min.
+ * @param max    Upper limit. Return -1 if parsed value is bigger than max.
+ * @return       0 on success, -1 if some error occurs.
+ */
+int get_arg_val_i(int op, const char *optarg, int *val, int min, int max);
+
+/**
+ * Common procedure to get an unsigned int value from argument for ptp4l
+ * and phc2sys.
+ *
+ * @param op     Character code of an option.
+ * @param optarg Option argument string.
+ * @param val    Parsed value is stored in here.
+ * @param min    Lower limit. Return -1 if parsed value is less than min.
+ * @param max    Upper limit. Return -1 if parsed value is bigger than max.
+ * @return       0 on success, -1 if some error occurs.
+ */
+int get_arg_val_ui(int op, const char *optarg, unsigned int *val, unsigned int min, unsigned int max);
+
+/**
+ * Common procedure to get a double value from argument for ptp4l and phc2sys.
+ *
+ * @param op     Character code of an option.
+ * @param optarg Option argument string.
+ * @param val    Parsed value is stored in here.
+ * @param min    Lower limit. Return -1 if parsed value is less than min.
+ * @param max    Upper limit. Return -1 if parsed value is bigger than max.
+ * @return       0 on success, -1 if some error occurs.
+ */
+int get_arg_val_d(int op, const char *optarg, double *val, double min, double max);
 #endif

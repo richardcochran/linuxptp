@@ -234,3 +234,57 @@ enum parser_result get_ranged_double(const char *str_val, double *result, double
 	*result = parsed_val;
 	return PARSED_OK;
 }
+
+int get_arg_val_i(int op, const char *optarg, int *val, int min, int max)
+{
+	enum parser_result r;
+	r = get_ranged_int(optarg, val, min, max);
+	if (r == MALFORMED) {
+		fprintf(stderr,
+			"-%c: %s is a malformed value\n", op, optarg);
+		return -1;
+	}
+	if (r == OUT_OF_RANGE) {
+		fprintf(stderr,
+			"-%c: %s is out of range. Must be in the range %d to %d\n",
+			op, optarg, min, max);
+		return -1;
+	}
+	return 0;
+}
+
+int get_arg_val_ui(int op, const char *optarg, unsigned int *val, unsigned int min, unsigned int max)
+{
+	enum parser_result r;
+	r = get_ranged_uint(optarg, val, min, max);
+	if (r == MALFORMED) {
+		fprintf(stderr,
+			"-%c: %s is a malformed value\n", op, optarg);
+		return -1;
+	}
+	if (r == OUT_OF_RANGE) {
+		fprintf(stderr,
+			"-%c: %s is out of range. Must be in the range %u to %u\n",
+			op, optarg, min, max);
+		return -1;
+	}
+	return 0;
+}
+
+int get_arg_val_d(int op, const char *optarg, double *val, double min, double max)
+{
+	enum parser_result r;
+	r = get_ranged_double(optarg, val, min, max);
+	if (r == MALFORMED) {
+		fprintf(stderr,
+			"-%c: %s is a malformed value\n", op, optarg);
+		return -1;
+	}
+	if (r == OUT_OF_RANGE) {
+		fprintf(stderr,
+			"-%c: %s is out of range. Must be in the range %e to %e\n",
+			op, optarg, min, max);
+		return -1;
+	}
+	return 0;
+}
