@@ -309,9 +309,10 @@ static enum parser_result parse_global_setting(const char *option,
 		*cfg->udp6_scope = u8;
 
 	} else if (!strcmp(option, "logging_level")) {
-		if (1 != sscanf(value, "%d", &val) ||
-		    val < PRINT_LEVEL_MIN || val > PRINT_LEVEL_MAX)
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val,
+				   PRINT_LEVEL_MIN, PRINT_LEVEL_MAX);
+		if (r != PARSED_OK)
+			return r;
 		if (!(cfg_ignore & CFG_IGNORE_PRINT_LEVEL)) {
 			cfg->print_level = val;
 		}
