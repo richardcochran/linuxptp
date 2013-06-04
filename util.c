@@ -16,7 +16,9 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "sk.h"
@@ -189,4 +191,46 @@ int leap_second_status(uint64_t ts, int leap_set, int *leap, int *utc_offset)
 	}
 
 	return leap_status;
+}
+
+enum parser_result get_ranged_int(const char *str_val, int *result, int min, int max)
+{
+	long parsed_val;
+	char *endptr = NULL;
+	errno = 0;
+	parsed_val = strtol(str_val, &endptr, 0);
+	if (*endptr != '\0' || endptr == str_val)
+		return MALFORMED;
+	if (errno == ERANGE || parsed_val < min || parsed_val > max)
+		return OUT_OF_RANGE;
+	*result = parsed_val;
+	return PARSED_OK;
+}
+
+enum parser_result get_ranged_uint(const char *str_val, unsigned int *result, unsigned int min, unsigned int max)
+{
+	unsigned long parsed_val;
+	char *endptr = NULL;
+	errno = 0;
+	parsed_val = strtoul(str_val, &endptr, 0);
+	if (*endptr != '\0' || endptr == str_val)
+		return MALFORMED;
+	if (errno == ERANGE || parsed_val < min || parsed_val > max)
+		return OUT_OF_RANGE;
+	*result = parsed_val;
+	return PARSED_OK;
+}
+
+enum parser_result get_ranged_double(const char *str_val, double *result, double min, double max)
+{
+	double parsed_val;
+	char *endptr = NULL;
+	errno = 0;
+	parsed_val = strtod(str_val, &endptr);
+	if (*endptr != '\0' || endptr == str_val)
+		return MALFORMED;
+	if (errno == ERANGE || parsed_val < min || parsed_val > max)
+		return OUT_OF_RANGE;
+	*result = parsed_val;
+	return PARSED_OK;
 }

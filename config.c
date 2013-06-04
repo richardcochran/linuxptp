@@ -30,12 +30,6 @@ enum config_section {
 	UNKNOWN_SECTION,
 };
 
-enum parser_result {
-	PARSED_OK,
-	NOT_PARSED,
-	BAD_VALUE,
-};
-
 static enum parser_result parse_section_line(char *s, enum config_section *section)
 {
 	if (!strcasecmp(s, "[global]")) {
@@ -510,6 +504,14 @@ int config_read(char *name, struct config *cfg)
 				goto parse_error;
 			case BAD_VALUE:
 				fprintf(stderr, "%s is a bad value for option %s at line %d\n",
+						value, option, line_num);
+				goto parse_error;
+			case MALFORMED:
+				fprintf(stderr, "%s is a malformed value for option %s at line %d\n",
+						value, option, line_num);
+				goto parse_error;
+			case OUT_OF_RANGE:
+				fprintf(stderr, "%s is an out of range value for option %s at line %d\n",
 						value, option, line_num);
 				goto parse_error;
 			}

@@ -20,6 +20,7 @@
 #ifndef HAVE_UTIL_H
 #define HAVE_UTIL_H
 
+#include "config.h"
 #include "ddt.h"
 
 /**
@@ -114,4 +115,49 @@ int is_utc_ambiguous(uint64_t ts);
  *                   inserted, -1 if leap second will be deleted.
  */
 int leap_second_status(uint64_t ts, int leap_set, int *leap, int *utc_offset);
+
+/**
+ * Get an integer value from string with error checking and range
+ * specification.
+ *
+ * @param str_val    String which contains an integer value.
+ * @param result     Parsed value is stored in here.
+ * @param min        Lower limit. Return OUT_OF_RANGE if parsed value
+ *                   is less than min.
+ * @param max        Upper Limit. Return OUT_OF_RANGE if parsed value
+ *                   is bigger than max.
+ * @return           PARSED_OK on success, MALFORMED if str_val is malformed,
+ *                   OUT_OF_RANGE if str_val is out of range.
+ */
+enum parser_result get_ranged_int(const char *str_val, int *result, int min, int max);
+
+/**
+ * Get an unsigned integer value from string with error checking and range
+ * specification.
+ *
+ * @param str_val    String which contains an unsigned integer value.
+ * @param result     Parsed value is stored in here.
+ * @param min        Lower limit. Return OUT_OF_RANGE if parsed value
+ *                   is less than min.
+ * @param max        Upper Limit. Return OUT_OF_RANGE if parsed value
+ *                   is bigger than max.
+ * @return           PARSED_OK on success, MALFORMED if str_val is malformed,
+ *                   OUT_OF_RANGE if str_val is out of range.
+ */
+enum parser_result get_ranged_uint(const char *str_val, unsigned int *result, unsigned int min, unsigned int max);
+
+/**
+ * Get a double value from string with error checking and range
+ * specification.
+ *
+ * @param str_val    String which contains a double value.
+ * @param result     Parsed value is stored in here.
+ * @param min        Lower limit. Return OUT_OF_RANGE if parsed value
+ *                   is less than min.
+ * @param max        Upper Limit. Return OUT_OF_RANGE if parsed value
+ *                   is bigger than max.
+ * @return           PARSED_OK on success, MALFORMED if str_val is malformed,
+ *                   OUT_OF_RANGE if str_val is out of range.
+ */
+enum parser_result get_ranged_double(const char *str_val, double *result, double min, double max);
 #endif

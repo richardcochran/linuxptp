@@ -46,6 +46,14 @@ struct interface {
 #define CFG_IGNORE_USE_SYSLOG   (1 << 5)
 #define CFG_IGNORE_VERBOSE      (1 << 6)
 
+enum parser_result {
+	PARSED_OK,
+	NOT_PARSED,
+	BAD_VALUE,
+	MALFORMED,
+	OUT_OF_RANGE,
+};
+
 struct config {
 	/* configuration override */
 	int cfg_ignore;
