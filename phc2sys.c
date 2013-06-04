@@ -19,6 +19,9 @@
  */
 #include <errno.h>
 #include <fcntl.h>
+#include <float.h>
+#include <inttypes.h>
+#include <limits.h>
 #include <poll.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,7 +31,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <inttypes.h>
 
 #include <linux/pps.h>
 #include <linux/ptp_clock.h>
@@ -576,7 +578,7 @@ int main(int argc, char *argv[])
 	int c, domain_number = 0, phc_readings = 5, pps_fd = -1;
 	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
-	double ppb, phc_interval = 1.0;
+	double ppb, phc_interval = 1.0, phc_rate;
 	struct timespec phc_interval_tp;
 	struct clock dst_clock = {
 		.clkid = CLOCK_REALTIME,
@@ -611,39 +613,63 @@ int main(int argc, char *argv[])
 			src = clock_open(optarg);
 			break;
 		case 'P':
-			configured_pi_kp = atof(optarg);
+			if (get_arg_val_d(c, optarg, &configured_pi_kp,
+					  0.0, DBL_MAX))
+				return -1;
 			break;
 		case 'I':
-			configured_pi_ki = atof(optarg);
+			if (get_arg_val_d(c, optarg, &configured_pi_ki,
+					  0.0, DBL_MAX))
+				return -1;
 			break;
 		case 'S':
-			configured_pi_offset = atof(optarg);
+			if (get_arg_val_d(c, optarg, &configured_pi_offset,
+					  0.0, DBL_MAX))
+				return -1;
 			break;
 		case 'R':
-			phc_interval = 1.0 / atof(optarg);
+			if (get_arg_val_d(c, optarg, &phc_rate, 0.0, DBL_MAX))
+				return -1;
+			phc_interval = 1.0 / phc_rate;
+			/* phc_interval will be assigned to a time_t variable. */
+			/* check if that occurs overflow. */
+			if ((sizeof(time_t) == 8 && phc_interval > INT64_MAX) ||
+			    (sizeof(time_t) == 4 && phc_interval > INT32_MAX)) {
+				fprintf(stderr,
+					"-R: %s is too small\n", optarg);
+				return -1;
+			}
 			break;
 		case 'N':
-			phc_readings = atoi(optarg);
+			if (get_arg_val_i(c, optarg, &phc_readings, 1, INT_MAX))
+				return -1;
 			break;
 		case 'O':
-			dst_clock.sync_offset = atoi(optarg);
+			if (get_arg_val_i(c, optarg, &dst_clock.sync_offset,
+					  INT_MIN, INT_MAX))
+				return -1;
 			dst_clock.sync_offset_direction = -1;
 			forced_sync_offset = 1;
 			break;
 		case 'u':
-			dst_clock.stats_max_count = atoi(optarg);
+			if (get_arg_val_ui(c, optarg, &dst_clock.stats_max_count,
+					  0, UINT_MAX))
+				return -1;
 			break;
 		case 'w':
 			wait_sync = 1;
 			break;
 		case 'n':
-			domain_number = atoi(optarg);
+			if (get_arg_val_i(c, optarg, &domain_number, 0, 255))
+				return -1;
 			break;
 		case 'x':
 			dst_clock.kernel_leap = 0;
 			break;
 		case 'l':
-			print_level = atoi(optarg);
+			if (get_arg_val_i(c, optarg, &print_level,
+					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
+				return -1;
 			break;
 		case 'm':
 			verbose = 1;

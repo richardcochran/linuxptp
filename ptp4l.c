@@ -237,7 +237,9 @@ int main(int argc, char *argv[])
 			*cfg_ignore |= CFG_IGNORE_SLAVEONLY;
 			break;
 		case 'l':
-			cfg_settings.print_level = atoi(optarg);
+			if (get_arg_val_i(c, optarg, &cfg_settings.print_level,
+					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
+				return -1;
 			*cfg_ignore |= CFG_IGNORE_PRINT_LEVEL;
 			break;
 		case 'm':
