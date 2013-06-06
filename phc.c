@@ -36,11 +36,25 @@
 #define BITS_PER_LONG	(sizeof(long)*8)
 #define MAX_PPB_32	32767999	/* 2^31 - 1 / 65.536 */
 
+static int phc_get_caps(clockid_t clkid, struct ptp_clock_caps *caps);
+
 clockid_t phc_open(char *phc)
 {
+	clockid_t clkid;
+	struct ptp_clock_caps caps;
 	int fd = open(phc, O_RDWR);
 
-	return fd < 0 ? CLOCK_INVALID : FD_TO_CLOCKID(fd);
+	if (fd < 0)
+		return CLOCK_INVALID;
+
+	clkid = FD_TO_CLOCKID(fd);
+	/* check if clkid is valid */
+	if (phc_get_caps(clkid, &caps)) {
+		close(fd);
+		return CLOCK_INVALID;
+	}
+
+	return clkid;
 }
 
 void phc_close(clockid_t clkid)
