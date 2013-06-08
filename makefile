@@ -18,7 +18,7 @@
 KBUILD_OUTPUT ?= /lib/modules/$(shell uname -r)/build
 
 FEAT_CFLAGS :=
-ifneq ($(shell grep clock_adjtime /usr/include/bits/time.h),)
+ifneq ($(shell grep --no-messages clock_adjtime /usr/include/bits/time.h),)
 FEAT_CFLAGS += -D_GNU_SOURCE -DHAVE_CLOCK_ADJTIME
 endif
 
