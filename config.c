@@ -16,9 +16,11 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <ctype.h>
+#include <float.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 #include "config.h"
 #include "ether.h"
 #include "print.h"
@@ -53,77 +55,90 @@ static enum parser_result parse_pod_setting(const char *option,
 					    struct port_defaults *pod)
 {
 	int val;
-	Integer8 i8;
-	UInteger8 u8;
+	unsigned int uval;
+
+	enum parser_result r;
 
 	if (!strcmp(option, "delayAsymmetry")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
 		pod->asymmetry = (Integer64) val << 16;
 
 	} else if (!strcmp(option, "logAnnounceInterval")) {
-		if (1 != sscanf(value, "%hhd", &i8))
-			return BAD_VALUE;
-		pod->logAnnounceInterval = i8;
+		r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->logAnnounceInterval = val;
 
 	} else if (!strcmp(option, "logSyncInterval")) {
-		if (1 != sscanf(value, "%hhd", &i8))
-			return BAD_VALUE;
-		pod->logSyncInterval = i8;
+		r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->logSyncInterval = val;
 
 	} else if (!strcmp(option, "logMinDelayReqInterval")) {
-		if (1 != sscanf(value, "%hhd", &i8))
-			return BAD_VALUE;
-		pod->logMinDelayReqInterval = i8;
+		r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->logMinDelayReqInterval = val;
 
 	} else if (!strcmp(option, "logMinPdelayReqInterval")) {
-		if (1 != sscanf(value, "%hhd", &i8))
-			return BAD_VALUE;
-		pod->logMinPdelayReqInterval = i8;
+		r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->logMinPdelayReqInterval = val;
 
 	} else if (!strcmp(option, "announceReceiptTimeout")) {
-		if (1 != sscanf(value, "%hhu", &u8))
-			return BAD_VALUE;
-		pod->announceReceiptTimeout = u8;
+		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->announceReceiptTimeout = uval;
 
 	} else if (!strcmp(option, "transportSpecific")) {
-		if (1 != sscanf(value, "%hhx", &u8))
-			return BAD_VALUE;
-		pod->transportSpecific = u8 << 4;
+		r = get_ranged_uint(value, &uval, 0, 0x0F);
+		if (r != PARSED_OK)
+			return r;
+		pod->transportSpecific = uval << 4;
 
 	} else if (!strcmp(option, "path_trace_enabled")) {
-		if (1 != sscanf(value, "%u", &val))
-			return BAD_VALUE;
-		pod->path_trace_enabled = val ? 1 : 0;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		pod->path_trace_enabled = val;
 
 	} else if (!strcmp(option, "follow_up_info")) {
-		if (1 != sscanf(value, "%u", &val))
-			return BAD_VALUE;
-		pod->follow_up_info = val ? 1 : 0;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		pod->follow_up_info = val;
 
 	} else if (!strcmp(option, "neighborPropDelayThresh")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
-		pod->neighborPropDelayThresh = val;
+		r = get_ranged_uint(value, &uval, 0, UINT32_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->neighborPropDelayThresh = uval;
 
 	} else if (!strcmp(option, "fault_badpeernet_interval")) {
 		pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].type = FTMO_LINEAR_SECONDS;
 		if (!strcasecmp("ASAP", value)) {
 			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = 0;
-		} else if (1 == sscanf(value, "%d", &val)) {
-			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = val;
 		} else {
-			return BAD_VALUE;
+			r = get_ranged_int(value, &val, INT32_MIN, INT32_MAX);
+			if (r != PARSED_OK)
+				return r;
+			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = val;
 		}
 
 	} else if (!strcmp(option, "fault_reset_interval")) {
 		pod->flt_interval_pertype[FT_UNSPECIFIED].type = FTMO_LOG2_SECONDS;
 		if (!strcasecmp("ASAP", value)) {
 			pod->flt_interval_pertype[FT_UNSPECIFIED].val = FRI_ASAP;
-		} else if (1 == sscanf(value, "%hhd", &i8)) {
-			pod->flt_interval_pertype[FT_UNSPECIFIED].val = i8;
 		} else {
-			return BAD_VALUE;
+			r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
+			if (r != PARSED_OK)
+				return r;
+			pod->flt_interval_pertype[FT_UNSPECIFIED].val = val;
 		}
 
 	} else
@@ -185,8 +200,7 @@ static enum parser_result parse_global_setting(const char *option,
 {
 	double df;
 	int i, val, cfg_ignore = cfg->cfg_ignore;
-	UInteger16 u16;
-	UInteger8 u8;
+	unsigned int uval;
 	unsigned char mac[MAC_LEN];
 	unsigned char oui[OUI_LEN];
 
@@ -200,16 +214,18 @@ static enum parser_result parse_global_setting(const char *option,
 		return r;
 
 	if (!strcmp(option, "twoStepFlag")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
 		if (val)
 			dds->flags |=  DDS_TWO_STEP_FLAG;
 		else
 			dds->flags &= ~DDS_TWO_STEP_FLAG;
 
 	} else if (!strcmp(option, "slaveOnly")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
 		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY)) {
 			if (val)
 				dds->flags |=  DDS_SLAVE_ONLY;
@@ -218,75 +234,89 @@ static enum parser_result parse_global_setting(const char *option,
 		}
 
 	} else if (!strcmp(option, "priority1")) {
-		if (1 != sscanf(value, "%hhu", &u8))
-			return BAD_VALUE;
-		dds->priority1 = u8;
+		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		dds->priority1 = uval;
 
 	} else if (!strcmp(option, "priority2")) {
-		if (1 != sscanf(value, "%hhu", &u8))
-			return BAD_VALUE;
-		dds->priority2 = u8;
+		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		dds->priority2 = uval;
 
 	} else if (!strcmp(option, "domainNumber")) {
-		if (1 != sscanf(value, "%hhu", &u8) || u8 > 127)
-			return BAD_VALUE;
-		dds->domainNumber = u8;
+		r = get_ranged_uint(value, &uval, 0, 127);
+		if (r != PARSED_OK)
+			return r;
+		dds->domainNumber = uval;
 
 	} else if (!strcmp(option, "clockClass")) {
-		if (1 != sscanf(value, "%hhu", &u8))
-			return BAD_VALUE;
+		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		if (r != PARSED_OK)
+			return r;
 		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY))
-			dds->clockQuality.clockClass = u8;
+			dds->clockQuality.clockClass = uval;
 
 	} else if (!strcmp(option, "clockAccuracy")) {
-		if (1 != sscanf(value, "%hhx", &u8))
-			return BAD_VALUE;
-		dds->clockQuality.clockAccuracy = u8;
+		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		dds->clockQuality.clockAccuracy = uval;
 
 	} else if (!strcmp(option, "offsetScaledLogVariance")) {
-		if (1 != sscanf(value, "%hx", &u16))
-			return BAD_VALUE;
-		dds->clockQuality.offsetScaledLogVariance = u16;
+		r = get_ranged_uint(value, &uval, 0, UINT16_MAX);
+		if (r != PARSED_OK)
+			return r;
+		dds->clockQuality.offsetScaledLogVariance = uval;
 
 	} else if (!strcmp(option, "free_running")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
-		cfg->dds.free_running = val ? 1 : 0;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		cfg->dds.free_running = val;
 
 	} else if (!strcmp(option, "freq_est_interval")) {
-		if (1 != sscanf(value, "%d", &val) || val < 0)
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 0, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
 		cfg->dds.freq_est_interval = val;
 		pod->freq_est_interval = val;
 
 	} else if (!strcmp(option, "assume_two_step")) {
-		if (1 != sscanf(value, "%u", &val))
-			return BAD_VALUE;
-		*cfg->assume_two_step = val ? 1 : 0;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->assume_two_step = val;
 
 	} else if (!strcmp(option, "tx_timestamp_timeout")) {
-		if (1 != sscanf(value, "%u", &val) || val <= 0)
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 1, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
 		*cfg->tx_timestamp_timeout = val;
 
 	} else if (!strcmp(option, "pi_proportional_const")) {
-		if (1 != sscanf(value, "%lf", &df) || df < 0.0)
-			return BAD_VALUE;
+		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
 		*cfg->pi_proportional_const = df;
 
 	} else if (!strcmp(option, "pi_integral_const")) {
-		if (1 != sscanf(value, "%lf", &df) || df < 0.0)
-			return BAD_VALUE;
+		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
 		*cfg->pi_integral_const = df;
 
 	} else if (!strcmp(option, "pi_offset_const")) {
-		if (1 != sscanf(value, "%lf", &df) || df < 0.0)
-			return BAD_VALUE;
+		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
 		*cfg->pi_offset_const = df;
 
 	} else if (!strcmp(option, "pi_max_frequency")) {
-		if (1 != sscanf(value, "%d", &val) || val < 0)
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 0, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
 		*cfg->pi_max_frequency = val;
 
 	} else if (!strcmp(option, "ptp_dst_mac")) {
@@ -304,9 +334,10 @@ static enum parser_result parse_global_setting(const char *option,
 			cfg->p2p_dst_mac[i] = mac[i];
 
 	} else if (!strcmp(option, "udp6_scope")) {
-		if (1 != sscanf(value, "%hhx", &u8) || (u8 & 0xF0))
-			return BAD_VALUE;
-		*cfg->udp6_scope = u8;
+		r = get_ranged_uint(value, &uval, 0x00, 0x0F);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->udp6_scope = uval;
 
 	} else if (!strcmp(option, "logging_level")) {
 		r = get_ranged_int(value, &val,
@@ -318,16 +349,18 @@ static enum parser_result parse_global_setting(const char *option,
 		}
 
 	} else if (!strcmp(option, "verbose")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
 		if (!(cfg_ignore & CFG_IGNORE_VERBOSE))
-			cfg->verbose = val ? 1 : 0;
+			cfg->verbose = val;
 
 	} else if (!strcmp(option, "use_syslog")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
 		if (!(cfg_ignore & CFG_IGNORE_USE_SYSLOG))
-			cfg->use_syslog = val ? 1 : 0;
+			cfg->use_syslog = val;
 
 	} else if (!strcmp(option, "time_stamping")) {
 		if (!(cfg_ignore & CFG_IGNORE_TIMESTAMPING)) {
@@ -395,13 +428,15 @@ static enum parser_result parse_global_setting(const char *option,
 			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
 
 	} else if (!strcmp(option, "summary_interval")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
 		cfg->dds.stats_interval = val;
 
 	} else if (!strcmp(option, "kernel_leap")) {
-		if (1 != sscanf(value, "%d", &val))
-			return BAD_VALUE;
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
 		cfg->dds.kernel_leap = val;
 
 	} else
