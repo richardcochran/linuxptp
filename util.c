@@ -193,7 +193,8 @@ int leap_second_status(uint64_t ts, int leap_set, int *leap, int *utc_offset)
 	return leap_status;
 }
 
-enum parser_result get_ranged_int(const char *str_val, int *result, int min, int max)
+enum parser_result get_ranged_int(const char *str_val, int *result,
+				  int min, int max)
 {
 	long parsed_val;
 	char *endptr = NULL;
@@ -207,7 +208,8 @@ enum parser_result get_ranged_int(const char *str_val, int *result, int min, int
 	return PARSED_OK;
 }
 
-enum parser_result get_ranged_uint(const char *str_val, unsigned int *result, unsigned int min, unsigned int max)
+enum parser_result get_ranged_uint(const char *str_val, unsigned int *result,
+				   unsigned int min, unsigned int max)
 {
 	unsigned long parsed_val;
 	char *endptr = NULL;
@@ -221,7 +223,8 @@ enum parser_result get_ranged_uint(const char *str_val, unsigned int *result, un
 	return PARSED_OK;
 }
 
-enum parser_result get_ranged_double(const char *str_val, double *result, double min, double max)
+enum parser_result get_ranged_double(const char *str_val, double *result,
+				     double min, double max)
 {
 	double parsed_val;
 	char *endptr = NULL;
@@ -253,7 +256,8 @@ int get_arg_val_i(int op, const char *optarg, int *val, int min, int max)
 	return 0;
 }
 
-int get_arg_val_ui(int op, const char *optarg, unsigned int *val, unsigned int min, unsigned int max)
+int get_arg_val_ui(int op, const char *optarg, unsigned int *val,
+		   unsigned int min, unsigned int max)
 {
 	enum parser_result r;
 	r = get_ranged_uint(optarg, val, min, max);
@@ -271,7 +275,8 @@ int get_arg_val_ui(int op, const char *optarg, unsigned int *val, unsigned int m
 	return 0;
 }
 
-int get_arg_val_d(int op, const char *optarg, double *val, double min, double max)
+int get_arg_val_d(int op, const char *optarg, double *val,
+		  double min, double max)
 {
 	enum parser_result r;
 	r = get_ranged_double(optarg, val, min, max);

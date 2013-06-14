@@ -129,7 +129,8 @@ int leap_second_status(uint64_t ts, int leap_set, int *leap, int *utc_offset);
  * @return           PARSED_OK on success, MALFORMED if str_val is malformed,
  *                   OUT_OF_RANGE if str_val is out of range.
  */
-enum parser_result get_ranged_int(const char *str_val, int *result, int min, int max);
+enum parser_result get_ranged_int(const char *str_val, int *result,
+				  int min, int max);
 
 /**
  * Get an unsigned integer value from string with error checking and range
@@ -144,7 +145,8 @@ enum parser_result get_ranged_int(const char *str_val, int *result, int min, int
  * @return           PARSED_OK on success, MALFORMED if str_val is malformed,
  *                   OUT_OF_RANGE if str_val is out of range.
  */
-enum parser_result get_ranged_uint(const char *str_val, unsigned int *result, unsigned int min, unsigned int max);
+enum parser_result get_ranged_uint(const char *str_val, unsigned int *result,
+				   unsigned int min, unsigned int max);
 
 /**
  * Get a double value from string with error checking and range
@@ -159,7 +161,8 @@ enum parser_result get_ranged_uint(const char *str_val, unsigned int *result, un
  * @return           PARSED_OK on success, MALFORMED if str_val is malformed,
  *                   OUT_OF_RANGE if str_val is out of range.
  */
-enum parser_result get_ranged_double(const char *str_val, double *result, double min, double max);
+enum parser_result get_ranged_double(const char *str_val, double *result,
+				     double min, double max);
 
 /**
  * Common procedure to get an int value from argument for ptp4l and phc2sys.
@@ -184,7 +187,8 @@ int get_arg_val_i(int op, const char *optarg, int *val, int min, int max);
  * @param max    Upper limit. Return -1 if parsed value is bigger than max.
  * @return       0 on success, -1 if some error occurs.
  */
-int get_arg_val_ui(int op, const char *optarg, unsigned int *val, unsigned int min, unsigned int max);
+int get_arg_val_ui(int op, const char *optarg, unsigned int *val,
+		   unsigned int min, unsigned int max);
 
 /**
  * Common procedure to get a double value from argument for ptp4l and phc2sys.
@@ -196,5 +200,7 @@ int get_arg_val_ui(int op, const char *optarg, unsigned int *val, unsigned int m
  * @param max    Upper limit. Return -1 if parsed value is bigger than max.
  * @return       0 on success, -1 if some error occurs.
  */
-int get_arg_val_d(int op, const char *optarg, double *val, double min, double max);
+int get_arg_val_d(int op, const char *optarg, double *val,
+		  double min, double max);
+
 #endif
