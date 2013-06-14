@@ -239,8 +239,8 @@
 
   - http://www.audioscience.com
 
-  Thanks to Intel Corporation for donating three NICs, the 82574,
-  82580, and the 82599.
+  Thanks to Intel Corporation for donating four NICs, the 82574,
+  82580, 82599, and the i210.
 
   - http://www.intel.com
   - http://e1000.sourceforge.net
