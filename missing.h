@@ -57,6 +57,13 @@ static inline int clock_adjtime(clockid_t id, struct timex *tx)
 
 #else
 
+static inline int clock_nanosleep(clockid_t clock_id, int flags,
+				  const struct timespec *request,
+				  struct timespec *remain)
+{
+	return syscall(__NR_clock_nanosleep, clock_id, flags, request, remain);
+}
+
 static inline int timerfd_create(int clockid, int flags)
 {
 	return syscall(__NR_timerfd_create, clockid, flags);
