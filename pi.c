@@ -30,6 +30,7 @@
 #define SWTS_KI 0.001
 
 #define NSEC_PER_SEC 1000000000
+#define FREQ_EST_MARGIN 0.001
 
 /* These take their values from the configuration file. (see ptp4l.c) */
 double configured_pi_kp = 0.0;
@@ -64,6 +65,7 @@ static double pi_sample(struct servo *servo,
 			enum servo_state *state)
 {
 	double ki_term, ppb = 0.0;
+	double freq_est_interval, localdiff;
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
 
 	switch (s->count) {
@@ -81,6 +83,18 @@ static double pi_sample(struct servo *servo,
 		if (s->local[0] >= s->local[1]) {
 			*state = SERVO_UNLOCKED;
 			s->count = 0;
+			break;
+		}
+
+		/* Wait long enough before estimating the frequency offset. */
+		localdiff = (s->local[1] - s->local[0]) / 1e9;
+		localdiff += localdiff * FREQ_EST_MARGIN;
+		freq_est_interval = 0.016 / s->ki;
+		if (freq_est_interval > 1000.0) {
+			freq_est_interval = 1000.0;
+		}
+		if (localdiff < freq_est_interval) {
+			*state = SERVO_UNLOCKED;
 			break;
 		}
 
