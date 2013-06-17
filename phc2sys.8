@@ -5,11 +5,15 @@ phc2sys \- synchronize two clocks
 .SH SYNOPSIS
 .B phc2sys
 [
+.B \-wmqvx
+] [
 .BI \-d " pps-device"
 ] [
 .BI \-s " device"
 ] [
 .BI \-c " device"
+] [
+.BI \-O " offset"
 ] [
 .BI \-P " kp"
 ] [
@@ -19,23 +23,11 @@ phc2sys \- synchronize two clocks
 ] [
 .BI \-N " clock-readings"
 ] [
-.BI \-O " offset"
-] [
 .BI \-u " summary-updates"
-] [
-.B \-w
 ] [
 .BI \-n " domain-number"
 ] [
-.B \-x
-] [
 .BI \-l " print-level"
-] [
-.B \-m
-] [
-.B \-q
-] [
-.B \-v
 ]
 
 .SH DESCRIPTION
