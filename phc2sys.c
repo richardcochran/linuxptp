@@ -684,37 +684,32 @@ int main(int argc, char *argv[])
 			usage(progname);
 			return 0;
 		default:
-			usage(progname);
-			return -1;
+			goto bad_usage;
 		}
 	}
 
 	if (pps_fd < 0 && src == CLOCK_INVALID) {
 		fprintf(stderr,
 			"valid source clock must be selected.\n");
-		usage(progname);
-		return -1;
+		goto bad_usage;
 	}
 
 	if (dst_clock.clkid == CLOCK_INVALID) {
 		fprintf(stderr,
 			"valid destination clock must be selected.\n");
-		usage(progname);
-		return -1;
+		goto bad_usage;
 	}
 
 	if (pps_fd >= 0 && dst_clock.clkid != CLOCK_REALTIME) {
 		fprintf(stderr,
 			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
-		usage(progname);
-		return -1;
+		goto bad_usage;
 	}
 
 	if (!wait_sync && !forced_sync_offset) {
 		fprintf(stderr,
 			"time offset must be specified using -w or -O\n");
-		usage(progname);
-		return -1;
+		goto bad_usage;
 	}
 
 	if (dst_clock.stats_max_count > 0) {
@@ -793,4 +788,8 @@ int main(int argc, char *argv[])
 				      phc_readings);
 
 	return do_phc_loop(&dst_clock, src, &phc_interval_tp, phc_readings);
+
+bad_usage:
+	usage(progname);
+	return -1;
 }
