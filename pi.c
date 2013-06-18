@@ -76,6 +76,7 @@ static double pi_sample(struct servo *servo,
 
 		/* Make sure the first sample is older than the second. */
 		if (s->local[0] >= s->local[1]) {
+			*state = SERVO_UNLOCKED;
 			s->count = 0;
 			break;
 		}
