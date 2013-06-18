@@ -40,9 +40,9 @@ program.
 
 Two synchronization modes are supported, one uses a pulse per second (PPS)
 signal provided by the source clock and the other mode reads time from the
-source clock directly. The PPS mode is usually preferred, because reading the
-PHC is slow and introduces an unknown error in the readings, but not all PHCs
-provide the PPS signal.
+source clock directly. Some clocks can be used in both modes, the mode which
+will synchronize the slave clock with better accuracy depends on hardware and
+driver implementation.
 
 .SH OPTIONS
 .TP
@@ -58,7 +58,7 @@ option should be used too. This option can be used only with the system clock as
 the slave clock.
 .TP
 .BI \-s " device"
-Specify the master clock by device (e.g. dev/ptp0) or interface (e.g. eth0) or
+Specify the master clock by device (e.g. /dev/ptp0) or interface (e.g. eth0) or
 by name (e.g. CLOCK_REALTIME for the system clock). When this option is used
 together with the
 .B \-d

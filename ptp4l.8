@@ -32,10 +32,13 @@ a peer delay request is received.
 .TP
 .B \-E
 Select the delay request-response (E2E) mechanism. This is the default
-mechanism.
+mechanism. All clocks on single PTP communication path must use the same
+mechanism. A warning will be printed when a peer delay request is received on
+port using the E2E mechanism.
 .TP
 .B \-P
-Select the peer delay (P2P) mechanism.
+Select the peer delay (P2P) mechanism. A warning will be printed when a delay
+request is received on port using the P2P mechanism.
 .TP
 .B \-2
 Select the IEEE 802.3 network transport.
