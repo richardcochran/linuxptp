@@ -555,6 +555,7 @@ static void usage(char *progname)
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
 		" -S [step]      step threshold (disabled)\n"
+		" -F [step]      step threshold only on start (0.0000001)\n"
 		" -R [rate]      slave clock update rate in HZ (1.0)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -O [offset]    slave-master time offset (0)\n"
@@ -593,7 +594,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "c:d:hs:P:I:S:R:N:O:i:u:wn:xl:mqv"))) {
+				  "c:d:s:P:I:S:F:R:N:O:i:u:wn:xl:mqvh"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -624,6 +625,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'S':
 			if (get_arg_val_d(c, optarg, &configured_pi_offset,
+					  0.0, DBL_MAX))
+				return -1;
+			break;
+		case 'F':
+			if (get_arg_val_d(c, optarg, &configured_pi_f_offset,
 					  0.0, DBL_MAX))
 				return -1;
 			break;

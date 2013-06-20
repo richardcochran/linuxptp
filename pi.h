@@ -36,11 +36,20 @@ extern double configured_pi_ki;
 /**
  * When set to a non-zero value, this variable controls the maximum allowed
  * offset before a clock jump occurs instead of the default clock-slewing
- * mechanism
+ * mechanism.
  *
  * Note that this variable is measured in seconds, and allows fractional values.
  */
 extern double configured_pi_offset;
+
+/**
+ * When set to zero, the clock is not stepped on start. When set to a non-zero
+ * value, the value bahaves as a threshold and the clock is stepped on start if
+ * the offset is bigger than the threshold.
+ *
+ * Note that this variable is measured in seconds, and allows fractional values.
+ */
+extern double configured_pi_f_offset;
 
 /**
  * When set to a non-zero value, this variable sets an additional limit for

@@ -19,6 +19,10 @@ phc2sys \- synchronize two clocks
 ] [
 .BI \-I " ki"
 ] [
+.BI \-S " step"
+] [
+.BI \-F " step"
+] [
 .BI \-R " update-rate"
 ] [
 .BI \-N " clock-readings"
@@ -87,8 +91,16 @@ Specify the integral constant of the PI controller. The default is 0.3.
 .BI \-S " step"
 Specify the step threshold of the PI controller. It is the maximum offset that
 the controller corrects by changing the clock frequency instead of stepping the
-clock. The clock is always stepped on start. The value of 0.0 disables stepping
-after the start. The default is 0.0.
+clock. The clock is stepped on start regardless of the option if the offset is
+larger than 100 nanoseconds (unless the
+.BI \-F
+option is used). The value of 0.0 disables stepping after the start. The default
+is 0.0.
+.TP
+.BI \-F " step"
+Specify the step threshold applied only on the first update. It is the maximum
+offset that is corrected by adjusting clock. The value of 0.0 disables stepping
+on start. The default is 0.0000001 (100 nanoseconds).
 .TP
 .BI \-R " update-rate"
 Specify the slave clock update rate when running in the direct synchronization

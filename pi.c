@@ -35,6 +35,7 @@
 double configured_pi_kp = 0.0;
 double configured_pi_ki = 0.0;
 double configured_pi_offset = 0.0;
+double configured_pi_f_offset = 0.0000001; /* 100 nanoseconds */
 int configured_pi_max_freq = 900000000;
 
 struct pi_servo {
@@ -46,7 +47,9 @@ struct pi_servo {
 	double kp;
 	double ki;
 	double max_offset;
+	double max_f_offset;
 	int count;
+	int first_update;
 };
 
 static void pi_destroy(struct servo *servo)
@@ -88,7 +91,14 @@ static double pi_sample(struct servo *servo,
 		else if (s->drift > s->maxppb)
 			s->drift = s->maxppb;
 
-		*state = SERVO_JUMP;
+		if (!s->first_update ||
+		    (s->max_f_offset && (s->max_f_offset < fabs(offset))) ||
+		    (s->max_offset && (s->max_offset < fabs(offset))))
+			*state = SERVO_JUMP;
+		else
+			*state = SERVO_LOCKED;
+
+		s->first_update = 0;
 		ppb = s->drift;
 		s->count = 2;
 		break;
@@ -134,6 +144,7 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 	s->servo.sample  = pi_sample;
 	s->drift         = fadj;
 	s->maxppb        = max_ppb;
+	s->first_update  = 1;
 
 	if (configured_pi_kp && configured_pi_ki) {
 		s->kp = configured_pi_kp;
@@ -150,6 +161,12 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 		s->max_offset = configured_pi_offset * NSEC_PER_SEC;
 	} else {
 		s->max_offset = 0.0;
+	}
+
+	if (configured_pi_f_offset > 0.0) {
+		s->max_f_offset = configured_pi_f_offset * NSEC_PER_SEC;
+	} else {
+		s->max_f_offset = 0.0;
 	}
 
 	if (configured_pi_max_freq && s->maxppb > configured_pi_max_freq) {
