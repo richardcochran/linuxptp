@@ -96,6 +96,7 @@ static struct config cfg_settings = {
 	.pi_proportional_const = &configured_pi_kp,
 	.pi_integral_const = &configured_pi_ki,
 	.pi_offset_const = &configured_pi_offset,
+	.pi_f_offset_const = &configured_pi_f_offset,
 	.pi_max_frequency = &configured_pi_max_freq,
 
 	.ptp_dst_mac = ptp_dst_mac,

@@ -313,6 +313,12 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		*cfg->pi_offset_const = df;
 
+	} else if (!strcmp(option, "pi_f_offset_const")) {
+		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->pi_f_offset_const = df;
+
 	} else if (!strcmp(option, "pi_max_frequency")) {
 		r = get_ranged_int(value, &val, 0, INT_MAX);
 		if (r != PARSED_OK)

@@ -268,8 +268,14 @@ The default is 0.0.
 .B pi_offset_const
 The maximum offset the PI controller will correct by changing the clock
 frequency instead of stepping the clock. When set to 0.0, the controller will
-never step the clock.
+never step the clock except on start.
 The default is 0.0.
+.TP
+.B pi_f_offset_const
+The maximum offset the PI controller will correct by changing the clock
+frequency instead of stepping the clock. This is only applied on the first
+update. When set to 0.0, the controller won't step the clock on start.
+The default is 0.0000001 (100 nanoseconds).
 .TP
 .B pi_max_frequency
 The maximum allowed frequency adjustment of the clock in parts per billion
