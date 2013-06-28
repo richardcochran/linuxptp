@@ -307,6 +307,42 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		*cfg->pi_integral_const = df;
 
+	} else if (!strcmp(option, "pi_proportional_scale")) {
+		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->pi_proportional_scale = df;
+
+	} else if (!strcmp(option, "pi_proportional_exponent")) {
+		r = get_ranged_double(value, &df, -DBL_MAX, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->pi_proportional_exponent = df;
+
+	} else if (!strcmp(option, "pi_proportional_norm_max")) {
+		r = get_ranged_double(value, &df, DBL_MIN, 1.0);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->pi_proportional_norm_max = df;
+
+	} else if (!strcmp(option, "pi_integral_scale")) {
+		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->pi_integral_scale = df;
+
+	} else if (!strcmp(option, "pi_integral_exponent")) {
+		r = get_ranged_double(value, &df, -DBL_MAX, DBL_MAX);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->pi_integral_exponent = df;
+
+	} else if (!strcmp(option, "pi_integral_norm_max")) {
+		r = get_ranged_double(value, &df, DBL_MIN, 2.0);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->pi_integral_norm_max = df;
+
 	} else if (!strcmp(option, "pi_offset_const")) {
 		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
 		if (r != PARSED_OK)

@@ -96,6 +96,12 @@ static struct config cfg_settings = {
 
 	.pi_proportional_const = &configured_pi_kp,
 	.pi_integral_const = &configured_pi_ki,
+	.pi_proportional_scale = &configured_pi_kp_scale,
+	.pi_proportional_exponent = &configured_pi_kp_exponent,
+	.pi_proportional_norm_max = &configured_pi_kp_norm_max,
+	.pi_integral_scale = &configured_pi_ki_scale,
+	.pi_integral_exponent = &configured_pi_ki_exponent,
+	.pi_integral_norm_max = &configured_pi_ki_norm_max,
 	.pi_offset_const = &configured_pi_offset,
 	.pi_f_offset_const = &configured_pi_f_offset,
 	.pi_max_frequency = &configured_pi_max_freq,

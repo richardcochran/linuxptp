@@ -21,13 +21,16 @@
 #include <math.h>
 
 #include "pi.h"
+#include "print.h"
 #include "servo_private.h"
 
-#define HWTS_KP 0.7
-#define HWTS_KI 0.3
+#define HWTS_KP_SCALE 0.7
+#define HWTS_KI_SCALE 0.3
+#define SWTS_KP_SCALE 0.1
+#define SWTS_KI_SCALE 0.001
 
-#define SWTS_KP 0.1
-#define SWTS_KI 0.001
+#define MAX_KP_NORM_MAX 1.0
+#define MAX_KI_NORM_MAX 2.0
 
 #define NSEC_PER_SEC 1000000000
 #define FREQ_EST_MARGIN 0.001
@@ -35,6 +38,12 @@
 /* These take their values from the configuration file. (see ptp4l.c) */
 double configured_pi_kp = 0.0;
 double configured_pi_ki = 0.0;
+double configured_pi_kp_scale = 0.0;
+double configured_pi_kp_exponent = -0.3;
+double configured_pi_kp_norm_max = 0.7;
+double configured_pi_ki_scale = 0.0;
+double configured_pi_ki_exponent = 0.4;
+double configured_pi_ki_norm_max = 0.3;
 double configured_pi_offset = 0.0;
 double configured_pi_f_offset = 0.0000001; /* 100 nanoseconds */
 int configured_pi_max_freq = 900000000;
@@ -148,6 +157,18 @@ static double pi_sample(struct servo *servo,
 
 static void pi_sync_interval(struct servo *servo, double interval)
 {
+	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
+
+	s->kp = configured_pi_kp_scale * pow(interval, configured_pi_kp_exponent);
+	if (s->kp > configured_pi_kp_norm_max / interval)
+		s->kp = configured_pi_kp_norm_max / interval;
+
+	s->ki = configured_pi_ki_scale * pow(interval, configured_pi_ki_exponent);
+	if (s->ki > configured_pi_ki_norm_max / interval)
+		s->ki = configured_pi_ki_norm_max / interval;
+
+	pr_debug("PI servo: sync interval %.3f kp %.3f ki %.6f",
+		 interval, s->kp, s->ki);
 }
 
 struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
@@ -164,16 +185,27 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 	s->drift         = fadj;
 	s->maxppb        = max_ppb;
 	s->first_update  = 1;
+	s->kp            = 0.0;
+	s->ki            = 0.0;
 
 	if (configured_pi_kp && configured_pi_ki) {
-		s->kp = configured_pi_kp;
-		s->ki = configured_pi_ki;
-	} else if (sw_ts) {
-		s->kp = SWTS_KP;
-		s->ki = SWTS_KI;
-	} else {
-		s->kp = HWTS_KP;
-		s->ki = HWTS_KI;
+		/* Use the constants as configured by the user without
+		   adjusting for sync interval unless they make the servo
+		   unstable. */
+		configured_pi_kp_scale = configured_pi_kp;
+		configured_pi_ki_scale = configured_pi_ki;
+		configured_pi_kp_exponent = 0.0;
+		configured_pi_ki_exponent = 0.0;
+		configured_pi_kp_norm_max = MAX_KP_NORM_MAX;
+		configured_pi_ki_norm_max = MAX_KI_NORM_MAX;
+	} else if (!configured_pi_kp_scale || !configured_pi_ki_scale) {
+		if (sw_ts) {
+			configured_pi_kp_scale = SWTS_KP_SCALE;
+			configured_pi_ki_scale = SWTS_KI_SCALE;
+		} else {
+			configured_pi_kp_scale = HWTS_KP_SCALE;
+			configured_pi_ki_scale = HWTS_KI_SCALE;
+		}
 	}
 
 	if (configured_pi_offset > 0.0) {

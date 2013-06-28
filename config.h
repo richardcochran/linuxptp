@@ -75,6 +75,12 @@ struct config {
 
 	double *pi_proportional_const;
 	double *pi_integral_const;
+	double *pi_proportional_scale;
+	double *pi_proportional_exponent;
+	double *pi_proportional_norm_max;
+	double *pi_integral_scale;
+	double *pi_integral_exponent;
+	double *pi_integral_norm_max;
 	double *pi_offset_const;
 	double *pi_f_offset_const;
 	int *pi_max_frequency;

@@ -254,16 +254,54 @@ servo is implemented, a PI controller.
 The default is pi.
 .TP
 .B pi_proportional_const
-The proportional constant of the PI controller. When set to 0.0, the value will
-be selected from 0.7 and 0.1 for the hardware and software time stamping
+The proportional constant of the PI controller. When set to 0.0, the
+proportional constant will be set by the following formula from the current
+sync interval.
+The default is 0.0.
+
+kp = min(kp_scale * sync^kp_exponent, kp_norm_max / sync))
+.TP
+.B pi_integral_const
+The integral constant of the PI controller. When set to 0.0, the
+integral constant will be set by the following formula from the current
+sync interval.
+The default is 0.0.
+
+ki = min(ki_scale * sync^ki_exponent, ki_norm_max / sync)
+.TP
+.B pi_proportional_scale
+The kp_scale constant in the formula used to set the proportional constant of
+the PI controller from the sync interval. When set to 0.0, the value will be
+selected from 0.7 and 0.1 for the hardware and software time stamping
 respectively.
 The default is 0.0.
 .TP
-.B pi_integral_const
-The integral constant of the PI controller. When set to 0.0, the value will be
+.B pi_proportional_exponent
+The kp_exponent constant in the formula used to set the proportional constant of
+the PI controller from the sync interval.
+The default is -0.3.
+.TP
+.B pi_proportional_norm_max
+The kp_norm_max constant in the formula used to set the proportional constant of
+the PI controller from the sync interval.
+The default is 0.7
+.TP
+.B pi_integral_scale
+The ki_scale constant in the formula used to set the integral constant of
+the PI controller from the sync interval. When set to 0.0, the value will be
 selected from 0.3 and 0.001 for the hardware and software time stamping
 respectively.
 The default is 0.0.
+.TP
+.B pi_integral_exponent
+The ki_exponent constant in the formula used to set the integral constant of
+the PI controller from the sync interval.
+The default is 0.4.
+.TP
+.B pi_integral_norm_max
+The ki_norm_max constant in the formula used to set the integral constant of
+the PI controller from the sync interval.
+The default is 0.3.
 .TP
 .B pi_offset_const
 The maximum offset the PI controller will correct by changing the clock

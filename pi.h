@@ -34,6 +34,50 @@ extern double configured_pi_kp;
 extern double configured_pi_ki;
 
 /**
+ * When set to a non-zero value, this variable determines the scale in the
+ * formula used to set the proportional constant of the PI controller from the
+ * sync interval.
+ * kp = min(kp_scale * sync^kp_exponent, kp_norm_max / sync)
+ */
+extern double configured_pi_kp_scale;
+
+/**
+ * This variable determines the exponent in the formula used to set the
+ * proportional constant of the PI controller from the sync interval.
+ * kp = min(kp_scale * sync^kp_exponent, kp_norm_max / sync)
+ */
+extern double configured_pi_kp_exponent;
+
+/**
+ * This variable determines the normalized maximum in the formula used to set
+ * the proportional constant of the PI controller from the sync interval.
+ * kp = min(kp_scale * sync^kp_exponent, kp_norm_max / sync)
+ */
+extern double configured_pi_kp_norm_max;
+
+/**
+ * When set to a non-zero value, this variable determines the scale in the
+ * formula used to set the integral constant of the PI controller from the
+ * sync interval.
+ * ki = min(ki_scale * sync^ki_exponent, ki_norm_max / sync)
+ */
+extern double configured_pi_ki_scale;
+
+/**
+ * This variable determines the exponent in the formula used to set the
+ * integral constant of the PI controller from the sync interval.
+ * ki = min(ki_scale * sync^ki_exponent, ki_norm_max / sync)
+ */
+extern double configured_pi_ki_exponent;
+
+/**
+ * This variable determines the normalized maximum in the formula used to set
+ * the integral constant of the PI controller from the sync interval.
+ * ki = min(ki_scale * sync^ki_exponent, ki_norm_max / sync)
+ */
+extern double configured_pi_ki_norm_max;
+
+/**
  * When set to a non-zero value, this variable controls the maximum allowed
  * offset before a clock jump occurs instead of the default clock-slewing
  * mechanism.
