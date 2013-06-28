@@ -792,10 +792,6 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	*/
 	switch (management_action(msg)) {
 	case GET:
-		if (mgt->length != 2) {
-			clock_management_send_error(p, msg, WRONG_LENGTH);
-			return;
-		}
 		if (clock_management_get_response(c, p, mgt->id, msg))
 			return;
 		break;
