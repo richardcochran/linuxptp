@@ -1236,11 +1236,12 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 	if (!msg_source_equal(m, fc))
 		return add_foreign_master(p, m);
 
-	tds.currentUtcOffset = m->announce.currentUtcOffset;
-	tds.flags = m->header.flagField[1];
-	tds.timeSource = m->announce.timeSource;
-	clock_update_time_properties(p->clock, tds);
-
+	if (p->state != PS_PASSIVE) {
+		tds.currentUtcOffset = m->announce.currentUtcOffset;
+		tds.flags = m->header.flagField[1];
+		tds.timeSource = m->announce.timeSource;
+		clock_update_time_properties(p->clock, tds);
+	}
 	if (p->pod.path_trace_enabled) {
 		ptt = (struct path_trace_tlv *) m->announce.suffix;
 		dad = clock_parent_ds(p->clock);
@@ -1281,9 +1282,9 @@ static int process_announce(struct port *p, struct ptp_message *m)
 	case PS_PRE_MASTER:
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-	case PS_PASSIVE:
 		result = add_foreign_master(p, m);
 		break;
+	case PS_PASSIVE:
 	case PS_UNCALIBRATED:
 	case PS_SLAVE:
 		result = update_current_master(p, m);
