@@ -596,7 +596,6 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		sysclk_set_leap(0);
 	}
 	c->leap_set = 0;
-	c->kernel_leap = dds->kernel_leap;
 
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clockadj_get_freq(c->clkid);
