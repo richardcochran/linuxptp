@@ -1,4 +1,4 @@
-.TH PTP4l 8 "November 2012" "linuxptp"
+.TH PTP4l 8 "July 2013" "linuxptp"
 .SH NAME
 ptp4l \- PTP Boundary/Ordinary Clock
 
@@ -350,6 +350,12 @@ one-second offset slowly by changing the clock frequency (unless the
 .B pi_offset_const
 option is set to correct such offset by stepping).
 Relevant only with software time stamping. The default is 1 (enabled).
+.TP
+.B timeSource
+The time source is a single byte code that gives an idea of the kind
+of local clock in use. The value is purely informational, having no
+effect on the outcome of the Best Master Clock algorithm, and is
+advertised when the clock becomes grand master.
 
 .SH TIME SCALE USAGE
 

@@ -445,6 +445,12 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		cfg->dds.kernel_leap = val;
 
+	} else if (!strcmp(option, "timeSource")) {
+		r = get_ranged_int(value, &val, 0x10, 0xfe);
+		if (r != PARSED_OK)
+			return r;
+		cfg->dds.time_source = val;
+
 	} else
 		return NOT_PARSED;
 
