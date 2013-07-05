@@ -79,6 +79,7 @@ struct clock {
 	int utc_timescale;
 	int leap_set;
 	int kernel_leap;
+	int time_source; /* grand master role */
 	enum servo_state servo_state;
 	tmv_t master_offset;
 	tmv_t path_delay;
@@ -436,7 +437,7 @@ static void clock_update_grandmaster(struct clock *c)
 	} else {
 		c->tds.flags = PTP_TIMESCALE;
 	}
-	c->tds.timeSource                       = INTERNAL_OSCILLATOR;
+	c->tds.timeSource                       = c->time_source;
 }
 
 static void clock_update_slave(struct clock *c)
@@ -570,6 +571,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	c->free_running = dds->free_running;
 	c->freq_est_interval = dds->freq_est_interval;
 	c->kernel_leap = dds->kernel_leap;
+	c->time_source = dds->time_source;
 	c->desc = dds->clock_desc;
 
 	if (c->free_running) {

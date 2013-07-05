@@ -54,6 +54,7 @@ struct default_ds {
 	int freq_est_interval; /*log seconds*/
 	int stats_interval; /*log seconds*/
 	int kernel_leap;
+	int time_source;
 	struct clock_description clock_desc;
 };
 

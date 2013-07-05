@@ -54,6 +54,7 @@ static struct config cfg_settings = {
 		.freq_est_interval = 1,
 		.stats_interval = 0,
 		.kernel_leap = 1,
+		.time_source = INTERNAL_OSCILLATOR,
 		.clock_desc = {
 			.productDescription = {
 				.max_symbols = 64,
