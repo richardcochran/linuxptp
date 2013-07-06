@@ -42,14 +42,15 @@
 
 static struct pmc *pmc;
 
-static void do_get_action(int action, int index);
-static void not_supported(int action, int index);
-static void null_management(int action, int index);
+static void do_get_action(int action, int index, char *str);
+static void do_set_action(int action, int index, char *str);
+static void not_supported(int action, int index, char *str);
+static void null_management(int action, int index, char *str);
 
 struct management_id {
 	char name[64];
 	int code;
-	void (*func)(int action, int index);
+	void (*func)(int action, int index, char *str);
 };
 
 struct management_id idtab[] = {
@@ -85,7 +86,7 @@ struct management_id idtab[] = {
 	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
 	{ "PRIMARY_DOMAIN", PRIMARY_DOMAIN, not_supported },
 	{ "TIME_STATUS_NP", TIME_STATUS_NP, do_get_action },
-	{ "GRANDMASTER_SETTINGS_NP", GRANDMASTER_SETTINGS_NP, do_get_action },
+	{ "GRANDMASTER_SETTINGS_NP", GRANDMASTER_SETTINGS_NP, do_set_action },
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", NULL_MANAGEMENT, null_management },
 	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, do_get_action },
@@ -470,7 +471,7 @@ out:
 	fflush(fp);
 }
 
-static void do_get_action(int action, int index)
+static void do_get_action(int action, int index, char *str)
 {
 	if (action == GET)
 		pmc_send_get_action(pmc, idtab[index].code);
@@ -478,12 +479,81 @@ static void do_get_action(int action, int index)
 		fprintf(stderr, "%s only allows GET\n", idtab[index].name);
 }
 
-static void not_supported(int action, int index)
+static void do_set_action(int action, int index, char *str)
+{
+	struct grandmaster_settings_np gsn;
+	int cnt, code = idtab[index].code;
+	int leap_61, leap_59, utc_off_valid;
+	int ptp_timescale, time_traceable, freq_traceable;
+
+	switch (action) {
+	case GET:
+		pmc_send_get_action(pmc, code);
+		return;
+	case SET:
+		break;
+	case RESPONSE:
+	case COMMAND:
+	case ACKNOWLEDGE:
+	default:
+		fprintf(stderr, "%s only allows GET or SET\n",
+			idtab[index].name);
+		return;
+	}
+	switch (code) {
+	case GRANDMASTER_SETTINGS_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "clockClass              %hhu "
+			     "clockAccuracy           %hhx "
+			     "offsetScaledLogVariance %hx "
+			     "currentUtcOffset        %hd "
+			     "leap61                  %d "
+			     "leap59                  %d "
+			     "currentUtcOffsetValid   %d "
+			     "ptpTimescale            %d "
+			     "timeTraceable           %d "
+			     "frequencyTraceable      %d "
+			     "timeSource              %hhx ",
+			     &gsn.clockQuality.clockClass,
+			     &gsn.clockQuality.clockAccuracy,
+			     &gsn.clockQuality.offsetScaledLogVariance,
+			     &gsn.utc_offset,
+			     &leap_61,
+			     &leap_59,
+			     &utc_off_valid,
+			     &ptp_timescale,
+			     &time_traceable,
+			     &freq_traceable,
+			     &gsn.time_source);
+		if (cnt != 11) {
+			fprintf(stderr, "%s SET needs 11 values\n",
+				idtab[index].name);
+			break;
+		}
+		gsn.time_flags = 0;
+		if (leap_61)
+			gsn.time_flags |= LEAP_61;
+		if (leap_59)
+			gsn.time_flags |= LEAP_59;
+		if (utc_off_valid)
+			gsn.time_flags |= UTC_OFF_VALID;
+		if (ptp_timescale)
+			gsn.time_flags |= PTP_TIMESCALE;
+		if (time_traceable)
+			gsn.time_flags |= TIME_TRACEABLE;
+		if (freq_traceable)
+			gsn.time_flags |= FREQ_TRACEABLE;
+		pmc_send_set_action(pmc, code, &gsn, sizeof(gsn));
+		break;
+	}
+}
+
+static void not_supported(int action, int index, char *str)
 {
 	fprintf(stdout, "sorry, %s not supported yet\n", idtab[index].name);
 }
 
-static void null_management(int action, int index)
+static void null_management(int action, int index, char *str)
 {
 	if (action == GET)
 		pmc_send_get_action(pmc, idtab[index].code);
@@ -567,7 +637,7 @@ static int do_command(char *str)
 	fprintf(stdout, "sending: %s %s\n",
 		action_string[action], idtab[id].name);
 
-	idtab[id].func(action, id);
+	idtab[id].func(action, id, str);
 
 	return 0;
 }
