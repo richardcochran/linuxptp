@@ -60,6 +60,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct timePropertiesDS *tp;
 	struct portDS *p;
 	struct time_status_np *tsn;
+	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
 	int extra_len = 0;
 	uint8_t *buf;
@@ -163,6 +164,14 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		scaled_ns_n2h(&tsn->lastGmPhaseChange);
 		tsn->gmPresent = ntohl(tsn->gmPresent);
 		break;
+	case GRANDMASTER_SETTINGS_NP:
+		if (data_len != sizeof(struct grandmaster_settings_np))
+			goto bad_length;
+		gsn = (struct grandmaster_settings_np *) m->data;
+		gsn->clockQuality.offsetScaledLogVariance =
+			ntohs(gsn->clockQuality.offsetScaledLogVariance);
+		gsn->utc_offset = ntohs(gsn->utc_offset);
+		break;
 	}
 	if (extra_len) {
 		if (extra_len % 2)
@@ -183,6 +192,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct timePropertiesDS *tp;
 	struct portDS *p;
 	struct time_status_np *tsn;
+	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
 	switch (m->id) {
 	case CLOCK_DESCRIPTION:
@@ -235,6 +245,12 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		tsn->gmTimeBaseIndicator = htons(tsn->gmTimeBaseIndicator);
 		scaled_ns_h2n(&tsn->lastGmPhaseChange);
 		tsn->gmPresent = htonl(tsn->gmPresent);
+		break;
+	case GRANDMASTER_SETTINGS_NP:
+		gsn = (struct grandmaster_settings_np *) m->data;
+		gsn->clockQuality.offsetScaledLogVariance =
+			htons(gsn->clockQuality.offsetScaledLogVariance);
+		gsn->utc_offset = htons(gsn->utc_offset);
 		break;
 	}
 }

@@ -78,6 +78,7 @@ enum management_action {
 #define TRANSPARENT_CLOCK_DEFAULT_DATA_SET		0x4000
 #define PRIMARY_DOMAIN					0x4002
 #define TIME_STATUS_NP					0xC000
+#define GRANDMASTER_SETTINGS_NP				0xC001
 
 /* Port management ID values */
 #define NULL_MANAGEMENT					0x0000
@@ -180,6 +181,13 @@ struct time_status_np {
 	ScaledNs      lastGmPhaseChange;
 	Integer32     gmPresent;
 	struct ClockIdentity gmIdentity;
+} PACKED;
+
+struct grandmaster_settings_np {
+	struct ClockQuality clockQuality;
+	Integer16 utc_offset;
+	UInteger8 time_flags;
+	Enumeration8 time_source;
 } PACKED;
 
 enum clock_type {
