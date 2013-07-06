@@ -115,7 +115,8 @@ static char *action_string[] = {
 
 #define IFMT "\n\t\t"
 
-static char *text2str(struct PTPText *text) {
+static char *text2str(struct PTPText *text)
+{
 	static struct static_ptp_text s;
 	s.max_symbols = -1;
 	static_ptp_text_copy(&s, text);
@@ -125,7 +126,8 @@ static char *text2str(struct PTPText *text) {
 #define MAX_PRINT_BYTES 16
 #define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
 
-static char *bin2str_impl(Octet *data, int len, char *buf, int buf_len) {
+static char *bin2str_impl(Octet *data, int len, char *buf, int buf_len)
+{
 	int i, offset = 0;
 	if (len > MAX_PRINT_BYTES)
 		len = MAX_PRINT_BYTES;
@@ -143,18 +145,21 @@ static char *bin2str_impl(Octet *data, int len, char *buf, int buf_len) {
 	return buf;
 }
 
-static char *bin2str(Octet *data, int len) {
+static char *bin2str(Octet *data, int len)
+{
 	static char buf[BIN_BUF_SIZE];
 	return bin2str_impl(data, len, buf, sizeof(buf));
 }
 
-static uint16_t align16(uint16_t *p) {
+static uint16_t align16(uint16_t *p)
+{
 	uint16_t v;
 	memcpy(&v, p, sizeof(v));
 	return v;
 }
 
-static char *portaddr2str(struct PortAddress *addr) {
+static char *portaddr2str(struct PortAddress *addr)
+{
 	static char buf[BIN_BUF_SIZE];
 	switch(align16(&addr->networkProtocol)) {
 	case TRANS_UDP_IPV4:
