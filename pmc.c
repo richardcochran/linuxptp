@@ -85,6 +85,7 @@ struct management_id idtab[] = {
 	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
 	{ "PRIMARY_DOMAIN", PRIMARY_DOMAIN, not_supported },
 	{ "TIME_STATUS_NP", TIME_STATUS_NP, do_get_action },
+	{ "GRANDMASTER_SETTINGS_NP", GRANDMASTER_SETTINGS_NP, do_get_action },
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", NULL_MANAGEMENT, null_management },
 	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, do_get_action },
@@ -188,6 +189,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct parentDS *pds;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
+	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
 	struct portDS *p;
 	if (msg_type(msg) != MANAGEMENT) {
@@ -383,6 +385,32 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			tsn->lastGmPhaseChange.fractional_nanoseconds,
 			tsn->gmPresent ? "true" : "false",
 			cid2str(&tsn->gmIdentity));
+		break;
+	case GRANDMASTER_SETTINGS_NP:
+		gsn = (struct grandmaster_settings_np *) mgt->data;
+		fprintf(fp, "GRANDMASTER_SETTINGS_NP "
+			IFMT "clockClass              %hhu"
+			IFMT "clockAccuracy           0x%02hhx"
+			IFMT "offsetScaledLogVariance 0x%04hx"
+			IFMT "currentUtcOffset        %hd"
+			IFMT "leap61                  %d"
+			IFMT "leap59                  %d"
+			IFMT "currentUtcOffsetValid   %d"
+			IFMT "ptpTimescale            %d"
+			IFMT "timeTraceable           %d"
+			IFMT "frequencyTraceable      %d"
+			IFMT "timeSource              0x%02hhx",
+			gsn->clockQuality.clockClass,
+			gsn->clockQuality.clockAccuracy,
+			gsn->clockQuality.offsetScaledLogVariance,
+			gsn->utc_offset,
+			gsn->time_flags & LEAP_61 ? 1 : 0,
+			gsn->time_flags & LEAP_59 ? 1 : 0,
+			gsn->time_flags & UTC_OFF_VALID ? 1 : 0,
+			gsn->time_flags & PTP_TIMESCALE ? 1 : 0,
+			gsn->time_flags & TIME_TRACEABLE ? 1 : 0,
+			gsn->time_flags & FREQ_TRACEABLE ? 1 : 0,
+			gsn->time_source);
 		break;
 	case PORT_DATA_SET:
 		p = (struct portDS *) mgt->data;
