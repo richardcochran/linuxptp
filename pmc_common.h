@@ -35,6 +35,8 @@ int pmc_get_transport_fd(struct pmc *pmc);
 
 int pmc_send_get_action(struct pmc *pmc, int id);
 
+int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize);
+
 struct ptp_message *pmc_recv(struct pmc *pmc);
 
 #endif
