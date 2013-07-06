@@ -308,7 +308,24 @@ static int clock_management_set(struct clock *c, struct port *p,
 				int id, struct ptp_message *req)
 {
 	int respond = 0;
+	struct management_tlv *tlv;
+	struct grandmaster_settings_np *gsn;
+
+	tlv = (struct management_tlv *) req->management.suffix;
+
 	switch (id) {
+	case GRANDMASTER_SETTINGS_NP:
+		if (p != c->port[c->nports]) {
+			/* Sorry, only allowed on the UDS port. */
+			break;
+		}
+		gsn = (struct grandmaster_settings_np *) tlv->data;
+		c->dds.clockQuality = gsn->clockQuality;
+		c->utc_offset = gsn->utc_offset;
+		c->time_flags = gsn->time_flags;
+		c->time_source = gsn->time_source;
+		respond = 1;
+		break;
 	}
 	if (respond && !clock_management_get_response(c, p, id, req))
 		pr_err("failed to send management set response");
