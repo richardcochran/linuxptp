@@ -52,7 +52,7 @@ static uint16_t flip16(uint16_t *p) {
 }
 
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
-                         struct tlv_extra *extra)
+			 struct tlv_extra *extra)
 {
 	struct defaultDS *dds;
 	struct currentDS *cds;
@@ -75,7 +75,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 
 		cd->physicalLayerProtocol = (struct PTPText *) buf;
 		buf += sizeof(struct PTPText);
-                buf += cd->physicalLayerProtocol->length;
+		buf += cd->physicalLayerProtocol->length;
 
 		cd->physicalAddress = (struct PhysicalAddress *) buf;
 		u16 = flip16(&cd->physicalAddress->length);
@@ -105,9 +105,9 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		extra_len = buf - m->data;
 		break;
 	case USER_DESCRIPTION:
-          extra->cd.userDescription = (struct PTPText *) m->data;
+		extra->cd.userDescription = (struct PTPText *) m->data;
 		extra_len = sizeof(struct PTPText);
-                extra_len += extra->cd.userDescription->length;
+		extra_len += extra->cd.userDescription->length;
 		break;
 	case DEFAULT_DATA_SET:
 		if (data_len != sizeof(struct defaultDS))
