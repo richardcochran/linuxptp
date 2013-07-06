@@ -79,6 +79,8 @@ struct clock {
 	int utc_timescale;
 	int leap_set;
 	int kernel_leap;
+	int utc_offset;  /* grand master role */
+	int time_flags;  /* grand master role */
 	int time_source; /* grand master role */
 	enum servo_state servo_state;
 	tmv_t master_offset;
@@ -172,6 +174,7 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 	struct management_tlv_datum *mtd;
 	struct ptp_message *rsp;
 	struct time_status_np *tsn;
+	struct grandmaster_settings_np *gsn;
 	struct PortIdentity pid = port_identity(p);
 	struct PTPText *text;
 
@@ -269,6 +272,15 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 			tsn->gmPresent = 1;
 		tsn->gmIdentity = c->dad.pds.grandmasterIdentity;
 		datalen = sizeof(*tsn);
+		respond = 1;
+		break;
+	case GRANDMASTER_SETTINGS_NP:
+		gsn = (struct grandmaster_settings_np *) tlv->data;
+		gsn->clockQuality = c->dds.clockQuality;
+		gsn->utc_offset = c->utc_offset;
+		gsn->time_flags = c->time_flags;
+		gsn->time_source = c->time_source;
+		datalen = sizeof(*gsn);
 		respond = 1;
 		break;
 	}
@@ -431,12 +443,8 @@ static void clock_update_grandmaster(struct clock *c)
 	pds->grandmasterPriority1               = c->dds.priority1;
 	pds->grandmasterPriority2               = c->dds.priority2;
 	c->dad.path_length                      = 0;
-	c->tds.currentUtcOffset                 = CURRENT_UTC_OFFSET;
-	if (c->utc_timescale) {
-		c->tds.flags = 0;
-	} else {
-		c->tds.flags = PTP_TIMESCALE;
-	}
+	c->tds.currentUtcOffset                 = c->utc_offset;
+	c->tds.flags                            = c->time_flags;
 	c->tds.timeSource                       = c->time_source;
 }
 
@@ -571,6 +579,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	c->free_running = dds->free_running;
 	c->freq_est_interval = dds->freq_est_interval;
 	c->kernel_leap = dds->kernel_leap;
+	c->utc_offset = CURRENT_UTC_OFFSET;
 	c->time_source = dds->time_source;
 	c->desc = dds->clock_desc;
 
@@ -598,6 +607,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		sysclk_set_leap(0);
 	}
 	c->leap_set = 0;
+	c->time_flags = c->utc_timescale ? 0 : PTP_TIMESCALE;
 
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clockadj_get_freq(c->clkid);
@@ -846,6 +856,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case PRIMARY_DOMAIN:
 	case TIME_STATUS_NP:
+	case GRANDMASTER_SETTINGS_NP:
 		clock_management_send_error(p, msg, NOT_SUPPORTED);
 		break;
 	default:
