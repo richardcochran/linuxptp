@@ -1980,7 +1980,8 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case SIGNALING:
 		break;
 	case MANAGEMENT:
-		clock_manage(p->clock, p, msg);
+		if (clock_manage(p->clock, p, msg))
+			event = EV_STATE_DECISION_EVENT;
 		break;
 	}
 

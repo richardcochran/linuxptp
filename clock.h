@@ -120,8 +120,10 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda);
  * @param c    The clock instance.
  * @param p    The port on which the message arrived.
  * @param msg  A management message.
+ * @return     One if the management action caused a change that
+ *             implies a state decision event, zero otherwise.
  */
-void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg);
+int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg);
 
 /**
  * Obtain a clock's parent data set.

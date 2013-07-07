@@ -305,7 +305,7 @@ out:
 }
 
 static int clock_management_set(struct clock *c, struct port *p,
-				int id, struct ptp_message *req)
+				int id, struct ptp_message *req, int *changed)
 {
 	int respond = 0;
 	struct management_tlv *tlv;
@@ -324,6 +324,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 		c->utc_offset = gsn->utc_offset;
 		c->time_flags = gsn->time_flags;
 		c->time_source = gsn->time_source;
+		*changed = 1;
 		respond = 1;
 		break;
 	}
@@ -791,9 +792,9 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 	}
 }
 
-void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
+int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 {
-	int i;
+	int changed = 0, i;
 	struct management_tlv *mgt;
 	struct ClockIdentity *tcid, wildcard = {
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
@@ -805,10 +806,10 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	/* Apply this message to the local clock and ports. */
 	tcid = &msg->management.targetPortIdentity.clockIdentity;
 	if (!cid_eq(tcid, &wildcard) && !cid_eq(tcid, &c->dds.clockIdentity)) {
-		return;
+		return changed;
 	}
 	if (msg->tlv_count != 1) {
-		return;
+		return changed;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 
@@ -821,24 +822,24 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	switch (management_action(msg)) {
 	case GET:
 		if (clock_management_get_response(c, p, mgt->id, msg))
-			return;
+			return changed;
 		break;
 	case SET:
 		if (mgt->length == 2 && mgt->id != NULL_MANAGEMENT) {
 			clock_management_send_error(p, msg, WRONG_LENGTH);
-			return;
+			return changed;
 		}
-		if (clock_management_set(c, p, mgt->id, msg))
-			return;
+		if (clock_management_set(c, p, mgt->id, msg, &changed))
+			return changed;
 		break;
 	case COMMAND:
 		if (mgt->length != 2) {
 			clock_management_send_error(p, msg, WRONG_LENGTH);
-			return;
+			return changed;
 		}
 		break;
 	default:
-		return;
+		return changed;
 	}
 
 	switch (mgt->id) {
@@ -883,6 +884,7 @@ void clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		}
 		break;
 	}
+	return changed;
 }
 
 struct parent_ds *clock_parent_ds(struct clock *c)
@@ -945,6 +947,8 @@ int clock_poll(struct clock *c)
 		k = N_CLOCK_PFD * i + j;
 		if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
 			event = port_event(c->port[i], j);
+			if (EV_STATE_DECISION_EVENT == event)
+				sde = 1;
 		}
 	}
 
