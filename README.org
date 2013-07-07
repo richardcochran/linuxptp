@@ -124,10 +124,11 @@
     |------------+-------------------------+------+-----+-----+-----|
     | bfin_mac   | Analog Blackfin         | RAW  | Y   | NA  | 3.8 |
     | e1000e     | Intel 82574, 82583      | RAW  | Y   | NA  | 3.9 |
+    | fec        | Freescale i.mx6         | RAW  | Y   | NA  | 3.8 |
+    | gianfar    | Freescale eTSEC PowerPC | RAW  | Y   | NA  | 3.0 |
     | igb        | Intel 82576, 82580      | RAW  | Y   | NA  | 3.5 |
     | ixgbe      | Intel 82599             | RAW  | Y   | NA  | 3.5 |
     | dp83640    | Nat Semi PHYTER         | RAW  | Y   | NA  | 3.0 |
-    | gianfar    | Freescale eTSEC PowerPC | RAW  | Y   | NA  | 3.0 |
     | ptp_ixp46x | Intel IXP465            | RAW  | Y   | NA  | 3.0 |
     | ptp_phc    | Lapis EG20T PCH         | RAW  | Y   | NA  | 3.5 |
     | sfc        | Solarflare SFC9000      | RAW  | Y   | NA  | 3.7 |
