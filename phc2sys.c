@@ -782,8 +782,12 @@ int main(int argc, char *argv[])
 
 	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
 
-	if (pps_fd >= 0)
+	if (pps_fd >= 0) {
+		servo_sync_interval(dst_clock.servo, 1.0);
 		return do_pps_loop(&dst_clock, pps_fd, src, phc_readings);
+	}
+
+	servo_sync_interval(dst_clock.servo, phc_interval);
 
 	phc_interval_tp.tv_sec = phc_interval;
 	phc_interval_tp.tv_nsec = (phc_interval - phc_interval_tp.tv_sec) * 1e9;
