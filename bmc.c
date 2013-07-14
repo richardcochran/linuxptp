@@ -133,9 +133,6 @@ enum port_state bmc_state_decision(struct clock *c, struct port *r)
 	if (!port_best && PS_LISTENING == ps)
 		return ps;
 
-	if (!clock_best)
-		return PS_FAULTY;
-
 	if (clock_class(c) <= 127) {
 		if (dscmp(clock_ds, port_best) > 0) {
 			return PS_GRAND_MASTER; /*M1*/

@@ -333,16 +333,6 @@ static int clock_management_set(struct clock *c, struct port *p,
 	return respond ? 1 : 0;
 }
 
-static int clock_master_lost(struct clock *c)
-{
-	int i;
-	for (i = 0; i < c->nports; i++) {
-		if (PS_SLAVE == port_state(c->port[i]))
-			return 0;
-	}
-	return 1;
-}
-
 static void clock_stats_update(struct clock_stats *s,
 			       int64_t offset, double freq)
 {
@@ -899,7 +889,7 @@ struct PortIdentity clock_parent_identity(struct clock *c)
 
 int clock_poll(struct clock *c)
 {
-	int cnt, err, i, j, k, lost = 0, sde = 0;
+	int cnt, err, i, j, k, sde = 0;
 	enum fsm_event event;
 
 	cnt = poll(c->pollfd, ARRAY_SIZE(c->pollfd), -1);
@@ -924,7 +914,7 @@ int clock_poll(struct clock *c)
 				if (EV_STATE_DECISION_EVENT == event)
 					sde = 1;
 				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event)
-					lost = 1;
+					sde = 1;
 				err = port_dispatch(c->port[i], event, 0);
 				/* Clear any fault after a little while. */
 				if (PS_FAULTY == port_state(c->port[i])) {
@@ -952,8 +942,6 @@ int clock_poll(struct clock *c)
 		}
 	}
 
-	if (lost && clock_master_lost(c))
-		clock_update_grandmaster(c);
 	if (sde)
 		handle_state_decision_event(c);
 
@@ -1144,6 +1132,7 @@ void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds)
 static void handle_state_decision_event(struct clock *c)
 {
 	struct foreign_clock *best = NULL, *fc;
+	struct ClockIdentity best_id;
 	int fresh_best = 0, i;
 
 	for (i = 0; i < c->nports; i++) {
@@ -1154,13 +1143,16 @@ static void handle_state_decision_event(struct clock *c)
 			best = fc;
 	}
 
-	if (!best)
-		return;
+	if (best) {
+		best_id = best->dataset.identity;
+	} else {
+		best_id = c->dds.clockIdentity;
+	}
 
 	pr_notice("selected best master clock %s",
-		cid2str(&best->dataset.identity));
+		  cid2str(&best_id));
 
-	if (!cid_eq(&best->dataset.identity, &c->best_id)) {
+	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
 		mave_reset(c->avg_delay);
 		c->path_delay = 0;
@@ -1168,7 +1160,7 @@ static void handle_state_decision_event(struct clock *c)
 	}
 
 	c->best = best;
-	c->best_id = best->dataset.identity;
+	c->best_id = best_id;
 
 	for (i = 0; i < c->nports; i++) {
 		enum port_state ps;
@@ -1179,6 +1171,7 @@ static void handle_state_decision_event(struct clock *c)
 			event = EV_NONE;
 			break;
 		case PS_GRAND_MASTER:
+			pr_notice("assuming the grand master role");
 			clock_update_grandmaster(c);
 			event = EV_RS_GRAND_MASTER;
 			break;
