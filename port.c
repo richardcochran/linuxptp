@@ -1115,10 +1115,8 @@ static int port_is_enabled(struct port *p)
 	return 1;
 }
 
-static void port_disable(struct port *p)
+static void flush_last_sync(struct port *p)
 {
-	int i;
-
 	if (p->last_follow_up) {
 		msg_put(p->last_follow_up);
 		p->last_follow_up = NULL;
@@ -1127,10 +1125,18 @@ static void port_disable(struct port *p)
 		msg_put(p->last_sync);
 		p->last_sync = NULL;
 	}
+}
+
+static void flush_delay_req(struct port *p)
+{
 	if (p->delay_req) {
 		msg_put(p->delay_req);
 		p->delay_req = NULL;
 	}
+}
+
+static void flush_peer_delay(struct port *p)
+{
 	if (p->peer_delay_req) {
 		msg_put(p->peer_delay_req);
 		p->peer_delay_req = NULL;
@@ -1143,6 +1149,15 @@ static void port_disable(struct port *p)
 		msg_put(p->peer_delay_fup);
 		p->peer_delay_fup = NULL;
 	}
+}
+
+static void port_disable(struct port *p)
+{
+	int i;
+
+	flush_last_sync(p);
+	flush_delay_req(p);
+	flush_peer_delay(p);
 
 	p->best = NULL;
 	free_foreign_masters(p);
@@ -1783,6 +1798,9 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 		port_set_announce_tmo(p);
 		break;
 	case PS_UNCALIBRATED:
+		flush_last_sync(p);
+		flush_delay_req(p);
+		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
 		port_set_delay_tmo(p);
@@ -1820,6 +1838,9 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 		port_set_announce_tmo(p);
 		break;
 	case PS_UNCALIBRATED:
+		flush_last_sync(p);
+		flush_peer_delay(p);
+		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
 		break;
