@@ -134,6 +134,11 @@ static int pmc_send(struct pmc *pmc, struct ptp_message *msg, int pdulen)
 	return 0;
 }
 
+static int pmc_tlv_datalen(struct pmc *pmc, int id)
+{
+	return 0;
+}
+
 int pmc_get_transport_fd(struct pmc *pmc)
 {
 	return pmc->fdarray.fd[FD_GENERAL];
@@ -141,7 +146,7 @@ int pmc_get_transport_fd(struct pmc *pmc)
 
 int pmc_send_get_action(struct pmc *pmc, int id)
 {
-	int pdulen;
+	int datalen, pdulen;
 	struct ptp_message *msg;
 	struct management_tlv *mgt;
 	msg = pmc_message(pmc, GET);
@@ -150,9 +155,10 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 	mgt->type = TLV_MANAGEMENT;
-	mgt->length = 2;
+	datalen = pmc_tlv_datalen(pmc, id);
+	mgt->length = 2 + datalen;
 	mgt->id = id;
-	pdulen = msg->header.messageLength + sizeof(*mgt);
+	pdulen = msg->header.messageLength + sizeof(*mgt) + datalen;
 	msg->header.messageLength = pdulen;
 	msg->tlv_count = 1;
 	pmc_send(pmc, msg, pdulen);
