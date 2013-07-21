@@ -1,4 +1,4 @@
-.TH PMC 8 "November 2012" "linuxptp"
+.TH PMC 8 "July 2013" "linuxptp"
 .SH NAME
 pmc \- PTP management client
 
@@ -22,6 +22,8 @@ pmc \- PTP management client
 .BI \-t " transport-specific-field"
 ] [
 .B \-v
+] [
+.B \-z
 ] [ command ] ...
 
 .SH DESCRIPTION
@@ -76,6 +78,13 @@ Display a help message.
 .TP
 .B \-v
 Prints the software version and exits.
+.TP
+.B \-z
+The official interpretation of the 1588 standard mandates sending
+GET actions with valid (but meaningless) TLV values. Therefore the
+pmc program normally sends GET requests with properly formed TLV
+values. This option enables the legacy option of sending zero
+length TLV values instead.
 
 .SH MANAGEMENT IDS
 

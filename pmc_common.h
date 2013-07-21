@@ -27,7 +27,7 @@ struct pmc;
 
 struct pmc *pmc_create(enum transport_type transport_type, char *iface_name,
 		       UInteger8 boundary_hops, UInteger8 domain_number,
-		       UInteger8 transport_specific);
+		       UInteger8 transport_specific, int zero_datalen);
 
 void pmc_destroy(struct pmc *pmc);
 

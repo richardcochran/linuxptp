@@ -372,7 +372,7 @@ static void *get_mgt_data(struct ptp_message *msg)
 static int init_pmc(struct clock *clock, int domain_number)
 {
 	clock->pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0,
-				domain_number, 0);
+				domain_number, 0, 1);
 	if (!clock->pmc) {
 		pr_err("failed to create pmc");
 		return -1;

@@ -659,6 +659,7 @@ static void usage(char *progname)
 		"           for network and '/var/run/pmc' for UDS.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
 		" -v        prints the software version and exits\n"
+		" -z        send zero length TLV values with the GET actions\n"
 		"\n",
 		progname);
 }
@@ -666,7 +667,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *iface_name = NULL, *progname;
-	int c, cnt, length, tmo = -1, batch_mode = 0;
+	int c, cnt, length, tmo = -1, batch_mode = 0, zero_datalen = 0;
 	char line[1024], *command = NULL;
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
@@ -677,7 +678,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:t:v"))) {
+	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:t:vz"))) {
 		switch (c) {
 		case '2':
 			transport_type = TRANS_IEEE_802_3;
@@ -707,6 +708,9 @@ int main(int argc, char *argv[])
 		case 'v':
 			version_show(stdout);
 			return 0;
+		case 'z':
+			zero_datalen = 1;
+			break;
 		case 'h':
 			usage(progname);
 			return 0;
@@ -730,7 +734,8 @@ int main(int argc, char *argv[])
 	print_set_syslog(1);
 	print_set_verbose(1);
 
-	pmc = pmc_create(transport_type, iface_name, boundary_hops, domain_number, transport_specific);
+	pmc = pmc_create(transport_type, iface_name, boundary_hops,
+			 domain_number, transport_specific, zero_datalen);
 	if (!pmc) {
 		fprintf(stderr, "failed to create pmc\n");
 		return -1;

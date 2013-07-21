@@ -62,7 +62,7 @@ struct pmc {
 
 struct pmc *pmc_create(enum transport_type transport_type, char *iface_name,
 		       UInteger8 boundary_hops, UInteger8 domain_number,
-		       UInteger8 transport_specific)
+		       UInteger8 transport_specific, int zero_datalen)
 {
 	struct pmc *pmc;
 
@@ -92,6 +92,7 @@ struct pmc *pmc_create(enum transport_type transport_type, char *iface_name,
 		pr_err("failed to open transport");
 		goto failed;
 	}
+	pmc->zero_length_gets = zero_datalen ? 1 : 0;
 
 	return pmc;
 
