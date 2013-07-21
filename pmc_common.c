@@ -27,6 +27,27 @@
 #include "util.h"
 #include "pmc_common.h"
 
+/*
+   Field                  Len  Type
+  --------------------------------------------------------
+   clockType                2
+   physicalLayerProtocol    1  PTPText
+   physicalAddressLength    2  UInteger16
+   physicalAddress          0
+   protocolAddress          4  Enumeration16 + UInteger16
+   manufacturerIdentity     3
+   reserved                 1
+   productDescription       1  PTPText
+   revisionData             1  PTPText
+   userDescription          1  PTPText
+   profileIdentity          6
+  --------------------------------------------------------
+   TOTAL                   22
+*/
+#define EMPTY_CLOCK_DESCRIPTION 22
+/* Includes one extra byte to make length even. */
+#define EMPTY_PTP_TEXT 2
+
 struct pmc {
 	UInteger16 sequence_id;
 	UInteger8 boundary_hops;
@@ -36,6 +57,7 @@ struct pmc {
 
 	struct transport *transport;
 	struct fdarray fdarray;
+	int zero_length_gets;
 };
 
 struct pmc *pmc_create(enum transport_type transport_type, char *iface_name,
@@ -136,7 +158,60 @@ static int pmc_send(struct pmc *pmc, struct ptp_message *msg, int pdulen)
 
 static int pmc_tlv_datalen(struct pmc *pmc, int id)
 {
-	return 0;
+	int len = 0;
+
+	if (pmc->zero_length_gets)
+		return len;
+
+	switch (id) {
+	case USER_DESCRIPTION:
+		len += EMPTY_PTP_TEXT;
+		break;
+	case DEFAULT_DATA_SET:
+		len += sizeof(struct defaultDS);
+		break;
+	case CURRENT_DATA_SET:
+		len += sizeof(struct currentDS);
+		break;
+	case PARENT_DATA_SET:
+		len += sizeof(struct parentDS);
+		break;
+	case TIME_PROPERTIES_DATA_SET:
+		len += sizeof(struct timePropertiesDS);
+		break;
+	case PRIORITY1:
+	case PRIORITY2:
+	case DOMAIN:
+	case SLAVE_ONLY:
+	case CLOCK_ACCURACY:
+	case TRACEABILITY_PROPERTIES:
+	case TIMESCALE_PROPERTIES:
+		len += sizeof(struct management_tlv_datum);
+		break;
+	case TIME_STATUS_NP:
+		len += sizeof(struct time_status_np);
+		break;
+	case GRANDMASTER_SETTINGS_NP:
+		len += sizeof(struct grandmaster_settings_np);
+		break;
+	case NULL_MANAGEMENT:
+		break;
+	case CLOCK_DESCRIPTION:
+		len += EMPTY_CLOCK_DESCRIPTION;
+		break;
+	case PORT_DATA_SET:
+		len += sizeof(struct portDS);
+		break;
+	case LOG_ANNOUNCE_INTERVAL:
+	case ANNOUNCE_RECEIPT_TIMEOUT:
+	case LOG_SYNC_INTERVAL:
+	case VERSION_NUMBER:
+	case DELAY_MECHANISM:
+	case LOG_MIN_PDELAY_REQ_INTERVAL:
+		len += sizeof(struct management_tlv_datum);
+		break;
+	}
+	return len;
 }
 
 int pmc_get_transport_fd(struct pmc *pmc)
@@ -161,6 +236,23 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 	pdulen = msg->header.messageLength + sizeof(*mgt) + datalen;
 	msg->header.messageLength = pdulen;
 	msg->tlv_count = 1;
+
+	if (id == CLOCK_DESCRIPTION && !pmc->zero_length_gets) {
+		/*
+		 * Make sure the tlv_extra pointers dereferenced in
+		 * mgt_pre_send() do point to something.
+		 */
+		struct mgmt_clock_description *cd = &msg->last_tlv.cd;
+		uint8_t *buf = mgt->data;
+		cd->clockType = (UInteger16 *) buf;
+		buf += sizeof(*cd->clockType);
+		cd->physicalLayerProtocol = (struct PTPText *) buf;
+		buf += sizeof(struct PTPText) + cd->physicalLayerProtocol->length;
+		cd->physicalAddress = (struct PhysicalAddress *) buf;
+		buf += sizeof(struct PhysicalAddress) + 0;
+		cd->protocolAddress = (struct PortAddress *) buf;
+	}
+
 	pmc_send(pmc, msg, pdulen);
 	msg_put(msg);
 
