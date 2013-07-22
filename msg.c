@@ -310,6 +310,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		suffix = m->signaling.suffix;
 		break;
 	case MANAGEMENT:
+		port_id_post_recv(&m->management.targetPortIdentity);
 		suffix = m->management.suffix;
 		break;
 	}
@@ -368,6 +369,7 @@ int msg_pre_send(struct ptp_message *m)
 		suffix = m->signaling.suffix;
 		break;
 	case MANAGEMENT:
+		port_id_pre_send(&m->management.targetPortIdentity);
 		suffix = m->management.suffix;
 		break;
 	default:
