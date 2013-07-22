@@ -596,6 +596,19 @@ static int parse_id(char *s)
 	return index;
 }
 
+static int parse_target(const char *str)
+{
+	struct PortIdentity pid;
+
+	if (str[0] == '*') {
+		memset(&pid, 0xff, sizeof(pid));
+	} else if (str2pid(str, &pid)) {
+		return -1;
+	}
+
+	return pmc_target(pmc, &pid);
+}
+
 static void print_help(FILE *fp)
 {
 	int i;
@@ -607,6 +620,9 @@ static void print_help(FILE *fp)
 	fprintf(fp, "\n");
 	fprintf(fp, "\tThe [action] can be GET, SET, CMD, or COMMAND\n");
 	fprintf(fp, "\tCommands are case insensitive and may be abbreviated.\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "\tTARGET [portIdentity]\n");
+	fprintf(fp, "\tTARGET *\n");
 	fprintf(fp, "\n");
 }
 
@@ -622,6 +638,9 @@ static int do_command(char *str)
 
 	if (2 != sscanf(str, " %10s %64s", action_str, id_str))
 		return -1;
+
+	if (0 == strncasecmp(action_str, "TARGET", strlen(action_str)))
+		return parse_target(id_str);
 
 	action = parse_action(action_str);
 	id = parse_id(id_str);

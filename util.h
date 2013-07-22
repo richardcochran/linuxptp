@@ -55,6 +55,15 @@ char *cid2str(struct ClockIdentity *id);
  */
 char *pid2str(struct PortIdentity *id);
 
+/**
+ * Scan a string containing a port identity and convert it into binary form.
+ *
+ * @param s       String in human readable form.
+ * @param result  Pointer to a buffer to hold the result.
+ * @return Zero on success, or -1 if the string is incorrectly formatted.
+ */
+int str2pid(const char *s, struct PortIdentity *result);
+
 int generate_clock_identity(struct ClockIdentity *ci, char *name);
 
 /**

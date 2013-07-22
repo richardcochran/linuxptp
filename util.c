@@ -82,6 +82,22 @@ char *pid2str(struct PortIdentity *id)
 	return buf;
 }
 
+int str2pid(const char *s, struct PortIdentity *result)
+{
+	struct PortIdentity pid;
+	unsigned char *ptr = pid.clockIdentity.id;
+	int c;
+	c = sscanf(s, " %02hhx%02hhx%02hhx.%02hhx%02hhx.%02hhx%02hhx%02hhx-%hu",
+		   &ptr[0], &ptr[1], &ptr[2], &ptr[3],
+		   &ptr[4], &ptr[5], &ptr[6], &ptr[7],
+		   &pid.portNumber);
+	if (c == 9) {
+		*result = pid;
+		return 0;
+	}
+	return -1;
+}
+
 int generate_clock_identity(struct ClockIdentity *ci, char *name)
 {
 	unsigned char mac[6];
