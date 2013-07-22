@@ -39,4 +39,6 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize);
 
 struct ptp_message *pmc_recv(struct pmc *pmc);
 
+int pmc_target(struct pmc *pmc, struct PortIdentity *pid);
+
 #endif

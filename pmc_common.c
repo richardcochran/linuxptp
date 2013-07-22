@@ -54,6 +54,7 @@ struct pmc {
 	UInteger8 domain_number;
 	UInteger8 transport_specific;
 	struct PortIdentity port_identity;
+	struct PortIdentity target;
 
 	struct transport *transport;
 	struct fdarray fdarray;
@@ -76,8 +77,9 @@ struct pmc *pmc_create(enum transport_type transport_type, char *iface_name,
 		pr_err("failed to generate a clock identity");
 		goto failed;
 	}
-
 	pmc->port_identity.portNumber = 1;
+	memset(&pmc->target, 0xff, sizeof(pmc->target));
+
 	pmc->boundary_hops = boundary_hops;
 	pmc->domain_number = domain_number;
 	pmc->transport_specific = transport_specific;
@@ -131,8 +133,7 @@ static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
 	msg->header.control            = CTL_MANAGEMENT;
 	msg->header.logMessageInterval = 0x7f;
 
-	memset(&msg->management.targetPortIdentity, 0xff,
-	       sizeof(msg->management.targetPortIdentity));
+	msg->management.targetPortIdentity = pmc->target;
 	msg->management.startingBoundaryHops = pmc->boundary_hops;
 	msg->management.boundaryHops = pmc->boundary_hops;
 	msg->management.flags = action;
@@ -320,4 +321,10 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 failed:
 	msg_put(msg);
 	return NULL;
+}
+
+int pmc_target(struct pmc *pmc, struct PortIdentity *pid)
+{
+	pmc->target = *pid;
+	return 0;
 }
