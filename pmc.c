@@ -830,5 +830,6 @@ int main(int argc, char *argv[])
 	}
 
 	pmc_destroy(pmc);
+	msg_cleanup();
 	return 0;
 }
