@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
 	/* check whether timestamping mode is supported. */
 	for (i = 0; i < cfg_settings.nports; i++) {
 		if (iface[i].ts_info.valid &&
-		    ((iface[0].ts_info.so_timestamping & required_modes) != required_modes)) {
+		    ((iface[i].ts_info.so_timestamping & required_modes) != required_modes)) {
 			fprintf(stderr, "interface '%s' does not support "
 				        "requested timestamping mode.\n",
 				iface[i].name);
