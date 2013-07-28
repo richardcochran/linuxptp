@@ -62,50 +62,112 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
-	int extra_len = 0;
+	int extra_len = 0, len;
 	uint8_t *buf;
 	uint16_t u16;
 	switch (m->id) {
 	case CLOCK_DESCRIPTION:
 		cd = &extra->cd;
 		buf = m->data;
+		len = data_len;
 
 		cd->clockType = (UInteger16 *) buf;
-		flip16(cd->clockType);
 		buf += sizeof(*cd->clockType);
+		len -= sizeof(*cd->clockType);
+		if (len < 0)
+			goto bad_length;
+		flip16(cd->clockType);
 
 		cd->physicalLayerProtocol = (struct PTPText *) buf;
 		buf += sizeof(struct PTPText);
+		len -= sizeof(struct PTPText);
+		if (len < 0)
+			goto bad_length;
+
 		buf += cd->physicalLayerProtocol->length;
+		len -= cd->physicalLayerProtocol->length;
+		if (len < 0)
+			goto bad_length;
 
 		cd->physicalAddress = (struct PhysicalAddress *) buf;
+		buf += sizeof(struct PhysicalAddress);
+		len -= sizeof(struct PhysicalAddress);
+		if (len < 0)
+			goto bad_length;
+
 		u16 = flip16(&cd->physicalAddress->length);
 		if (u16 > TRANSPORT_ADDR_LEN)
 			goto bad_length;
-		buf += sizeof(struct PhysicalAddress) + u16;
+		buf += u16;
+		len -= u16;
+		if (len < 0)
+			goto bad_length;
 
 		cd->protocolAddress = (struct PortAddress *) buf;
+		buf += sizeof(struct PortAddress);
+		len -= sizeof(struct PortAddress);
+		if (len < 0)
+			goto bad_length;
+
 		flip16(&cd->protocolAddress->networkProtocol);
 		u16 = flip16(&cd->protocolAddress->addressLength);
 		if (u16 > TRANSPORT_ADDR_LEN)
 			goto bad_length;
-		buf += sizeof(struct PortAddress) + u16;
+		buf += u16;
+		len -= u16;
+		if (len < 0)
+			goto bad_length;
 
 		cd->manufacturerIdentity = buf;
 		buf += OUI_LEN + 1;
+		len -= OUI_LEN + 1;
+		if (len < 0)
+			goto bad_length;
 
 		cd->productDescription = (struct PTPText *) buf;
-		buf += sizeof(struct PTPText) + cd->productDescription->length;
+		buf += sizeof(struct PTPText);
+		len -= sizeof(struct PTPText);
+		if (len < 0)
+			goto bad_length;
+
+		buf += cd->productDescription->length;
+		len -= cd->productDescription->length;
+		if (len < 0)
+			goto bad_length;
+
 		cd->revisionData = (struct PTPText *) buf;
-		buf += sizeof(struct PTPText) + cd->revisionData->length;
+		buf += sizeof(struct PTPText);
+		len -= sizeof(struct PTPText);
+		if (len < 0)
+			goto bad_length;
+
+		buf += cd->revisionData->length;
+		len -= cd->revisionData->length;
+		if (len < 0)
+			goto bad_length;
+
 		cd->userDescription = (struct PTPText *) buf;
-		buf += sizeof(struct PTPText) + cd->userDescription->length;
+		buf += sizeof(struct PTPText);
+		len -= sizeof(struct PTPText);
+		if (len < 0)
+			goto bad_length;
+
+		buf += cd->userDescription->length;
+		len -= cd->userDescription->length;
+		if (len < 0)
+			goto bad_length;
 
 		cd->profileIdentity = buf;
 		buf += PROFILE_ID_LEN;
+		len -= PROFILE_ID_LEN;
+		if (len < 0)
+			goto bad_length;
+
 		extra_len = buf - m->data;
 		break;
 	case USER_DESCRIPTION:
+		if (data_len < sizeof(struct PTPText))
+			goto bad_length;
 		extra->cd.userDescription = (struct PTPText *) m->data;
 		extra_len = sizeof(struct PTPText);
 		extra_len += extra->cd.userDescription->length;
