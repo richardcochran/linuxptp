@@ -39,6 +39,19 @@
 #define ALLOWED_LOST_RESPONSES 3
 #define PORT_MAVE_LENGTH 10
 
+enum syfu_state {
+	SF_EMPTY,
+	SF_HAVE_SYNC,
+	SF_HAVE_FUP,
+};
+
+enum syfu_event {
+	SYNC_MISMATCH,
+	SYNC_MATCH,
+	FUP_MISMATCH,
+	FUP_MATCH,
+};
+
 struct nrate_estimator {
 	double ratio;
 	tmv_t origin1;
@@ -54,8 +67,8 @@ struct port {
 	enum timestamp_type timestamping;
 	struct fdarray fda;
 	struct foreign_clock *best;
-	struct ptp_message *last_follow_up;
-	struct ptp_message *last_sync;
+	enum syfu_state syfu;
+	struct ptp_message *last_syncfup;
 	struct ptp_message *delay_req;
 	struct ptp_message *peer_delay_req;
 	struct ptp_message *peer_delay_resp;
@@ -842,6 +855,91 @@ static void port_synchronize(struct port *p,
 	}
 }
 
+/*
+ * Handle out of order packets. The network stack might
+ * provide the follow up _before_ the sync message. After all,
+ * they can arrive on two different ports. In addition, time
+ * stamping in PHY devices might delay the event packets.
+ */
+static void port_syfufsm(struct port *p, enum syfu_event event,
+			 struct ptp_message *m)
+{
+	struct ptp_message *syn, *fup;
+
+	switch (p->syfu) {
+	case SF_EMPTY:
+		switch (event) {
+		case SYNC_MISMATCH:
+			msg_get(m);
+			p->last_syncfup = m;
+			p->syfu = SF_HAVE_SYNC;
+			break;
+		case FUP_MISMATCH:
+			msg_get(m);
+			p->last_syncfup = m;
+			p->syfu = SF_HAVE_FUP;
+			break;
+		case SYNC_MATCH:
+			break;
+		case FUP_MATCH:
+			break;
+		}
+		break;
+
+	case SF_HAVE_SYNC:
+		switch (event) {
+		case SYNC_MISMATCH:
+			msg_put(p->last_syncfup);
+			msg_get(m);
+			p->last_syncfup = m;
+			break;
+		case SYNC_MATCH:
+			break;
+		case FUP_MISMATCH:
+			msg_put(p->last_syncfup);
+			msg_get(m);
+			p->last_syncfup = m;
+			p->syfu = SF_HAVE_FUP;
+			break;
+		case FUP_MATCH:
+			syn = p->last_syncfup;
+			port_synchronize(p, syn->hwts.ts, m->ts.pdu,
+					 syn->header.correction,
+					 m->header.correction);
+			msg_put(p->last_syncfup);
+			p->syfu = SF_EMPTY;
+			break;
+		}
+		break;
+
+	case SF_HAVE_FUP:
+		switch (event) {
+		case SYNC_MISMATCH:
+			msg_put(p->last_syncfup);
+			msg_get(m);
+			p->last_syncfup = m;
+			p->syfu = SF_HAVE_SYNC;
+			break;
+		case SYNC_MATCH:
+			fup = p->last_syncfup;
+			port_synchronize(p, m->hwts.ts, fup->ts.pdu,
+					 m->header.correction,
+					 fup->header.correction);
+			msg_put(p->last_syncfup);
+			p->syfu = SF_EMPTY;
+			break;
+		case FUP_MISMATCH:
+			msg_put(p->last_syncfup);
+			msg_get(m);
+			p->last_syncfup = m;
+			break;
+		case FUP_MATCH:
+			break;
+		}
+		break;
+	}
+}
+
 static int port_pdelay_request(struct port *p)
 {
 	struct ptp_message *msg;
@@ -1117,13 +1215,9 @@ static int port_is_enabled(struct port *p)
 
 static void flush_last_sync(struct port *p)
 {
-	if (p->last_follow_up) {
-		msg_put(p->last_follow_up);
-		p->last_follow_up = NULL;
-	}
-	if (p->last_sync) {
-		msg_put(p->last_sync);
-		p->last_sync = NULL;
+	if (p->syfu != SF_EMPTY) {
+		msg_put(p->last_syncfup);
+		p->syfu = SF_EMPTY;
 	}
 }
 
@@ -1387,8 +1481,8 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 
 static void process_follow_up(struct port *p, struct ptp_message *m)
 {
-	struct ptp_message *syn;
-	struct PortIdentity master, *pid;
+	enum syfu_event event;
+	struct PortIdentity master;
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -1414,27 +1508,13 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 		clock_follow_up_info(p->clock, fui);
 	}
 
-	/*
-	 * Handle out of order packets. The network stack might
-	 * provide the follow up _before_ the sync message. After all,
-	 * they can arrive on two different ports. In addition, time
-	 * stamping in PHY devices might delay the event packets.
-	 */
-	syn = p->last_sync;
-	if (!syn || syn->header.sequenceId != m->header.sequenceId) {
-		if (p->last_follow_up)
-			msg_put(p->last_follow_up);
-		msg_get(m);
-		p->last_follow_up = m;
-		return;
+	if (p->syfu == SF_HAVE_SYNC &&
+	    p->last_syncfup->header.sequenceId == m->header.sequenceId) {
+		event = FUP_MATCH;
+	} else {
+		event = FUP_MISMATCH;
 	}
-
-	pid = &syn->header.sourcePortIdentity;
-	if (memcmp(pid, &m->header.sourcePortIdentity, sizeof(*pid)))
-		return;
-
-	port_synchronize(p, syn->hwts.ts, m->ts.pdu,
-			 syn->header.correction, m->header.correction);
+	port_syfufsm(p, event, m);
 }
 
 static int process_pdelay_req(struct port *p, struct ptp_message *m)
@@ -1675,7 +1755,7 @@ static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 
 static void process_sync(struct port *p, struct ptp_message *m)
 {
-	struct ptp_message *fup;
+	enum syfu_event event;
 	struct PortIdentity master;
 	switch (p->state) {
 	case PS_INITIALIZING:
@@ -1706,24 +1786,17 @@ static void process_sync(struct port *p, struct ptp_message *m)
 	if (one_step(m)) {
 		port_synchronize(p, m->hwts.ts, m->ts.pdu,
 				 m->header.correction, 0);
+		flush_last_sync(p);
 		return;
 	}
-	/*
-	 * Check if follow up arrived first.
-	 */
-	fup = p->last_follow_up;
-	if (fup && fup->header.sequenceId == m->header.sequenceId) {
-		port_synchronize(p, m->hwts.ts, fup->ts.pdu,
-				 m->header.correction, fup->header.correction);
-		return;
+
+	if (p->syfu == SF_HAVE_FUP &&
+	    p->last_syncfup->header.sequenceId == m->header.sequenceId) {
+		event = SYNC_MATCH;
+	} else {
+		event = SYNC_MISMATCH;
 	}
-	/*
-	 * Remember this sync for two step operation.
-	 */
-	if (p->last_sync)
-		msg_put(p->last_sync);
-	msg_get(m);
-	p->last_sync = m;
+	port_syfufsm(p, event, m);
 }
 
 /* public methods */
