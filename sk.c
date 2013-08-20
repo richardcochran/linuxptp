@@ -193,7 +193,7 @@ int sk_interface_addr(char *name, int family, uint8_t *addr, int len)
 			break;
 		}
 	}
-	free(ifaddr);
+	freeifaddrs(ifaddr);
 	return result;
 }
 
