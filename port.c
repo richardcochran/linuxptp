@@ -1382,6 +1382,13 @@ struct dataset *port_best_foreign(struct port *port)
 static int process_announce(struct port *p, struct ptp_message *m)
 {
 	int result = 0;
+
+	/* Do not qualify announce messages with stepsRemoved >= 255, see
+	 * IEEE1588-2008 section 9.3.2.5 (d)
+	 */
+	if (m->announce.stepsRemoved >= 255)
+		return result;
+
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
