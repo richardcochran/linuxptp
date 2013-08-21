@@ -132,7 +132,7 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 	struct fault_interval i;
 
 	if (!set) {
-		pr_debug("clearing fault on port %d", index);
+		pr_debug("clearing fault on port %d", index + 1);
 		return set_tmo_lin(c->fault_fd[index], 0);
 	}
 
@@ -140,11 +140,11 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 
 	if (i.type == FTMO_LINEAR_SECONDS) {
 		pr_debug("waiting %d seconds to clear fault on port %d",
-			 i.val, index);
+			 i.val, index + 1);
 		return set_tmo_lin(c->fault_fd[index], i.val);
 	} else if (i.type == FTMO_LOG2_SECONDS) {
 		pr_debug("waiting 2^{%d} seconds to clear fault on port %d",
-			 i.val, index);
+			 i.val, index + 1);
 		return set_tmo_log(c->fault_fd[index], 1, i.val);
 	}
 
@@ -772,7 +772,7 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 					msg_pre_send(msg);
 				}
 				if (port_forward(fwd, msg, pdulen))
-					pr_err("port %d: management forward failed", i);
+					pr_err("port %d: management forward failed", i + 1);
 			}
 		}
 		if (msg_ready) {
