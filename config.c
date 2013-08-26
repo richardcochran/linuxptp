@@ -90,7 +90,7 @@ static enum parser_result parse_pod_setting(const char *option,
 		pod->logMinPdelayReqInterval = val;
 
 	} else if (!strcmp(option, "announceReceiptTimeout")) {
-		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		r = get_ranged_uint(value, &uval, 2, UINT8_MAX);
 		if (r != PARSED_OK)
 			return r;
 		pod->announceReceiptTimeout = uval;
