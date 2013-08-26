@@ -97,6 +97,7 @@ struct port {
 	TimeInterval        peerMeanPathDelay;
 	Integer8            logAnnounceInterval;
 	UInteger8           announceReceiptTimeout;
+	UInteger8           syncReceiptTimeout;
 	UInteger8           transportSpecific;
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
@@ -800,6 +801,12 @@ static int port_set_qualification_tmo(struct port *p)
 		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
 }
 
+static int port_set_sync_rx_tmo(struct port *p)
+{
+	return set_tmo_log(p->fda.fd[FD_SYNC_RX_TIMER],
+			   p->syncReceiptTimeout, p->logSyncInterval);
+}
+
 static int port_set_sync_tx_tmo(struct port *p)
 {
 	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
@@ -831,6 +838,8 @@ static void port_synchronize(struct port *p,
 			     Integer64 correction1, Integer64 correction2)
 {
 	enum servo_state state;
+
+	port_set_sync_rx_tmo(p);
 
 	state = clock_synchronize(p->clock, ingress_ts, origin_ts,
 				  correction1, correction2);
@@ -1851,6 +1860,7 @@ struct foreign_clock *port_compute_best(struct port *p)
 static void port_e2e_transition(struct port *p, enum port_state next)
 {
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
@@ -1883,6 +1893,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
+		port_set_sync_rx_tmo(p);
 		port_set_delay_tmo(p);
 		break;
 	};
@@ -1891,6 +1902,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 static void port_p2p_transition(struct port *p, enum port_state next)
 {
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
 	/* Leave FD_DELAY_TIMER running. */
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
@@ -1923,6 +1935,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
+		port_set_sync_rx_tmo(p);
 		break;
 	};
 }
@@ -1987,7 +2000,9 @@ enum fsm_event port_event(struct port *p, int fd_index)
 
 	switch (fd_index) {
 	case FD_ANNOUNCE_TIMER:
-		pr_debug("port %hu: announce timeout", portnum(p));
+	case FD_SYNC_RX_TIMER:
+		pr_debug("port %hu: %s timeout", portnum(p),
+			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
