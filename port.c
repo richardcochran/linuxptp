@@ -1882,7 +1882,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		port_set_manno_tmo(p);
+		set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
 		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
@@ -1924,7 +1924,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		port_set_manno_tmo(p);
+		set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
 		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
