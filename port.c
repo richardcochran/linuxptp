@@ -1991,7 +1991,8 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
-		if (clock_slave_only(p->clock) && port_renew_transport(p)) {
+		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
+		    port_renew_transport(p)) {
 			return EV_FAULT_DETECTED;
 		}
 		return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
