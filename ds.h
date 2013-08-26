@@ -123,6 +123,7 @@ struct port_defaults {
 	Integer8 logMinDelayReqInterval;
 	Integer8 logMinPdelayReqInterval;
 	UInteger8 announceReceiptTimeout;
+	UInteger8 syncReceiptTimeout;
 	UInteger8 transportSpecific;
 	int path_trace_enabled;
 	int follow_up_info;

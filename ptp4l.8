@@ -148,6 +148,13 @@ The number of missed Announce messages before the last Announce messages
 expires.
 The default is 3.
 .TP
+.B syncReceiptTimeout
+The number of sync/follow up messages that may go missing before
+triggering a Best Master Clock election. This option is used for
+running in gPTP mode according to the 802.1AS-2011 standard. Setting
+this option to zero will disable the sync message timeout.
+The default is 0 or disabled.
+.TP
 .B transportSpecific
 The transport specific field. Must be in the range 0 to 255.
 The default is 0.
