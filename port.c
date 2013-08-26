@@ -800,9 +800,9 @@ static int port_set_qualification_tmo(struct port *p)
 		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
 }
 
-static int port_set_sync_tmo(struct port *p)
+static int port_set_sync_tx_tmo(struct port *p)
 {
-	return set_tmo_log(p->fda.fd[FD_SYNC_TIMER], 1, p->logSyncInterval);
+	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
 }
 
 static void port_show_transition(struct port *p,
@@ -1854,7 +1854,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -1872,7 +1872,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
 		port_set_manno_tmo(p);
-		port_set_sync_tmo(p);
+		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -1894,7 +1894,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 	/* Leave FD_DELAY_TIMER running. */
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -1912,7 +1912,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
 		port_set_manno_tmo(p);
-		port_set_sync_tmo(p);
+		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -2011,9 +2011,9 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		port_set_manno_tmo(p);
 		return port_tx_announce(p) ? EV_FAULT_DETECTED : EV_NONE;
 
-	case FD_SYNC_TIMER:
+	case FD_SYNC_TX_TIMER:
 		pr_debug("port %hu: master sync timeout", portnum(p));
-		port_set_sync_tmo(p);
+		port_set_sync_tx_tmo(p);
 		return port_tx_sync(p) ? EV_FAULT_DETECTED : EV_NONE;
 	}
 
