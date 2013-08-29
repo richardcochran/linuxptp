@@ -70,6 +70,7 @@ struct config {
 	struct port_defaults pod;
 	int *assume_two_step;
 	int *tx_timestamp_timeout;
+	int *check_fup_sync;
 
 	enum servo_type clock_servo;
 
