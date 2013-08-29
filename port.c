@@ -366,6 +366,21 @@ static void free_foreign_masters(struct port *p)
 	}
 }
 
+static int fup_sync_ok(struct ptp_message *fup, struct ptp_message *sync)
+{
+	int64_t tfup, tsync;
+	tfup = tmv_to_nanoseconds(timespec_to_tmv(fup->hwts.sw));
+	tsync = tmv_to_nanoseconds(timespec_to_tmv(sync->hwts.sw));
+	/*
+	 * NB - If the sk_check_fupsync option is not enabled, then
+	 * both of these time stamps will be zero.
+	 */
+	if (tfup < tsync) {
+		return 0;
+	}
+	return 1;
+}
+
 static int incapable_ignore(struct port *p, struct ptp_message *m)
 {
 	if (port_capable(p)) {
@@ -1808,6 +1823,7 @@ static void process_sync(struct port *p, struct ptp_message *m)
 	}
 
 	if (p->syfu == SF_HAVE_FUP &&
+	    fup_sync_ok(p->last_syncfup, m) &&
 	    p->last_syncfup->header.sequenceId == m->header.sequenceId) {
 		event = SYNC_MATCH;
 	} else {
