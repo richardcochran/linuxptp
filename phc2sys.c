@@ -634,17 +634,9 @@ int main(int argc, char *argv[])
 				return -1;
 			break;
 		case 'R':
-			if (get_arg_val_d(c, optarg, &phc_rate, 0.0, DBL_MAX))
+			if (get_arg_val_d(c, optarg, &phc_rate, 1e-9, DBL_MAX))
 				return -1;
 			phc_interval = 1.0 / phc_rate;
-			/* phc_interval will be assigned to a time_t variable. */
-			/* check if that occurs overflow. */
-			if ((sizeof(time_t) == 8 && phc_interval > INT64_MAX) ||
-			    (sizeof(time_t) == 4 && phc_interval > INT32_MAX)) {
-				fprintf(stderr,
-					"-R: %s is too small\n", optarg);
-				return -1;
-			}
 			break;
 		case 'N':
 			if (get_arg_val_i(c, optarg, &phc_readings, 1, INT_MAX))
