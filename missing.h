@@ -47,7 +47,7 @@
 #ifndef HAVE_ONESTEP_SYNC
 enum _missing_hwtstamp_tx_types {
 	HWTSTAMP_TX_ONESTEP_SYNC = 2,
-}
+};
 #endif
 
 #ifndef HAVE_CLOCK_ADJTIME
