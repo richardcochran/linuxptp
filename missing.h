@@ -44,6 +44,12 @@
 #define FD_TO_CLOCKID(fd)	((~(clockid_t) (fd) << 3) | CLOCKFD)
 #define CLOCKID_TO_FD(clk)	((unsigned int) ~((clk) >> 3))
 
+#ifndef HAVE_ONESTEP_SYNC
+enum _missing_hwtstamp_tx_types {
+	HWTSTAMP_TX_ONESTEP_SYNC = 2,
+}
+#endif
+
 #ifndef HAVE_CLOCK_ADJTIME
 static inline int clock_adjtime(clockid_t id, struct timex *tx)
 {

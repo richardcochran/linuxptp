@@ -21,6 +21,9 @@ FEAT_CFLAGS :=
 ifneq ($(shell grep --no-messages clock_adjtime /usr/include/bits/time.h),)
 FEAT_CFLAGS += -D_GNU_SOURCE -DHAVE_CLOCK_ADJTIME
 endif
+ifneq ($(shell grep --no-messages HWTSTAMP_TX_ONESTEP_SYNC $(KBUILD_OUTPUT)/usr/include/linux/net_tstamp.h),)
+FEAT_CFLAGS += -DHAVE_ONESTEP_SYNC
+endif
 
 DEBUG	=
 CC	= $(CROSS_COMPILE)gcc
