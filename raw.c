@@ -209,6 +209,9 @@ static int raw_open(struct transport *t, char *name,
 	if (sk_timestamping_init(efd, name, ts_type, TRANS_IEEE_802_3))
 		goto no_timestamping;
 
+	if (sk_general_init(gfd))
+		goto no_timestamping;
+
 	fda->fd[FD_EVENT] = efd;
 	fda->fd[FD_GENERAL] = gfd;
 	return 0;

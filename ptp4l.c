@@ -77,6 +77,7 @@ static struct config cfg_settings = {
 		.logMinDelayReqInterval = 0,
 		.logMinPdelayReqInterval = 0,
 		.announceReceiptTimeout = 3,
+		.syncReceiptTimeout = 0,
 		.transportSpecific = 0,
 		.path_trace_enabled = 0,
 		.follow_up_info = 0,
@@ -91,6 +92,7 @@ static struct config cfg_settings = {
 
 	.assume_two_step = &assume_two_step,
 	.tx_timestamp_timeout = &sk_tx_timeout,
+	.check_fup_sync = &sk_check_fupsync,
 
 	.clock_servo = CLOCK_SERVO_PI,
 

@@ -90,10 +90,16 @@ static enum parser_result parse_pod_setting(const char *option,
 		pod->logMinPdelayReqInterval = val;
 
 	} else if (!strcmp(option, "announceReceiptTimeout")) {
-		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		r = get_ranged_uint(value, &uval, 2, UINT8_MAX);
 		if (r != PARSED_OK)
 			return r;
 		pod->announceReceiptTimeout = uval;
+
+	} else if (!strcmp(option, "syncReceiptTimeout")) {
+		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->syncReceiptTimeout = uval;
 
 	} else if (!strcmp(option, "transportSpecific")) {
 		r = get_ranged_uint(value, &uval, 0, 0x0F);
@@ -294,6 +300,12 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		*cfg->tx_timestamp_timeout = val;
+
+	} else if (!strcmp(option, "check_fup_sync")) {
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->check_fup_sync = val;
 
 	} else if (!strcmp(option, "pi_proportional_const")) {
 		r = get_ranged_double(value, &df, 0.0, DBL_MAX);

@@ -97,6 +97,7 @@ struct port {
 	TimeInterval        peerMeanPathDelay;
 	Integer8            logAnnounceInterval;
 	UInteger8           announceReceiptTimeout;
+	UInteger8           syncReceiptTimeout;
 	UInteger8           transportSpecific;
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
@@ -363,6 +364,21 @@ static void free_foreign_masters(struct port *p)
 		fc_clear(fc);
 		free(fc);
 	}
+}
+
+static int fup_sync_ok(struct ptp_message *fup, struct ptp_message *sync)
+{
+	int64_t tfup, tsync;
+	tfup = tmv_to_nanoseconds(timespec_to_tmv(fup->hwts.sw));
+	tsync = tmv_to_nanoseconds(timespec_to_tmv(sync->hwts.sw));
+	/*
+	 * NB - If the sk_check_fupsync option is not enabled, then
+	 * both of these time stamps will be zero.
+	 */
+	if (tfup < tsync) {
+		return 0;
+	}
+	return 1;
 }
 
 static int incapable_ignore(struct port *p, struct ptp_message *m)
@@ -800,9 +816,15 @@ static int port_set_qualification_tmo(struct port *p)
 		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
 }
 
-static int port_set_sync_tmo(struct port *p)
+static int port_set_sync_rx_tmo(struct port *p)
 {
-	return set_tmo_log(p->fda.fd[FD_SYNC_TIMER], 1, p->logSyncInterval);
+	return set_tmo_log(p->fda.fd[FD_SYNC_RX_TIMER],
+			   p->syncReceiptTimeout, p->logSyncInterval);
+}
+
+static int port_set_sync_tx_tmo(struct port *p)
+{
+	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
 }
 
 static void port_show_transition(struct port *p,
@@ -831,6 +853,8 @@ static void port_synchronize(struct port *p,
 			     Integer64 correction1, Integer64 correction2)
 {
 	enum servo_state state;
+
+	port_set_sync_rx_tmo(p);
 
 	state = clock_synchronize(p->clock, ingress_ts, origin_ts,
 				  correction1, correction2);
@@ -1274,6 +1298,7 @@ static int port_initialize(struct port *p)
 	p->peerMeanPathDelay       = 0;
 	p->logAnnounceInterval     = p->pod.logAnnounceInterval;
 	p->announceReceiptTimeout  = p->pod.announceReceiptTimeout;
+	p->syncReceiptTimeout      = p->pod.syncReceiptTimeout;
 	p->transportSpecific       = p->pod.transportSpecific;
 	p->logSyncInterval         = p->pod.logSyncInterval;
 	p->logMinPdelayReqInterval = p->pod.logMinPdelayReqInterval;
@@ -1798,6 +1823,7 @@ static void process_sync(struct port *p, struct ptp_message *m)
 	}
 
 	if (p->syfu == SF_HAVE_FUP &&
+	    fup_sync_ok(p->last_syncfup, m) &&
 	    p->last_syncfup->header.sequenceId == m->header.sequenceId) {
 		event = SYNC_MATCH;
 	} else {
@@ -1851,10 +1877,11 @@ struct foreign_clock *port_compute_best(struct port *p)
 static void port_e2e_transition(struct port *p, enum port_state next)
 {
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_DELAY_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -1871,8 +1898,8 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		port_set_manno_tmo(p);
-		port_set_sync_tmo(p);
+		set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
+		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -1883,6 +1910,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
+		port_set_sync_rx_tmo(p);
 		port_set_delay_tmo(p);
 		break;
 	};
@@ -1891,10 +1919,11 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 static void port_p2p_transition(struct port *p, enum port_state next)
 {
 	port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
 	/* Leave FD_DELAY_TIMER running. */
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
-	port_clr_tmo(p->fda.fd[FD_SYNC_TIMER]);
+	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -1911,8 +1940,8 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		port_set_manno_tmo(p);
-		port_set_sync_tmo(p);
+		set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
+		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -1923,6 +1952,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
+		port_set_sync_rx_tmo(p);
 		break;
 	};
 }
@@ -1987,7 +2017,9 @@ enum fsm_event port_event(struct port *p, int fd_index)
 
 	switch (fd_index) {
 	case FD_ANNOUNCE_TIMER:
-		pr_debug("port %hu: announce timeout", portnum(p));
+	case FD_SYNC_RX_TIMER:
+		pr_debug("port %hu: %s timeout", portnum(p),
+			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
@@ -2011,9 +2043,9 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		port_set_manno_tmo(p);
 		return port_tx_announce(p) ? EV_FAULT_DETECTED : EV_NONE;
 
-	case FD_SYNC_TIMER:
+	case FD_SYNC_TX_TIMER:
 		pr_debug("port %hu: master sync timeout", portnum(p));
-		port_set_sync_tmo(p);
+		port_set_sync_tx_tmo(p);
 		return port_tx_sync(p) ? EV_FAULT_DETECTED : EV_NONE;
 	}
 

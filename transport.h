@@ -57,6 +57,7 @@ enum timestamp_type {
 struct hw_timestamp {
 	enum timestamp_type type;
 	struct timespec ts;
+	struct timespec sw;
 };
 
 struct transport;

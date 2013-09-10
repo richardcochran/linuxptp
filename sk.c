@@ -36,6 +36,7 @@
 /* globals */
 
 int sk_tx_timeout = 1;
+int sk_check_fupsync;
 
 /* private methods */
 
@@ -89,6 +90,16 @@ int sk_interface_index(int fd, char *name)
 		return err;
 	}
 	return ifreq.ifr_ifindex;
+}
+
+int sk_general_init(int fd)
+{
+	int on = sk_check_fupsync ? 1 : 0;
+	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPNS, &on, sizeof(on)) < 0) {
+		pr_err("ioctl SO_TIMESTAMPNS failed: %m");
+		return -1;
+	}
+	return 0;
 }
 
 int sk_get_ts_info(char *name, struct sk_ts_info *sk_info)
@@ -205,7 +216,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	struct cmsghdr *cm;
 	struct iovec iov = { buf, buflen };
 	struct msghdr msg;
-	struct timespec *ts = NULL;
+	struct timespec *sw, *ts = NULL;
 
 	memset(control, 0, sizeof(control));
 	memset(&msg, 0, sizeof(msg));
@@ -241,7 +252,14 @@ int sk_receive(int fd, void *buf, int buflen,
 				return -1;
 			}
 			ts = (struct timespec *) CMSG_DATA(cm);
-			break;
+		}
+		if (SOL_SOCKET == level && SO_TIMESTAMPNS == type) {
+			if (cm->cmsg_len < sizeof(*sw)) {
+				pr_warning("short SO_TIMESTAMPNS message");
+				return -1;
+			}
+			sw = (struct timespec *) CMSG_DATA(cm);
+			hwts->sw = *sw;
 		}
 	}
 
@@ -322,6 +340,11 @@ int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPING,
 		       &flags, sizeof(flags)) < 0) {
 		pr_err("ioctl SO_TIMESTAMPING failed: %m");
+		return -1;
+	}
+
+	/* Enable the sk_check_fupsync option, perhaps. */
+	if (sk_general_init(fd)) {
 		return -1;
 	}
 
