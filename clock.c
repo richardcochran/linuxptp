@@ -553,7 +553,7 @@ static int forwarding(struct clock *c, struct port *p)
 	default:
 		break;
 	}
-	if (p == c->port[c->nports]) { /*uds*/
+	if (p == c->port[c->nports] && ps != PS_FAULTY) { /*uds*/
 		return 1;
 	}
 	return 0;
