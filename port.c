@@ -1561,6 +1561,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	if (p->delayMechanism == DM_AUTO) {
 		pr_info("port %hu: peer detected, switch to P2P", portnum(p));
 		p->delayMechanism = DM_P2P;
+		port_set_delay_tmo(p);
 	}
 	if (p->peer_portid_valid) {
 		if (!pid_eq(&p->peer_portid, &m->header.sourcePortIdentity)) {
