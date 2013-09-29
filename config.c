@@ -393,6 +393,11 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		*cfg->udp6_scope = uval;
 
+	} else if (!strcmp(option, "uds_address")) {
+		if (strlen(value) > MAX_IFNAME_SIZE)
+			return OUT_OF_RANGE;
+		strncpy(cfg->uds_address, value, MAX_IFNAME_SIZE);
+
 	} else if (!strcmp(option, "logging_level")) {
 		r = get_ranged_int(value, &val,
 				   PRINT_LEVEL_MIN, PRINT_LEVEL_MAX);
