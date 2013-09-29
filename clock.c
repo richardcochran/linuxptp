@@ -576,7 +576,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	struct interface udsif;
 
 	memset(&udsif, 0, sizeof(udsif));
-	snprintf(udsif.name, sizeof(udsif.name), UDS_PATH);
+	snprintf(udsif.name, sizeof(udsif.name), "%s", uds_path);
 	udsif.transport = TRANS_UDS;
 
 	srandom(time(NULL));

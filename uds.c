@@ -30,6 +30,8 @@
 #include "transport_private.h"
 #include "uds.h"
 
+char uds_path[MAX_IFNAME_SIZE + 1] = "/var/run/ptp4l";
+
 #define UDS_FILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) /*0660*/
 
 struct uds {
@@ -58,7 +60,7 @@ static int uds_open(struct transport *t, char *name, struct fdarray *fda,
 	}
 	memset(&sa, 0, sizeof(sa));
 	sa.sun_family = AF_LOCAL;
-	strcpy(sa.sun_path, name);
+	strncpy(sa.sun_path, name, sizeof(sa.sun_path) - 1);
 
 	unlink(name);
 
@@ -72,7 +74,7 @@ static int uds_open(struct transport *t, char *name, struct fdarray *fda,
 	/* For client use, pre load the server path. */
 	memset(&sa, 0, sizeof(sa));
 	sa.sun_family = AF_LOCAL;
-	strcpy(sa.sun_path, UDS_PATH);
+	strncpy(sa.sun_path, uds_path, sizeof(sa.sun_path) - 1);
 	uds->sa = sa;
 	uds->len = sizeof(sa);
 
