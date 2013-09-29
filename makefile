@@ -15,21 +15,12 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-KBUILD_OUTPUT ?= /lib/modules/$(shell uname -r)/build
-
-FEAT_CFLAGS :=
-ifneq ($(shell grep --no-messages clock_adjtime /usr/include/bits/time.h),)
-FEAT_CFLAGS += -D_GNU_SOURCE -DHAVE_CLOCK_ADJTIME
-endif
-ifneq ($(shell grep --no-messages HWTSTAMP_TX_ONESTEP_SYNC $(KBUILD_OUTPUT)/usr/include/linux/net_tstamp.h),)
-FEAT_CFLAGS += -DHAVE_ONESTEP_SYNC
-endif
+KBUILD_OUTPUT =
 
 DEBUG	=
 CC	= $(CROSS_COMPILE)gcc
-INC	= -I$(KBUILD_OUTPUT)/usr/include
 VER     = -DVER=$(version)
-CFLAGS	= -Wall $(VER) $(INC) $(DEBUG) $(FEAT_CFLAGS) $(EXTRA_CFLAGS)
+CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl
 OBJ     = bmc.o clock.o clockadj.o config.o fault.o fsm.o ptp4l.o mave.o \
@@ -40,6 +31,7 @@ OBJECTS	= $(OBJ) hwstamp_ctl.o phc2sys.o pmc.o pmc_common.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
+incdefs := $(shell $(srcdir)/incdefs.sh)
 version := $(shell $(srcdir)/version.sh $(srcdir))
 VPATH	= $(srcdir)
 
