@@ -1,4 +1,4 @@
-.TH PMC 8 "July 2013" "linuxptp"
+.TH PMC 8 "October 2013" "linuxptp"
 .SH NAME
 pmc \- PTP management client
 
@@ -18,6 +18,8 @@ pmc \- PTP management client
 .BI \-d " domain-number"
 ] [
 .BI \-i " interface"
+] [
+.BI \-s " uds-address"
 ] [
 .BI \-t " transport-specific-field"
 ] [
@@ -68,6 +70,10 @@ Specify the domain number in sent messages. The default is 0.
 .BI \-i " interface"
 Specify the network interface. The default is /var/run/pmc for the Unix Domain
 Socket transport and eth0 for the other transports.
+.TP
+.BI \-s " uds-address"
+Specifies the address of the server's UNIX domain socket.
+The default is /var/run/ptp4l.
 .TP
 .BI \-t " transport-specific-field"
 Specify the transport specific field in sent messages as a hexadecimal number.

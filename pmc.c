@@ -31,6 +31,7 @@
 #include "pmc_common.h"
 #include "print.h"
 #include "tlv.h"
+#include "uds.h"
 #include "util.h"
 #include "version.h"
 
@@ -676,6 +677,7 @@ static void usage(char *progname)
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
 		"           for network and '/var/run/pmc' for UDS.\n"
+		" -s [path] server address for UDS, default '/var/run/ptp4l'.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
 		" -v        prints the software version and exits\n"
 		" -z        send zero length TLV values with the GET actions\n"
@@ -697,7 +699,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:t:vz"))) {
+	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:s:t:vz"))) {
 		switch (c) {
 		case '2':
 			transport_type = TRANS_IEEE_802_3;
@@ -719,6 +721,14 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			iface_name = optarg;
+			break;
+		case 's':
+			if (strlen(optarg) > MAX_IFNAME_SIZE) {
+				fprintf(stderr, "path %s too long, max is %d\n",
+					optarg, MAX_IFNAME_SIZE);
+				return -1;
+			}
+			strncpy(uds_path, optarg, MAX_IFNAME_SIZE);
 			break;
 		case 't':
 			if (1 == sscanf(optarg, "%x", &c))
