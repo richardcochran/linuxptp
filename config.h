@@ -27,7 +27,7 @@
 #include "sk.h"
 
 #define MAX_PORTS 8
-#define MAX_IFNAME_SIZE 16
+#define MAX_IFNAME_SIZE 108 /* = UNIX_PATH_MAX */
 
 /** Defines a network interface, with PTP options. */
 struct interface {
