@@ -43,6 +43,11 @@ updates the specified information and
 .BR COMMAND )
 initiates the specified event.
 
+By default the management commands are addressed to all ports. The
+.B TARGET
+command can be used to select a particular clock and port for the
+subsequent messages.
+
 Command
 .B help
 can be used to get a list of supported actions and management IDs.
@@ -95,11 +100,51 @@ length TLV values instead.
 .SH MANAGEMENT IDS
 
 .TP
+.B ANNOUNCE_RECEIPT_TIMEOUT
+.TP
+.B CLOCK_ACCURACY
+.TP
+.B CLOCK_DESCRIPTION
+.TP
 .B CURRENT_DATA_SET
+.TP
+.B DEFAULT_DATA_SET
+.TP
+.B DELAY_MECHANISM
+.TP
+.B DOMAIN
+.TP
+.B GRANDMASTER_SETTINGS_NP
+.TP
+.B LOG_ANNOUNCE_INTERVAL
+.TP
+.B LOG_MIN_PDELAY_REQ_INTERVAL
+.TP
+.B LOG_SYNC_INTERVAL
+.TP
+.B NULL_MANAGEMENT
+.TP
+.B PARENT_DATA_SET
+.TP
+.B PORT_DATA_SET
+.TP
+.B PRIORITY1
+.TP
+.B PRIORITY2
+.TP
+.B SLAVE_ONLY
+.TP
+.B TIMESCALE_PROPERTIES
+.TP
+.B TIME_PROPERTIES_DATA_SET
 .TP
 .B TIME_STATUS_NP
 .TP
-.B NULL_MANAGEMENT
+.B TRACEABILITY_PROPERTIES
+.TP
+.B USER_DESCRIPTION
+.TP
+.B VERSION_NUMBER
 
 .SH SEE ALSO
 .BR ptp4l (8)
