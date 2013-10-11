@@ -1155,6 +1155,8 @@ static void handle_state_decision_event(struct clock *c)
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
 		mave_reset(c->avg_delay);
+		c->t1 = tmv_zero();
+		c->t2 = tmv_zero();
 		c->path_delay = 0;
 		fresh_best = 1;
 	}
