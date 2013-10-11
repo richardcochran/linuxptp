@@ -1486,10 +1486,12 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 {
 	struct delay_req_msg *req;
 	struct delay_resp_msg *rsp = &m->delay_resp;
+	struct PortIdentity master;
 
 	if (!p->delay_req)
 		return;
 
+	master = clock_parent_identity(p->clock);
 	req = &p->delay_req->delay_req;
 
 	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE)
@@ -1497,6 +1499,8 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	if (!pid_eq(&rsp->requestingPortIdentity, &req->hdr.sourcePortIdentity))
 		return;
 	if (rsp->hdr.sequenceId != ntohs(req->hdr.sequenceId))
+		return;
+	if (!pid_eq(&master, &m->header.sourcePortIdentity))
 		return;
 
 	clock_path_delay(p->clock, p->delay_req->hwts.ts, m->ts.pdu,
