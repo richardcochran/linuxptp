@@ -2082,6 +2082,9 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		msg_put(msg);
 		return EV_NONE;
 	}
+	if (msg->hwts.ts.tv_sec && msg->hwts.ts.tv_nsec) {
+		clock_check_ts(p->clock, msg->hwts.ts);
+	}
 	if (port_ignore(p, msg)) {
 		msg_put(msg);
 		return EV_NONE;

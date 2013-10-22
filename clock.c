@@ -25,6 +25,7 @@
 #include "bmc.h"
 #include "clock.h"
 #include "clockadj.h"
+#include "clockcheck.h"
 #include "foreign.h"
 #include "mave.h"
 #include "missing.h"
@@ -96,6 +97,7 @@ struct clock {
 	struct clock_description desc;
 	struct clock_stats stats;
 	int stats_interval;
+	struct clockcheck *sanity_check;
 };
 
 struct clock the_clock;
@@ -643,6 +645,13 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		pr_err("failed to create stats");
 		return NULL;
 	}
+	if (dds->sanity_freq_limit) {
+		c->sanity_check = clockcheck_create(dds->sanity_freq_limit);
+		if (!c->sanity_check) {
+			pr_err("Failed to create clock sanity check");
+			return NULL;
+		}
+	}
 
 	c->dds = dds->dds;
 
@@ -1084,11 +1093,18 @@ enum servo_state clock_synchronize(struct clock *c,
 		clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset));
 		c->t1 = tmv_zero();
 		c->t2 = tmv_zero();
+		if (c->sanity_check) {
+			clockcheck_set_freq(c->sanity_check, -adj);
+			clockcheck_step(c->sanity_check,
+					-tmv_to_nanoseconds(c->master_offset));
+		}
 		break;
 	case SERVO_LOCKED:
 		clockadj_set_freq(c->clkid, -adj);
 		if (c->clkid == CLOCK_REALTIME)
 			sysclk_set_sync();
+		if (c->sanity_check)
+			clockcheck_set_freq(c->sanity_check, -adj);
 		break;
 	}
 	return state;
@@ -1203,4 +1219,13 @@ struct clock_description *clock_description(struct clock *c)
 int clock_num_ports(struct clock *c)
 {
 	return c->nports;
+}
+
+void clock_check_ts(struct clock *c, struct timespec ts)
+{
+	if (c->sanity_check &&
+	    clockcheck_sample(c->sanity_check,
+			      ts.tv_sec * NS_PER_SEC + ts.tv_nsec)) {
+		servo_reset(c->servo);
+	}
 }

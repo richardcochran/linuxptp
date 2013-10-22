@@ -86,6 +86,8 @@ struct config {
 	double *pi_f_offset_const;
 	int *pi_max_frequency;
 
+	int *sanity_freq_limit;
+
 	unsigned char *ptp_dst_mac;
 	unsigned char *p2p_dst_mac;
 	unsigned char *udp6_scope;

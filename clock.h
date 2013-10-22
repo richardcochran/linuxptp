@@ -238,4 +238,11 @@ struct clock_description *clock_description(struct clock *c);
  */
 int clock_num_ports(struct clock *c);
 
+/**
+ * Perform a sanity check on a time stamp made by a clock.
+ * @param c  The clock instance.
+ * @param ts The time stamp.
+ */
+void clock_check_ts(struct clock *c, struct timespec ts);
+
 #endif

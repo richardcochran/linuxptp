@@ -27,6 +27,8 @@ phc2sys \- synchronize two clocks
 ] [
 .BI \-N " clock-readings"
 ] [
+.BI \-L " freq-limit"
+] [
 .BI \-u " summary-updates"
 ] [
 .BI \-n " domain-number"
@@ -117,6 +119,13 @@ Specify the offset between the slave and master times in seconds.  See
 .SM
 .B TIME SCALE USAGE
 below.
+.TP
+.BI \-L " freq-limit"
+The maximum allowed frequency offset between uncorrected clock and the system
+monotonic clock in parts per billion (ppb). This is used as a sanity check of
+the synchronized clock. When a larger offset is measured, a warning message
+will be printed and the servo will be reset. When set to 0, the sanity check is
+disabled. The default is 200000000 (20%).
 .TP
 .BI \-u " summary-updates"
 Specify the number of clock updates included in summary statistics. The

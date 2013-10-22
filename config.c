@@ -373,6 +373,12 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		*cfg->pi_max_frequency = val;
 
+	} else if (!strcmp(option, "sanity_freq_limit")) {
+		r = get_ranged_int(value, &val, 0, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
+		cfg->dds.sanity_freq_limit = val;
+
 	} else if (!strcmp(option, "ptp_dst_mac")) {
 		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
 				      &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]))

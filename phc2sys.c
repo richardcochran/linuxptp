@@ -36,6 +36,7 @@
 #include <linux/ptp_clock.h>
 
 #include "clockadj.h"
+#include "clockcheck.h"
 #include "ds.h"
 #include "fsm.h"
 #include "missing.h"
@@ -143,6 +144,7 @@ struct clock {
 	int pmc_ds_idx;
 	int pmc_ds_requested;
 	uint64_t pmc_last_update;
+	struct clockcheck *sanity_check;
 };
 
 static void update_clock_stats(struct clock *clock,
@@ -193,6 +195,9 @@ static void update_clock(struct clock *clock,
 		offset += clock->sync_offset * NS_PER_SEC *
 			clock->sync_offset_direction;
 
+	if (clock->sanity_check && clockcheck_sample(clock->sanity_check, ts))
+		servo_reset(clock->servo);
+
 	ppb = servo_sample(clock->servo, offset, ts, &state);
 	clock->servo_state = state;
 
@@ -201,11 +206,15 @@ static void update_clock(struct clock *clock,
 		break;
 	case SERVO_JUMP:
 		clockadj_step(clock->clkid, -offset);
+		if (clock->sanity_check)
+			clockcheck_step(clock->sanity_check, -offset);
 		/* Fall through. */
 	case SERVO_LOCKED:
 		clockadj_set_freq(clock->clkid, -ppb);
 		if (clock->clkid == CLOCK_REALTIME)
 			sysclk_set_sync();
+		if (clock->sanity_check)
+			clockcheck_set_freq(clock->sanity_check, -ppb);
 		break;
 	}
 
@@ -559,6 +568,7 @@ static void usage(char *progname)
 		" -R [rate]      slave clock update rate in HZ (1.0)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -O [offset]    slave-master time offset (0)\n"
+		" -L [limit]     sanity frequency limit in ppb (200000000)\n"
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -w             wait for ptp4l\n"
 		" -n [num]       domain number (0)\n"
@@ -579,6 +589,7 @@ int main(int argc, char *argv[])
 	int c, domain_number = 0, phc_readings = 5, pps_fd = -1;
 	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
+	int sanity_freq_limit = 200000000;
 	double ppb, phc_interval = 1.0, phc_rate;
 	struct timespec phc_interval_tp;
 	struct clock dst_clock = {
@@ -594,7 +605,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "c:d:s:P:I:S:F:R:N:O:i:u:wn:xl:mqvh"))) {
+				  "c:d:s:P:I:S:F:R:N:O:L:i:u:wn:xl:mqvh"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -648,6 +659,10 @@ int main(int argc, char *argv[])
 				return -1;
 			dst_clock.sync_offset_direction = -1;
 			forced_sync_offset = 1;
+			break;
+		case 'L':
+			if (get_arg_val_i(c, optarg, &sanity_freq_limit, 0, INT_MAX))
+				return -1;
 			break;
 		case 'u':
 			if (get_arg_val_ui(c, optarg, &dst_clock.stats_max_count,
@@ -718,6 +733,13 @@ int main(int argc, char *argv[])
 		    !dst_clock.freq_stats ||
 		    !dst_clock.delay_stats) {
 			fprintf(stderr, "failed to create stats");
+			return -1;
+		}
+	}
+	if (sanity_freq_limit) {
+		dst_clock.sanity_check = clockcheck_create(sanity_freq_limit);
+		if (!dst_clock.sanity_check) {
+			fprintf(stderr, "failed to create clock check");
 			return -1;
 		}
 	}
