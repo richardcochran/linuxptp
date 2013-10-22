@@ -171,6 +171,13 @@ static void pi_sync_interval(struct servo *servo, double interval)
 		 interval, s->kp, s->ki);
 }
 
+static void pi_reset(struct servo *servo)
+{
+	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
+
+	s->count = 0;
+}
+
 struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 {
 	struct pi_servo *s;
@@ -182,6 +189,7 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 	s->servo.destroy = pi_destroy;
 	s->servo.sample  = pi_sample;
 	s->servo.sync_interval = pi_sync_interval;
+	s->servo.reset   = pi_reset;
 	s->drift         = fadj;
 	s->maxppb        = max_ppb;
 	s->first_update  = 1;

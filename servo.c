@@ -46,3 +46,8 @@ void servo_sync_interval(struct servo *servo, double interval)
 {
 	servo->sync_interval(servo, interval);
 }
+
+void servo_reset(struct servo *servo)
+{
+	servo->reset(servo);
+}

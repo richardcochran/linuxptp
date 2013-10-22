@@ -30,6 +30,8 @@ struct servo {
 			 enum servo_state *state);
 
 	void (*sync_interval)(struct servo *servo, double interval);
+
+	void (*reset)(struct servo *servo);
 };
 
 #endif

@@ -93,4 +93,10 @@ double servo_sample(struct servo *servo,
  */
 void servo_sync_interval(struct servo *servo, double interval);
 
+/**
+ * Reset a clock servo.
+ * @param servo   Pointer to a servo obtained via @ref servo_create().
+ */
+void servo_reset(struct servo *servo);
+
 #endif
