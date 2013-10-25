@@ -25,7 +25,7 @@ LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl
 OBJ     = bmc.o clock.o clockadj.o clockcheck.o config.o fault.o \
  fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o print.o raw.o servo.o \
- sk.o stats.o tlv.o tmtab.o transport.o udp.o udp6.o uds.o util.o version.o
+ sk.o stats.o tlv.o transport.o udp.o udp6.o uds.o util.o version.o
 
 OBJECTS	= $(OBJ) hwstamp_ctl.o phc2sys.o pmc.o pmc_common.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)
