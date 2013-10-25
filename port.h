@@ -174,6 +174,21 @@ enum port_state port_state(struct port *port);
 int set_tmo_log(int fd, unsigned int scale, int log_seconds);
 
 /**
+ * Utility function for setting a file descriptor timer.
+ *
+ * This function sets the timer 'fd' to a random value between M * 2^N and
+ * (M + S) * 2^N, where M is the value of the 'min' parameter, S is the value
+ * of the 'span' parameter, and N in the value of the 'log_seconds' parameter.
+ *
+ * @param fd A file descriptor previously opened with timerfd_create(2).
+ * @param min The minimum value for the timer.
+ * @param span The span value for the timer. Must be a positive value.
+ * @param log_seconds The exponential factor for the timer.
+ * @return Zero on success, non-zero otherwise.
+ */
+int set_tmo_random(int fd, int min, int span, int log_seconds);
+
+/**
  * Utility function for setting or resetting a file descriptor timer.
  *
  * This function sets the timer 'fd' to the value of the 'seconds' parameter.

@@ -231,6 +231,29 @@ int set_tmo_lin(int fd, int seconds)
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
+int set_tmo_random(int fd, int min, int span, int log_seconds)
+{
+	uint64_t value_ns, min_ns, span_ns;
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+
+	if (log_seconds >= 0) {
+		min_ns = min * NS_PER_SEC << log_seconds;
+		span_ns = span * NS_PER_SEC << log_seconds;
+	} else {
+		min_ns = min * NS_PER_SEC >> -log_seconds;
+		span_ns = span * NS_PER_SEC >> -log_seconds;
+	}
+
+	value_ns = min_ns + (span_ns * (random() % (1 << 15) + 1) >> 15);
+
+	tmo.it_value.tv_sec = value_ns / NS_PER_SEC;
+	tmo.it_value.tv_nsec = value_ns % NS_PER_SEC;
+
+	return timerfd_settime(fd, 0, &tmo, NULL);
+}
+
 static void fc_clear(struct foreign_clock *fc)
 {
 	struct ptp_message *m;
@@ -786,8 +809,8 @@ static void port_nrate_initialize(struct port *p)
 
 static int port_set_announce_tmo(struct port *p)
 {
-	return set_tmo_log(p->fda.fd[FD_ANNOUNCE_TIMER],
-		       p->announceReceiptTimeout, p->logAnnounceInterval);
+	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
+		       p->announceReceiptTimeout, 1, p->logAnnounceInterval);
 }
 
 static int port_set_delay_tmo(struct port *p)
