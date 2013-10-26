@@ -1,4 +1,4 @@
-.TH PTP4l 8 "July 2013" "linuxptp"
+.TH PTP4l 8 "October 2013" "linuxptp"
 .SH NAME
 ptp4l \- PTP Boundary/Ordinary Clock
 
@@ -353,6 +353,10 @@ Specifies the desired scope for the IPv6 multicast messages.  This
 will be used as the second byte of the primary address.  This option
 is only relevant with IPv6 transport.  See RFC 4291.  The default is
 0x0E for the global scope.
+.TP
+.B uds_address
+Specifies the address of the UNIX domain socket for receiving local
+management messages. The default is /var/run/ptp4l.
 .TP
 .B logging_level
 The maximum logging level of messages which should be printed.

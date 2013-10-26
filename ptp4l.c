@@ -32,6 +32,7 @@
 #include "sk.h"
 #include "transport.h"
 #include "udp6.h"
+#include "uds.h"
 #include "util.h"
 #include "version.h"
 
@@ -111,6 +112,7 @@ static struct config cfg_settings = {
 	.ptp_dst_mac = ptp_dst_mac,
 	.p2p_dst_mac = p2p_dst_mac,
 	.udp6_scope = &udp6_scope,
+	.uds_address = uds_path,
 
 	.print_level = LOG_INFO,
 	.use_syslog = 1,

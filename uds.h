@@ -20,13 +20,14 @@
 #ifndef HAVE_UDS_H
 #define HAVE_UDS_H
 
+#include "config.h"
 #include "fd.h"
 #include "transport.h"
 
 /**
  * Address of the server.
  */
-#define UDS_PATH "/var/run/ptp4l"
+extern char uds_path[MAX_IFNAME_SIZE + 1];
 
 /**
  * Allocate an instance of a UDS transport.
