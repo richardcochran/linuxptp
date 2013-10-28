@@ -229,11 +229,13 @@ int sk_receive(int fd, void *buf, int buflen,
 		struct pollfd pfd = { fd, 0, 0 };
 		res = poll(&pfd, 1, sk_tx_timeout);
 		if (res < 1) {
-			pr_err(res ? "poll tx timestamp failed: %m" :
-			             "poll tx timestamp timeout");
+			pr_err(res ? "poll for tx timestamp failed: %m" :
+			             "timed out while polling for tx timestamp");
+			pr_err("increasing tx_timestamp_timeout may correct "
+			       "this issue, but it is likely caused by a driver bug");
 			return res;
 		} else if (!(pfd.revents & POLLERR)) {
-			pr_err("poll tx woke up on non ERR event");
+			pr_err("poll for tx timestamp woke up on non ERR event");
 			return -1;
 		}
 	}
