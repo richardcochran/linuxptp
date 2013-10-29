@@ -30,6 +30,7 @@ struct filter;
  */
 enum filter_type {
 	FILTER_MOVING_AVERAGE,
+	FILTER_MOVING_MEDIAN,
 };
 
 /**
