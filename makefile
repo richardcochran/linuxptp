@@ -24,8 +24,9 @@ CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl
 OBJ     = bmc.o clock.o clockadj.o clockcheck.o config.o fault.o \
- fsm.o ptp4l.o mave.o msg.o phc.o pi.o port.o print.o raw.o servo.o \
- sk.o stats.o tlv.o tmtab.o transport.o udp.o udp6.o uds.o util.o version.o
+ filter.o fsm.o mave.o msg.o phc.o pi.o port.o print.o \
+ ptp4l.o raw.o servo.o sk.o stats.o tlv.o tmtab.o transport.o udp.o \
+ udp6.o uds.o util.o version.o
 
 OBJECTS	= $(OBJ) hwstamp_ctl.o phc2sys.o pmc.o pmc_common.o sysoff.o
 SRC	= $(OBJECTS:.o=.c)

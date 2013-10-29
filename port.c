@@ -25,7 +25,7 @@
 
 #include "bmc.h"
 #include "clock.h"
-#include "mave.h"
+#include "filter.h"
 #include "missing.h"
 #include "msg.h"
 #include "port.h"
@@ -82,7 +82,7 @@ struct port {
 	} seqnum;
 	struct tmtab tmtab;
 	tmv_t peer_delay;
-	struct mave *avg_delay;
+	struct filter *delay_filter;
 	int log_sync_interval;
 	struct nrate_estimator nrate;
 	unsigned int pdr_missing;
@@ -1716,7 +1716,7 @@ calc:
 	pd = tmv_sub(pd, c2);
 	pd = tmv_div(pd, 2);
 
-	p->peer_delay = mave_accumulate(p->avg_delay, pd);
+	p->peer_delay = filter_sample(p->delay_filter, pd);
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
 
@@ -1845,7 +1845,7 @@ void port_close(struct port *p)
 		port_disable(p);
 	}
 	transport_destroy(p->trp);
-	mave_destroy(p->avg_delay);
+	filter_destroy(p->delay_filter);
 	free(p);
 }
 
@@ -2306,9 +2306,9 @@ struct port *port_open(int phc_index,
 	p->delayMechanism = interface->dm;
 	p->versionNumber = PTP_VERSION;
 
-	p->avg_delay = mave_create(PORT_MAVE_LENGTH);
-	if (!p->avg_delay) {
-		pr_err("Failed to create moving average");
+	p->delay_filter = filter_create(FILTER_MOVING_AVERAGE, PORT_MAVE_LENGTH);
+	if (!p->delay_filter) {
+		pr_err("Failed to create delay filter");
 		transport_destroy(p->trp);
 		free(p);
 		return NULL;

@@ -1,7 +1,6 @@
 /**
- * @file mave.h
- * @brief Implements a moving average.
- * @note Copyright (C) 2011 Richard Cochran <richardcochran@gmail.com>
+ * @file filter_private.h
+ * @note Copyright (C) 2013 Miroslav Lichvar <mlichvar@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +16,18 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-#ifndef HAVE_MAVE_H
-#define HAVE_MAVE_H
+#ifndef HAVE_FILTER_PRIVATE_H
+#define HAVE_FILTER_PRIVATE_H
 
-#include "filter.h"
+#include "tmv.h"
+#include "contain.h"
 
-struct filter *mave_create(int length);
+struct filter {
+	void (*destroy)(struct filter *filter);
+
+	tmv_t (*sample)(struct filter *filter, tmv_t sample);
+
+	void (*reset)(struct filter *filter);
+};
 
 #endif

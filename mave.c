@@ -20,8 +20,10 @@
 #include <string.h>
 
 #include "mave.h"
+#include "filter_private.h"
 
 struct mave {
+	struct filter filter;
 	int cnt;
 	int len;
 	int index;
@@ -29,30 +31,17 @@ struct mave {
 	tmv_t *val;
 };
 
-struct mave *mave_create(int length)
+static void mave_destroy(struct filter *filter)
 {
-	struct mave *m;
-	m = calloc(1, sizeof(*m));
-	if (!m) {
-		return NULL;
-	}
-	m->val = calloc(1, length * sizeof(*m->val));
-	if (!m->val) {
-		free(m);
-		return NULL;
-	}
-	m->len = length;
-	return m;
-}
-
-void mave_destroy(struct mave *m)
-{
+	struct mave *m = container_of(filter, struct mave, filter);
 	free(m->val);
 	free(m);
 }
 
-tmv_t mave_accumulate(struct mave *m, tmv_t val)
+static tmv_t mave_accumulate(struct filter *filter, tmv_t val)
 {
+	struct mave *m = container_of(filter, struct mave, filter);
+
 	m->sum = tmv_sub(m->sum, m->val[m->index]);
 	m->val[m->index] = val;
 	m->index = (1 + m->index) % m->len;
@@ -63,10 +52,31 @@ tmv_t mave_accumulate(struct mave *m, tmv_t val)
 	return tmv_div(m->sum, m->cnt);
 }
 
-void mave_reset(struct mave *m)
+static void mave_reset(struct filter *filter)
 {
+	struct mave *m = container_of(filter, struct mave, filter);
+
 	m->cnt = 0;
 	m->index = 0;
 	m->sum = 0;
 	memset(m->val, 0, m->len * sizeof(*m->val));
+}
+
+struct filter *mave_create(int length)
+{
+	struct mave *m;
+	m = calloc(1, sizeof(*m));
+	if (!m) {
+		return NULL;
+	}
+	m->filter.destroy = mave_destroy;
+	m->filter.sample = mave_accumulate;
+	m->filter.reset = mave_reset;
+	m->val = calloc(1, length * sizeof(*m->val));
+	if (!m->val) {
+		free(m);
+		return NULL;
+	}
+	m->len = length;
+	return &m->filter;
 }

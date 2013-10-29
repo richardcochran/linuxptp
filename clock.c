@@ -27,7 +27,7 @@
 #include "clockadj.h"
 #include "clockcheck.h"
 #include "foreign.h"
-#include "mave.h"
+#include "filter.h"
 #include "missing.h"
 #include "msg.h"
 #include "phc.h"
@@ -86,7 +86,7 @@ struct clock {
 	enum servo_state servo_state;
 	tmv_t master_offset;
 	tmv_t path_delay;
-	struct mave *avg_delay;
+	struct filter *delay_filter;
 	struct freq_estimator fest;
 	struct time_status_np status;
 	double nrr;
@@ -121,7 +121,7 @@ void clock_destroy(struct clock *c)
 		phc_close(c->clkid);
 	}
 	servo_destroy(c->servo);
-	mave_destroy(c->avg_delay);
+	filter_destroy(c->delay_filter);
 	stats_destroy(c->stats.offset);
 	stats_destroy(c->stats.freq);
 	stats_destroy(c->stats.delay);
@@ -632,9 +632,9 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		return NULL;
 	}
 	c->servo_state = SERVO_UNLOCKED;
-	c->avg_delay = mave_create(MAVE_LENGTH);
-	if (!c->avg_delay) {
-		pr_err("Failed to create moving average");
+	c->delay_filter = filter_create(FILTER_MOVING_AVERAGE, MAVE_LENGTH);
+	if (!c->delay_filter) {
+		pr_err("Failed to create delay filter");
 		return NULL;
 	}
 	c->stats_interval = dds->stats_interval;
@@ -992,7 +992,7 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 		pr_warning("c3 %10lld", c3);
 	}
 
-	c->path_delay = mave_accumulate(c->avg_delay, pd);
+	c->path_delay = filter_sample(c->delay_filter, pd);
 
 	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
 
@@ -1170,7 +1170,7 @@ static void handle_state_decision_event(struct clock *c)
 
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
-		mave_reset(c->avg_delay);
+		filter_reset(c->delay_filter);
 		c->t1 = tmv_zero();
 		c->t2 = tmv_zero();
 		c->path_delay = 0;
