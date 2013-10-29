@@ -159,6 +159,7 @@ static enum parser_result parse_port_setting(const char *option,
 					    int p)
 {
 	enum parser_result r;
+	int val;
 
 	r = parse_pod_setting(option, value, &cfg->iface[p].pod);
 	if (r != NOT_PARSED)
@@ -183,6 +184,21 @@ static enum parser_result parse_port_setting(const char *option,
 			cfg->iface[p].dm = DM_P2P;
 		else
 			return BAD_VALUE;
+
+	} else if (!strcmp(option, "delay_filter")) {
+		if (!strcasecmp("moving_average", value))
+			cfg->iface[p].delay_filter = FILTER_MOVING_AVERAGE;
+		else if (!strcasecmp("moving_median", value))
+			cfg->iface[p].delay_filter = FILTER_MOVING_MEDIAN;
+		else
+			return BAD_VALUE;
+
+	} else if (!strcmp(option, "delay_filter_length")) {
+		r = get_ranged_int(value, &val, 1, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
+		cfg->iface[p].delay_filter_length = val;
+
 	} else
 		return NOT_PARSED;
 
@@ -510,6 +526,20 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		cfg->dds.time_source = val;
 
+	} else if (!strcmp(option, "delay_filter")) {
+		if (!strcasecmp("moving_average", value))
+			cfg->dds.delay_filter = FILTER_MOVING_AVERAGE;
+		else if (!strcasecmp("moving_median", value))
+			cfg->dds.delay_filter = FILTER_MOVING_MEDIAN;
+		else
+			return BAD_VALUE;
+
+	} else if (!strcmp(option, "delay_filter_length")) {
+		r = get_ranged_int(value, &val, 1, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
+		cfg->dds.delay_filter_length = val;
+
 	} else
 		return NOT_PARSED;
 
@@ -666,6 +696,9 @@ int config_create_interface(char *name, struct config *cfg)
 	memcpy(&iface->pod, &cfg->pod, sizeof(cfg->pod));
 
 	sk_get_ts_info(name, &iface->ts_info);
+
+	iface->delay_filter = cfg->dds.delay_filter;
+	iface->delay_filter_length = cfg->dds.delay_filter_length;
 
 	cfg->nports++;
 

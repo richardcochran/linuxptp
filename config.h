@@ -22,6 +22,7 @@
 
 #include "ds.h"
 #include "dm.h"
+#include "filter.h"
 #include "transport.h"
 #include "servo.h"
 #include "sk.h"
@@ -36,6 +37,8 @@ struct interface {
 	enum transport_type transport;
 	struct port_defaults pod;
 	struct sk_ts_info ts_info;
+	enum filter_type delay_filter;
+	int delay_filter_length;
 };
 
 #define CFG_IGNORE_DM           (1 << 0)

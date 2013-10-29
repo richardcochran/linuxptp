@@ -22,6 +22,7 @@
 
 #include "ddt.h"
 #include "fault.h"
+#include "filter.h"
 
 /* clock data sets */
 
@@ -57,6 +58,8 @@ struct default_ds {
 	int sanity_freq_limit;
 	int time_source;
 	struct clock_description clock_desc;
+	enum filter_type delay_filter;
+	int delay_filter_length;
 };
 
 struct dataset {

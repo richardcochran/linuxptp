@@ -192,6 +192,15 @@ The default is UDPv4.
 .B neighborPropDelayThresh
 Upper limit for peer delay in nanoseconds. If the estimated peer delay is
 greater than this value the port is marked as not 802.1AS capable.
+.TP
+.B delay_filter
+Select the algorithm used to filter the measured delay and peer delay. Possible
+values are moving_average and moving_median.
+The default is moving_median.
+.TP
+.B delay_filter_length
+The length of the delay filter in samples.
+The default is 10.
 
 .SH PROGRAM AND CLOCK OPTIONS
 

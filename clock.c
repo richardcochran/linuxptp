@@ -41,7 +41,6 @@
 
 #define CLK_N_PORTS (MAX_PORTS + 1) /* plus one for the UDS interface */
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
-#define MAVE_LENGTH 10
 #define POW2_41 ((double)(1ULL << 41))
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -632,7 +631,8 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		return NULL;
 	}
 	c->servo_state = SERVO_UNLOCKED;
-	c->delay_filter = filter_create(FILTER_MOVING_AVERAGE, MAVE_LENGTH);
+	c->delay_filter = filter_create(dds->delay_filter,
+					dds->delay_filter_length);
 	if (!c->delay_filter) {
 		pr_err("Failed to create delay filter");
 		return NULL;

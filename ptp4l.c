@@ -71,6 +71,8 @@ static struct config cfg_settings = {
 			.userDescription      = { .max_symbols = 128 },
 			.manufacturerIdentity = { 0, 0, 0 },
 		},
+		.delay_filter = FILTER_MOVING_MEDIAN,
+		.delay_filter_length = 10,
 	},
 
 	.pod = {

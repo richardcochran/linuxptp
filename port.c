@@ -37,7 +37,6 @@
 #include "util.h"
 
 #define ALLOWED_LOST_RESPONSES 3
-#define PORT_MAVE_LENGTH 10
 
 enum syfu_state {
 	SF_EMPTY,
@@ -2306,7 +2305,8 @@ struct port *port_open(int phc_index,
 	p->delayMechanism = interface->dm;
 	p->versionNumber = PTP_VERSION;
 
-	p->delay_filter = filter_create(FILTER_MOVING_AVERAGE, PORT_MAVE_LENGTH);
+	p->delay_filter = filter_create(interface->delay_filter,
+					interface->delay_filter_length);
 	if (!p->delay_filter) {
 		pr_err("Failed to create delay filter");
 		transport_destroy(p->trp);
