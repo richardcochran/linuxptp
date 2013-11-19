@@ -57,6 +57,7 @@ struct nrate_estimator {
 	tmv_t ingress1;
 	unsigned int max_count;
 	unsigned int count;
+	int ratio_valid;
 };
 
 struct port {
@@ -474,6 +475,13 @@ static int port_capable(struct port *p)
 		goto not_capable;
 	}
 
+	if (!p->nrate.ratio_valid) {
+		if (p->asCapable)
+			pr_debug("port %hu: invalid nrate, "
+				"resetting asCapable", portnum(p));
+		goto not_capable;
+	}
+
 capable:
 	if (!p->asCapable)
 		pr_debug("port %hu: setting asCapable", portnum(p));
@@ -733,6 +741,12 @@ static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 	tmv_t origin2;
 	struct nrate_estimator *n = &p->nrate;
 
+	/*
+	 * We experienced a successful exchanges of peer delay request
+	 * and response, reset pdr_missing for this port.
+	 */
+	p->pdr_missing = 0;
+
 	if (!n->ingress1) {
 		n->ingress1 = t4;
 		n->origin1 = tmv_add(t3, c);
@@ -753,11 +767,7 @@ static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 	n->ingress1 = t4;
 	n->origin1 = origin2;
 	n->count = 0;
-	/*
-	 * We experienced a successful series of exchanges of peer
-	 * delay request and response, and so the port is now capable.
-	 */
-	p->pdr_missing = 0;
+	n->ratio_valid = 1;
 }
 
 static void port_nrate_initialize(struct port *p)
@@ -781,6 +791,7 @@ static void port_nrate_initialize(struct port *p)
 	p->nrate.ingress1 = tmv_zero();
 	p->nrate.max_count = (1 << shift);
 	p->nrate.count = 0;
+	p->nrate.ratio_valid = 0;
 }
 
 static int port_set_announce_tmo(struct port *p)
