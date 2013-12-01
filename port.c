@@ -532,6 +532,31 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+/*
+ * Test whether a 802.1AS port may transmit a sync message.
+ */
+static int port_sync_incapable(struct port *p)
+{
+	struct ClockIdentity cid;
+	struct PortIdentity pid;
+
+	if (!port_is_ieee8021as(p)) {
+		return 0;
+	}
+	if (clock_gm_capable(p->clock)) {
+		return 0;
+	}
+	cid = clock_identity(p->clock);
+	pid = clock_parent_identity(p->clock);
+	if (!memcmp(&cid, &pid.clockIdentity, sizeof(cid))) {
+		/*
+		 * We are the GM, but without gmCapable set.
+		 */
+		return 1;
+	}
+	return 0;
+}
+
 static int port_is_ieee8021as(struct port *p)
 {
 	return p->pod.follow_up_info ? 1 : 0;
@@ -1146,6 +1171,9 @@ static int port_tx_sync(struct port *p)
 	int event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
 
 	if (!port_capable(p)) {
+		return 0;
+	}
+	if (port_sync_incapable(p)) {
 		return 0;
 	}
 	msg = msg_allocate();
