@@ -101,6 +101,14 @@ UInteger8 clock_domain_number(struct clock *c);
 void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f);
 
 /**
+ * Obtain the gmCapable flag from a clock's default data set.
+ * This function is specific to the 802.1AS standard.
+ * @param c  The clock instance.
+ * @return One if the clock is capable of becoming grand master, zero otherwise.
+ */
+int clock_gm_capable(struct clock *c);
+
+/**
  * Obtain a clock's identity from its default data set.
  * @param c  The clock instance.
  * @return   The clock's identity.

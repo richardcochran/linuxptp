@@ -76,6 +76,7 @@ struct clock {
 	int nports; /* does not include the UDS port */
 	int free_running;
 	int freq_est_interval;
+	int grand_master_capable; /* for 802.1AS only */
 	int utc_timescale;
 	int leap_set;
 	int kernel_leap;
@@ -587,6 +588,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	c->free_running = dds->free_running;
 	c->freq_est_interval = dds->freq_est_interval;
+	c->grand_master_capable = dds->grand_master_capable;
 	c->kernel_leap = dds->kernel_leap;
 	c->utc_offset = CURRENT_UTC_OFFSET;
 	c->time_source = dds->time_source;
@@ -743,6 +745,11 @@ void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f)
 	c->status.gmTimeBaseIndicator = f->gmTimeBaseIndicator;
 	memcpy(&c->status.lastGmPhaseChange, &f->lastGmPhaseChange,
 	       sizeof(c->status.lastGmPhaseChange));
+}
+
+int clock_gm_capable(struct clock *c)
+{
+	return c->grand_master_capable;
 }
 
 struct ClockIdentity clock_identity(struct clock *c)

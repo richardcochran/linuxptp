@@ -53,6 +53,7 @@ struct default_ds {
 	struct defaultDS dds;
 	int free_running;
 	int freq_est_interval; /*log seconds*/
+	int grand_master_capable; /*802.1AS only*/
 	int stats_interval; /*log seconds*/
 	int kernel_leap;
 	int sanity_freq_limit;
