@@ -284,7 +284,14 @@ int main(int argc, char *argv[])
 	if (config && (c = config_read(config, &cfg_settings))) {
 		return c;
 	}
-	if (ds->flags & DDS_SLAVE_ONLY) {
+	if (!cfg_settings.dds.grand_master_capable &&
+	    ds->flags & DDS_SLAVE_ONLY) {
+		fprintf(stderr,
+			"Cannot mix 1588 slaveOnly with 802.1AS !gmCapable.\n");
+		return -1;
+	}
+	if (!cfg_settings.dds.grand_master_capable ||
+	    ds->flags & DDS_SLAVE_ONLY) {
 		ds->clockQuality.clockClass = 255;
 	}
 

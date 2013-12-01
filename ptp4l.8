@@ -212,7 +212,14 @@ The default is 1 (enabled).
 .TP
 .B slaveOnly
 The local clock is a slave-only clock if enabled.
+This option is only for use with 1588 clocks and should not be enabled
+for 802.1AS clocks.
 The default is 0 (disabled).
+.TP
+.B gmCapable
+If this option is enabled, then the local clock is able to become grand master.
+This is only for use with 802.1AS clocks and has no effect on 1588 clocks.
+The default is 1 (enabled).
 .TP
 .B priority1
 The priority1 attribute of the local clock. It is used in the best master

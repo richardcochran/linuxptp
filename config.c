@@ -255,6 +255,12 @@ static enum parser_result parse_global_setting(const char *option,
 				dds->flags &= ~DDS_SLAVE_ONLY;
 		}
 
+	} else if (!strcmp(option, "gmCapable")) {
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		cfg->dds.grand_master_capable = val;
+
 	} else if (!strcmp(option, "priority1")) {
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
 		if (r != PARSED_OK)
