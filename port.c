@@ -32,7 +32,6 @@
 #include "print.h"
 #include "sk.h"
 #include "tlv.h"
-#include "tmtab.h"
 #include "tmv.h"
 #include "util.h"
 
@@ -80,7 +79,6 @@ struct port {
 		UInteger16 delayreq;
 		UInteger16 sync;
 	} seqnum;
-	struct tmtab tmtab;
 	tmv_t peer_delay;
 	struct filter *delay_filter;
 	int log_sync_interval;
@@ -228,6 +226,29 @@ int set_tmo_lin(int fd, int seconds)
 	};
 
 	tmo.it_value.tv_sec = seconds;
+	return timerfd_settime(fd, 0, &tmo, NULL);
+}
+
+int set_tmo_random(int fd, int min, int span, int log_seconds)
+{
+	uint64_t value_ns, min_ns, span_ns;
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+
+	if (log_seconds >= 0) {
+		min_ns = min * NS_PER_SEC << log_seconds;
+		span_ns = span * NS_PER_SEC << log_seconds;
+	} else {
+		min_ns = min * NS_PER_SEC >> -log_seconds;
+		span_ns = span * NS_PER_SEC >> -log_seconds;
+	}
+
+	value_ns = min_ns + (span_ns * (random() % (1 << 15) + 1) >> 15);
+
+	tmo.it_value.tv_sec = value_ns / NS_PER_SEC;
+	tmo.it_value.tv_nsec = value_ns % NS_PER_SEC;
+
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
@@ -821,23 +842,19 @@ static void port_nrate_initialize(struct port *p)
 
 static int port_set_announce_tmo(struct port *p)
 {
-	return set_tmo_log(p->fda.fd[FD_ANNOUNCE_TIMER],
-		       p->announceReceiptTimeout, p->logAnnounceInterval);
+	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
+		       p->announceReceiptTimeout, 1, p->logAnnounceInterval);
 }
 
 static int port_set_delay_tmo(struct port *p)
 {
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
-	int index;
 	if (p->delayMechanism == DM_P2P) {
 		return set_tmo_log(p->fda.fd[FD_DELAY_TIMER], 1,
 			       p->logMinPdelayReqInterval);
+	} else {
+		return set_tmo_random(p->fda.fd[FD_DELAY_TIMER], 0, 2,
+				p->logMinDelayReqInterval);
 	}
-	index = random() % TMTAB_MAX;
-	tmo.it_value = p->tmtab.ts[index];
-	return timerfd_settime(p->fda.fd[FD_DELAY_TIMER], 0, &tmo, NULL);
 }
 
 static int port_set_manno_tmo(struct port *p)
@@ -1342,8 +1359,6 @@ static int port_initialize(struct port *p)
 	p->logMinPdelayReqInterval = p->pod.logMinPdelayReqInterval;
 	p->neighborPropDelayThresh = p->pod.neighborPropDelayThresh;
 
-	tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
-
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		fd[i] = -1;
 	}
@@ -1549,7 +1564,6 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 		p->logMinDelayReqInterval = rsp->hdr.logMessageInterval;
 		pr_notice("port %hu: minimum delay request interval 2^%d",
 			portnum(p), p->logMinDelayReqInterval);
-		tmtab_init(&p->tmtab, 1 + p->logMinDelayReqInterval);
 	}
 }
 

@@ -576,12 +576,14 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	struct clock *c = &the_clock;
 	char phc[32];
 	struct interface udsif;
+	struct timespec ts;
 
 	memset(&udsif, 0, sizeof(udsif));
 	snprintf(udsif.name, sizeof(udsif.name), "%s", uds_path);
 	udsif.transport = TRANS_UDS;
 
-	srandom(time(NULL));
+	clock_gettime(CLOCK_REALTIME, &ts);
+	srandom(ts.tv_sec ^ ts.tv_nsec);
 
 	if (c->nports)
 		clock_destroy(c);
