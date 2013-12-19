@@ -17,7 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <math.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "clockadj.h"
 #include "missing.h"
@@ -26,12 +28,37 @@
 #define NS_PER_SEC 1000000000LL
 
 static int realtime_leap_bit;
+static long realtime_hz;
+static long realtime_nominal_tick;
+
+void clockadj_init(clockid_t clkid)
+{
+#ifdef _SC_CLK_TCK
+	if (clkid == CLOCK_REALTIME) {
+		/* This is USER_HZ in the kernel. */
+		realtime_hz = sysconf(_SC_CLK_TCK);
+		if (realtime_hz > 0) {
+			/* This is TICK_USEC in the kernel. */
+			realtime_nominal_tick =
+				(1000000 + realtime_hz / 2) / realtime_hz;
+		}
+	}
+#endif
+}
 
 void clockadj_set_freq(clockid_t clkid, double freq)
 {
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
-	tx.modes = ADJ_FREQUENCY;
+
+	/* With system clock set also the tick length. */
+	if (clkid == CLOCK_REALTIME && realtime_nominal_tick) {
+		tx.modes |= ADJ_TICK;
+		tx.tick = round(freq / 1e3 / realtime_hz) + realtime_nominal_tick;
+		freq -= 1e3 * realtime_hz * (tx.tick - realtime_nominal_tick);
+	}
+
+	tx.modes |= ADJ_FREQUENCY;
 	tx.freq = (long) (freq * 65.536);
 	if (clock_adjtime(clkid, &tx) < 0)
 		pr_err("failed to adjust the clock: %m");
@@ -42,10 +69,13 @@ double clockadj_get_freq(clockid_t clkid)
 	double f = 0.0;
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
-	if (clock_adjtime(clkid, &tx) < 0)
+	if (clock_adjtime(clkid, &tx) < 0) {
 		pr_err("failed to read out the clock frequency adjustment: %m");
-	else
+	} else {
 		f = tx.freq / 65.536;
+		if (clkid == CLOCK_REALTIME && realtime_nominal_tick)
+			f += 1e3 * realtime_hz * (tx.tick - realtime_nominal_tick);
+	}
 	return f;
 }
 
@@ -111,6 +141,13 @@ int sysclk_max_freq(void)
 		f = tx.tolerance / 65.536;
 	if (!f)
 		f = 500000;
+
+	/* The kernel allows the tick length to be adjusted up to 10%. But use
+	   it only if the overall frequency of the clock can be adjusted
+	   continuously with the tick and freq fields (i.e. hz <= 1000). */
+	if (realtime_nominal_tick && 2 * f >= 1000 * realtime_hz)
+		f = realtime_nominal_tick / 10 * 1000 * realtime_hz;
+
 	return f;
 }
 

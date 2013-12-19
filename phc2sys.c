@@ -779,6 +779,7 @@ int main(int argc, char *argv[])
 			close_pmc(&dst_clock);
 	}
 
+	clockadj_init(dst_clock.clkid);
 	ppb = clockadj_get_freq(dst_clock.clkid);
 	/* The reading may silently fail and return 0, reset the frequency to
 	   make sure ppb is the actual frequency of the clock. */

@@ -616,9 +616,11 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			pr_err("clock is not adjustable");
 			return NULL;
 		}
+		clockadj_init(c->clkid);
 	} else {
 		c->clkid = CLOCK_REALTIME;
 		c->utc_timescale = 1;
+		clockadj_init(c->clkid);
 		max_adj = sysclk_max_freq();
 		sysclk_set_leap(0);
 	}

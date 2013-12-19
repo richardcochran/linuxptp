@@ -24,6 +24,12 @@
 #include <time.h>
 
 /**
+ * Initialize state needed when adjusting or reading the clock.
+ * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
+ */
+void clockadj_init(clockid_t clkid);
+
+/**
  * Set clock's frequency offset.
  * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @param freq  The frequency offset in parts per billion (ppb).
