@@ -125,6 +125,8 @@ void clock_destroy(struct clock *c)
 	stats_destroy(c->stats.offset);
 	stats_destroy(c->stats.freq);
 	stats_destroy(c->stats.delay);
+	if (c->sanity_check)
+		clockcheck_destroy(c->sanity_check);
 	memset(c, 0, sizeof(*c));
 	msg_cleanup();
 }
