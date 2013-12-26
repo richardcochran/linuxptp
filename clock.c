@@ -583,6 +583,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	memset(&udsif, 0, sizeof(udsif));
 	snprintf(udsif.name, sizeof(udsif.name), "%s", uds_path);
 	udsif.transport = TRANS_UDS;
+	udsif.delay_filter_length = 1;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
