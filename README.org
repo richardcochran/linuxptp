@@ -94,79 +94,77 @@
 
 ** Driver Support Matrix
 
-   The table below shows the Linux drivers that support the new
-   API. The meaning of the column abbreviations is as follows.
+   The following two tables list the drivers that support the PHC
+   subsystem and the Linux kernel version when they first appeared.
+   These drivers will create a PHC device for controlling the hardware
+   clock.
 
-   - SOTS: SO_TIMESTAMPING support. This comes in three flavors.
+*** Hardware Timestamping - PHY
 
-     1. RAW: Supports time stamping using the PHC time values.
-     2. SW:  Supports software time stamping using the system time.
-     3. SYS: Supports time stamping using PHC time values scaled to
-             the system time. This is a legacy mode and its use in new
-             drivers is discouraged.
+    |---------+-------------------------------+---------|
+    | Driver  | Hardware                      | Version |
+    |---------+-------------------------------+---------|
+    | dp83640 | National Semiconductor PHYTER |     3.0 |
+    |---------+-------------------------------+---------|
 
-   - PHC: PTP Hardware Clock support.  These drivers will offer a
-     character device that allows direct control of the hardware
-     clock.
+*** Hardware Timestamping - MAC
 
-   - PHY: Supports time stamping in the PHY. This indicates an
-     Ethernet MAC driver supporting SO_TIMESTAMPING and PHC in the
-     PHY. If you have or build a computer that combines this MAC with
-     a PTP capable PHY, then it will work with the Linux PHC
-     subsystem.
-
-   - VER: Linux kernel version when the PTP API support was added.
-
-*** Hardware Timestamping
-
-    |------------+-------------------------+------+-----+-----+-----|
-    | Driver     | Hardware                | SOTS | PHC | PHY | VER |
-    |------------+-------------------------+------+-----+-----+-----|
-    | bfin_mac   | Analog Blackfin         | RAW  | Y   | NA  | 3.8 |
-    | e1000e     | Intel 82574, 82583      | RAW  | Y   | NA  | 3.9 |
-    | fec        | Freescale i.mx6         | RAW  | Y   | NA  | 3.8 |
-    | gianfar    | Freescale eTSEC PowerPC | RAW  | Y   | NA  | 3.0 |
-    | igb        | Intel 82576, 82580      | RAW  | Y   | NA  | 3.5 |
-    | ixgbe      | Intel 82599             | RAW  | Y   | NA  | 3.5 |
-    | dp83640    | Nat Semi PHYTER         | RAW  | Y   | NA  | 3.0 |
-    | ptp_ixp46x | Intel IXP465            | RAW  | Y   | NA  | 3.0 |
-    | ptp_phc    | Lapis EG20T PCH         | RAW  | Y   | NA  | 3.5 |
-    | sfc        | Solarflare SFC9000      | RAW  | Y   | NA  | 3.7 |
-    |------------+-------------------------+------+-----+-----+-----|
+    |------------+--------------------------+---------|
+    | Driver     | Hardware                 | Version |
+    |------------+--------------------------+---------|
+    | bfin_mac   | Analog Blackfin          |     3.8 |
+    | cpts       | Texas Instruments am335x |     3.8 |
+    | e1000e     | Intel 82574, 82583       |     3.9 |
+    | fec        | Freescale i.mx6          |     3.8 |
+    | gianfar    | Freescale eTSEC PowerPC  |     3.0 |
+    | igb        | Intel 82576, 82580       |     3.5 |
+    | ixgbe      | Intel 82599              |     3.5 |
+    | ptp_ixp46x | Intel IXP465             |     3.0 |
+    | ptp_phc    | Lapis EG20T PCH          |     3.5 |
+    | sfc        | Solarflare SFC9000       |     3.7 |
+    |------------+--------------------------+---------|
 
 *** Software Timestamping
 
-    |--------------+--------------------------+------+-----+-----+-----|
-    | Driver       | Hardware                 | SOTS | PHC | PHY | VER |
-    |--------------+--------------------------+------+-----+-----+-----|
-    | bnx2x        | Broadcom Everest         | SW   | N   | N   | 3.5 |
-    | davinci_emac | TI DaVinci, Sitara       | SW   | N   | Y   | 3.1 |
-    | dnet         | Dave Ethernet MAC        | SW   | N   | Y   | 3.1 |
-    | e100         | Intel PRO/100            | SW   | N   | N   | 3.5 |
-    | e1000        | Intel PRO/1000 PCI/PCI-X | SW   | N   | N   | 3.5 |
-    | e1000e       | Intel PRO/1000 PCIe      | SW   | N   | N   | 3.5 |
-    | emaclite     | Xilinx Ethernet Lite     | SW   | N   | Y   | 3.1 |
-    | ethoc        | OpenCores 10/100 MAC     | SW   | N   | Y   | 3.1 |
-    | fec          | Freescale Coldfire       | SW   | N   | Y   | 3.1 |
-    | fec_mpc52xx  | Freescale MPC5200        | SW   | N   | Y   | 3.1 |
-    | forcedeth    | NVIDIA nForce            | SW   | N   | N   | 3.5 |
-    | fs_enet      | Freescale MPC512x        | SW   | N   | Y   | 3.1 |
-    | ixp4xx_eth   | Intel IXP4xx             | SW   | N   | Y   | 3.0 |
-    | lib8390      | Asix AX88796             | SW   | N   | Y   | 3.1 |
-    | lib8390      | Various 8390 based HW    | SW   | N   | N   | 3.1 |
-    | ll_temac     | Xilinx LL TEMAC          | SW   | N   | Y   | 3.1 |
-    | macb         | Atmel AT32, AT91         | SW   | N   | Y   | 3.1 |
-    | mv643xx_eth  | Marvell Discovery, Orion | SW   | N   | Y   | 3.1 |
-    | pxa168_eth   | Marvell pxa168           | SW   | N   | Y   | 3.1 |
-    | r6040        | RDC Ethernet MAC         | SW   | N   | Y   | 3.1 |
-    | r8169        | Realtek 8169/8168/8101   | SW   | N   | N   | 3.4 |
-    | smsc911x     | SMSC LAN911x, LAN921x    | SW   | N   | Y   | 3.1 |
-    | smsc9420     | SMSC LAN9420 PCI         | SW   | N   | Y   | 3.1 |
-    | stmmac       | STM Synopsys IP Core     | SW   | N   | Y   | 3.1 |
-    | tg3          | Broadcom Tigon3 PCI      | SW   | N   | Y   | 3.1 |
-    | ucc_geth     | Freescale QE Gigabit     | SW   | N   | Y   | 3.1 |
-    | usbnet       | USB network devices      | SW   | N   | Y/N | 3.2 |
-    |--------------+--------------------------+------+-----+-----+-----|
+    The table below shows the Linux drivers that support software time
+    stamping. In addition, the 'PHY' column indicates whether the
+    Ethernet MAC driver can support a PTP Hardware Clock in an
+    external PHY. The letter 'Y' in this column means that if you
+    design a mother board that combines such a MAC with a PTP capable
+    PHY, then it will work with the Linux PHC subsystem.
+
+    |--------------+--------------------------+---------+-----|
+    | Driver       | Hardware                 | Version | PHY |
+    |--------------+--------------------------+---------+-----|
+    | bna          | Brocade 1010/1020 10Gb   |    3.14 | N   |
+    | bnx2x        | Broadcom Everest         |     3.5 | N   |
+    | davinci_emac | TI DaVinci, Sitara       |     3.1 | Y   |
+    | dnet         | Dave Ethernet MAC        |     3.1 | Y   |
+    | e100         | Intel PRO/100            |     3.5 | N   |
+    | e1000        | Intel PRO/1000 PCI/PCI-X |     3.5 | N   |
+    | e1000e       | Intel PRO/1000 PCIe      |     3.5 | N   |
+    | emaclite     | Xilinx Ethernet Lite     |     3.1 | Y   |
+    | ethoc        | OpenCores 10/100 MAC     |     3.1 | Y   |
+    | fec          | Freescale Coldfire       |     3.1 | Y   |
+    | fec_mpc52xx  | Freescale MPC5200        |     3.1 | Y   |
+    | forcedeth    | NVIDIA nForce            |     3.5 | N   |
+    | fs_enet      | Freescale MPC512x        |     3.1 | Y   |
+    | ixp4xx_eth   | Intel IXP4xx             |     3.0 | Y   |
+    | lib8390      | Asix AX88796             |     3.1 | Y   |
+    | lib8390      | Various 8390 based HW    |     3.1 | N   |
+    | ll_temac     | Xilinx LL TEMAC          |     3.1 | Y   |
+    | macb         | Atmel AT32, AT91         |     3.1 | Y   |
+    | mv643xx_eth  | Marvell Discovery, Orion |     3.1 | Y   |
+    | pxa168_eth   | Marvell pxa168           |     3.1 | Y   |
+    | r6040        | RDC Ethernet MAC         |     3.1 | Y   |
+    | r8169        | Realtek 8169/8168/8101   |     3.4 | N   |
+    | smsc911x     | SMSC LAN911x, LAN921x    |     3.1 | Y   |
+    | smsc9420     | SMSC LAN9420 PCI         |     3.1 | Y   |
+    | stmmac       | STM Synopsys IP Core     |     3.1 | Y   |
+    | tg3          | Broadcom Tigon3 PCI      |     3.1 | Y   |
+    | ucc_geth     | Freescale QE Gigabit     |     3.1 | Y   |
+    | usbnet       | USB network devices      |     3.2 | Y/N |
+    |--------------+--------------------------+---------+-----|
 
 * Installation
 
