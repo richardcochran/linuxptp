@@ -58,6 +58,7 @@ struct pi_servo {
 	double ki;
 	double max_offset;
 	double max_f_offset;
+	double last_freq;
 	int count;
 	int first_update;
 };
@@ -73,9 +74,9 @@ static double pi_sample(struct servo *servo,
 			uint64_t local_ts,
 			enum servo_state *state)
 {
-	double ki_term, ppb = 0.0;
-	double freq_est_interval, localdiff;
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
+	double ki_term, ppb = s->last_freq;
+	double freq_est_interval, localdiff;
 
 	switch (s->count) {
 	case 0:
@@ -153,6 +154,7 @@ static double pi_sample(struct servo *servo,
 		break;
 	}
 
+	s->last_freq = ppb;
 	return ppb;
 }
 
@@ -192,6 +194,7 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 	s->servo.sync_interval = pi_sync_interval;
 	s->servo.reset   = pi_reset;
 	s->drift         = fadj;
+	s->last_freq     = fadj;
 	s->maxppb        = max_ppb;
 	s->first_update  = 1;
 	s->kp            = 0.0;
