@@ -98,6 +98,7 @@ struct clock {
 	struct clock_stats stats;
 	int stats_interval;
 	struct clockcheck *sanity_check;
+	struct interface uds_interface;
 };
 
 struct clock the_clock;
@@ -577,19 +578,18 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	int i, fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	char phc[32];
-	struct interface udsif;
+	struct interface *udsif = &c->uds_interface;
 	struct timespec ts;
-
-	memset(&udsif, 0, sizeof(udsif));
-	snprintf(udsif.name, sizeof(udsif.name), "%s", uds_path);
-	udsif.transport = TRANS_UDS;
-	udsif.delay_filter_length = 1;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 
 	if (c->nports)
 		clock_destroy(c);
+
+	snprintf(udsif->name, sizeof(udsif->name), "%s", uds_path);
+	udsif->transport = TRANS_UDS;
+	udsif->delay_filter_length = 1;
 
 	c->free_running = dds->free_running;
 	c->freq_est_interval = dds->freq_est_interval;
@@ -696,7 +696,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	/*
 	 * One extra port is for the UDS interface.
 	 */
-	c->port[i] = port_open(phc_index, timestamping, 0, &udsif, c);
+	c->port[i] = port_open(phc_index, timestamping, 0, udsif, c);
 	if (!c->port[i]) {
 		pr_err("failed to open the UDS port");
 		return NULL;
