@@ -998,7 +998,7 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 
 	if (pd < 0) {
 		pr_warning("negative path delay %10lld", pd);
-		pr_warning("path_delay = (t2 - t3) + (t4 - t1)");
+		pr_warning("path_delay = (t2 - t3) + (t4 - t1) - (c1 + c2 + c3)");
 		pr_warning("t2 - t3 = %+10lld", t2 - t3);
 		pr_warning("t4 - t1 = %+10lld", t4 - t1);
 		pr_warning("c1 %10lld", c1);
