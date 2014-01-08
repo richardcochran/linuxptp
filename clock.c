@@ -997,13 +997,13 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	pd = tmv_div(pd, 2);
 
 	if (pd < 0) {
-		pr_warning("negative path delay %10lld", pd);
-		pr_warning("path_delay = (t2 - t3) + (t4 - t1) - (c1 + c2 + c3)");
-		pr_warning("t2 - t3 = %+10lld", t2 - t3);
-		pr_warning("t4 - t1 = %+10lld", t4 - t1);
-		pr_warning("c1 %10lld", c1);
-		pr_warning("c2 %10lld", c2);
-		pr_warning("c3 %10lld", c3);
+		pr_debug("negative path delay %10lld", pd);
+		pr_debug("path_delay = (t2 - t3) + (t4 - t1) - (c1 + c2 + c3)");
+		pr_debug("t2 - t3 = %+10lld", t2 - t3);
+		pr_debug("t4 - t1 = %+10lld", t4 - t1);
+		pr_debug("c1 %10lld", c1);
+		pr_debug("c2 %10lld", c2);
+		pr_debug("c3 %10lld", c3);
 	}
 
 	c->path_delay = filter_sample(c->delay_filter, pd);
