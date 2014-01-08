@@ -843,7 +843,8 @@ static void port_nrate_initialize(struct port *p)
 static int port_set_announce_tmo(struct port *p)
 {
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
-		       p->announceReceiptTimeout, 1, p->logAnnounceInterval);
+			      p->announceReceiptTimeout,
+			      p->pod.announce_span, p->logAnnounceInterval);
 }
 
 static int port_set_delay_tmo(struct port *p)

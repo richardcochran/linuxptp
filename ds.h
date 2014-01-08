@@ -130,6 +130,7 @@ struct port_defaults {
 	UInteger8 announceReceiptTimeout;
 	UInteger8 syncReceiptTimeout;
 	UInteger8 transportSpecific;
+	int announce_span;
 	int path_trace_enabled;
 	int follow_up_info;
 	int freq_est_interval; /*log seconds*/

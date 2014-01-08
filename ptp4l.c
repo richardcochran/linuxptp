@@ -84,6 +84,7 @@ static struct config cfg_settings = {
 		.announceReceiptTimeout = 3,
 		.syncReceiptTimeout = 0,
 		.transportSpecific = 0,
+		.announce_span = 1,
 		.path_trace_enabled = 0,
 		.follow_up_info = 0,
 		.freq_est_interval = 1,
