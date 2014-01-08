@@ -107,8 +107,9 @@ static double pi_sample(struct servo *servo,
 			break;
 		}
 
-		s->drift += (s->offset[1] - s->offset[0]) * 1e9 /
-			(s->local[1] - s->local[0]);
+		/* Adjust drift by the measured frequency offset. */
+		s->drift += (1e9 - s->drift) * (s->offset[1] - s->offset[0]) /
+						(s->local[1] - s->local[0]);
 		if (s->drift < -s->maxppb)
 			s->drift = -s->maxppb;
 		else if (s->drift > s->maxppb)
