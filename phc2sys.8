@@ -60,8 +60,13 @@ should be already close to the correct time before
 .B phc2sys
 is started or the
 .B \-s
-option should be used too. This option can be used only with the system clock as
-the slave clock.
+option should be used too. With the
+.B \-s
+option the PPS signal of the master clock is enabled automatically, otherwise
+it has to be enabled before
+.B phc2sys
+is started (e.g. by running \f(CWecho 1 > /sys/class/ptp/ptp0/pps_enable\fP).
+This option can be used only with the system clock as the slave clock.
 .TP
 .BI \-s " device"
 Specify the master clock by device (e.g. /dev/ptp0) or interface (e.g. eth0) or
