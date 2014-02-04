@@ -204,6 +204,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 	case PORT_DATA_SET:
 		len += sizeof(struct portDS);
 		break;
+	case PORT_DATA_SET_NP:
+		len += sizeof(struct port_ds_np);
+		break;
 	case LOG_ANNOUNCE_INTERVAL:
 	case ANNOUNCE_RECEIPT_TIMEOUT:
 	case LOG_SYNC_INTERVAL:

@@ -59,6 +59,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct parentDS *pds;
 	struct timePropertiesDS *tp;
 	struct portDS *p;
+	struct port_ds_np *pdsnp;
 	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
@@ -234,6 +235,13 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			ntohs(gsn->clockQuality.offsetScaledLogVariance);
 		gsn->utc_offset = ntohs(gsn->utc_offset);
 		break;
+	case PORT_DATA_SET_NP:
+		if (data_len != sizeof(struct port_ds_np))
+			goto bad_length;
+		pdsnp = (struct port_ds_np *) m->data;
+		pdsnp->neighborPropDelayThresh = ntohl(pdsnp->neighborPropDelayThresh);
+		pdsnp->asCapable = ntohl(pdsnp->asCapable);
+		break;
 	}
 	if (extra_len) {
 		if (extra_len % 2)
@@ -253,6 +261,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct parentDS *pds;
 	struct timePropertiesDS *tp;
 	struct portDS *p;
+	struct port_ds_np *pdsnp;
 	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
@@ -313,6 +322,11 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		gsn->clockQuality.offsetScaledLogVariance =
 			htons(gsn->clockQuality.offsetScaledLogVariance);
 		gsn->utc_offset = htons(gsn->utc_offset);
+		break;
+	case PORT_DATA_SET_NP:
+		pdsnp = (struct port_ds_np *) m->data;
+		pdsnp->neighborPropDelayThresh = htonl(pdsnp->neighborPropDelayThresh);
+		pdsnp->asCapable = htonl(pdsnp->asCapable);
 		break;
 	}
 }

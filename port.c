@@ -602,6 +602,7 @@ static int port_management_get_response(struct port *target,
 	struct management_tlv_datum *mtd;
 	struct ptp_message *rsp;
 	struct portDS *pds;
+	struct port_ds_np *pdsnp;
 	struct PortIdentity pid = port_identity(target);
 	struct clock_description *desc;
 	struct mgmt_clock_description *cd;
@@ -749,6 +750,13 @@ static int port_management_get_response(struct port *target,
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
+	case PORT_DATA_SET_NP:
+		pdsnp = (struct port_ds_np *) tlv->data;
+		pdsnp->neighborPropDelayThresh = target->neighborPropDelayThresh;
+		pdsnp->asCapable = target->asCapable;
+		datalen = sizeof(*pdsnp);
+		respond = 1;
+		break;
 	}
 	if (respond) {
 		if (datalen % 2) {
@@ -775,7 +783,17 @@ static int port_management_set(struct port *target,
 			       struct ptp_message *req)
 {
 	int respond = 0;
+	struct management_tlv *tlv;
+	struct port_ds_np *pdsnp;
+
+	tlv = (struct management_tlv *) req->management.suffix;
+
 	switch (id) {
+	case PORT_DATA_SET_NP:
+		pdsnp = (struct port_ds_np *) tlv->data;
+		target->neighborPropDelayThresh = pdsnp->neighborPropDelayThresh;
+		respond = 1;
+		break;
 	}
 	if (respond && !port_management_get_response(target, ingress, id, req))
 		pr_err("port %hu: failed to send management set response", portnum(target));

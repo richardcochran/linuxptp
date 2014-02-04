@@ -98,6 +98,7 @@ enum management_action {
 #define TRANSPARENT_CLOCK_PORT_DATA_SET			0x4001
 #define DELAY_MECHANISM					0x6000
 #define LOG_MIN_PDELAY_REQ_INTERVAL			0x6001
+#define PORT_DATA_SET_NP					0xC002
 
 /* Management error ID values */
 #define RESPONSE_TOO_BIG				0x0001
@@ -188,6 +189,11 @@ struct grandmaster_settings_np {
 	Integer16 utc_offset;
 	UInteger8 time_flags;
 	Enumeration8 time_source;
+} PACKED;
+
+struct port_ds_np {
+	UInteger32    neighborPropDelayThresh; /*nanoseconds*/
+	Integer32     asCapable;
 } PACKED;
 
 enum clock_type {

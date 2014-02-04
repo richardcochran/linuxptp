@@ -106,6 +106,7 @@ struct management_id idtab[] = {
 	{ "TRANSPARENT_CLOCK_PORT_DATA_SET", TRANSPARENT_CLOCK_PORT_DATA_SET, not_supported },
 	{ "DELAY_MECHANISM", DELAY_MECHANISM, do_get_action },
 	{ "LOG_MIN_PDELAY_REQ_INTERVAL", LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
+	{ "PORT_DATA_SET_NP", PORT_DATA_SET_NP, do_set_action },
 };
 
 static char *action_string[] = {
@@ -194,6 +195,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
 	struct portDS *p;
+	struct port_ds_np *pnp;
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
 	}
@@ -436,6 +438,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			p->logSyncInterval, p->delayMechanism,
 			p->logMinPdelayReqInterval, p->versionNumber);
 		break;
+	case PORT_DATA_SET_NP:
+		pnp = (struct port_ds_np *) mgt->data;
+		fprintf(fp, "PORT_DATA_SET_NP "
+			IFMT "neighborPropDelayThresh %u"
+			IFMT "asCapable               %d",
+			pnp->neighborPropDelayThresh,
+			pnp->asCapable ? 1 : 0);
+		break;
 	case LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "LOG_ANNOUNCE_INTERVAL "
@@ -483,6 +493,7 @@ static void do_get_action(int action, int index, char *str)
 static void do_set_action(int action, int index, char *str)
 {
 	struct grandmaster_settings_np gsn;
+	struct port_ds_np pnp;
 	int cnt, code = idtab[index].code;
 	int leap_61, leap_59, utc_off_valid;
 	int ptp_timescale, time_traceable, freq_traceable;
@@ -545,6 +556,19 @@ static void do_set_action(int action, int index, char *str)
 		if (freq_traceable)
 			gsn.time_flags |= FREQ_TRACEABLE;
 		pmc_send_set_action(pmc, code, &gsn, sizeof(gsn));
+		break;
+	case PORT_DATA_SET_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "neighborPropDelayThresh %u "
+			     "asCapable               %d ",
+			     &pnp.neighborPropDelayThresh,
+			     &pnp.asCapable);
+		if (cnt != 2) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		pmc_send_set_action(pmc, code, &pnp, sizeof(pnp));
 		break;
 	}
 }
