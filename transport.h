@@ -64,7 +64,7 @@ struct transport;
 
 int transport_close(struct transport *t, struct fdarray *fda);
 
-int transport_open(struct transport *t, char *name,
+int transport_open(struct transport *t, const char *name,
 		   struct fdarray *fda, enum timestamp_type tt);
 
 int transport_recv(struct transport *t, int fd,

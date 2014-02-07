@@ -30,7 +30,7 @@ struct transport {
 
 	int (*close)(struct transport *t, struct fdarray *fda);
 
-	int (*open)(struct transport *t, char *name, struct fdarray *fda,
+	int (*open)(struct transport *t, const char *name, struct fdarray *fda,
 		    enum timestamp_type tt);
 
 	int (*recv)(struct transport *t, int fd, void *buf, int buflen,

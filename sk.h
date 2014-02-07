@@ -44,7 +44,7 @@ struct sk_ts_info {
  * @param device  The name of the network interface of interest.
  * @return        The result from the SIOCGIFINDEX ioctl.
  */
-int sk_interface_index(int fd, char *device);
+int sk_interface_index(int fd, const char *device);
 
 /**
  * Prepare a given socket for PTP "general" messages.
@@ -59,7 +59,7 @@ int sk_general_init(int fd);
  * @param info      Struct containing obtained timestamping information.
  * @return          zero on success, negative on failure.
  */
-int sk_get_ts_info(char *name, struct sk_ts_info *sk_info);
+int sk_get_ts_info(const char *name, struct sk_ts_info *sk_info);
 
 /**
  * Obtain the MAC address of a network interface.
@@ -68,7 +68,7 @@ int sk_get_ts_info(char *name, struct sk_ts_info *sk_info);
  * @param len   Length of 'mac'
  * @return      Zero on success, non-zero otherwise.
  */
-int sk_interface_macaddr(char *name, unsigned char *mac, int len);
+int sk_interface_macaddr(const char *name, unsigned char *mac, int len);
 
 /**
  * Obtains the first IP address assigned to a network interface.
@@ -78,7 +78,7 @@ int sk_interface_macaddr(char *name, unsigned char *mac, int len);
  * @param len    Length of 'addr'
  * @return       The number of bytes written to addr on success, -1 otherwise.
  */
-int sk_interface_addr(char *name, int family, uint8_t *addr, int len);
+int sk_interface_addr(const char *name, int family, uint8_t *addr, int len);
 
 /**
  * Read a message from a socket.
@@ -100,7 +100,7 @@ int sk_receive(int fd, void *buf, int buflen,
  * @param transport   The type of transport used.
  * @return            Zero on success, non-zero otherwise.
  */
-int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
+int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 			 enum transport_type transport);
 
 /**

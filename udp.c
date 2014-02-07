@@ -93,7 +93,7 @@ static int udp_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int open_socket(char *name, struct in_addr mc_addr[2], short port)
+static int open_socket(const char *name, struct in_addr mc_addr[2], short port)
 {
 	struct sockaddr_in addr;
 	int fd, index, on = 1;
@@ -148,7 +148,7 @@ enum { MC_PRIMARY, MC_PDELAY };
 
 static struct in_addr mcast_addr[2];
 
-static int udp_open(struct transport *t, char *name, struct fdarray *fda,
+static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
 	struct udp *udp = container_of(t, struct udp, t);

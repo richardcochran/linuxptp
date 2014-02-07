@@ -100,7 +100,7 @@ static int udp6_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int open_socket_ipv6(char *name, struct in6_addr mc_addr[2], short port,
+static int open_socket_ipv6(const char *name, struct in6_addr mc_addr[2], short port,
 			    int *interface_index)
 {
 	struct sockaddr_in6 addr;
@@ -158,7 +158,7 @@ enum { MC_PRIMARY, MC_PDELAY };
 
 static struct in6_addr mc6_addr[2];
 
-static int udp6_open(struct transport *t, char *name, struct fdarray *fda,
+static int udp6_open(struct transport *t, const char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);

@@ -29,7 +29,7 @@ int transport_close(struct transport *t, struct fdarray *fda)
 	return t->close(t, fda);
 }
 
-int transport_open(struct transport *t, char *name,
+int transport_open(struct transport *t, const char *name,
 		   struct fdarray *fda, enum timestamp_type tt)
 {
 	return t->open(t, name, fda, tt);

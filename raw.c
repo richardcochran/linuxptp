@@ -148,7 +148,7 @@ static int raw_close(struct transport *t, struct fdarray *fda)
 unsigned char ptp_dst_mac[MAC_LEN] = { PTP_DST_MAC };
 unsigned char p2p_dst_mac[MAC_LEN] = { P2P_DST_MAC };
 
-static int open_socket(char *name, int event)
+static int open_socket(const char *name, int event)
 {
 	struct sockaddr_ll addr;
 	int fd, index;
@@ -184,7 +184,7 @@ no_socket:
 	return -1;
 }
 
-static int raw_open(struct transport *t, char *name,
+static int raw_open(struct transport *t, const char *name,
 		    struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct raw *raw = container_of(t, struct raw, t);

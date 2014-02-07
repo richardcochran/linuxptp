@@ -40,7 +40,7 @@ int sk_check_fupsync;
 
 /* private methods */
 
-static int hwts_init(int fd, char *device, int rx_filter, int one_step)
+static int hwts_init(int fd, const char *device, int rx_filter, int one_step)
 {
 	struct ifreq ifreq;
 	struct hwtstamp_config cfg, req;
@@ -77,7 +77,7 @@ static int hwts_init(int fd, char *device, int rx_filter, int one_step)
 
 /* public methods */
 
-int sk_interface_index(int fd, char *name)
+int sk_interface_index(int fd, const char *name)
 {
 	struct ifreq ifreq;
 	int err;
@@ -102,7 +102,7 @@ int sk_general_init(int fd)
 	return 0;
 }
 
-int sk_get_ts_info(char *name, struct sk_ts_info *sk_info)
+int sk_get_ts_info(const char *name, struct sk_ts_info *sk_info)
 {
 #ifdef ETHTOOL_GET_TS_INFO
 	struct ethtool_ts_info info;
@@ -146,7 +146,7 @@ failed:
 	return -1;
 }
 
-int sk_interface_macaddr(char *name, unsigned char *mac, int len)
+int sk_interface_macaddr(const char *name, unsigned char *mac, int len)
 {
 	struct ifreq ifreq;
 	int err, fd;
@@ -172,7 +172,7 @@ int sk_interface_macaddr(char *name, unsigned char *mac, int len)
 	return 0;
 }
 
-int sk_interface_addr(char *name, int family, uint8_t *addr, int len)
+int sk_interface_addr(const char *name, int family, uint8_t *addr, int len)
 {
 	struct ifaddrs *ifaddr, *i;
 	int copy_len, result = -1;
@@ -285,7 +285,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	return cnt;
 }
 
-int sk_timestamping_init(int fd, char *device, enum timestamp_type type,
+int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 			 enum transport_type transport)
 {
 	int err, filter1, filter2 = 0, flags, one_step;

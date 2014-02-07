@@ -379,7 +379,7 @@ int msg_pre_send(struct ptp_message *m)
 	return 0;
 }
 
-char *msg_type_string(int type)
+const char *msg_type_string(int type)
 {
 	switch (type) {
 	case SYNC:

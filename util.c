@@ -28,7 +28,7 @@
 #define NS_PER_HOUR (3600 * NS_PER_SEC)
 #define NS_PER_DAY (24 * NS_PER_HOUR)
 
-char *ps_str[] = {
+const char *ps_str[] = {
 	"NONE",
 	"INITIALIZING",
 	"FAULTY",
@@ -42,7 +42,7 @@ char *ps_str[] = {
 	"GRAND_MASTER",
 };
 
-char *ev_str[] = {
+const char *ev_str[] = {
 	"NONE",
 	"POWERUP",
 	"INITIALIZE",
@@ -98,7 +98,7 @@ int str2pid(const char *s, struct PortIdentity *result)
 	return -1;
 }
 
-int generate_clock_identity(struct ClockIdentity *ci, char *name)
+int generate_clock_identity(struct ClockIdentity *ci, const char *name)
 {
 	unsigned char mac[6];
 	if (sk_interface_macaddr(name, mac, sizeof(mac)))

@@ -61,7 +61,7 @@ struct pmc {
 	int zero_length_gets;
 };
 
-struct pmc *pmc_create(enum transport_type transport_type, char *iface_name,
+struct pmc *pmc_create(enum transport_type transport_type, const char *iface_name,
 		       UInteger8 boundary_hops, UInteger8 domain_number,
 		       UInteger8 transport_specific, int zero_datalen)
 {

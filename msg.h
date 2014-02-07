@@ -298,7 +298,7 @@ int msg_pre_send(struct ptp_message *m);
  * @param type  Value of the messageType field as returned by @ref msg_type().
  * @return      String describing the message type.
  */
-char *msg_type_string(int type);
+const char *msg_type_string(int type);
 
 /**
  * Print messages for debugging purposes.

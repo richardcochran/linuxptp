@@ -109,7 +109,7 @@ struct management_id idtab[] = {
 	{ "PORT_DATA_SET_NP", PORT_DATA_SET_NP, do_set_action },
 };
 
-static char *action_string[] = {
+static const char *action_string[] = {
 	"GET",
 	"SET",
 	"RESPONSE",
@@ -711,7 +711,8 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *iface_name = NULL, *progname;
+	const char *iface_name = NULL;
+	char *progname;
 	int c, cnt, length, tmo = -1, batch_mode = 0, zero_datalen = 0;
 	char line[1024], *command = NULL;
 	enum transport_type transport_type = TRANS_UDP_IPV4;

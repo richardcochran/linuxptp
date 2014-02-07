@@ -26,12 +26,12 @@
 /**
  * Table of human readable strings, one for each port state.
  */
-extern char *ps_str[];
+extern const char *ps_str[];
 
 /**
  * Table of human readable strings, one for each port event.
  */
-extern char *ev_str[];
+extern const char *ev_str[];
 
 /**
  * Convert a clock identity into a human readable string.
@@ -64,7 +64,7 @@ char *pid2str(struct PortIdentity *id);
  */
 int str2pid(const char *s, struct PortIdentity *result);
 
-int generate_clock_identity(struct ClockIdentity *ci, char *name);
+int generate_clock_identity(struct ClockIdentity *ci, const char *name);
 
 /**
  * Copies a PTPText to a static_ptp_text. This copies the text into
