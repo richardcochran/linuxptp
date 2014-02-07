@@ -238,7 +238,7 @@ static void udp_release(struct transport *t)
 	free(udp);
 }
 
-int udp_physical_addr(struct transport *t, uint8_t *addr)
+static int udp_physical_addr(struct transport *t, uint8_t *addr)
 {
 	struct udp *udp = container_of(t, struct udp, t);
 	if (udp->mac_len)
@@ -246,7 +246,7 @@ int udp_physical_addr(struct transport *t, uint8_t *addr)
 	return udp->mac_len;
 }
 
-int udp_protocol_addr(struct transport *t, uint8_t *addr)
+static int udp_protocol_addr(struct transport *t, uint8_t *addr)
 {
 	struct udp *udp = container_of(t, struct udp, t);
 	if (udp->ip_len)
