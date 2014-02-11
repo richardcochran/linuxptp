@@ -25,6 +25,9 @@
 #define PRINT_LEVEL_MIN LOG_EMERG
 #define PRINT_LEVEL_MAX LOG_DEBUG
 
+#ifdef __GNUC__
+__attribute__ ((format (printf, 2, 3)))
+#endif
 void print(int level, char const *format, ...);
 
 void print_set_progname(const char *name);
