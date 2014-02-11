@@ -468,8 +468,8 @@ static int port_capable(struct port *p)
 
 	if (tmv_to_nanoseconds(p->peer_delay) >	p->neighborPropDelayThresh) {
 		if (p->asCapable)
-			pr_debug("port %hu: peer_delay (%lld) > neighborPropDelayThresh "
-				"(%lld), resetting asCapable", portnum(p),
+			pr_debug("port %hu: peer_delay (%" PRId64 ") > neighborPropDelayThresh "
+				"(%" PRId32 "), resetting asCapable", portnum(p),
 				tmv_to_nanoseconds(p->peer_delay),
 				p->neighborPropDelayThresh);
 		goto not_capable;
@@ -1791,7 +1791,7 @@ calc:
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
 
-	pr_debug("pdelay %hu   %10lld %10lld", portnum(p), p->peer_delay, pd);
+	pr_debug("pdelay %hu   %10" PRId64 "%10" PRId64, portnum(p), p->peer_delay, pd);
 
 	if (p->pod.follow_up_info)
 		port_nrate_calculate(p, t3, t4, tmv_add(c1, c2));

@@ -125,7 +125,7 @@ void sysclk_set_leap(int leap)
 	if (clock_adjtime(clkid, &tx) < 0)
 		pr_err("failed to set the clock status: %m");
 	else if (m)
-		pr_notice(m);
+		pr_notice("%s", m);
 	realtime_leap_bit = tx.status;
 }
 
