@@ -381,7 +381,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "gmIdentity                 %s",
 			tsn->master_offset,
 			tsn->ingress_time,
-			1.0 + (tsn->cumulativeScaledRateOffset + 0.0) / P41,
+			(tsn->cumulativeScaledRateOffset + 0.0) / P41,
 			tsn->scaledLastGmPhaseChange,
 			tsn->gmTimeBaseIndicator,
 			tsn->lastGmPhaseChange.nanoseconds_msb,
