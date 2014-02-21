@@ -193,6 +193,10 @@ The default is UDPv4.
 Upper limit for peer delay in nanoseconds. If the estimated peer delay is
 greater than this value the port is marked as not 802.1AS capable.
 .TP
+.B min_neighbor_prop_delay
+Lower limit for peer delay in nanoseconds. If the estimated peer delay is
+smaller than this value the port is marked as not 802.1AS capable.
+.TP
 .B delay_filter
 Select the algorithm used to filter the measured delay and peer delay. Possible
 values are moving_average and moving_median.

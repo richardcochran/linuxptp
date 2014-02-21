@@ -17,6 +17,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,6 +91,7 @@ static struct config cfg_settings = {
 		.freq_est_interval = 1,
 		/* Default to very a large neighborPropDelay threshold */
 		.neighborPropDelayThresh = 20000000,
+		.min_neighbor_prop_delay = -20000000,
 	},
 
 	.timestamping = TS_HARDWARE,

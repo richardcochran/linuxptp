@@ -136,6 +136,7 @@ struct port_defaults {
 	int freq_est_interval; /*log seconds*/
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	UInteger32 neighborPropDelayThresh; /*nanoseconds*/
+	int min_neighbor_prop_delay; /*nanoseconds*/
 };
 
 #endif
