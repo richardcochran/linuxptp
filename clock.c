@@ -646,6 +646,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		pr_err("Failed to create delay filter");
 		return NULL;
 	}
+	c->nrr = 1.0;
 	c->stats_interval = dds->stats_interval;
 	c->stats.offset = stats_create();
 	c->stats.freq = stats_create();
@@ -1188,6 +1189,7 @@ static void handle_state_decision_event(struct clock *c)
 		c->t1 = tmv_zero();
 		c->t2 = tmv_zero();
 		c->path_delay = 0;
+		c->nrr = 1.0;
 		fresh_best = 1;
 	}
 
