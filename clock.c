@@ -320,10 +320,6 @@ static int clock_management_set(struct clock *c, struct port *p,
 
 	switch (id) {
 	case GRANDMASTER_SETTINGS_NP:
-		if (p != c->port[c->nports]) {
-			/* Sorry, only allowed on the UDS port. */
-			break;
-		}
 		gsn = (struct grandmaster_settings_np *) tlv->data;
 		c->dds.clockQuality = gsn->clockQuality;
 		c->utc_offset = gsn->utc_offset;
@@ -841,6 +837,11 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case SET:
 		if (mgt->length == 2 && mgt->id != NULL_MANAGEMENT) {
 			clock_management_send_error(p, msg, WRONG_LENGTH);
+			return changed;
+		}
+		if (p != c->port[c->nports]) {
+			/* Sorry, only allowed on the UDS port. */
+			clock_management_send_error(p, msg, NOT_SUPPORTED);
 			return changed;
 		}
 		if (clock_management_set(c, p, mgt->id, msg, &changed))
