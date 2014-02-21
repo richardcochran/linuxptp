@@ -266,7 +266,7 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 		tsn->master_offset = c->master_offset;
 		tsn->ingress_time = tmv_to_nanoseconds(c->t2);
 		tsn->cumulativeScaledRateOffset =
-			(UInteger32) (c->status.cumulativeScaledRateOffset +
+			(Integer32) (c->status.cumulativeScaledRateOffset +
 				      c->nrr * POW2_41 - POW2_41);
 		tsn->scaledLastGmPhaseChange = c->status.scaledLastGmPhaseChange;
 		tsn->gmTimeBaseIndicator = c->status.gmTimeBaseIndicator;
