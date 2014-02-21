@@ -81,6 +81,11 @@ static inline double tmv_dbl(tmv_t x)
 	return (double) x;
 }
 
+static inline tmv_t dbl_tmv(double x)
+{
+	return (tmv_t) x;
+}
+
 static inline int64_t tmv_to_nanoseconds(tmv_t x)
 {
 	return x;

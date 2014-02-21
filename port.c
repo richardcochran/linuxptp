@@ -855,6 +855,7 @@ static void port_nrate_initialize(struct port *p)
 	p->nrate.ingress1 = tmv_zero();
 	p->nrate.max_count = (1 << shift);
 	p->nrate.count = 0;
+	p->nrate.ratio = 1.0;
 	p->nrate.ratio_valid = 0;
 }
 
@@ -1739,6 +1740,7 @@ static void port_peer_delay(struct port *p)
 	struct ptp_message *req = p->peer_delay_req;
 	struct ptp_message *rsp = p->peer_delay_resp;
 	struct ptp_message *fup = p->peer_delay_fup;
+	double adj_t41;
 
 	/* Check for response, validate port and sequence number. */
 
@@ -1782,7 +1784,8 @@ static void port_peer_delay(struct port *p)
 	t3 = timestamp_to_tmv(fup->ts.pdu);
 	c2 = correction_to_tmv(fup->header.correction);
 calc:
-	pd = tmv_sub(tmv_sub(t4, t1), tmv_sub(t3, t2));
+	adj_t41 = p->nrate.ratio * tmv_dbl(tmv_sub(t4, t1));
+	pd = tmv_sub(dbl_tmv(adj_t41), tmv_sub(t3, t2));
 	pd = tmv_sub(pd, c1);
 	pd = tmv_sub(pd, c2);
 	pd = tmv_div(pd, 2);
