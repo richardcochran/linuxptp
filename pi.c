@@ -116,8 +116,8 @@ static double pi_sample(struct servo *servo,
 		else if (s->drift > s->maxppb)
 			s->drift = s->maxppb;
 
-		if (!s->first_update ||
-		    (s->max_f_offset && (s->max_f_offset < fabs(offset))) ||
+		if ((s->first_update &&
+		     s->max_f_offset && (s->max_f_offset < fabs(offset))) ||
 		    (s->max_offset && (s->max_offset < fabs(offset))))
 			*state = SERVO_JUMP;
 		else
