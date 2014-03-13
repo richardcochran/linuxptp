@@ -18,6 +18,7 @@
  */
 #include <string.h>
 
+#include "linreg.h"
 #include "pi.h"
 #include "servo_private.h"
 
@@ -34,6 +35,9 @@ struct servo *servo_create(enum servo_type type, int fadj, int max_ppb, int sw_t
 	switch (type) {
 	case CLOCK_SERVO_PI:
 		servo = pi_servo_create(fadj, sw_ts);
+		break;
+	case CLOCK_SERVO_LINREG:
+		servo = linreg_servo_create(fadj);
 		break;
 	default:
 		return NULL;

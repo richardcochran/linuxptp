@@ -54,6 +54,7 @@ struct servo;
  */
 enum servo_type {
 	CLOCK_SERVO_PI,
+	CLOCK_SERVO_LINREG,
 };
 
 /**

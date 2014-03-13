@@ -497,6 +497,8 @@ static enum parser_result parse_global_setting(const char *option,
 	} else if (!strcmp(option, "clock_servo")) {
 		if (!strcasecmp("pi", value))
 			cfg->clock_servo = CLOCK_SERVO_PI;
+		else if (!strcasecmp("linreg", value))
+			cfg->clock_servo = CLOCK_SERVO_LINREG;
 		else
 			return BAD_VALUE;
 

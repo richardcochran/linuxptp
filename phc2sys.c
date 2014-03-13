@@ -561,6 +561,7 @@ static void usage(char *progname)
 		" -c [dev|name]  slave clock (CLOCK_REALTIME)\n"
 		" -d [dev]       master PPS device\n"
 		" -s [dev|name]  master clock\n"
+		" -E [pi|linreg] clock servo (pi)\n"
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
 		" -S [step]      step threshold (disabled)\n"
@@ -590,6 +591,7 @@ int main(int argc, char *argv[])
 	int max_ppb, r, wait_sync = 0, forced_sync_offset = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	int sanity_freq_limit = 200000000;
+	enum servo_type servo = CLOCK_SERVO_PI;
 	double ppb, phc_interval = 1.0, phc_rate;
 	struct timespec phc_interval_tp;
 	struct clock dst_clock = {
@@ -605,7 +607,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "c:d:s:P:I:S:F:R:N:O:L:i:u:wn:xl:mqvh"))) {
+				  "c:d:s:E:P:I:S:F:R:N:O:L:i:u:wn:xl:mqvh"))) {
 		switch (c) {
 		case 'c':
 			dst_clock.clkid = clock_open(optarg);
@@ -623,6 +625,17 @@ int main(int argc, char *argv[])
 				"'-i' has been deprecated. please use '-s' instead.\n");
 		case 's':
 			src = clock_open(optarg);
+			break;
+		case 'E':
+			if (!strcasecmp(optarg, "pi")) {
+				servo = CLOCK_SERVO_PI;
+			} else if (!strcasecmp(optarg, "linreg")) {
+				servo = CLOCK_SERVO_LINREG;
+			} else {
+				fprintf(stderr,
+					"invalid servo name %s\n", optarg);
+				return -1;
+			}
 			break;
 		case 'P':
 			if (get_arg_val_d(c, optarg, &configured_pi_kp,
@@ -795,7 +808,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	dst_clock.servo = servo_create(CLOCK_SERVO_PI, -ppb, max_ppb, 0);
+	dst_clock.servo = servo_create(servo, -ppb, max_ppb, 0);
 
 	if (pps_fd >= 0) {
 		servo_sync_interval(dst_clock.servo, 1.0);
