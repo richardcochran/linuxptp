@@ -342,24 +342,30 @@ The ki_norm_max constant in the formula used to set the integral constant of
 the PI controller from the sync interval.
 The default is 0.3.
 .TP
-.B pi_offset_const
-The maximum offset the PI controller will correct by changing the clock
-frequency instead of stepping the clock. When set to 0.0, the controller will
+.B step_threshold
+The maximum offset the servo will correct by changing the clock
+frequency instead of stepping the clock. When set to 0.0, the servo will
 never step the clock except on start. It's specified in seconds.
 The default is 0.0.
+This option used to be called (and can still be set by)
+.BR pi_offset_const .
 .TP
-.B pi_f_offset_const
-The maximum offset the PI controller will correct by changing the clock
+.B first_step_threshold
+The maximum offset the servo will correct by changing the clock
 frequency instead of stepping the clock. This is only applied on the first
-update. It's specified in seconds. When set to 0.0, the controller won't step
+update. It's specified in seconds. When set to 0.0, the servo won't step
 the clock on start.
 The default is 0.0000001 (100 nanoseconds).
+This option used to be called (and can still be set by)
+.BR pi_f_offset_const .
 .TP
-.B pi_max_frequency
+.B max_frequency
 The maximum allowed frequency adjustment of the clock in parts per billion
 (ppb). This is an additional limit to the maximum allowed by the hardware. When
 set to 0, the hardware limit will be used.
 The default is 900000000 (90%).
+This option used to be called (and can still be set by)
+.BR pi_max_frequency .
 .TP
 .B sanity_freq_limit
 The maximum allowed frequency offset between uncorrected clock and the system
@@ -436,7 +442,7 @@ The default is 00:00:00.
 When a leap second is announced, let the kernel apply it by stepping the clock
 instead of correcting the one-second offset with servo, which would correct the
 one-second offset slowly by changing the clock frequency (unless the
-.B pi_offset_const
+.B step_threshold
 option is set to correct such offset by stepping).
 Relevant only with software time stamping. The default is 1 (enabled).
 .TP

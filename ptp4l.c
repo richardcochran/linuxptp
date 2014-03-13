@@ -104,6 +104,10 @@ static struct config cfg_settings = {
 
 	.clock_servo = CLOCK_SERVO_PI,
 
+	.step_threshold = &servo_step_threshold,
+	.first_step_threshold = &servo_first_step_threshold,
+	.max_frequency = &servo_max_frequency,
+
 	.pi_proportional_const = &configured_pi_kp,
 	.pi_integral_const = &configured_pi_ki,
 	.pi_proportional_scale = &configured_pi_kp_scale,
@@ -112,9 +116,6 @@ static struct config cfg_settings = {
 	.pi_integral_scale = &configured_pi_ki_scale,
 	.pi_integral_exponent = &configured_pi_ki_exponent,
 	.pi_integral_norm_max = &configured_pi_ki_norm_max,
-	.pi_offset_const = &configured_pi_offset,
-	.pi_f_offset_const = &configured_pi_f_offset,
-	.pi_max_frequency = &configured_pi_max_freq,
 
 	.ptp_dst_mac = ptp_dst_mac,
 	.p2p_dst_mac = p2p_dst_mac,

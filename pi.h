@@ -77,30 +77,6 @@ extern double configured_pi_ki_exponent;
  */
 extern double configured_pi_ki_norm_max;
 
-/**
- * When set to a non-zero value, this variable controls the maximum allowed
- * offset before a clock jump occurs instead of the default clock-slewing
- * mechanism.
- *
- * Note that this variable is measured in seconds, and allows fractional values.
- */
-extern double configured_pi_offset;
-
-/**
- * When set to zero, the clock is not stepped on start. When set to a non-zero
- * value, the value bahaves as a threshold and the clock is stepped on start if
- * the offset is bigger than the threshold.
- *
- * Note that this variable is measured in seconds, and allows fractional values.
- */
-extern double configured_pi_f_offset;
-
-/**
- * When set to a non-zero value, this variable sets an additional limit for
- * the frequency adjustment of the clock. It's in ppb.
- */
-extern int configured_pi_max_freq;
-
-struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts);
+struct servo *pi_servo_create(int fadj, int sw_ts);
 
 #endif

@@ -21,12 +21,45 @@
 #include "pi.h"
 #include "servo_private.h"
 
+#define NSEC_PER_SEC 1000000000
+
+double servo_step_threshold = 0.0;
+double servo_first_step_threshold = 0.0000001; /* 100 nanoseconds */
+int servo_max_frequency = 900000000;
+
 struct servo *servo_create(enum servo_type type, int fadj, int max_ppb, int sw_ts)
 {
-	if (type == CLOCK_SERVO_PI) {
-		return pi_servo_create(fadj, max_ppb, sw_ts);
+	struct servo *servo;
+
+	switch (type) {
+	case CLOCK_SERVO_PI:
+		servo = pi_servo_create(fadj, sw_ts);
+		break;
+	default:
+		return NULL;
 	}
-	return NULL;
+
+	if (servo_step_threshold > 0.0) {
+		servo->step_threshold = servo_step_threshold * NSEC_PER_SEC;
+	} else {
+		servo->step_threshold = 0.0;
+	}
+
+	if (servo_first_step_threshold > 0.0) {
+		servo->first_step_threshold =
+			servo_first_step_threshold * NSEC_PER_SEC;
+	} else {
+		servo->first_step_threshold = 0.0;
+	}
+
+	servo->max_frequency = max_ppb;
+	if (servo_max_frequency && servo->max_frequency > servo_max_frequency) {
+		servo->max_frequency = servo_max_frequency;
+	}
+
+	servo->first_update = 1;
+
+	return servo;
 }
 
 void servo_destroy(struct servo *servo)
@@ -39,7 +72,14 @@ double servo_sample(struct servo *servo,
 		    uint64_t local_ts,
 		    enum servo_state *state)
 {
-	return servo->sample(servo, offset, local_ts, state);
+	double r;
+
+	r = servo->sample(servo, offset, local_ts, state);
+
+	if (*state != SERVO_UNLOCKED)
+		servo->first_update = 0;
+
+	return r;
 }
 
 void servo_sync_interval(struct servo *servo, double interval)

@@ -32,7 +32,6 @@
 #define MAX_KP_NORM_MAX 1.0
 #define MAX_KI_NORM_MAX 2.0
 
-#define NSEC_PER_SEC 1000000000
 #define FREQ_EST_MARGIN 0.001
 
 /* These take their values from the configuration file. (see ptp4l.c) */
@@ -44,23 +43,16 @@ double configured_pi_kp_norm_max = 0.7;
 double configured_pi_ki_scale = 0.0;
 double configured_pi_ki_exponent = 0.4;
 double configured_pi_ki_norm_max = 0.3;
-double configured_pi_offset = 0.0;
-double configured_pi_f_offset = 0.0000001; /* 100 nanoseconds */
-int configured_pi_max_freq = 900000000;
 
 struct pi_servo {
 	struct servo servo;
 	int64_t offset[2];
 	uint64_t local[2];
 	double drift;
-	double maxppb;
 	double kp;
 	double ki;
-	double max_offset;
-	double max_f_offset;
 	double last_freq;
 	int count;
-	int first_update;
 };
 
 static void pi_destroy(struct servo *servo)
@@ -111,19 +103,21 @@ static double pi_sample(struct servo *servo,
 		/* Adjust drift by the measured frequency offset. */
 		s->drift += (1e9 - s->drift) * (s->offset[1] - s->offset[0]) /
 						(s->local[1] - s->local[0]);
-		if (s->drift < -s->maxppb)
-			s->drift = -s->maxppb;
-		else if (s->drift > s->maxppb)
-			s->drift = s->maxppb;
 
-		if ((s->first_update &&
-		     s->max_f_offset && (s->max_f_offset < fabs(offset))) ||
-		    (s->max_offset && (s->max_offset < fabs(offset))))
+		if (s->drift < -servo->max_frequency)
+			s->drift = -servo->max_frequency;
+		else if (s->drift > servo->max_frequency)
+			s->drift = servo->max_frequency;
+
+		if ((servo->first_update &&
+		     servo->first_step_threshold &&
+		     servo->first_step_threshold < fabs(offset)) ||
+		    (servo->step_threshold &&
+		     servo->step_threshold < fabs(offset)))
 			*state = SERVO_JUMP;
 		else
 			*state = SERVO_LOCKED;
 
-		s->first_update = 0;
 		ppb = s->drift;
 		s->count = 2;
 		break;
@@ -135,7 +129,8 @@ static double pi_sample(struct servo *servo,
 		 * immediately. This allows re-calculating drift as in initial
 		 * clock startup.
 		 */
-		if (s->max_offset && (s->max_offset < fabs(offset))) {
+		if (servo->step_threshold &&
+		    servo->step_threshold < fabs(offset)) {
 			*state = SERVO_UNLOCKED;
 			s->count = 0;
 			break;
@@ -143,10 +138,10 @@ static double pi_sample(struct servo *servo,
 
 		ki_term = s->ki * offset;
 		ppb = s->kp * offset + s->drift + ki_term;
-		if (ppb < -s->maxppb) {
-			ppb = -s->maxppb;
-		} else if (ppb > s->maxppb) {
-			ppb = s->maxppb;
+		if (ppb < -servo->max_frequency) {
+			ppb = -servo->max_frequency;
+		} else if (ppb > servo->max_frequency) {
+			ppb = servo->max_frequency;
 		} else {
 			s->drift += ki_term;
 		}
@@ -181,7 +176,7 @@ static void pi_reset(struct servo *servo)
 	s->count = 0;
 }
 
-struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
+struct servo *pi_servo_create(int fadj, int sw_ts)
 {
 	struct pi_servo *s;
 
@@ -195,8 +190,6 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 	s->servo.reset   = pi_reset;
 	s->drift         = fadj;
 	s->last_freq     = fadj;
-	s->maxppb        = max_ppb;
-	s->first_update  = 1;
 	s->kp            = 0.0;
 	s->ki            = 0.0;
 
@@ -218,22 +211,6 @@ struct servo *pi_servo_create(int fadj, int max_ppb, int sw_ts)
 			configured_pi_kp_scale = HWTS_KP_SCALE;
 			configured_pi_ki_scale = HWTS_KI_SCALE;
 		}
-	}
-
-	if (configured_pi_offset > 0.0) {
-		s->max_offset = configured_pi_offset * NSEC_PER_SEC;
-	} else {
-		s->max_offset = 0.0;
-	}
-
-	if (configured_pi_f_offset > 0.0) {
-		s->max_f_offset = configured_pi_f_offset * NSEC_PER_SEC;
-	} else {
-		s->max_f_offset = 0.0;
-	}
-
-	if (configured_pi_max_freq && s->maxppb > configured_pi_max_freq) {
-		s->maxppb = configured_pi_max_freq;
 	}
 
 	return &s->servo;

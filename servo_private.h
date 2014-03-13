@@ -22,6 +22,10 @@
 #include "contain.h"
 
 struct servo {
+	double max_frequency;
+	double step_threshold;
+	double first_step_threshold;
+	int first_update;
 
 	void (*destroy)(struct servo *servo);
 

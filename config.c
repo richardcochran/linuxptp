@@ -383,23 +383,26 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		*cfg->pi_integral_norm_max = df;
 
-	} else if (!strcmp(option, "pi_offset_const")) {
+	} else if (!strcmp(option, "step_threshold") ||
+		   !strcmp(option, "pi_offset_const")) {
 		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
 		if (r != PARSED_OK)
 			return r;
-		*cfg->pi_offset_const = df;
+		*cfg->step_threshold = df;
 
-	} else if (!strcmp(option, "pi_f_offset_const")) {
+	} else if (!strcmp(option, "first_step_threshold") ||
+		   !strcmp(option, "pi_f_offset_const")) {
 		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
 		if (r != PARSED_OK)
 			return r;
-		*cfg->pi_f_offset_const = df;
+		*cfg->first_step_threshold = df;
 
-	} else if (!strcmp(option, "pi_max_frequency")) {
+	} else if (!strcmp(option, "max_frequency") ||
+		   !strcmp(option, "pi_max_frequency")) {
 		r = get_ranged_int(value, &val, 0, INT_MAX);
 		if (r != PARSED_OK)
 			return r;
-		*cfg->pi_max_frequency = val;
+		*cfg->max_frequency = val;
 
 	} else if (!strcmp(option, "sanity_freq_limit")) {
 		r = get_ranged_int(value, &val, 0, INT_MAX);

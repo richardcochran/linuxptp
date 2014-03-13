@@ -635,12 +635,12 @@ int main(int argc, char *argv[])
 				return -1;
 			break;
 		case 'S':
-			if (get_arg_val_d(c, optarg, &configured_pi_offset,
+			if (get_arg_val_d(c, optarg, &servo_step_threshold,
 					  0.0, DBL_MAX))
 				return -1;
 			break;
 		case 'F':
-			if (get_arg_val_d(c, optarg, &configured_pi_f_offset,
+			if (get_arg_val_d(c, optarg, &servo_first_step_threshold,
 					  0.0, DBL_MAX))
 				return -1;
 			break;

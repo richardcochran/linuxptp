@@ -77,6 +77,10 @@ struct config {
 
 	enum servo_type clock_servo;
 
+	double *step_threshold;
+	double *first_step_threshold;
+	int *max_frequency;
+
 	double *pi_proportional_const;
 	double *pi_integral_const;
 	double *pi_proportional_scale;
@@ -85,10 +89,6 @@ struct config {
 	double *pi_integral_scale;
 	double *pi_integral_exponent;
 	double *pi_integral_norm_max;
-	double *pi_offset_const;
-	double *pi_f_offset_const;
-	int *pi_max_frequency;
-
 	int *sanity_freq_limit;
 
 	unsigned char *ptp_dst_mac;
