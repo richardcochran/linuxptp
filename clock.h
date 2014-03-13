@@ -253,4 +253,11 @@ int clock_num_ports(struct clock *c);
  */
 void clock_check_ts(struct clock *c, struct timespec ts);
 
+/**
+ * Obtain ratio between master's frequency and current clock frequency.
+ * @param c  The clock instance.
+ * @return   The rate ratio, 1.0 is returned when not known.
+ */
+double clock_rate_ratio(struct clock *c);
+
 #endif

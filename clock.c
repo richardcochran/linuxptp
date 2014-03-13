@@ -977,6 +977,7 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 		      Integer64 correction)
 {
 	tmv_t c1, c2, c3, pd, t1, t2, t3, t4;
+	double rr;
 
 	if (tmv_is_zero(c->t1))
 		return;
@@ -988,21 +989,27 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	t2 = c->t2;
 	t3 = timespec_to_tmv(req);
 	t4 = timestamp_to_tmv(rx);
+	rr = clock_rate_ratio(c);
 
 	/*
-	 * c->path_delay = (t2 - t3) + (t4 - t1);
+	 * c->path_delay = (t2 - t3) * rr + (t4 - t1);
 	 * c->path_delay -= c_sync + c_fup + c_delay_resp;
 	 * c->path_delay /= 2.0;
 	 */
-	pd = tmv_add(tmv_sub(t2, t3), tmv_sub(t4, t1));
+
+	pd = tmv_sub(t2, t3);
+	if (rr != 1.0)
+		pd = dbl_tmv(tmv_dbl(pd) * rr);
+	pd = tmv_add(pd, tmv_sub(t4, t1));
 	pd = tmv_sub(pd, tmv_add(c1, tmv_add(c2, c3)));
 	pd = tmv_div(pd, 2);
 
 	if (pd < 0) {
 		pr_debug("negative path delay %10" PRId64, pd);
-		pr_debug("path_delay = (t2 - t3) + (t4 - t1) - (c1 + c2 + c3)");
+		pr_debug("path_delay = (t2 - t3) * rr + (t4 - t1) - (c1 + c2 + c3)");
 		pr_debug("t2 - t3 = %+10" PRId64, t2 - t3);
 		pr_debug("t4 - t1 = %+10" PRId64, t4 - t1);
+		pr_debug("rr = %.9f", rr);
 		pr_debug("c1 %10" PRId64, c1);
 		pr_debug("c2 %10" PRId64, c2);
 		pr_debug("c3 %10" PRId64, c3);
@@ -1245,4 +1252,9 @@ void clock_check_ts(struct clock *c, struct timespec ts)
 			      ts.tv_sec * NS_PER_SEC + ts.tv_nsec)) {
 		servo_reset(c->servo);
 	}
+}
+
+double clock_rate_ratio(struct clock *c)
+{
+	return servo_rate_ratio(c->servo);
 }

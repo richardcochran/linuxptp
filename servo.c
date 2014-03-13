@@ -95,3 +95,11 @@ void servo_reset(struct servo *servo)
 {
 	servo->reset(servo);
 }
+
+double servo_rate_ratio(struct servo *servo)
+{
+	if (servo->rate_ratio)
+		return servo->rate_ratio(servo);
+
+	return 1.0;
+}

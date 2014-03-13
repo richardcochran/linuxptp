@@ -124,4 +124,11 @@ void servo_sync_interval(struct servo *servo, double interval);
  */
 void servo_reset(struct servo *servo);
 
+/**
+ * Obtain ratio between master's frequency and current servo frequency.
+ * @param servo   Pointer to a servo obtained via @ref servo_create().
+ * @return   The rate ratio, 1.0 is returned when not known.
+ */
+double servo_rate_ratio(struct servo *servo);
+
 #endif

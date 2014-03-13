@@ -74,6 +74,8 @@ struct linreg_servo {
 	double clock_freq;
 	/* Expected interval between updates */
 	double update_interval;
+	/* Current ratio between remote and local frequency */
+	double frequency_ratio;
 };
 
 static void linreg_destroy(struct servo *servo)
@@ -269,6 +271,8 @@ static double linreg_sample(struct servo *servo,
 	else if (s->clock_freq < -servo->max_frequency)
 		s->clock_freq = -servo->max_frequency;
 
+	s->frequency_ratio = res->slope / (1.0 + s->clock_freq / 1e9);
+
 	return -s->clock_freq;
 }
 
@@ -286,11 +290,19 @@ static void linreg_reset(struct servo *servo)
 
 	s->num_points = 0;
 	s->last_update = 0;
+	s->frequency_ratio = 1.0;
 
 	for (i = MIN_SIZE; i < MAX_SIZE; i++) {
 		s->results[i - MIN_SIZE].slope = 0.0;
 		s->results[i - MIN_SIZE].err_updates = 0;
 	}
+}
+
+static double linreg_rate_ratio(struct servo *servo)
+{
+	struct linreg_servo *s = container_of(servo, struct linreg_servo, servo);
+
+	return s->frequency_ratio;
 }
 
 struct servo *linreg_servo_create(int fadj)
@@ -305,8 +317,10 @@ struct servo *linreg_servo_create(int fadj)
 	s->servo.sample = linreg_sample;
 	s->servo.sync_interval = linreg_sync_interval;
 	s->servo.reset = linreg_reset;
+	s->servo.rate_ratio = linreg_rate_ratio;
 
 	s->clock_freq = -fadj;
+	s->frequency_ratio = 1.0;
 
 	return &s->servo;
 }

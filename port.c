@@ -1795,7 +1795,8 @@ static void port_peer_delay(struct port *p)
 	t3 = timestamp_to_tmv(fup->ts.pdu);
 	c2 = correction_to_tmv(fup->header.correction);
 calc:
-	adj_t41 = p->nrate.ratio * tmv_dbl(tmv_sub(t4, t1));
+	adj_t41 = p->nrate.ratio * clock_rate_ratio(p->clock) *
+			tmv_dbl(tmv_sub(t4, t1));
 	pd = tmv_sub(dbl_tmv(adj_t41), tmv_sub(t3, t2));
 	pd = tmv_sub(pd, c1);
 	pd = tmv_sub(pd, c2);

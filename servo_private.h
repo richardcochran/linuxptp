@@ -36,6 +36,8 @@ struct servo {
 	void (*sync_interval)(struct servo *servo, double interval);
 
 	void (*reset)(struct servo *servo);
+
+	double (*rate_ratio)(struct servo *servo);
 };
 
 #endif
