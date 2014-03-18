@@ -383,22 +383,19 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		*cfg->pi_integral_norm_max = df;
 
-	} else if (!strcmp(option, "step_threshold") ||
-		   !strcmp(option, "pi_offset_const")) {
+	} else if (!strcmp(option, "step_threshold")) {
 		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
 		if (r != PARSED_OK)
 			return r;
 		*cfg->step_threshold = df;
 
-	} else if (!strcmp(option, "first_step_threshold") ||
-		   !strcmp(option, "pi_f_offset_const")) {
+	} else if (!strcmp(option, "first_step_threshold")) {
 		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
 		if (r != PARSED_OK)
 			return r;
 		*cfg->first_step_threshold = df;
 
-	} else if (!strcmp(option, "max_frequency") ||
-		   !strcmp(option, "pi_max_frequency")) {
+	} else if (!strcmp(option, "max_frequency")) {
 		r = get_ranged_int(value, &val, 0, INT_MAX);
 		if (r != PARSED_OK)
 			return r;
@@ -563,7 +560,9 @@ static enum parser_result parse_global_setting(const char *option,
 	return PARSED_OK;
 }
 
-static enum parser_result parse_setting_line(char *line, char **option, char **value)
+static enum parser_result parse_setting_line(char *line,
+					     const char **option,
+					     const char **value)
 {
 	*option = line;
 
@@ -583,12 +582,32 @@ static enum parser_result parse_setting_line(char *line, char **option, char **v
 	return PARSED_OK;
 }
 
+static void check_deprecated_options(const char **option)
+{
+	const char *new_option = NULL;
+
+	if (!strcmp(*option, "pi_offset_const")) {
+		new_option = "step_threshold";
+	} else if (!strcmp(*option, "pi_f_offset_const")) {
+		new_option = "first_step_threshold";
+	} else if (!strcmp(*option, "pi_max_frequency")) {
+		new_option = "max_frequency";
+	}
+
+	if (new_option) {
+		fprintf(stderr, "option %s is deprecated, please use %s instead\n",
+				*option, new_option);
+		*option = new_option;
+	}
+}
+
 int config_read(char *name, struct config *cfg)
 {
 	enum config_section current_section = UNKNOWN_SECTION;
 	enum parser_result parser_res;
 	FILE *fp;
-	char buf[1024], *line, *c, *option, *value;
+	char buf[1024], *line, *c;
+	const char *option, *value;
 	int current_port = 0, line_num;
 
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
@@ -641,6 +660,8 @@ int config_read(char *name, struct config *cfg)
 							"global" : cfg->iface[current_port].name);
 				goto parse_error;
 			}
+
+			check_deprecated_options(&option);
 
 			if (current_section == GLOBAL_SECTION)
 				parser_res = parse_global_setting(option, value, cfg);
