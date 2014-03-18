@@ -565,7 +565,7 @@ static void usage(char *progname)
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
 		" -S [step]      step threshold (disabled)\n"
-		" -F [step]      step threshold only on start (0.0000001)\n"
+		" -F [step]      step threshold only on start (0.00002)\n"
 		" -R [rate]      slave clock update rate in HZ (1.0)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -O [offset]    slave-master time offset (0)\n"

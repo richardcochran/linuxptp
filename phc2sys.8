@@ -106,7 +106,7 @@ Specify the integral constant of the PI controller. The default is 0.3.
 Specify the step threshold of the servo. It is the maximum offset that
 the servo corrects by changing the clock frequency instead of stepping the
 clock. The clock is stepped on start regardless of the option if the offset is
-larger than 100 nanoseconds (unless the
+larger than 20 microseconds (unless the
 .BI \-F
 option is used). It's specified in seconds. The value of 0.0 disables stepping
 after the start. The default is 0.0.
@@ -115,7 +115,7 @@ after the start. The default is 0.0.
 Specify the step threshold applied only on the first update. It is the maximum
 offset that is corrected by adjusting clock. It's specified in seconds. The
 value of 0.0 disables stepping on start.
-The default is 0.0000001 (100 nanoseconds).
+The default is 0.00002 (20 microseconds).
 .TP
 .BI \-R " update-rate"
 Specify the slave clock update rate when running in the direct synchronization
