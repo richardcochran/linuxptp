@@ -242,6 +242,15 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		pdsnp->neighborPropDelayThresh = ntohl(pdsnp->neighborPropDelayThresh);
 		pdsnp->asCapable = ntohl(pdsnp->asCapable);
 		break;
+	case SAVE_IN_NON_VOLATILE_STORAGE:
+	case RESET_NON_VOLATILE_STORAGE:
+	case INITIALIZE:
+	case FAULT_LOG_RESET:
+	case ENABLE_PORT:
+	case DISABLE_PORT:
+		if (data_len != 0)
+			goto bad_length;
+		break;
 	}
 	if (extra_len) {
 		if (extra_len % 2)

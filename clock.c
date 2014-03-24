@@ -848,10 +848,6 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 			return changed;
 		break;
 	case COMMAND:
-		if (mgt->length != 2) {
-			clock_management_send_error(p, msg, WRONG_LENGTH);
-			return changed;
-		}
 		break;
 	default:
 		return changed;
