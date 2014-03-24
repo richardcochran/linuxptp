@@ -607,7 +607,7 @@ static int port_management_get_response(struct port *target,
 					struct port *ingress, int id,
 					struct ptp_message *req)
 {
-	int datalen = 0, err, pdulen, respond = 0;
+	int datalen = 0, respond = 0;
 	struct management_tlv *tlv;
 	struct management_tlv_datum *mtd;
 	struct ptp_message *rsp;
@@ -774,16 +774,10 @@ static int port_management_get_response(struct port *target,
 			datalen++;
 		}
 		tlv->length = sizeof(tlv->id) + datalen;
-		pdulen = rsp->header.messageLength + sizeof(*tlv) + datalen;
-		rsp->header.messageLength = pdulen;
+		rsp->header.messageLength += sizeof(*tlv) + datalen;
 		rsp->tlv_count = 1;
-		err = msg_pre_send(rsp);
-		if (err) {
-			goto out;
-		}
-		err = port_forward(ingress, rsp, pdulen);
+		port_prepare_and_send(ingress, rsp, 0);
 	}
-out:
 	msg_put(rsp);
 	return respond ? 1 : 0;
 }
@@ -1049,7 +1043,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 static int port_pdelay_request(struct port *p)
 {
 	struct ptp_message *msg;
-	int cnt, pdulen;
+	int err;
 
 	/* If multiple pdelay resp were not detected the counter can be reset */
 	if (!p->multiple_pdr_detected)
@@ -1060,12 +1054,11 @@ static int port_pdelay_request(struct port *p)
 	if (!msg)
 		return -1;
 
-	pdulen = sizeof(struct pdelay_req_msg);
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = PDELAY_REQ | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
-	msg->header.messageLength      = pdulen;
+	msg->header.messageLength      = sizeof(struct pdelay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.correction         = -p->pod.asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
@@ -1074,11 +1067,8 @@ static int port_pdelay_request(struct port *p)
 	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logMinPdelayReqInterval : 0x7f;
 
-	if (msg_pre_send(msg))
-		goto out;
-
-	cnt = transport_peer(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
-	if (cnt <= 0) {
+	err = port_prepare_and_send(p, msg, 1);
+	if (err) {
 		pr_err("port %hu: send peer delay request failed", portnum(p));
 		goto out;
 	}
@@ -1103,7 +1093,6 @@ out:
 static int port_delay_request(struct port *p)
 {
 	struct ptp_message *msg;
-	int cnt, pdulen;
 
 	/* Time to send a new request, forget current pdelay resp and fup */
 	if (p->peer_delay_resp) {
@@ -1122,12 +1111,11 @@ static int port_delay_request(struct port *p)
 	if (!msg)
 		return -1;
 
-	pdulen = sizeof(struct delay_req_msg);
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = DELAY_REQ | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
-	msg->header.messageLength      = pdulen;
+	msg->header.messageLength      = sizeof(struct delay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.correction         = -p->pod.asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
@@ -1135,11 +1123,7 @@ static int port_delay_request(struct port *p)
 	msg->header.control            = CTL_DELAY_REQ;
 	msg->header.logMessageInterval = 0x7f;
 
-	if (msg_pre_send(msg))
-		goto out;
-
-	cnt = transport_send(p->trp, &p->fda, 1, msg, pdulen, &msg->hwts);
-	if (cnt <= 0) {
+	if (port_prepare_and_send(p, msg, 1)) {
 		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
 	}
@@ -1163,7 +1147,7 @@ static int port_tx_announce(struct port *p)
 	struct parent_ds *dad = clock_parent_ds(p->clock);
 	struct timePropertiesDS *tp = clock_time_properties(p->clock);
 	struct ptp_message *msg;
-	int cnt, err = 0, pdulen;
+	int err, pdulen;
 
 	if (!port_capable(p)) {
 		return 0;
@@ -1197,16 +1181,9 @@ static int port_tx_announce(struct port *p)
 	msg->announce.stepsRemoved            = clock_steps_removed(p->clock);
 	msg->announce.timeSource              = tp->timeSource;
 
-	if (msg_pre_send(msg)) {
-		err = -1;
-		goto out;
-	}
-	cnt = transport_send(p->trp, &p->fda, 0, msg, pdulen, &msg->hwts);
-	if (cnt <= 0) {
+	err = port_prepare_and_send(p, msg, 0);
+	if (err)
 		pr_err("port %hu: send announce failed", portnum(p));
-		err = -1;
-	}
-out:
 	msg_put(msg);
 	return err;
 }
@@ -1214,7 +1191,7 @@ out:
 static int port_tx_sync(struct port *p)
 {
 	struct ptp_message *msg, *fup;
-	int cnt, err = 0, pdulen;
+	int err, pdulen;
 	int event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
 
 	if (!port_capable(p)) {
@@ -1247,14 +1224,9 @@ static int port_tx_sync(struct port *p)
 	if (p->timestamping != TS_ONESTEP)
 		msg->header.flagField[0] |= TWO_STEP;
 
-	if (msg_pre_send(msg)) {
-		err = -1;
-		goto out;
-	}
-	cnt = transport_send(p->trp, &p->fda, event, msg, pdulen, &msg->hwts);
-	if (cnt <= 0) {
+	err = port_prepare_and_send(p, msg, event);
+	if (err) {
 		pr_err("port %hu: send sync failed", portnum(p));
-		err = -1;
 		goto out;
 	}
 	if (p->timestamping == TS_ONESTEP) {
@@ -1285,15 +1257,9 @@ static int port_tx_sync(struct port *p)
 
 	ts_to_timestamp(&msg->hwts.ts, &fup->follow_up.preciseOriginTimestamp);
 
-	if (msg_pre_send(fup)) {
-		err = -1;
-		goto out;
-	}
-	cnt = transport_send(p->trp, &p->fda, 0, fup, pdulen, &fup->hwts);
-	if (cnt <= 0) {
+	err = port_prepare_and_send(p, fup, 0);
+	if (err)
 		pr_err("port %hu: send follow up failed", portnum(p));
-		err = -1;
-	}
 out:
 	msg_put(msg);
 	msg_put(fup);
@@ -1521,7 +1487,7 @@ static int process_announce(struct port *p, struct ptp_message *m)
 static int process_delay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *msg;
-	int cnt, err = 0, pdulen;
+	int err;
 
 	if (p->state != PS_MASTER && p->state != PS_GRAND_MASTER)
 		return 0;
@@ -1535,12 +1501,11 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	if (!msg)
 		return -1;
 
-	pdulen = sizeof(struct delay_resp_msg);
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = DELAY_RESP | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
-	msg->header.messageLength      = pdulen;
+	msg->header.messageLength      = sizeof(struct delay_resp_msg);
 	msg->header.domainNumber       = m->header.domainNumber;
 	msg->header.correction         = m->header.correction;
 	msg->header.sourcePortIdentity = p->portIdentity;
@@ -1552,16 +1517,9 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
-	if (msg_pre_send(msg)) {
-		err = -1;
-		goto out;
-	}
-	cnt = transport_send(p->trp, &p->fda, 0, msg, pdulen, NULL);
-	if (cnt <= 0) {
+	err = port_prepare_and_send(p, msg, 0);
+	if (err)
 		pr_err("port %hu: send delay response failed", portnum(p));
-		err = -1;
-	}
-out:
 	msg_put(msg);
 	return err;
 }
@@ -1639,7 +1597,7 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 static int process_pdelay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *rsp, *fup;
-	int cnt, err = -1, rsp_len, fup_len;
+	int err;
 
 	if (p->delayMechanism == DM_E2E) {
 		pr_warning("port %hu: pdelay_req on E2E port", portnum(p));
@@ -1675,12 +1633,11 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		return -1;
 	}
 
-	rsp_len = sizeof(struct pdelay_resp_msg);
 	rsp->hwts.type = p->timestamping;
 
 	rsp->header.tsmt               = PDELAY_RESP | p->transportSpecific;
 	rsp->header.ver                = PTP_VERSION;
-	rsp->header.messageLength      = rsp_len;
+	rsp->header.messageLength      = sizeof(struct pdelay_resp_msg);
 	rsp->header.domainNumber       = m->header.domainNumber;
 	rsp->header.sourcePortIdentity = p->portIdentity;
 	rsp->header.sequenceId         = m->header.sequenceId;
@@ -1699,12 +1656,11 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	ts_to_timestamp(&m->hwts.ts, &rsp->pdelay_resp.requestReceiptTimestamp);
 	rsp->pdelay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
-	fup_len = sizeof(struct pdelay_resp_fup_msg);
 	fup->hwts.type = p->timestamping;
 
 	fup->header.tsmt               = PDELAY_RESP_FOLLOW_UP | p->transportSpecific;
 	fup->header.ver                = PTP_VERSION;
-	fup->header.messageLength      = fup_len;
+	fup->header.messageLength      = sizeof(struct pdelay_resp_fup_msg);
 	fup->header.domainNumber       = m->header.domainNumber;
 	fup->header.correction         = m->header.correction;
 	fup->header.sourcePortIdentity = p->portIdentity;
@@ -1714,11 +1670,8 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 	fup->pdelay_resp_fup.requestingPortIdentity = m->header.sourcePortIdentity;
 
-	if (msg_pre_send(rsp))
-		goto out;
-
-	cnt = transport_peer(p->trp, &p->fda, 1, rsp, rsp_len, &rsp->hwts);
-	if (cnt <= 0) {
+	err = port_prepare_and_send(p, rsp, 1);
+	if (err) {
 		pr_err("port %hu: send peer delay response failed", portnum(p));
 		goto out;
 	}
@@ -1730,15 +1683,10 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	ts_to_timestamp(&rsp->hwts.ts,
 			&fup->pdelay_resp_fup.responseOriginTimestamp);
 
-	if (msg_pre_send(fup))
-		goto out;
-
-	cnt = transport_peer(p->trp, &p->fda, 0, fup, fup_len, &rsp->hwts);
-	if (cnt <= 0) {
+	err = port_prepare_and_send(p, fup, 0);
+	if (err)
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
-		goto out;
-	}
-	err = 0;
+
 out:
 	msg_put(rsp);
 	msg_put(fup);
@@ -2222,6 +2170,18 @@ int port_forward(struct port *p, struct ptp_message *msg, int msglen)
 	return cnt <= 0 ? -1 : 0;
 }
 
+int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
+{
+	UInteger16 msg_len;
+	int cnt;
+
+	msg_len = msg->header.messageLength;
+	if (msg_pre_send(msg))
+		return -1;
+	cnt = transport_send(p->trp, &p->fda, event, msg, msg_len, &msg->hwts);
+	return cnt <= 0 ? -1 : 0;
+}
+
 struct PortIdentity port_identity(struct port *p)
 {
 	return p->portIdentity;
@@ -2301,12 +2261,7 @@ int port_management_error(struct PortIdentity pid, struct port *ingress,
 	msg->header.messageLength = pdulen;
 	msg->tlv_count = 1;
 
-	err = msg_pre_send(msg);
-	if (err) {
-		goto out;
-	}
-	err = port_forward(ingress, msg, pdulen);
-out:
+	err = port_prepare_and_send(ingress, msg, 0);
 	msg_put(msg);
 	return err;
 }

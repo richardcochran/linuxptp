@@ -93,6 +93,18 @@ enum fsm_event port_event(struct port *port, int fd_index);
 int port_forward(struct port *p, struct ptp_message *msg, int msglen);
 
 /**
+ * Prepare message for transmission and send it to a given port. Note that
+ * a single message cannot be sent several times using this function, that
+ * would lead to corrupted data being sent. Use msg_pre_send and
+ * port_forward if you need to send single message to several ports.
+ * @param p        A pointer previously obtained via port_open().
+ * @param msg      The message to send.
+ * @param event    0 if the message is a general message, 1 if it is an
+ *                 event message.
+ */
+int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event);
+
+/**
  * Obtain a port's identity.
  * @param p        A pointer previously obtained via port_open().
  * @return         The port identity of 'p'.

@@ -174,7 +174,7 @@ static void clock_management_send_error(struct port *p,
 static int clock_management_get_response(struct clock *c, struct port *p,
 					 int id, struct ptp_message *req)
 {
-	int datalen = 0, err, pdulen, respond = 0;
+	int datalen = 0, respond = 0;
 	struct management_tlv *tlv;
 	struct management_tlv_datum *mtd;
 	struct ptp_message *rsp;
@@ -295,16 +295,10 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 			datalen++;
 		}
 		tlv->length = sizeof(tlv->id) + datalen;
-		pdulen = rsp->header.messageLength + sizeof(*tlv) + datalen;
-		rsp->header.messageLength = pdulen;
+		rsp->header.messageLength += sizeof(*tlv) + datalen;
 		rsp->tlv_count = 1;
-		err = msg_pre_send(rsp);
-		if (err) {
-			goto out;
-		}
-		err = port_forward(p, rsp, pdulen);
+		port_prepare_and_send(p, rsp, 0);
 	}
-out:
 	msg_put(rsp);
 	return respond ? 1 : 0;
 }
