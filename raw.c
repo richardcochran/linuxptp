@@ -244,6 +244,11 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 
 	cnt = sk_receive(fd, ptr, buflen, hwts, 0);
 
+	if (cnt >= 0)
+		cnt -= hlen;
+	if (cnt < 0)
+		return cnt;
+
 	if (raw->vlan) {
 		if (ETH_P_1588 == ntohs(hdr->type)) {
 			pr_notice("raw: disabling VLAN mode");
@@ -254,9 +259,6 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 			pr_notice("raw: switching to VLAN mode");
 			raw->vlan = 1;
 		}
-	}
-	if (cnt >= hlen)  {
-		cnt -= hlen;
 	}
 	return cnt;
 }
