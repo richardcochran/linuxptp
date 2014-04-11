@@ -24,6 +24,7 @@
 #include <inttypes.h>
 
 #include "fd.h"
+#include "msg.h"
 
 /* Values from networkProtocol enumeration 7.4.1 Table 3 */
 enum transport_type {
@@ -47,19 +48,6 @@ enum transport_event {
 	TRANS_ONESTEP,
 };
 
-enum timestamp_type {
-	TS_SOFTWARE,
-	TS_HARDWARE,
-	TS_LEGACY_HW,
-	TS_ONESTEP,
-};
-
-struct hw_timestamp {
-	enum timestamp_type type;
-	struct timespec ts;
-	struct timespec sw;
-};
-
 struct transport;
 
 int transport_close(struct transport *t, struct fdarray *fda);
@@ -67,14 +55,13 @@ int transport_close(struct transport *t, struct fdarray *fda);
 int transport_open(struct transport *t, const char *name,
 		   struct fdarray *fda, enum timestamp_type tt);
 
-int transport_recv(struct transport *t, int fd,
-		   void *buf, int buflen, struct hw_timestamp *hwts);
+int transport_recv(struct transport *t, int fd, struct ptp_message *msg);
 
 int transport_send(struct transport *t, struct fdarray *fda, int event,
-		   void *buf, int buflen, struct hw_timestamp *hwts);
+		   struct ptp_message *msg);
 
 int transport_peer(struct transport *t, struct fdarray *fda, int event,
-		   void *buf, int buflen, struct hw_timestamp *hwts);
+		   struct ptp_message *msg);
 
 /**
  * Returns the transport's type.

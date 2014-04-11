@@ -149,8 +149,7 @@ static int pmc_send(struct pmc *pmc, struct ptp_message *msg, int pdulen)
 		pr_err("msg_pre_send failed");
 		return -1;
 	}
-	cnt = transport_send(pmc->transport, &pmc->fdarray, 0,
-			     msg, pdulen, &msg->hwts);
+	cnt = transport_send(pmc->transport, &pmc->fdarray, 0, msg);
 	if (cnt < 0) {
 		pr_err("failed to send message");
 		return -1;
@@ -298,8 +297,7 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 		return NULL;
 	}
 	msg->hwts.type = TS_SOFTWARE;
-	cnt = transport_recv(pmc->transport, pmc_get_transport_fd(pmc),
-			     msg, sizeof(msg->data), &msg->hwts);
+	cnt = transport_recv(pmc->transport, pmc_get_transport_fd(pmc), msg);
 	if (cnt <= 0) {
 		pr_err("recv message failed");
 		goto failed;

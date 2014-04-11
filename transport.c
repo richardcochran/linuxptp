@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <arpa/inet.h>
+
 #include "transport.h"
 #include "transport_private.h"
 #include "raw.h"
@@ -35,22 +37,25 @@ int transport_open(struct transport *t, const char *name,
 	return t->open(t, name, fda, tt);
 }
 
-int transport_recv(struct transport *t, int fd,
-		   void *buf, int buflen, struct hw_timestamp *hwts)
+int transport_recv(struct transport *t, int fd, struct ptp_message *msg)
 {
-	return t->recv(t, fd, buf, buflen, hwts);
+	return t->recv(t, fd, msg, sizeof(msg->data), &msg->hwts);
 }
 
 int transport_send(struct transport *t, struct fdarray *fda, int event,
-		   void *buf, int buflen, struct hw_timestamp *hwts)
+		   struct ptp_message *msg)
 {
-	return t->send(t, fda, event, 0, buf, buflen, hwts);
+	int len = ntohs(msg->header.messageLength);
+
+	return t->send(t, fda, event, 0, msg, len, &msg->hwts);
 }
 
 int transport_peer(struct transport *t, struct fdarray *fda, int event,
-		   void *buf, int buflen, struct hw_timestamp *hwts)
+		   struct ptp_message *msg)
 {
-	return t->send(t, fda, event, 1, buf, buflen, hwts);
+	int len = ntohs(msg->header.messageLength);
+
+	return t->send(t, fda, event, 1, msg, len, &msg->hwts);
 }
 
 int transport_physical_addr(struct transport *t, uint8_t *addr)

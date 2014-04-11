@@ -2092,7 +2092,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 
 	msg->hwts.type = p->timestamping;
 
-	cnt = transport_recv(p->trp, fd, msg, sizeof(msg->data), &msg->hwts);
+	cnt = transport_recv(p->trp, fd, msg);
 	if (cnt <= 0) {
 		pr_err("port %hu: recv message failed", portnum(p));
 		msg_put(msg);
@@ -2166,19 +2166,17 @@ enum fsm_event port_event(struct port *p, int fd_index)
 int port_forward(struct port *p, struct ptp_message *msg, int msglen)
 {
 	int cnt;
-	cnt = transport_send(p->trp, &p->fda, 0, msg, msglen, &msg->hwts);
+	cnt = transport_send(p->trp, &p->fda, 0, msg);
 	return cnt <= 0 ? -1 : 0;
 }
 
 int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
 {
-	UInteger16 msg_len;
 	int cnt;
 
-	msg_len = msg->header.messageLength;
 	if (msg_pre_send(msg))
 		return -1;
-	cnt = transport_send(p->trp, &p->fda, event, msg, msg_len, &msg->hwts);
+	cnt = transport_send(p->trp, &p->fda, event, msg);
 	return cnt <= 0 ? -1 : 0;
 }
 

@@ -22,6 +22,7 @@
 #define HAVE_PMC_COMMON_H
 
 #include "msg.h"
+#include "transport.h"
 
 struct pmc;
 
