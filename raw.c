@@ -45,8 +45,9 @@
 
 struct raw {
 	struct transport t;
-	struct eth_addr ptp_addr;
-	struct eth_addr p2p_addr;
+	eth_addr src_addr;
+	eth_addr ptp_addr;
+	eth_addr p2p_addr;
 	int vlan;
 };
 
@@ -190,13 +191,11 @@ static int raw_open(struct transport *t, const char *name,
 	struct raw *raw = container_of(t, struct raw, t);
 	int efd, gfd;
 
-	memcpy(raw->ptp_addr.dst, ptp_dst_mac, MAC_LEN);
-	memcpy(raw->p2p_addr.dst, p2p_dst_mac, MAC_LEN);
+	memcpy(raw->ptp_addr, ptp_dst_mac, MAC_LEN);
+	memcpy(raw->p2p_addr, p2p_dst_mac, MAC_LEN);
 
-	if (sk_interface_macaddr(name, raw->ptp_addr.src, MAC_LEN))
+	if (sk_interface_macaddr(name, raw->src_addr, MAC_LEN))
 		goto no_mac;
-
-	memcpy(raw->p2p_addr.src, raw->ptp_addr.src, MAC_LEN);
 
 	efd = open_socket(name, 1);
 	if (efd < 0)
@@ -277,9 +276,10 @@ static int raw_send(struct transport *t, struct fdarray *fda, int event, int pee
 
 	hdr = (struct eth_hdr *) ptr;
 	if (peer)
-		memcpy(&hdr->mac, &raw->p2p_addr, sizeof(hdr->mac));
+		memcpy(&hdr->dst, &raw->p2p_addr, MAC_LEN);
 	else
-		memcpy(&hdr->mac, &raw->ptp_addr, sizeof(hdr->mac));
+		memcpy(&hdr->dst, &raw->ptp_addr, MAC_LEN);
+	memcpy(&hdr->src, &raw->src_addr, MAC_LEN);
 
 	hdr->type = htons(ETH_P_1588);
 
@@ -303,14 +303,14 @@ static void raw_release(struct transport *t)
 static int raw_physical_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
-	memcpy(addr, raw->ptp_addr.src, MAC_LEN);
+	memcpy(addr, raw->src_addr, MAC_LEN);
 	return MAC_LEN;
 }
 
 static int raw_protocol_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
-	memcpy(addr, raw->ptp_addr.src, MAC_LEN);
+	memcpy(addr, raw->src_addr, MAC_LEN);
 	return MAC_LEN;
 }
 

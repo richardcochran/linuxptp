@@ -26,25 +26,24 @@
 #define PTP_DST_MAC 0x01, 0x1B, 0x19, 0x00, 0x00, 0x00
 #define P2P_DST_MAC 0x01, 0x80, 0xC2, 0x00, 0x00, 0x0E
 
-struct eth_addr {
-	uint8_t dst[MAC_LEN];
-	uint8_t src[MAC_LEN];
-} __attribute__((packed));
+typedef uint8_t eth_addr[MAC_LEN];
 
 struct eth_hdr {
-	struct eth_addr mac;
+	eth_addr dst;
+	eth_addr src;
 	uint16_t type;
 } __attribute__((packed));
 
 #define VLAN_HLEN 4
 
 struct vlan_hdr {
-	struct eth_addr mac;
+	eth_addr dst;
+	eth_addr src;
 	uint16_t tpid;
 	uint16_t tci;
 	uint16_t type;
 } __attribute__((packed));
 
-#define OFF_ETYPE sizeof(struct eth_addr)
+#define OFF_ETYPE (2 * sizeof(eth_addr))
 
 #endif
