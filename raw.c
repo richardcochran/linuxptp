@@ -102,14 +102,14 @@ static int raw_configure(int fd, int event, int index,
 
 	mreq.mr_ifindex = index;
 	mreq.mr_type = PACKET_MR_MULTICAST;
-	mreq.mr_alen = 6;
-	memcpy(mreq.mr_address, addr1, 6);
+	mreq.mr_alen = MAC_LEN;
+	memcpy(mreq.mr_address, addr1, MAC_LEN);
 
 	err1 = setsockopt(fd, SOL_PACKET, option, &mreq, sizeof(mreq));
 	if (err1)
 		pr_warning("setsockopt PACKET_MR_MULTICAST failed: %m");
 
-	memcpy(mreq.mr_address, addr2, 6);
+	memcpy(mreq.mr_address, addr2, MAC_LEN);
 
 	err2 = setsockopt(fd, SOL_PACKET, option, &mreq, sizeof(mreq));
 	if (err2)
