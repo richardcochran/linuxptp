@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <poll.h>
 
+#include "address.h"
+#include "ether.h"
 #include "print.h"
 #include "sk.h"
 
@@ -146,7 +148,7 @@ failed:
 	return -1;
 }
 
-int sk_interface_macaddr(const char *name, unsigned char *mac, int len)
+int sk_interface_macaddr(const char *name, struct address *mac)
 {
 	struct ifreq ifreq;
 	int err, fd;
@@ -167,16 +169,17 @@ int sk_interface_macaddr(const char *name, unsigned char *mac, int len)
 		return -1;
 	}
 
-	memcpy(mac, ifreq.ifr_hwaddr.sa_data, len);
+	memcpy(&mac->sa, &ifreq.ifr_hwaddr, sizeof(ifreq.ifr_hwaddr));
+	mac->len = sizeof(ifreq.ifr_hwaddr.sa_family) + MAC_LEN;
 	close(fd);
 	return 0;
 }
 
-int sk_interface_addr(const char *name, int family, uint8_t *addr, int len)
+int sk_interface_addr(const char *name, int family, struct address *addr)
 {
 	struct ifaddrs *ifaddr, *i;
-	int copy_len, result = -1;
-	void *copy_from;
+	int result = -1;
+
 	if (getifaddrs(&ifaddr) == -1) {
 		pr_err("getifaddrs failed: %m");
 		return -1;
@@ -187,20 +190,16 @@ int sk_interface_addr(const char *name, int family, uint8_t *addr, int len)
 		{
 			switch (family) {
 			case AF_INET:
-				copy_len = 4;
-				copy_from = &((struct sockaddr_in *)i->ifa_addr)->sin_addr.s_addr;
+				addr->len = sizeof(addr->sin);
 				break;
 			case AF_INET6:
-				copy_len = 16;
-				copy_from = &((struct sockaddr_in6 *)i->ifa_addr)->sin6_addr.s6_addr;
+				addr->len = sizeof(addr->sin6);
 				break;
 			default:
 				continue;
 			}
-			if (copy_len > len)
-				copy_len = len;
-			memcpy(addr, copy_from, copy_len);
-			result = copy_len;
+			memcpy(&addr->sa, &i->ifa_addr, addr->len);
+			result = 0;
 			break;
 		}
 	}
@@ -209,7 +208,7 @@ int sk_interface_addr(const char *name, int family, uint8_t *addr, int len)
 }
 
 int sk_receive(int fd, void *buf, int buflen,
-	       struct hw_timestamp *hwts, int flags)
+	       struct address *addr, struct hw_timestamp *hwts, int flags)
 {
 	char control[256];
 	int cnt = 0, res = 0, level, type;
@@ -220,6 +219,10 @@ int sk_receive(int fd, void *buf, int buflen,
 
 	memset(control, 0, sizeof(control));
 	memset(&msg, 0, sizeof(msg));
+	if (addr) {
+		msg.msg_name = &addr->ss;
+		msg.msg_namelen = sizeof(addr->ss);
+	}
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 	msg.msg_control = control;
@@ -264,6 +267,9 @@ int sk_receive(int fd, void *buf, int buflen,
 			hwts->sw = *sw;
 		}
 	}
+
+	if (addr)
+		addr->len = msg.msg_namelen;
 
 	if (!ts) {
 		memset(&hwts->ts, 0, sizeof(hwts->ts));

@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "address.h"
 #include "sk.h"
 #include "util.h"
 
@@ -100,17 +101,18 @@ int str2pid(const char *s, struct PortIdentity *result)
 
 int generate_clock_identity(struct ClockIdentity *ci, const char *name)
 {
-	unsigned char mac[6];
-	if (sk_interface_macaddr(name, mac, sizeof(mac)))
+	struct address addr;
+
+	if (sk_interface_macaddr(name, &addr))
 		return -1;
-	ci->id[0] = mac[0];
-	ci->id[1] = mac[1];
-	ci->id[2] = mac[2];
+	ci->id[0] = addr.sa.sa_data[0];
+	ci->id[1] = addr.sa.sa_data[1];
+	ci->id[2] = addr.sa.sa_data[2];
 	ci->id[3] = 0xFF;
 	ci->id[4] = 0xFE;
-	ci->id[5] = mac[3];
-	ci->id[6] = mac[4];
-	ci->id[7] = mac[5];
+	ci->id[5] = addr.sa.sa_data[3];
+	ci->id[6] = addr.sa.sa_data[4];
+	ci->id[7] = addr.sa.sa_data[5];
 	return 0;
 }
 

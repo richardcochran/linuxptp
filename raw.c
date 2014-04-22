@@ -36,6 +36,7 @@
 #include <linux/net_tstamp.h>
 #include <linux/sockios.h>
 
+#include "address.h"
 #include "contain.h"
 #include "ether.h"
 #include "print.h"
@@ -45,9 +46,9 @@
 
 struct raw {
 	struct transport t;
-	eth_addr src_addr;
-	eth_addr ptp_addr;
-	eth_addr p2p_addr;
+	struct address src_addr;
+	struct address ptp_addr;
+	struct address p2p_addr;
 	int vlan;
 };
 
@@ -185,16 +186,28 @@ no_socket:
 	return -1;
 }
 
+static void mac_to_addr(struct address *addr, void *mac)
+{
+	addr->sa.sa_family = AF_UNSPEC;
+	memcpy(&addr->sa.sa_data, mac, MAC_LEN);
+	addr->len = sizeof(addr->sa.sa_family) + MAC_LEN;
+}
+
+static void addr_to_mac(void *mac, struct address *addr)
+{
+	memcpy(mac, &addr->sa.sa_data, MAC_LEN);
+}
+
 static int raw_open(struct transport *t, const char *name,
 		    struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct raw *raw = container_of(t, struct raw, t);
 	int efd, gfd;
 
-	memcpy(raw->ptp_addr, ptp_dst_mac, MAC_LEN);
-	memcpy(raw->p2p_addr, p2p_dst_mac, MAC_LEN);
+	mac_to_addr(&raw->ptp_addr, ptp_dst_mac);
+	mac_to_addr(&raw->p2p_addr, p2p_dst_mac);
 
-	if (sk_interface_macaddr(name, raw->src_addr, MAC_LEN))
+	if (sk_interface_macaddr(name, &raw->src_addr))
 		goto no_mac;
 
 	efd = open_socket(name, 1);
@@ -225,7 +238,7 @@ no_mac:
 }
 
 static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
-		    struct hw_timestamp *hwts)
+		    struct address *addr, struct hw_timestamp *hwts)
 {
 	int cnt, hlen;
 	unsigned char *ptr = buf;
@@ -241,7 +254,7 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	buflen += hlen;
 	hdr = (struct eth_hdr *) ptr;
 
-	cnt = sk_receive(fd, ptr, buflen, hwts, 0);
+	cnt = sk_receive(fd, ptr, buflen, addr, hwts, 0);
 
 	if (cnt >= 0)
 		cnt -= hlen;
@@ -262,8 +275,9 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	return cnt;
 }
 
-static int raw_send(struct transport *t, struct fdarray *fda, int event, int peer,
-		    void *buf, int len, struct hw_timestamp *hwts)
+static int raw_send(struct transport *t, struct fdarray *fda, int event,
+		    int peer, void *buf, int len, struct address *addr,
+		    struct hw_timestamp *hwts)
 {
 	struct raw *raw = container_of(t, struct raw, t);
 	ssize_t cnt;
@@ -274,12 +288,12 @@ static int raw_send(struct transport *t, struct fdarray *fda, int event, int pee
 	ptr -= sizeof(*hdr);
 	len += sizeof(*hdr);
 
+	if (!addr)
+		addr = peer ? &raw->p2p_addr : &raw->ptp_addr;
+
 	hdr = (struct eth_hdr *) ptr;
-	if (peer)
-		memcpy(&hdr->dst, &raw->p2p_addr, MAC_LEN);
-	else
-		memcpy(&hdr->dst, &raw->ptp_addr, MAC_LEN);
-	memcpy(&hdr->src, &raw->src_addr, MAC_LEN);
+	addr_to_mac(&hdr->dst, addr);
+	addr_to_mac(&hdr->src, &raw->src_addr);
 
 	hdr->type = htons(ETH_P_1588);
 
@@ -291,7 +305,7 @@ static int raw_send(struct transport *t, struct fdarray *fda, int event, int pee
 	/*
 	 * Get the time stamp right away.
 	 */
-	return event == TRANS_EVENT ? sk_receive(fd, pkt, len, hwts, MSG_ERRQUEUE) : cnt;
+	return event == TRANS_EVENT ? sk_receive(fd, pkt, len, NULL, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static void raw_release(struct transport *t)
@@ -303,14 +317,14 @@ static void raw_release(struct transport *t)
 static int raw_physical_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
-	memcpy(addr, raw->src_addr, MAC_LEN);
+	addr_to_mac(addr, &raw->src_addr);
 	return MAC_LEN;
 }
 
 static int raw_protocol_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
-	memcpy(addr, raw->src_addr, MAC_LEN);
+	addr_to_mac(addr, &raw->src_addr);
 	return MAC_LEN;
 }
 

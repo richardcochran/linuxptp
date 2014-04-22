@@ -22,6 +22,7 @@
 
 #include <time.h>
 
+#include "address.h"
 #include "fd.h"
 #include "transport.h"
 
@@ -34,10 +35,11 @@ struct transport {
 		    enum timestamp_type tt);
 
 	int (*recv)(struct transport *t, int fd, void *buf, int buflen,
-		    struct hw_timestamp *hwts);
+		    struct address *addr, struct hw_timestamp *hwts);
 
-	int (*send)(struct transport *t, struct fdarray *fda, int event, int peer,
-		    void *buf, int buflen, struct hw_timestamp *hwts);
+	int (*send)(struct transport *t, struct fdarray *fda, int event,
+		    int peer, void *buf, int buflen, struct address *addr,
+		    struct hw_timestamp *hwts);
 
 	void (*release)(struct transport *t);
 

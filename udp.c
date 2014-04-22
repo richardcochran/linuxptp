@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "address.h"
 #include "contain.h"
 #include "print.h"
 #include "sk.h"
@@ -43,10 +44,8 @@
 
 struct udp {
 	struct transport t;
-	uint8_t ip[4];
-	int ip_len;
-	uint8_t mac[MAC_LEN];
-	int mac_len;
+	struct address ip;
+	struct address mac;
 };
 
 static int mcast_bind(int fd, int index)
@@ -154,13 +153,11 @@ static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
 	struct udp *udp = container_of(t, struct udp, t);
 	int efd, gfd;
 
-	udp->mac_len = 0;
-	if (sk_interface_macaddr(name, udp->mac, MAC_LEN) == 0)
-		udp->mac_len = MAC_LEN;
+	udp->mac.len = 0;
+	sk_interface_macaddr(name, &udp->mac);
 
-	udp->ip_len = sk_interface_addr(name, AF_INET, udp->ip, sizeof(udp->ip));
-	if (udp->ip_len == -1)
-		udp->ip_len = 0;
+	udp->ip.len = 0;
+	sk_interface_addr(name, AF_INET, &udp->ip);
 
 	if (!inet_aton(PTP_PRIMARY_MCAST_IPADDR, &mcast_addr[MC_PRIMARY]))
 		return -1;
@@ -195,23 +192,30 @@ no_event:
 }
 
 static int udp_recv(struct transport *t, int fd, void *buf, int buflen,
-		    struct hw_timestamp *hwts)
+		    struct address *addr, struct hw_timestamp *hwts)
 {
-	return sk_receive(fd, buf, buflen, hwts, 0);
+	return sk_receive(fd, buf, buflen, addr, hwts, 0);
 }
 
-static int udp_send(struct transport *t, struct fdarray *fda, int event, int peer,
-		    void *buf, int len, struct hw_timestamp *hwts)
+static int udp_send(struct transport *t, struct fdarray *fda, int event,
+		    int peer, void *buf, int len, struct address *addr,
+		    struct hw_timestamp *hwts)
 {
 	ssize_t cnt;
 	int fd = event ? fda->fd[FD_EVENT] : fda->fd[FD_GENERAL];
-	struct sockaddr_in addr;
+	struct address addr_buf;
 	unsigned char junk[1600];
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = peer ? mcast_addr[MC_PDELAY] : mcast_addr[MC_PRIMARY];
-	addr.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
+	if (!addr) {
+		memset(&addr_buf, 0, sizeof(addr_buf));
+		addr_buf.sin.sin_family = AF_INET;
+		addr_buf.sin.sin_addr = peer ? mcast_addr[MC_PDELAY] :
+					       mcast_addr[MC_PRIMARY];
+		addr_buf.sin.sin_port = htons(event ? EVENT_PORT :
+						      GENERAL_PORT);
+		addr_buf.len = sizeof(addr_buf.sin);
+		addr = &addr_buf;
+	}
 
 	/*
 	 * Extend the payload by two, for UDP checksum correction.
@@ -221,7 +225,7 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event, int pee
 	if (event == TRANS_ONESTEP)
 		len += 2;
 
-	cnt = sendto(fd, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
+	cnt = sendto(fd, buf, len, 0, &addr->sa, sizeof(addr->sin));
 	if (cnt < 1) {
 		pr_err("sendto failed: %m");
 		return cnt;
@@ -229,7 +233,7 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event, int pee
 	/*
 	 * Get the time stamp right away.
 	 */
-	return event == TRANS_EVENT ? sk_receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
+	return event == TRANS_EVENT ? sk_receive(fd, junk, len, NULL, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static void udp_release(struct transport *t)
@@ -241,17 +245,25 @@ static void udp_release(struct transport *t)
 static int udp_physical_addr(struct transport *t, uint8_t *addr)
 {
 	struct udp *udp = container_of(t, struct udp, t);
-	if (udp->mac_len)
-		memcpy(addr, udp->mac, udp->mac_len);
-	return udp->mac_len;
+	int len = 0;
+
+	if (udp->mac.len) {
+		len = MAC_LEN;
+		memcpy(addr, udp->mac.sa.sa_data, len);
+	}
+	return len;
 }
 
 static int udp_protocol_addr(struct transport *t, uint8_t *addr)
 {
 	struct udp *udp = container_of(t, struct udp, t);
-	if (udp->ip_len)
-		memcpy(addr, &udp->ip, udp->ip_len);
-	return udp->ip_len;
+	int len = 0;
+
+	if (udp->ip.len) {
+		len = sizeof(udp->ip.sin.sin_addr.s_addr);
+		memcpy(addr, &udp->ip.sin.sin_addr.s_addr, len);
+	}
+	return len;
 }
 
 struct transport *udp_transport_create(void)

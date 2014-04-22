@@ -25,6 +25,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "address.h"
 #include "contain.h"
 #include "print.h"
 #include "transport_private.h"
@@ -36,8 +37,7 @@ char uds_path[MAX_IFNAME_SIZE + 1] = "/var/run/ptp4l";
 
 struct uds {
 	struct transport t;
-	struct sockaddr_un sa;
-	socklen_t len;
+	struct address address;
 };
 
 static int uds_close(struct transport *t, struct fdarray *fda)
@@ -75,8 +75,8 @@ static int uds_open(struct transport *t, const char *name, struct fdarray *fda,
 	memset(&sa, 0, sizeof(sa));
 	sa.sun_family = AF_LOCAL;
 	strncpy(sa.sun_path, uds_path, sizeof(sa.sun_path) - 1);
-	uds->sa = sa;
-	uds->len = sizeof(sa);
+	uds->address.sun = sa;
+	uds->address.len = sizeof(sa);
 
 	chmod(name, UDS_FILEMODE);
 	fda->fd[FD_EVENT] = -1;
@@ -85,25 +85,32 @@ static int uds_open(struct transport *t, const char *name, struct fdarray *fda,
 }
 
 static int uds_recv(struct transport *t, int fd, void *buf, int buflen,
-		    struct hw_timestamp *hwts)
+		    struct address *addr, struct hw_timestamp *hwts)
 {
 	int cnt;
 	struct uds *uds = container_of(t, struct uds, t);
-	socklen_t *len = &uds->len;
-	uds->len = sizeof(uds->sa);
-	cnt = recvfrom(fd, buf, buflen, 0, (struct sockaddr *) &uds->sa, len);
+
+	addr->len = sizeof(addr->sun);
+	cnt = recvfrom(fd, buf, buflen, 0, &addr->sa, &addr->len);
 	if (cnt <= 0) {
 		pr_err("uds: recvfrom failed: %m");
+		return cnt;
 	}
+	uds->address = *addr;
 	return cnt;
 }
 
 static int uds_send(struct transport *t, struct fdarray *fda, int event,
-		    int peer, void *buf, int buflen, struct hw_timestamp *hwts)
+		    int peer, void *buf, int buflen, struct address *addr,
+		    struct hw_timestamp *hwts)
 {
 	int cnt, fd = fda->fd[FD_GENERAL];
 	struct uds *uds = container_of(t, struct uds, t);
-	cnt = sendto(fd, buf, buflen, 0, (struct sockaddr *) &uds->sa, uds->len);
+
+	if (!addr)
+		addr = &uds->address;
+
+	cnt = sendto(fd, buf, buflen, 0, &addr->sa, addr->len);
 	if (cnt <= 0) {
 		pr_err("uds: sendto failed: %m");
 	}

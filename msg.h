@@ -24,6 +24,7 @@
 #include <sys/queue.h>
 #include <time.h>
 
+#include "address.h"
 #include "ddt.h"
 #include "tlv.h"
 
@@ -213,6 +214,11 @@ struct ptp_message {
 	 * SO_TIMESTAMPING socket option.
 	 */
 	struct hw_timestamp hwts;
+	/**
+	 * Contains the address this message was received from or should be
+	 * sent to.
+	 */
+	struct address address;
 	/**
 	 * Contains the number of TLVs in the suffix.
 	 */

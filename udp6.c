@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "address.h"
 #include "contain.h"
 #include "print.h"
 #include "sk.h"
@@ -46,10 +47,8 @@ unsigned char udp6_scope = 0x0E;
 struct udp6 {
 	struct transport t;
 	int index;
-	uint8_t ip[16];
-	int ip_len;
-	uint8_t mac[MAC_LEN];
-	int mac_len;
+	struct address ip;
+	struct address mac;
 };
 
 static int is_link_local(struct in6_addr *addr)
@@ -164,13 +163,11 @@ static int udp6_open(struct transport *t, const char *name, struct fdarray *fda,
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
 	int efd, gfd;
 
-	udp6->mac_len = 0;
-	if (sk_interface_macaddr(name, udp6->mac, MAC_LEN) == 0)
-		udp6->mac_len = MAC_LEN;
+	udp6->mac.len = 0;
+	sk_interface_macaddr(name, &udp6->mac);
 
-	udp6->ip_len = sk_interface_addr(name, AF_INET6, udp6->ip, sizeof(udp6->ip));
-	if (udp6->ip_len == -1)
-		udp6->ip_len = 0;
+	udp6->ip.len = 0;
+	sk_interface_addr(name, AF_INET6, &udp6->ip);
 
 	if (1 != inet_pton(AF_INET6, PTP_PRIMARY_MCAST_IP6ADDR, &mc6_addr[MC_PRIMARY]))
 		return -1;
@@ -207,32 +204,39 @@ no_event:
 }
 
 static int udp6_recv(struct transport *t, int fd, void *buf, int buflen,
-		    struct hw_timestamp *hwts)
+		     struct address *addr, struct hw_timestamp *hwts)
 {
-	return sk_receive(fd, buf, buflen, hwts, 0);
+	return sk_receive(fd, buf, buflen, addr, hwts, 0);
 }
 
-static int udp6_send(struct transport *t, struct fdarray *fda, int event, int peer,
-		    void *buf, int len, struct hw_timestamp *hwts)
+static int udp6_send(struct transport *t, struct fdarray *fda, int event,
+		    int peer, void *buf, int len, struct address *addr,
+		    struct hw_timestamp *hwts)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
 	ssize_t cnt;
 	int fd = event ? fda->fd[FD_EVENT] : fda->fd[FD_GENERAL];
-	struct sockaddr_in6 addr;
+	struct address addr_buf;
 	unsigned char junk[1600];
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin6_family = AF_INET6;
-	addr.sin6_addr = peer ? mc6_addr[MC_PDELAY] : mc6_addr[MC_PRIMARY];
-	addr.sin6_port = htons(event ? EVENT_PORT : GENERAL_PORT);
+	if (!addr) {
+		memset(&addr_buf, 0, sizeof(addr_buf));
+		addr_buf.sin6.sin6_family = AF_INET6;
+		addr_buf.sin6.sin6_addr =  peer ? mc6_addr[MC_PDELAY] :
+						  mc6_addr[MC_PRIMARY];
+		addr_buf.sin6.sin6_port = htons(event ? EVENT_PORT :
+							GENERAL_PORT);
 
-	if (is_link_local(&addr.sin6_addr)) {
-		addr.sin6_scope_id = udp6->index;
+		if (is_link_local(&addr_buf.sin6.sin6_addr))
+			addr_buf.sin6.sin6_scope_id = udp6->index;
+
+		addr_buf.len = sizeof(addr_buf.sin6);
+		addr = &addr_buf;
 	}
 
 	len += 2; /* Extend the payload by two, for UDP checksum corrections. */
 
-	cnt = sendto(fd, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
+	cnt = sendto(fd, buf, len, 0, &addr->sa, sizeof(addr->sin6));
 	if (cnt < 1) {
 		pr_err("sendto failed: %m");
 		return cnt;
@@ -240,7 +244,7 @@ static int udp6_send(struct transport *t, struct fdarray *fda, int event, int pe
 	/*
 	 * Get the time stamp right away.
 	 */
-	return event == TRANS_EVENT ? sk_receive(fd, junk, len, hwts, MSG_ERRQUEUE) : cnt;
+	return event == TRANS_EVENT ? sk_receive(fd, junk, len, NULL, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static void udp6_release(struct transport *t)
@@ -252,17 +256,25 @@ static void udp6_release(struct transport *t)
 static int udp6_physical_addr(struct transport *t, uint8_t *addr)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
-	if (udp6->mac_len)
-		memcpy(addr, udp6->mac, udp6->mac_len);
-	return udp6->mac_len;
+	int len = 0;
+
+	if (udp6->mac.len) {
+		len = MAC_LEN;
+		memcpy(addr, udp6->mac.sa.sa_data, len);
+	}
+	return len;
 }
 
 static int udp6_protocol_addr(struct transport *t, uint8_t *addr)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
-	if (udp6->ip_len)
-		memcpy(addr, &udp6->ip, udp6->ip_len);
-	return udp6->ip_len;
+	int len = 0;
+
+	if (udp6->ip.len) {
+		len = sizeof(udp6->ip.sin6.sin6_addr.s6_addr);
+		memcpy(addr, &udp6->ip.sin6.sin6_addr.s6_addr, len);
+	}
+	return len;
 }
 
 struct transport *udp6_transport_create(void)

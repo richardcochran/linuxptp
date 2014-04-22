@@ -39,7 +39,7 @@ int transport_open(struct transport *t, const char *name,
 
 int transport_recv(struct transport *t, int fd, struct ptp_message *msg)
 {
-	return t->recv(t, fd, msg, sizeof(msg->data), &msg->hwts);
+	return t->recv(t, fd, msg, sizeof(msg->data), &msg->address, &msg->hwts);
 }
 
 int transport_send(struct transport *t, struct fdarray *fda, int event,
@@ -47,7 +47,7 @@ int transport_send(struct transport *t, struct fdarray *fda, int event,
 {
 	int len = ntohs(msg->header.messageLength);
 
-	return t->send(t, fda, event, 0, msg, len, &msg->hwts);
+	return t->send(t, fda, event, 0, msg, len, NULL, &msg->hwts);
 }
 
 int transport_peer(struct transport *t, struct fdarray *fda, int event,
@@ -55,7 +55,7 @@ int transport_peer(struct transport *t, struct fdarray *fda, int event,
 {
 	int len = ntohs(msg->header.messageLength);
 
-	return t->send(t, fda, event, 1, msg, len, &msg->hwts);
+	return t->send(t, fda, event, 1, msg, len, NULL, &msg->hwts);
 }
 
 int transport_physical_addr(struct transport *t, uint8_t *addr)
