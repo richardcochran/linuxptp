@@ -58,6 +58,14 @@ int transport_peer(struct transport *t, struct fdarray *fda, int event,
 	return t->send(t, fda, event, 1, msg, len, NULL, &msg->hwts);
 }
 
+int transport_sendto(struct transport *t, struct fdarray *fda, int event,
+		     struct ptp_message *msg)
+{
+	int len = ntohs(msg->header.messageLength);
+
+	return t->send(t, fda, event, 0, msg, len, &msg->address, &msg->hwts);
+}
+
 int transport_physical_addr(struct transport *t, uint8_t *addr)
 {
 	if (t->physical_addr) {
