@@ -143,18 +143,14 @@ static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
 
 static int pmc_send(struct pmc *pmc, struct ptp_message *msg, int pdulen)
 {
-	int cnt, err;
+	int err;
+
 	err = msg_pre_send(msg);
 	if (err) {
 		pr_err("msg_pre_send failed");
 		return -1;
 	}
-	cnt = transport_send(pmc->transport, &pmc->fdarray, 0, msg);
-	if (cnt < 0) {
-		pr_err("failed to send message");
-		return -1;
-	}
-	return 0;
+	return transport_send(pmc->transport, &pmc->fdarray, 0, msg);
 }
 
 static int pmc_tlv_datalen(struct pmc *pmc, int id)
