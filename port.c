@@ -2198,11 +2198,11 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	switch (management_action(msg)) {
 	case GET:
 		if (port_management_get_response(p, ingress, mgt->id, msg))
-			return 0;
+			return 1;
 		break;
 	case SET:
 		if (port_management_set(p, ingress, mgt->id, msg))
-			return 0;
+			return 1;
 		break;
 	case COMMAND:
 		break;
@@ -2234,7 +2234,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 		port_management_send_error(p, ingress, msg, NO_SUCH_ID);
 		return -1;
 	}
-	return 0;
+	return 1;
 }
 
 int port_management_error(struct PortIdentity pid, struct port *ingress,

@@ -116,7 +116,8 @@ struct PortIdentity port_identity(struct port *p);
  * @param p        A pointer previously obtained via port_open().
  * @param ingress  The port on which 'msg' was received.
  * @param msg      A management message.
- * @return         Zero if the message is valid, non-zero otherwise.
+ * @return         1 if the message was responded to, 0 if it did not apply
+ *                 to the port, -1 if it was invalid.
  */
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg);
 

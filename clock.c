@@ -798,7 +798,7 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 
 int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 {
-	int changed = 0, i;
+	int changed = 0, i, res, answers;
 	struct management_tlv *mgt;
 	struct ClockIdentity *tcid, wildcard = {
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
@@ -883,9 +883,18 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		clock_management_send_error(p, msg, NOT_SUPPORTED);
 		break;
 	default:
+		answers = 0;
 		for (i = 0; i < c->nports; i++) {
-			if (port_manage(c->port[i], p, msg))
-				break;
+			res = port_manage(c->port[i], p, msg);
+			if (res < 0)
+				return changed;
+			if (res > 0)
+				answers++;
+		}
+		if (!answers) {
+			/* IEEE 1588 Interpretation #21 suggests to use
+			 * WRONG_VALUE for ports that do not exist */
+			clock_management_send_error(p, msg, WRONG_VALUE);
 		}
 		break;
 	}
