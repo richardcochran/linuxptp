@@ -92,6 +92,14 @@ enum fsm_event port_event(struct port *port, int fd_index);
 int port_forward(struct port *p, struct ptp_message *msg);
 
 /**
+ * Forward a message on a given port to the address stored in the message.
+ * @param port    A pointer previously obtained via port_open().
+ * @param msg     The message to send. Must be in network byte order.
+ * @return        Zero on success, non-zero otherwise.
+ */
+int port_forward_to(struct port *p, struct ptp_message *msg);
+
+/**
  * Prepare message for transmission and send it to a given port. Note that
  * a single message cannot be sent several times using this function, that
  * would lead to corrupted data being sent. Use msg_pre_send and

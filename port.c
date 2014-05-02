@@ -2170,6 +2170,13 @@ int port_forward(struct port *p, struct ptp_message *msg)
 	return cnt <= 0 ? -1 : 0;
 }
 
+int port_forward_to(struct port *p, struct ptp_message *msg)
+{
+	int cnt;
+	cnt = transport_sendto(p->trp, &p->fda, 0, msg);
+	return cnt <= 0 ? -1 : 0;
+}
+
 int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
 {
 	int cnt;
