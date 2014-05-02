@@ -2163,7 +2163,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	return event;
 }
 
-int port_forward(struct port *p, struct ptp_message *msg, int msglen)
+int port_forward(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
 	cnt = transport_send(p->trp, &p->fda, 0, msg);

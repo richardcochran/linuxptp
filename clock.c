@@ -785,7 +785,7 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 					msg->management.boundaryHops--;
 					msg_pre_send(msg);
 				}
-				if (port_forward(fwd, msg, pdulen))
+				if (port_forward(fwd, msg))
 					pr_err("port %d: management forward failed", i + 1);
 			}
 		}

@@ -87,10 +87,9 @@ enum fsm_event port_event(struct port *port, int fd_index);
  * Forward a message on a given port.
  * @param port    A pointer previously obtained via port_open().
  * @param msg     The message to send. Must be in network byte order.
- * @param msglen  The length of the message in bytes.
  * @return        Zero on success, non-zero otherwise.
  */
-int port_forward(struct port *p, struct ptp_message *msg, int msglen);
+int port_forward(struct port *p, struct ptp_message *msg);
 
 /**
  * Prepare message for transmission and send it to a given port. Note that
