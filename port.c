@@ -603,26 +603,19 @@ static void port_management_send_error(struct port *p, struct port *ingress,
 static const Octet profile_id_drr[] = {0x00, 0x1B, 0x19, 0x00, 0x01, 0x00};
 static const Octet profile_id_p2p[] = {0x00, 0x1B, 0x19, 0x00, 0x02, 0x00};
 
-static int port_management_get_response(struct port *target,
-					struct port *ingress, int id,
-					struct ptp_message *req)
+static int port_management_fill_response(struct port *target,
+					 struct ptp_message *rsp, int id)
 {
 	int datalen = 0, respond = 0;
 	struct management_tlv *tlv;
 	struct management_tlv_datum *mtd;
-	struct ptp_message *rsp;
 	struct portDS *pds;
 	struct port_ds_np *pdsnp;
-	struct PortIdentity pid = port_identity(target);
 	struct clock_description *desc;
 	struct mgmt_clock_description *cd;
 	uint8_t *buf;
 	uint16_t u16;
 
-	rsp = port_management_reply(pid, ingress, req);
-	if (!rsp) {
-		return 0;
-	}
 	tlv = (struct management_tlv *) rsp->management.suffix;
 	tlv->type = TLV_MANAGEMENT;
 	tlv->id = id;
@@ -776,10 +769,27 @@ static int port_management_get_response(struct port *target,
 		tlv->length = sizeof(tlv->id) + datalen;
 		rsp->header.messageLength += sizeof(*tlv) + datalen;
 		rsp->tlv_count = 1;
-		port_prepare_and_send(ingress, rsp, 0);
 	}
+	return respond;
+}
+
+static int port_management_get_response(struct port *target,
+					struct port *ingress, int id,
+					struct ptp_message *req)
+{
+	struct PortIdentity pid = port_identity(target);
+	struct ptp_message *rsp;
+	int respond;
+
+	rsp = port_management_reply(pid, ingress, req);
+	if (!rsp) {
+		return 0;
+	}
+	respond = port_management_fill_response(target, rsp, id);
+	if (respond)
+		port_prepare_and_send(ingress, rsp, 0);
 	msg_put(rsp);
-	return respond ? 1 : 0;
+	return respond;
 }
 
 static int port_management_set(struct port *target,
@@ -2271,9 +2281,11 @@ int port_management_error(struct PortIdentity pid, struct port *ingress,
 	return err;
 }
 
-struct ptp_message *port_management_reply(struct PortIdentity pid,
-					  struct port *ingress,
-					  struct ptp_message *req)
+static struct ptp_message *
+port_management_construct(struct PortIdentity pid, struct port *ingress,
+			  UInteger16 sequenceId,
+			  struct PortIdentity *targetPortIdentity,
+			  UInteger8 boundaryHops, uint8_t action)
 {
 	struct ptp_message *msg;
 	int pdulen;
@@ -2290,16 +2302,16 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 	msg->header.messageLength      = pdulen;
 	msg->header.domainNumber       = clock_domain_number(ingress->clock);
 	msg->header.sourcePortIdentity = pid;
-	msg->header.sequenceId         = req->header.sequenceId;
+	msg->header.sequenceId         = sequenceId;
 	msg->header.control            = CTL_MANAGEMENT;
 	msg->header.logMessageInterval = 0x7f;
 
-	msg->management.targetPortIdentity = req->header.sourcePortIdentity;
-	msg->management.startingBoundaryHops =
-		req->management.startingBoundaryHops - req->management.boundaryHops;
-	msg->management.boundaryHops = msg->management.startingBoundaryHops;
+	if (targetPortIdentity)
+		msg->management.targetPortIdentity = *targetPortIdentity;
+	msg->management.startingBoundaryHops = boundaryHops;
+	msg->management.boundaryHops = boundaryHops;
 
-	switch (management_action(req)) {
+	switch (action) {
 	case GET: case SET:
 		msg->management.flags = RESPONSE;
 		break;
@@ -2308,6 +2320,48 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 		break;
 	}
 	return msg;
+}
+
+struct ptp_message *port_management_reply(struct PortIdentity pid,
+					  struct port *ingress,
+					  struct ptp_message *req)
+{
+	UInteger8 boundaryHops;
+
+	boundaryHops = req->management.startingBoundaryHops -
+		       req->management.boundaryHops;
+	return port_management_construct(pid, ingress,
+					 req->header.sequenceId,
+					 &req->header.sourcePortIdentity,
+					 boundaryHops,
+					 management_action(req));
+}
+
+void port_notify_event(struct port *p, enum notification event)
+{
+	struct PortIdentity pid = port_identity(p);
+	struct ptp_message *msg;
+	UInteger16 msg_len;
+	int id;
+
+	switch (event) {
+	/* set id */
+	default:
+		return;
+	}
+	/* targetPortIdentity and sequenceId will be filled by
+	 * clock_send_notification */
+	msg = port_management_construct(pid, p, 0, NULL, 1, GET);
+	if (!msg)
+		return;
+	if (!port_management_fill_response(p, msg, id))
+		goto err;
+	msg_len = msg->header.messageLength;
+	if (msg_pre_send(msg))
+		goto err;
+	clock_send_notification(p->clock, msg, msg_len, event);
+err:
+	msg_put(msg);
 }
 
 struct port *port_open(int phc_index,

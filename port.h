@@ -23,6 +23,7 @@
 #include "fd.h"
 #include "foreign.h"
 #include "fsm.h"
+#include "notification.h"
 #include "transport.h"
 
 /* forward declarations */
@@ -154,6 +155,14 @@ int port_management_error(struct PortIdentity pid, struct port *ingress,
 struct ptp_message *port_management_reply(struct PortIdentity pid,
 					  struct port *ingress,
 					  struct ptp_message *req);
+
+/**
+ * Construct and send notification to subscribers about an event that
+ * occured on the port.
+ * @param p        The port.
+ * @param event    The identification of the event.
+ */
+void port_notify_event(struct port *p, enum notification event);
 
 /**
  * Open a network port.
