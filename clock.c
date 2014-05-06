@@ -1025,6 +1025,15 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	}
 
 	switch (mgt->id) {
+	case PORT_PROPERTIES_NP:
+		if (p != c->port[c->nports]) {
+			/* Only the UDS port allowed. */
+			clock_management_send_error(p, msg, NOT_SUPPORTED);
+			return 0;
+		}
+	}
+
+	switch (mgt->id) {
 	case USER_DESCRIPTION:
 	case SAVE_IN_NON_VOLATILE_STORAGE:
 	case RESET_NON_VOLATILE_STORAGE:

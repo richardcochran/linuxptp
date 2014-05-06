@@ -611,6 +611,7 @@ static int port_management_fill_response(struct port *target,
 	struct management_tlv_datum *mtd;
 	struct portDS *pds;
 	struct port_ds_np *pdsnp;
+	struct port_properties_np *ppn;
 	struct clock_description *desc;
 	struct mgmt_clock_description *cd;
 	uint8_t *buf;
@@ -758,6 +759,18 @@ static int port_management_fill_response(struct port *target,
 		pdsnp->neighborPropDelayThresh = target->neighborPropDelayThresh;
 		pdsnp->asCapable = target->asCapable;
 		datalen = sizeof(*pdsnp);
+		respond = 1;
+		break;
+	case PORT_PROPERTIES_NP:
+		ppn = (struct port_properties_np *)tlv->data;
+		ppn->portIdentity = target->portIdentity;
+		if (target->state == PS_GRAND_MASTER)
+			ppn->port_state = PS_MASTER;
+		else
+			ppn->port_state = target->state;
+		ppn->timestamping = target->timestamping;
+		ptp_text_set(&ppn->interface, target->name);
+		datalen = sizeof(*ppn) + ppn->interface.length;
 		respond = 1;
 		break;
 	}

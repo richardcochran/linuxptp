@@ -100,6 +100,7 @@ enum management_action {
 #define DELAY_MECHANISM					0x6000
 #define LOG_MIN_PDELAY_REQ_INTERVAL			0x6001
 #define PORT_DATA_SET_NP					0xC002
+#define PORT_PROPERTIES_NP				0xC004
 
 /* Management error ID values */
 #define RESPONSE_TOO_BIG				0x0001
@@ -203,6 +204,13 @@ struct port_ds_np {
 struct subscribe_events_np {
 	uint16_t      duration; /* seconds */
 	uint8_t       bitmask[EVENT_BITMASK_CNT];
+} PACKED;
+
+struct port_properties_np {
+	struct PortIdentity portIdentity;
+	uint8_t port_state;
+	uint8_t timestamping;
+	struct PTPText interface;
 } PACKED;
 
 enum clock_type {
