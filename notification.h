@@ -21,7 +21,7 @@
 #define HAVE_NOTIFICATION_H
 
 enum notification {
-	NOTIFY_DUMMY,
+	NOTIFY_PORT_STATE,
 };
 
 #endif

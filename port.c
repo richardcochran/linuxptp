@@ -2038,6 +2038,7 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		if (next == PS_LISTENING && p->delayMechanism == DM_P2P) {
 			port_set_delay_tmo(p);
 		}
+		port_notify_event(p, NOTIFY_PORT_STATE);
 		return 1;
 	}
 
@@ -2053,6 +2054,7 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 
 	p->state = next;
+	port_notify_event(p, NOTIFY_PORT_STATE);
 	return 0;
 }
 
@@ -2351,7 +2353,9 @@ void port_notify_event(struct port *p, enum notification event)
 	int id;
 
 	switch (event) {
-	/* set id */
+	case NOTIFY_PORT_STATE:
+		id = PORT_DATA_SET;
+		break;
 	default:
 		return;
 	}
