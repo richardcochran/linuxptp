@@ -23,6 +23,7 @@
 #include "dm.h"
 #include "ds.h"
 #include "config.h"
+#include "notification.h"
 #include "servo.h"
 #include "tlv.h"
 #include "tmv.h"
@@ -132,6 +133,16 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda);
  *             implies a state decision event, zero otherwise.
  */
 int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg);
+
+/**
+ * Send notification about an event to all subscribers.
+ * @param c      The clock instance.
+ * @param msg    The PTP message to send, in network byte order.
+ * @param msglen The length of the message in bytes.
+ * @param event  The event that occured.
+ */
+void clock_send_notification(struct clock *c, struct ptp_message *msg,
+			     int msglen, enum notification event);
 
 /**
  * Obtain a clock's parent data set.

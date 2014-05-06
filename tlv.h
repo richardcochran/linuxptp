@@ -79,6 +79,7 @@ enum management_action {
 #define PRIMARY_DOMAIN					0x4002
 #define TIME_STATUS_NP					0xC000
 #define GRANDMASTER_SETTINGS_NP				0xC001
+#define SUBSCRIBE_EVENTS_NP				0xC003
 
 /* Port management ID values */
 #define NULL_MANAGEMENT					0x0000
@@ -194,6 +195,13 @@ struct grandmaster_settings_np {
 struct port_ds_np {
 	UInteger32    neighborPropDelayThresh; /*nanoseconds*/
 	Integer32     asCapable;
+} PACKED;
+
+
+#define EVENT_BITMASK_CNT 64
+
+struct subscribe_events_np {
+	uint8_t       bitmask[EVENT_BITMASK_CNT];
 } PACKED;
 
 enum clock_type {

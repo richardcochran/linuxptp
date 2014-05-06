@@ -22,6 +22,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "address.h"
 #include "bmc.h"
 #include "clock.h"
 #include "clockadj.h"
@@ -57,6 +58,14 @@ struct clock_stats {
 	struct stats *freq;
 	struct stats *delay;
 	unsigned int max_count;
+};
+
+struct clock_subscriber {
+	LIST_ENTRY(clock_subscriber) list;
+	uint8_t events[EVENT_BITMASK_CNT];
+	struct PortIdentity targetPortIdentity;
+	struct address addr;
+	UInteger16 sequenceId;
 };
 
 struct clock {
@@ -99,6 +108,7 @@ struct clock {
 	int stats_interval;
 	struct clockcheck *sanity_check;
 	struct interface uds_interface;
+	LIST_HEAD(clock_subscribers_head, clock_subscriber) subscribers;
 };
 
 struct clock the_clock;
@@ -110,9 +120,114 @@ static int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
 	return 0 == memcmp(a, b, sizeof(*a));
 }
 
+#ifndef LIST_FOREACH_SAFE
+#define	LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = LIST_FIRST((head));				\
+	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+#endif
+
+static void remove_subscriber(struct clock_subscriber *s)
+{
+	LIST_REMOVE(s, list);
+	free(s);
+}
+
+static void clock_update_subscription(struct clock *c, struct ptp_message *req,
+				      uint8_t *bitmask)
+{
+	struct clock_subscriber *s;
+	int i, remove = 1;
+
+	for (i = 0; i < EVENT_BITMASK_CNT; i++) {
+		if (bitmask[i]) {
+			remove = 0;
+			break;
+		}
+	}
+
+	LIST_FOREACH(s, &c->subscribers, list) {
+		if (!memcmp(&s->targetPortIdentity, &req->header.sourcePortIdentity,
+		            sizeof(struct PortIdentity))) {
+			/* Found, update the transport address and event
+			 * mask. */
+			if (!remove) {
+				s->addr = req->address;
+				memcpy(s->events, bitmask, EVENT_BITMASK_CNT);
+			} else {
+				remove_subscriber(s);
+			}
+			return;
+		}
+	}
+	if (remove)
+		return;
+	/* Not present yet, add the subscriber. */
+	s = malloc(sizeof(*s));
+	if (!s) {
+		pr_err("failed to allocate memory for a subscriber");
+		return;
+	}
+	s->targetPortIdentity = req->header.sourcePortIdentity;
+	s->addr = req->address;
+	memcpy(s->events, bitmask, EVENT_BITMASK_CNT);
+	s->sequenceId = 0;
+	LIST_INSERT_HEAD(&c->subscribers, s, list);
+}
+
+static void clock_get_subscription(struct clock *c, struct ptp_message *req,
+				   uint8_t *bitmask)
+{
+	struct clock_subscriber *s;
+
+	LIST_FOREACH(s, &c->subscribers, list) {
+		if (!memcmp(&s->targetPortIdentity, &req->header.sourcePortIdentity,
+			    sizeof(struct PortIdentity))) {
+			memcpy(bitmask, s->events, EVENT_BITMASK_CNT);
+			return;
+		}
+	}
+	/* A client without entry means the client has no subscriptions. */
+	memset(bitmask, 0, EVENT_BITMASK_CNT);
+}
+
+static void clock_flush_subscriptions(struct clock *c)
+{
+	struct clock_subscriber *s, *tmp;
+
+	LIST_FOREACH_SAFE(s, &c->subscribers, list, tmp) {
+		remove_subscriber(s);
+	}
+}
+
+void clock_send_notification(struct clock *c, struct ptp_message *msg,
+			     int msglen, enum notification event)
+{
+	unsigned int event_pos = event / 8;
+	uint8_t mask = 1 << (event % 8);
+	struct port *uds = c->port[c->nports];
+	struct clock_subscriber *s;
+
+	LIST_FOREACH(s, &c->subscribers, list) {
+		if (!(s->events[event_pos] & mask))
+			continue;
+		/* send event */
+		msg->header.sequenceId = htons(s->sequenceId);
+		s->sequenceId++;
+		msg->management.targetPortIdentity.clockIdentity =
+			s->targetPortIdentity.clockIdentity;
+		msg->management.targetPortIdentity.portNumber =
+			htons(s->targetPortIdentity.portNumber);
+		msg->address = s->addr;
+		port_forward_to(uds, msg);
+	}
+}
+
 void clock_destroy(struct clock *c)
 {
 	int i;
+
+	clock_flush_subscriptions(c);
 	for (i = 0; i < c->nports; i++) {
 		port_close(c->port[i]);
 		close(c->fault_fd[i]);
@@ -180,6 +295,7 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 	struct ptp_message *rsp;
 	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
+	struct subscribe_events_np *sen;
 	struct PortIdentity pid = port_identity(p);
 	struct PTPText *text;
 
@@ -288,6 +404,15 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 		datalen = sizeof(*gsn);
 		respond = 1;
 		break;
+	case SUBSCRIBE_EVENTS_NP:
+		if (p != c->port[c->nports]) {
+			/* Only the UDS port allowed. */
+			break;
+		}
+		sen = (struct subscribe_events_np *)tlv->data;
+		clock_get_subscription(c, req, sen->bitmask);
+		respond = 1;
+		break;
 	}
 	if (respond) {
 		if (datalen % 2) {
@@ -309,6 +434,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 	int respond = 0;
 	struct management_tlv *tlv;
 	struct grandmaster_settings_np *gsn;
+	struct subscribe_events_np *sen;
 
 	tlv = (struct management_tlv *) req->management.suffix;
 
@@ -320,6 +446,11 @@ static int clock_management_set(struct clock *c, struct port *p,
 		c->time_flags = gsn->time_flags;
 		c->time_source = gsn->time_source;
 		*changed = 1;
+		respond = 1;
+		break;
+	case SUBSCRIBE_EVENTS_NP:
+		sen = (struct subscribe_events_np *)tlv->data;
+		clock_update_subscription(c, req, sen->bitmask);
 		respond = 1;
 		break;
 	}
@@ -669,6 +800,8 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	clock_sync_interval(c, 0);
 
+	LIST_INIT(&c->subscribers);
+
 	for (i = 0; i < count; i++) {
 		c->port[i] = port_open(phc_index, timestamping, 1+i, &iface[i], c);
 		if (!c->port[i]) {
@@ -880,6 +1013,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case PRIMARY_DOMAIN:
 	case TIME_STATUS_NP:
 	case GRANDMASTER_SETTINGS_NP:
+	case SUBSCRIBE_EVENTS_NP:
 		clock_management_send_error(p, msg, NOT_SUPPORTED);
 		break;
 	default:

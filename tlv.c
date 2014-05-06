@@ -242,6 +242,10 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		pdsnp->neighborPropDelayThresh = ntohl(pdsnp->neighborPropDelayThresh);
 		pdsnp->asCapable = ntohl(pdsnp->asCapable);
 		break;
+	case SUBSCRIBE_EVENTS_NP:
+		if (data_len != sizeof(struct subscribe_events_np))
+			goto bad_length;
+		break;
 	case SAVE_IN_NON_VOLATILE_STORAGE:
 	case RESET_NON_VOLATILE_STORAGE:
 	case INITIALIZE:
