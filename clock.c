@@ -314,23 +314,22 @@ static void clock_management_send_error(struct port *p,
 		pr_err("failed to send management error status");
 }
 
-static int clock_management_get_response(struct clock *c, struct port *p,
-					 int id, struct ptp_message *req)
+/* The 'p' and 'req' paremeters are needed for the GET actions that operate
+ * on per-client datasets. If such actions do not apply to the caller, it is
+ * allowed to pass both of them as NULL.
+ */
+static int clock_management_fill_response(struct clock *c, struct port *p,
+					  struct ptp_message *req,
+					  struct ptp_message *rsp, int id)
 {
 	int datalen = 0, respond = 0;
 	struct management_tlv *tlv;
 	struct management_tlv_datum *mtd;
-	struct ptp_message *rsp;
 	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
 	struct subscribe_events_np *sen;
-	struct PortIdentity pid = port_identity(p);
 	struct PTPText *text;
 
-	rsp = port_management_reply(pid, p, req);
-	if (!rsp) {
-		return 0;
-	}
 	tlv = (struct management_tlv *) rsp->management.suffix;
 	tlv->type = TLV_MANAGEMENT;
 	tlv->id = id;
@@ -450,10 +449,26 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 		tlv->length = sizeof(tlv->id) + datalen;
 		rsp->header.messageLength += sizeof(*tlv) + datalen;
 		rsp->tlv_count = 1;
-		port_prepare_and_send(p, rsp, 0);
 	}
+	return respond;
+}
+
+static int clock_management_get_response(struct clock *c, struct port *p,
+					 int id, struct ptp_message *req)
+{
+	struct PortIdentity pid = port_identity(p);
+	struct ptp_message *rsp;
+	int respond;
+
+	rsp = port_management_reply(pid, p, req);
+	if (!rsp) {
+		return 0;
+	}
+	respond = clock_management_fill_response(c, p, req, rsp, id);
+	if (respond)
+		port_prepare_and_send(p, rsp, 0);
 	msg_put(rsp);
-	return respond ? 1 : 0;
+	return respond;
 }
 
 static int clock_management_set(struct clock *c, struct port *p,
@@ -1062,6 +1077,34 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		break;
 	}
 	return changed;
+}
+
+void clock_notify_event(struct clock *c, enum notification event)
+{
+	struct port *uds = c->port[c->nports];
+	struct PortIdentity pid = port_identity(uds);
+	struct ptp_message *msg;
+	UInteger16 msg_len;
+	int id;
+
+	switch (event) {
+	/* set id */
+	default:
+		return;
+	}
+	/* targetPortIdentity and sequenceId will be filled by
+	 * clock_send_notification */
+	msg = port_management_notify(pid, uds);
+	if (!msg)
+		return;
+	if (!clock_management_fill_response(c, NULL, NULL, msg, id))
+		goto err;
+	msg_len = msg->header.messageLength;
+	if (msg_pre_send(msg))
+		goto err;
+	clock_send_notification(c, msg, msg_len, event);
+err:
+	msg_put(msg);
 }
 
 struct parent_ds *clock_parent_ds(struct clock *c)

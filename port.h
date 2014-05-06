@@ -157,6 +157,20 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 					  struct ptp_message *req);
 
 /**
+ * Allocate a standalone reply management message.
+ *
+ * See note in @ref port_management_reply description about freeing the
+ * message. Also note that the constructed message does not have
+ * targetPortIdentity and sequenceId filled.
+ *
+ * @param pid      The id of the responding port.
+ * @param port     The port to which the message will be sent.
+ * @return         Pointer to a message on success, NULL otherwise.
+ */
+struct ptp_message *port_management_notify(struct PortIdentity pid,
+					   struct port *port);
+
+/**
  * Construct and send notification to subscribers about an event that
  * occured on the port.
  * @param p        The port.

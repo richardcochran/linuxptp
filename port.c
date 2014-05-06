@@ -2337,6 +2337,12 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 					 management_action(req));
 }
 
+struct ptp_message *port_management_notify(struct PortIdentity pid,
+					   struct port *port)
+{
+	return port_management_construct(pid, port, 0, NULL, 1, GET);
+}
+
 void port_notify_event(struct port *p, enum notification event)
 {
 	struct PortIdentity pid = port_identity(p);
@@ -2351,7 +2357,7 @@ void port_notify_event(struct port *p, enum notification event)
 	}
 	/* targetPortIdentity and sequenceId will be filled by
 	 * clock_send_notification */
-	msg = port_management_construct(pid, p, 0, NULL, 1, GET);
+	msg = port_management_notify(pid, p);
 	if (!msg)
 		return;
 	if (!port_management_fill_response(p, msg, id))

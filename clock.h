@@ -145,6 +145,14 @@ void clock_send_notification(struct clock *c, struct ptp_message *msg,
 			     int msglen, enum notification event);
 
 /**
+ * Construct and send notification to subscribers about an event that
+ * occured on the clock.
+ * @param c      The clock instance.
+ * @param event  The identification of the event.
+ */
+void clock_notify_event(struct clock *c, enum notification event);
+
+/**
  * Obtain a clock's parent data set.
  * @param c  The clock instance.
  * @return   A pointer to the parent data set of the clock.
