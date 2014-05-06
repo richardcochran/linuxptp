@@ -201,6 +201,7 @@ struct port_ds_np {
 #define EVENT_BITMASK_CNT 64
 
 struct subscribe_events_np {
+	uint16_t      duration; /* seconds */
 	uint8_t       bitmask[EVENT_BITMASK_CNT];
 } PACKED;
 

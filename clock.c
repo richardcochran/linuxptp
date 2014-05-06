@@ -66,6 +66,7 @@ struct clock_subscriber {
 	struct PortIdentity targetPortIdentity;
 	struct address addr;
 	UInteger16 sequenceId;
+	time_t expiration;
 };
 
 struct clock {
@@ -134,10 +135,11 @@ static void remove_subscriber(struct clock_subscriber *s)
 }
 
 static void clock_update_subscription(struct clock *c, struct ptp_message *req,
-				      uint8_t *bitmask)
+				      uint8_t *bitmask, uint16_t duration)
 {
 	struct clock_subscriber *s;
 	int i, remove = 1;
+	struct timespec now;
 
 	for (i = 0; i < EVENT_BITMASK_CNT; i++) {
 		if (bitmask[i]) {
@@ -154,6 +156,8 @@ static void clock_update_subscription(struct clock *c, struct ptp_message *req,
 			if (!remove) {
 				s->addr = req->address;
 				memcpy(s->events, bitmask, EVENT_BITMASK_CNT);
+				clock_gettime(CLOCK_MONOTONIC, &now);
+				s->expiration = now.tv_sec + duration;
 			} else {
 				remove_subscriber(s);
 			}
@@ -171,24 +175,33 @@ static void clock_update_subscription(struct clock *c, struct ptp_message *req,
 	s->targetPortIdentity = req->header.sourcePortIdentity;
 	s->addr = req->address;
 	memcpy(s->events, bitmask, EVENT_BITMASK_CNT);
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	s->expiration = now.tv_sec + duration;
 	s->sequenceId = 0;
 	LIST_INSERT_HEAD(&c->subscribers, s, list);
 }
 
 static void clock_get_subscription(struct clock *c, struct ptp_message *req,
-				   uint8_t *bitmask)
+				   uint8_t *bitmask, uint16_t *duration)
 {
 	struct clock_subscriber *s;
+	struct timespec now;
 
 	LIST_FOREACH(s, &c->subscribers, list) {
 		if (!memcmp(&s->targetPortIdentity, &req->header.sourcePortIdentity,
 			    sizeof(struct PortIdentity))) {
 			memcpy(bitmask, s->events, EVENT_BITMASK_CNT);
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			if (s->expiration < now.tv_sec)
+				*duration = 0;
+			else
+				*duration = s->expiration - now.tv_sec;
 			return;
 		}
 	}
 	/* A client without entry means the client has no subscriptions. */
 	memset(bitmask, 0, EVENT_BITMASK_CNT);
+	*duration = 0;
 }
 
 static void clock_flush_subscriptions(struct clock *c)
@@ -197,6 +210,21 @@ static void clock_flush_subscriptions(struct clock *c)
 
 	LIST_FOREACH_SAFE(s, &c->subscribers, list, tmp) {
 		remove_subscriber(s);
+	}
+}
+
+static void clock_prune_subscriptions(struct clock *c)
+{
+	struct clock_subscriber *s, *tmp;
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	LIST_FOREACH_SAFE(s, &c->subscribers, list, tmp) {
+		if (s->expiration <= now.tv_sec) {
+			pr_info("subscriber %s timed out",
+				pid2str(&s->targetPortIdentity));
+			remove_subscriber(s);
+		}
 	}
 }
 
@@ -410,7 +438,7 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 			break;
 		}
 		sen = (struct subscribe_events_np *)tlv->data;
-		clock_get_subscription(c, req, sen->bitmask);
+		clock_get_subscription(c, req, sen->bitmask, &sen->duration);
 		respond = 1;
 		break;
 	}
@@ -450,7 +478,8 @@ static int clock_management_set(struct clock *c, struct port *p,
 		break;
 	case SUBSCRIBE_EVENTS_NP:
 		sen = (struct subscribe_events_np *)tlv->data;
-		clock_update_subscription(c, req, sen->bitmask);
+		clock_update_subscription(c, req, sen->bitmask,
+					  sen->duration);
 		respond = 1;
 		break;
 	}
@@ -1103,6 +1132,7 @@ int clock_poll(struct clock *c)
 	if (sde)
 		handle_state_decision_event(c);
 
+	clock_prune_subscriptions(c);
 	return 0;
 }
 
