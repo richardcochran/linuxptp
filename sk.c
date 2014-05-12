@@ -198,7 +198,7 @@ int sk_interface_addr(const char *name, int family, struct address *addr)
 			default:
 				continue;
 			}
-			memcpy(&addr->sa, &i->ifa_addr, addr->len);
+			memcpy(&addr->sa, i->ifa_addr, addr->len);
 			result = 0;
 			break;
 		}
