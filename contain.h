@@ -23,7 +23,7 @@
 #include <stddef.h>
 
 /*
- * This macro boroughed from the Linux kernel.
+ * This macro borrowed from the Linux kernel.
  */
 #define container_of(ptr, type, member) ({			\
 	const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
