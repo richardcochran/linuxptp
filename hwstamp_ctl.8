@@ -15,7 +15,7 @@ hwstamp_ctl \- set time stamping policy at the driver level
 
 .SH DESCRIPTION
 .B hwstamp_ctl
-is a program used to set the hardware time stamping policy at the network
+is a program used to set and get the hardware time stamping policy at the network
 driver level with the
 .B SIOCSHWTSTAMP
 .BR ioctl (2).
@@ -26,6 +26,15 @@ and
 values are hints to the driver what it is expected to do. If the requested
 fine-grained filtering for incoming packets is not supported, the driver may
 time stamp more than just the requested types of packets.
+
+If neither
+.I tx-type
+nor
+.I rx-filter
+values are passed to the program, it will use the
+.B SIOCGHWTSTAMP
+.BR ioctl(2)
+to non-destructively read the current hardware time stamping policy.
 
 This program is a debugging tool. The
 .BR ptp4l (8)

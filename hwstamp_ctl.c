@@ -30,6 +30,7 @@
 #include <net/if.h>
 
 #include "version.h"
+#include "missing.h"
 
 static void usage(char *progname)
 {
@@ -84,6 +85,7 @@ int main(int argc, char *argv[])
 	struct hwtstamp_config cfg;
 	char *device = NULL, *progname;
 	int c, err, fd, rxopt = HWTSTAMP_FILTER_NONE, txopt = HWTSTAMP_TX_OFF;
+	int setrx = 0, settx = 0;
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
@@ -94,9 +96,11 @@ int main(int argc, char *argv[])
 			device = optarg;
 			break;
 		case 'r':
+			setrx = 1;
 			rxopt = atoi(optarg);
 			break;
 		case 't':
+			settx = 1;
 			txopt = atoi(optarg);
 			break;
 		case 'v':
@@ -116,6 +120,7 @@ int main(int argc, char *argv[])
 		usage(progname);
 		return -1;
 	}
+
 	if (rxopt < HWTSTAMP_FILTER_NONE ||
 	    rxopt > HWTSTAMP_FILTER_PTP_V2_DELAY_REQ ||
 	    txopt < HWTSTAMP_TX_OFF || txopt > HWTSTAMP_TX_ON) {
@@ -129,8 +134,6 @@ int main(int argc, char *argv[])
 	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name));
 
 	ifreq.ifr_data = (void *) &cfg;
-	cfg.tx_type    = txopt;
-	cfg.rx_filter  = rxopt;
 
 	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (fd < 0) {
@@ -138,15 +141,53 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
+	/* First, attempt to get the current settings. */
+	err = ioctl(fd, SIOCGHWTSTAMP, &ifreq);
 	if (err < 0) {
 		err = errno;
-		perror("SIOCSHWTSTAMP failed");
-		if (err == ERANGE)
-			fprintf(stderr, "The requested time stamping mode is not supported by the hardware.\n");
+		if (err == ENOTTY)
+			fprintf(stderr,
+				"Kernel does not have support "
+				"for non-destructive SIOCGHWTSTAMP.\n");
+		else if (err == EOPNOTSUPP)
+			fprintf(stderr,
+				"Device driver does not have support "
+				"for non-destructive SIOCGHWTSTAMP.\n");
+		else
+			perror("SIOCGHWTSTAMP failed");
+	} else {
+		printf("current settings:\n"
+		       "tx_type %d\n"
+		       "rx_filter %d\n",
+		       cfg.tx_type, cfg.rx_filter);
 	}
 
-	printf("tx_type %d\n" "rx_filter %d\n", cfg.tx_type, cfg.rx_filter);
+	/* Now, attempt to set values. Only change the values actually
+	 * requested by user, rather than blindly resetting th zero if
+	 * unrequested. */
+	if (settx || setrx) {
+
+		if (settx)
+			cfg.tx_type = txopt;
+
+		if (setrx)
+			cfg.rx_filter = rxopt;
+
+		err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
+		if (err < 0) {
+			err = errno;
+			perror("SIOCSHWTSTAMP failed");
+			if (err == ERANGE)
+				fprintf(stderr,
+					"The requested time stamping mode is "
+					"not supported by the hardware.\n");
+		} else {
+			printf("new settings:\n"
+			       "tx_type %d\n"
+			       "rx_filter %d\n",
+			       cfg.tx_type, cfg.rx_filter);
+		}
+	}
 
 	return err;
 }
