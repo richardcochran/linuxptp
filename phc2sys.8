@@ -1,12 +1,17 @@
 .TH PHC2SYS 8 "November 2012" "linuxptp"
 .SH NAME
-phc2sys \- synchronize two clocks
+phc2sys \- synchronize two or more clocks
 
 .SH SYNOPSIS
+.B phc2sys \-a
+[
+.B \-r
+] [
+.B \-r
+] [ options ]
+.br
 .B phc2sys
 [
-.B \-wmqvx
-] [
 .BI \-d " pps-device"
 ] [
 .BI \-s " device"
@@ -15,44 +20,52 @@ phc2sys \- synchronize two clocks
 ] [
 .BI \-O " offset"
 ] [
-.BI \-E " servo"
-] [
-.BI \-P " kp"
-] [
-.BI \-I " ki"
-] [
-.BI \-S " step"
-] [
-.BI \-F " step"
-] [
-.BI \-R " update-rate"
-] [
-.BI \-N " clock-readings"
-] [
-.BI \-L " freq-limit"
-] [
-.BI \-u " summary-updates"
-] [
-.BI \-n " domain-number"
-] [
-.BI \-l " print-level"
-]
+.BI \-w
+] [ options ]
 
 .SH DESCRIPTION
 .B phc2sys
-is a program which synchronizes two clocks in the system. Typically, it is used
-to synchronize the system clock to a PTP hardware clock (PHC), which itself is
-synchronized by the
+is a program which synchronizes two or more clocks in the system. Typically,
+it is used to synchronize the system clock to a PTP hardware clock (PHC),
+which itself is synchronized by the
 .BR ptp4l (8)
 program.
 
-Two synchronization modes are supported, one uses a pulse per second (PPS)
+With the
+.B \-a
+option, the clocks to synchronize are fetched from the running
+.B ptp4l
+daemon and the direction of synchronization automatically follows changes of
+the PTP port states.
+
+Manual configuration is also possible. When using manual configuration, two
+synchronization modes are supported, one uses a pulse per second (PPS)
 signal provided by the source clock and the other mode reads time from the
 source clock directly. Some clocks can be used in both modes, the mode which
-will synchronize the slave clock with better accuracy depends on hardware and
-driver implementation.
+will synchronize the slave clock with better accuracy depends on hardware
+and driver implementation.
 
 .SH OPTIONS
+.TP
+.BI \-a
+Read the clocks to synchronize from running
+.B ptp4l
+and follow changes in the port states, adjusting the synchronization
+direction automatically. The system clock (CLOCK_REALTIME) is not
+synchronized, unless the
+.B \-r
+option is also specified.
+.TP
+.BI \-r
+Only valid together with the
+.B \-a
+option. Instructs
+.B phc2sys
+to also synchronize the system clock (CLOCK_REALTIME). By default, the
+system clock is not considered as a possible time source. If you want the
+system clock to be eligible to become a time source, specify the
+.B \-r
+option twice.
 .TP
 .BI \-d " pps-device"
 Specify the PPS device of the master clock (e.g. /dev/pps0). With this option
@@ -68,7 +81,10 @@ option the PPS signal of the master clock is enabled automatically, otherwise
 it has to be enabled before
 .B phc2sys
 is started (e.g. by running \f(CWecho 1 > /sys/class/ptp/ptp0/pps_enable\fP).
-This option can be used only with the system clock as the slave clock.
+This option can be used only with the system clock as the slave clock. Not
+compatible with the
+.B \-a
+option.
 .TP
 .BI \-s " device"
 Specify the master clock by device (e.g. /dev/ptp0) or interface (e.g. eth0) or
@@ -76,7 +92,9 @@ by name (e.g. CLOCK_REALTIME for the system clock). When this option is used
 together with the
 .B \-d
 option, the master clock is used only to correct the offset by whole number of
-seconds, which cannot be fixed with PPS alone.
+seconds, which cannot be fixed with PPS alone. Not compatible with the
+.B \-a
+option.
 .TP
 .BI \-i " interface"
 Performs the exact same function as
@@ -89,7 +107,10 @@ should no longer be used.
 .TP
 .BI \-c " device"
 Specify the slave clock by device (e.g. /dev/ptp1) or interface (e.g. eth1) or
-by  name. The default is CLOCK_REALTIME (the system clock).
+by  name. The default is CLOCK_REALTIME (the system clock). Not compatible
+with the
+.B \-a
+option.
 .TP
 .BI \-E " servo"
 Specify which clock servo should be used. Valid values are pi for a PI
@@ -128,7 +149,10 @@ minimize the error caused by random delays in scheduling and bus utilization.
 The default is 5.
 .TP
 .BI \-O " offset"
-Specify the offset between the slave and master times in seconds.  See
+Specify the offset between the slave and master times in seconds. Not
+compatible with the
+.B \-a
+option.  See
 .SM
 .B TIME SCALE USAGE
 below.
@@ -154,7 +178,9 @@ Wait until ptp4l is in a synchronized state. If the
 .B \-O
 option is not used, also keep the offset between the slave and master
 times updated according to the currentUtcOffset value obtained from ptp4l and
-the direction of the clock synchronization.
+the direction of the clock synchronization. Not compatible with the
+.B \-a
+option.
 .TP
 .BI \-n " domain-number"
 Specify the domain number used by ptp4l. The default is 0.
@@ -198,6 +224,8 @@ clock follows UTC.  Time offset between these two is maintained by
 
 .B Phc2sys
 acquires the offset value either by reading it from ptp4l when
+.B \-a
+or
 .B \-w
 is in effect or from command line when
 .B \-O
@@ -207,6 +235,21 @@ or incorect PTP time announced to the network in case the host is the domain
 master.
 
 .SH EXAMPLES
+
+Synchronize time automatically according to the current
+.B ptp4l
+state, synchronize the system clock to the remote master.
+
+.RS
+\f(CWphc2sys \-a \-r\fP
+.RE
+
+Same as above, but when the host becomes the domain master, synchronize time
+in the domain to its system clock.
+
+.RS
+\f(CWphc2sys \-a \-rr\fP
+.RE
 
 The host is a domain master, PTP clock is synchronized to system clock and the
 time offset is obtained from
