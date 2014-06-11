@@ -67,6 +67,7 @@ struct clock {
 	int is_utc;
 	struct servo *servo;
 	enum servo_state servo_state;
+	char *device;
 	const char *source_label;
 	struct stats *offset_stats;
 	struct stats *freq_stats;
@@ -129,19 +130,27 @@ static clockid_t clock_open(char *device)
 	return clkid;
 }
 
-static int clock_add(struct node *node, clockid_t clkid)
+static struct clock *clock_add(struct node *node, char *device)
 {
 	struct clock *c;
+	clockid_t clkid = CLOCK_INVALID;
 	int max_ppb;
 	double ppb;
+
+	if (device) {
+		clkid = clock_open(device);
+		if (clkid == CLOCK_INVALID)
+			return NULL;
+	}
 
 	c = calloc(1, sizeof(*c));
 	if (!c) {
 		pr_err("failed to allocate memory for a clock");
-		return -1;
+		return NULL;
 	}
 	c->clkid = clkid;
 	c->servo_state = SERVO_UNLOCKED;
+	c->device = strdup(device);
 
 	if (c->clkid == CLOCK_REALTIME) {
 		c->source_label = "sys";
@@ -158,14 +167,14 @@ static int clock_add(struct node *node, clockid_t clkid)
 		    !c->freq_stats ||
 		    !c->delay_stats) {
 			pr_err("failed to create stats");
-			return -1;
+			return NULL;
 		}
 	}
 	if (node->sanity_freq_limit) {
 		c->sanity_check = clockcheck_create(node->sanity_freq_limit);
 		if (!c->sanity_check) {
 			pr_err("failed to create clock check");
-			return -1;
+			return NULL;
 		}
 	}
 
@@ -181,7 +190,7 @@ static int clock_add(struct node *node, clockid_t clkid)
 		max_ppb = phc_max_adj(c->clkid);
 		if (!max_ppb) {
 			pr_err("clock is not adjustable");
-			return -1;
+			return NULL;
 		}
 	}
 
@@ -194,7 +203,7 @@ static int clock_add(struct node *node, clockid_t clkid)
 						    node->phc_readings));
 
 	LIST_INSERT_HEAD(&node->clocks, c, list);
-	return 0;
+	return c;
 }
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
@@ -699,8 +708,8 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *progname;
-	clockid_t src = CLOCK_INVALID;
-	clockid_t dst = CLOCK_REALTIME;
+	char *src_name = NULL, *dst_name = NULL;
+	struct clock *src, *dst;
 	int c, domain_number = 0, pps_fd = -1;
 	int r, wait_sync = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
@@ -723,7 +732,7 @@ int main(int argc, char *argv[])
 				  "c:d:s:E:P:I:S:F:R:N:O:L:i:u:wn:xl:mqvh"))) {
 		switch (c) {
 		case 'c':
-			dst = clock_open(optarg);
+			dst_name = strdup(optarg);
 			break;
 		case 'd':
 			pps_fd = open(optarg, O_RDONLY);
@@ -737,7 +746,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr,
 				"'-i' has been deprecated. please use '-s' instead.\n");
 		case 's':
-			src = clock_open(optarg);
+			src_name = strdup(optarg);
 			break;
 		case 'E':
 			if (!strcasecmp(optarg, "pi")) {
@@ -826,21 +835,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (pps_fd < 0 && src == CLOCK_INVALID) {
+	if (pps_fd < 0 && !src_name) {
 		fprintf(stderr,
 			"valid source clock must be selected.\n");
-		goto bad_usage;
-	}
-
-	if (dst == CLOCK_INVALID) {
-		fprintf(stderr,
-			"valid destination clock must be selected.\n");
-		goto bad_usage;
-	}
-
-	if (pps_fd >= 0 && dst != CLOCK_REALTIME) {
-		fprintf(stderr,
-			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		goto bad_usage;
 	}
 
@@ -855,9 +852,29 @@ int main(int argc, char *argv[])
 	print_set_syslog(use_syslog);
 	print_set_level(print_level);
 
-	clock_add(&node, src);
-	node.master = LIST_FIRST(&node.clocks);
-	clock_add(&node, dst);
+	src = clock_add(&node, src_name);
+	free(src_name);
+	node.master = src;
+	dst = clock_add(&node, dst_name ? dst_name : "CLOCK_REALTIME");
+	free(dst_name);
+
+	if (!dst) {
+		fprintf(stderr,
+			"valid destination clock must be selected.\n");
+		goto bad_usage;
+	}
+
+	if (!src) {
+		fprintf(stderr,
+			"valid source clock must be selected.\n");
+		goto bad_usage;
+	}
+
+	if (pps_fd >= 0 && dst->clkid != CLOCK_REALTIME) {
+		fprintf(stderr,
+			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
+		goto bad_usage;
+	}
 
 	if (wait_sync) {
 		if (init_pmc(&node, domain_number))
@@ -882,22 +899,16 @@ int main(int argc, char *argv[])
 		}
 
 		if (node.forced_sync_offset ||
-		    (src != CLOCK_REALTIME && dst != CLOCK_REALTIME) ||
-		    src == CLOCK_INVALID)
+		    (src->clkid != CLOCK_REALTIME && dst->clkid != CLOCK_REALTIME) ||
+		    src->clkid == CLOCK_INVALID)
 			close_pmc(&node);
 	}
 
 	if (pps_fd >= 0) {
 		/* only one destination clock allowed with PPS until we
 		 * implement a mean to specify PTP port to PPS mapping */
-		struct clock *dst_clock;
-
-		LIST_FOREACH(dst_clock, &node.clocks, list) {
-			if (dst_clock != node.master)
-				break;
-		}
-		servo_sync_interval(dst_clock->servo, 1.0);
-		return do_pps_loop(&node, dst_clock, pps_fd);
+		servo_sync_interval(dst->servo, 1.0);
+		return do_pps_loop(&node, dst, pps_fd);
 	}
 
 	return do_loop(&node);
