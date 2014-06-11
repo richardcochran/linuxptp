@@ -107,6 +107,8 @@ struct node {
 	int pmc_ds_requested;
 	uint64_t pmc_last_update;
 	int state_changed;
+	int clock_identity_set;
+	struct ClockIdentity clock_identity;
 	LIST_HEAD(port_head, port) ports;
 	LIST_HEAD(clock_head, clock) clocks;
 	struct clock *master;
@@ -612,6 +614,15 @@ static int do_loop(struct node *node, int subscriptions)
 	return 0; /* unreachable */
 }
 
+static int check_clock_identity(struct node *node, struct ptp_message *msg)
+{
+	if (!node->clock_identity_set)
+		return 1;
+	return !memcmp(&node->clock_identity,
+		       &msg->header.sourcePortIdentity.clockIdentity,
+		       sizeof(struct ClockIdentity));
+}
+
 static int is_msg_mgt(struct ptp_message *msg)
 {
 	struct TLV *tlv;
@@ -789,6 +800,12 @@ static int run_pmc(struct node *node, int timeout, int ds_id,
 		if (!*msg)
 			continue;
 
+		if (!check_clock_identity(node, *msg)) {
+			msg_put(*msg);
+			*msg = NULL;
+			continue;
+		}
+
 		res = is_msg_mgt(*msg);
 		if (res < 0 && get_mgt_err_id(*msg) == ds_id) {
 			node->pmc_ds_requested = 0;
@@ -927,6 +944,24 @@ out:
 	return res;
 }
 
+static int run_pmc_clock_identity(struct node *node, int timeout)
+{
+	struct ptp_message *msg;
+	struct defaultDS *dds;
+	int res;
+
+	res = run_pmc(node, timeout, DEFAULT_DATA_SET, &msg);
+	if (res <= 0)
+		return res;
+
+	dds = (struct defaultDS *)get_mgt_data(msg);
+	memcpy(&node->clock_identity, &dds->clockIdentity,
+	       sizeof(struct ClockIdentity));
+	node->clock_identity_set = 1;
+	msg_put(msg);
+	return 1;
+}
+
 static void close_pmc(struct node *node)
 {
 	pmc_destroy(node->pmc);
@@ -943,7 +978,7 @@ static int auto_init_ports(struct node *node, int add_rt)
 	char iface[IFNAMSIZ];
 
 	while (1) {
-		res = run_pmc_get_number_ports(node, 1000);
+		res = run_pmc_clock_identity(node, 1000);
 		if (res < 0)
 			return -1;
 		if (res > 0)
@@ -951,7 +986,12 @@ static int auto_init_ports(struct node *node, int add_rt)
 		/* res == 0, timeout */
 		pr_notice("Waiting for ptp4l...");
 	}
-	number_ports = res;
+
+	number_ports = run_pmc_get_number_ports(node, 1000);
+	if (number_ports <= 0) {
+		pr_err("failed to get number of ports");
+		return -1;
+	}
 
 	res = run_pmc_subscribe(node, 1000);
 	if (res <= 0) {
