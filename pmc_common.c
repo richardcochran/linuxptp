@@ -78,7 +78,7 @@ struct pmc *pmc_create(enum transport_type transport_type, const char *iface_nam
 		goto failed;
 	}
 	pmc->port_identity.portNumber = 1;
-	memset(&pmc->target, 0xff, sizeof(pmc->target));
+	pmc_target_all(pmc);
 
 	pmc->boundary_hops = boundary_hops;
 	pmc->domain_number = domain_number;
@@ -324,4 +324,14 @@ int pmc_target(struct pmc *pmc, struct PortIdentity *pid)
 {
 	pmc->target = *pid;
 	return 0;
+}
+
+void pmc_target_port(struct pmc *pmc, UInteger16 portNumber)
+{
+	pmc->target.portNumber = portNumber;
+}
+
+void pmc_target_all(struct pmc *pmc)
+{
+	memset(&pmc->target, 0xff, sizeof(pmc->target));
 }

@@ -41,5 +41,7 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize);
 struct ptp_message *pmc_recv(struct pmc *pmc);
 
 int pmc_target(struct pmc *pmc, struct PortIdentity *pid);
+void pmc_target_port(struct pmc *pmc, UInteger16 portNumber);
+void pmc_target_all(struct pmc *pmc);
 
 #endif
