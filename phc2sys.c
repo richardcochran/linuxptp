@@ -141,7 +141,6 @@ struct clock {
 	int leap_set;
 	int kernel_leap;
 	struct pmc *pmc;
-	int pmc_ds_idx;
 	int pmc_ds_requested;
 	uint64_t pmc_last_update;
 	struct clockcheck *sanity_check;
@@ -390,31 +389,14 @@ static int init_pmc(struct clock *clock, int domain_number)
 	return 0;
 }
 
-static int run_pmc(struct clock *clock, int timeout,
-		   int wait_sync, int get_utc_offset)
+static int run_pmc(struct clock *clock, int timeout, int ds_id,
+		   struct ptp_message **msg)
 {
-	struct ptp_message *msg;
-	struct timePropertiesDS *tds;
-	void *data;
 #define N_FD 1
 	struct pollfd pollfd[N_FD];
-	int cnt, ds_done;
-#define N_ID 2
-	int ds_ids[N_ID] = {
-		PORT_DATA_SET,
-		TIME_PROPERTIES_DATA_SET
-	};
+	int cnt;
 
-	while (clock->pmc_ds_idx < N_ID) {
-		/* Check if the data set is really needed. */
-		if ((ds_ids[clock->pmc_ds_idx] == PORT_DATA_SET &&
-		     !wait_sync) ||
-		    (ds_ids[clock->pmc_ds_idx] == TIME_PROPERTIES_DATA_SET &&
-		     !get_utc_offset)) {
-			clock->pmc_ds_idx++;
-			continue;
-		}
-
+	while (1) {
 		pollfd[0].fd = pmc_get_transport_fd(clock->pmc);
 		pollfd[0].events = POLLIN|POLLPRI;
 		if (!clock->pmc_ds_requested)
@@ -434,62 +416,76 @@ static int run_pmc(struct clock *clock, int timeout,
 		/* Send a new request if there are no pending messages. */
 		if ((pollfd[0].revents & POLLOUT) &&
 		    !(pollfd[0].revents & (POLLIN|POLLPRI))) {
-			pmc_send_get_action(clock->pmc,
-					    ds_ids[clock->pmc_ds_idx]);
+			pmc_send_get_action(clock->pmc, ds_id);
 			clock->pmc_ds_requested = 1;
 		}
 
 		if (!(pollfd[0].revents & (POLLIN|POLLPRI)))
 			continue;
 
-		msg = pmc_recv(clock->pmc);
+		*msg = pmc_recv(clock->pmc);
 
-		if (!msg)
+		if (!*msg)
 			continue;
 
-		if (!is_msg_mgt(msg) ||
-		    get_mgt_id(msg) != ds_ids[clock->pmc_ds_idx]) {
-			msg_put(msg);
+		if (!is_msg_mgt(*msg) ||
+		    get_mgt_id(*msg) != ds_id) {
+			msg_put(*msg);
+			*msg = NULL;
 			continue;
 		}
+		clock->pmc_ds_requested = 0;
+		return 1;
+	}
+}
+
+static int run_pmc_wait_sync(struct clock *clock, int timeout)
+{
+	struct ptp_message *msg;
+	int res;
+	void *data;
+	Enumeration8 portState;
+
+	while (1) {
+		res = run_pmc(clock, timeout, PORT_DATA_SET, &msg);
+		if (res <= 0)
+			return res;
 
 		data = get_mgt_data(msg);
-		ds_done = 0;
-
-		switch (get_mgt_id(msg)) {
-		case PORT_DATA_SET:
-			switch (((struct portDS *)data)->portState) {
-			case PS_MASTER:
-			case PS_SLAVE:
-				ds_done = 1;
-				break;
-			}
-
-			break;
-		case TIME_PROPERTIES_DATA_SET:
-			tds = (struct timePropertiesDS *)data;
-			if (tds->flags & PTP_TIMESCALE) {
-				clock->sync_offset = tds->currentUtcOffset;
-				if (tds->flags & LEAP_61)
-					clock->leap = 1;
-				else if (tds->flags & LEAP_59)
-					clock->leap = -1;
-				else
-					clock->leap = 0;
-			}
-			ds_done = 1;
-			break;
-		}
-
-		if (ds_done) {
-			/* Proceed with the next data set. */
-			clock->pmc_ds_idx++;
-			clock->pmc_ds_requested = 0;
-		}
+		portState = ((struct portDS *)data)->portState;
 		msg_put(msg);
-	}
 
-	clock->pmc_ds_idx = 0;
+		switch (portState) {
+		case PS_MASTER:
+		case PS_SLAVE:
+			return 1;
+		}
+		/* try to get more data sets (for other ports) */
+		clock->pmc_ds_requested = 1;
+	}
+}
+
+static int run_pmc_get_utc_offset(struct clock *clock, int timeout)
+{
+	struct ptp_message *msg;
+	int res;
+	struct timePropertiesDS *tds;
+
+	res = run_pmc(clock, timeout, TIME_PROPERTIES_DATA_SET, &msg);
+	if (res <= 0)
+		return res;
+
+	tds = (struct timePropertiesDS *)get_mgt_data(msg);
+	if (tds->flags & PTP_TIMESCALE) {
+		clock->sync_offset = tds->currentUtcOffset;
+		if (tds->flags & LEAP_61)
+			clock->leap = 1;
+		else if (tds->flags & LEAP_59)
+			clock->leap = -1;
+		else
+			clock->leap = 0;
+	}
+	msg_put(msg);
 	return 1;
 }
 
@@ -506,7 +502,7 @@ static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
 	if (clock->pmc &&
 	    !(ts > clock->pmc_last_update &&
 	      ts - clock->pmc_last_update < PMC_UPDATE_INTERVAL)) {
-		if (run_pmc(clock, 0, 0, 1) > 0)
+		if (run_pmc_get_utc_offset(clock, 0) > 0)
 			clock->pmc_last_update = ts;
 	}
 
@@ -767,17 +763,22 @@ int main(int argc, char *argv[])
 			return -1;
 
 		while (1) {
-			r = run_pmc(&dst_clock, 1000,
-				    wait_sync, !forced_sync_offset);
+			r = run_pmc_wait_sync(&dst_clock, 1000);
 			if (r < 0)
 				return -1;
-			else if (r > 0)
+			if (r > 0)
 				break;
 			else
 				pr_notice("Waiting for ptp4l...");
 		}
 
 		if (!forced_sync_offset) {
+			r = run_pmc_get_utc_offset(&dst_clock, 1000);
+			if (r <= 0) {
+				pr_err("failed to get UTC offset");
+				return -1;
+			}
+
 			if (src != CLOCK_REALTIME &&
 			    dst_clock.clkid == CLOCK_REALTIME)
 				dst_clock.sync_offset_direction = 1;
