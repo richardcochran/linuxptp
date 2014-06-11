@@ -867,6 +867,9 @@ static int run_pmc_get_utc_offset(struct node *node, int timeout)
 			node->leap = -1;
 		else
 			node->leap = 0;
+	} else {
+		node->sync_offset = 0;
+		node->leap = 0;
 	}
 	msg_put(msg);
 	return 1;
