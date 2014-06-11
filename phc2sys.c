@@ -60,72 +60,6 @@
 #define PHC_PPS_OFFSET_LIMIT 10000000
 #define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
 
-struct clock;
-
-static clockid_t clock_open(char *device)
-{
-	struct sk_ts_info ts_info;
-	char phc_device[16];
-	int clkid;
-
-	/* check if device is CLOCK_REALTIME */
-	if (!strcasecmp(device, "CLOCK_REALTIME"))
-		return CLOCK_REALTIME;
-
-	/* check if device is valid phc device */
-	clkid = phc_open(device);
-	if (clkid != CLOCK_INVALID)
-		return clkid;
-
-	/* check if device is a valid ethernet device */
-	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
-		fprintf(stderr, "unknown clock %s: %m\n", device);
-		return CLOCK_INVALID;
-	}
-
-	if (ts_info.phc_index < 0) {
-		fprintf(stderr, "interface %s does not have a PHC\n", device);
-		return CLOCK_INVALID;
-	}
-
-	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
-	clkid = phc_open(phc_device);
-	if (clkid == CLOCK_INVALID)
-		fprintf(stderr, "cannot open %s: %m\n", device);
-	return clkid;
-}
-
-static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
-		    int64_t *offset, uint64_t *ts, int64_t *delay)
-{
-	struct timespec tdst1, tdst2, tsrc;
-	int i;
-	int64_t interval, best_interval = INT64_MAX;
-
-	/* Pick the quickest clkid reading. */
-	for (i = 0; i < readings; i++) {
-		if (clock_gettime(sysclk, &tdst1) ||
-				clock_gettime(clkid, &tsrc) ||
-				clock_gettime(sysclk, &tdst2)) {
-			pr_err("failed to read clock: %m");
-			return 0;
-		}
-
-		interval = (tdst2.tv_sec - tdst1.tv_sec) * NS_PER_SEC +
-			tdst2.tv_nsec - tdst1.tv_nsec;
-
-		if (best_interval > interval) {
-			best_interval = interval;
-			*offset = (tdst1.tv_sec - tsrc.tv_sec) * NS_PER_SEC +
-				tdst1.tv_nsec - tsrc.tv_nsec + interval / 2;
-			*ts = tdst2.tv_sec * NS_PER_SEC + tdst2.tv_nsec;
-		}
-	}
-	*delay = best_interval;
-
-	return 1;
-}
-
 struct clock {
 	LIST_ENTRY(clock) list;
 	clockid_t clkid;
@@ -161,6 +95,138 @@ struct node {
 static int update_sync_offset(struct node *node);
 static int clock_handle_leap(struct node *node, struct clock *clock,
 			     int64_t offset, uint64_t ts, int do_leap);
+
+static clockid_t clock_open(char *device)
+{
+	struct sk_ts_info ts_info;
+	char phc_device[16];
+	int clkid;
+
+	/* check if device is CLOCK_REALTIME */
+	if (!strcasecmp(device, "CLOCK_REALTIME"))
+		return CLOCK_REALTIME;
+
+	/* check if device is valid phc device */
+	clkid = phc_open(device);
+	if (clkid != CLOCK_INVALID)
+		return clkid;
+
+	/* check if device is a valid ethernet device */
+	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
+		fprintf(stderr, "unknown clock %s: %m\n", device);
+		return CLOCK_INVALID;
+	}
+
+	if (ts_info.phc_index < 0) {
+		fprintf(stderr, "interface %s does not have a PHC\n", device);
+		return CLOCK_INVALID;
+	}
+
+	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
+	clkid = phc_open(phc_device);
+	if (clkid == CLOCK_INVALID)
+		fprintf(stderr, "cannot open %s: %m\n", device);
+	return clkid;
+}
+
+static int clock_add(struct node *node, clockid_t clkid)
+{
+	struct clock *c;
+	int max_ppb;
+	double ppb;
+
+	c = calloc(1, sizeof(*c));
+	if (!c) {
+		pr_err("failed to allocate memory for a clock");
+		return -1;
+	}
+	c->clkid = clkid;
+	c->servo_state = SERVO_UNLOCKED;
+
+	if (c->clkid == CLOCK_REALTIME) {
+		c->source_label = "sys";
+		c->is_utc = 1;
+	} else {
+		c->source_label = "phc";
+	}
+
+	if (node->stats_max_count > 0) {
+		c->offset_stats = stats_create();
+		c->freq_stats = stats_create();
+		c->delay_stats = stats_create();
+		if (!c->offset_stats ||
+		    !c->freq_stats ||
+		    !c->delay_stats) {
+			pr_err("failed to create stats");
+			return -1;
+		}
+	}
+	if (node->sanity_freq_limit) {
+		c->sanity_check = clockcheck_create(node->sanity_freq_limit);
+		if (!c->sanity_check) {
+			pr_err("failed to create clock check");
+			return -1;
+		}
+	}
+
+	clockadj_init(c->clkid);
+	ppb = clockadj_get_freq(c->clkid);
+	/* The reading may silently fail and return 0, reset the frequency to
+	   make sure ppb is the actual frequency of the clock. */
+	clockadj_set_freq(c->clkid, ppb);
+	if (c->clkid == CLOCK_REALTIME) {
+		sysclk_set_leap(0);
+		max_ppb = sysclk_max_freq();
+	} else {
+		max_ppb = phc_max_adj(c->clkid);
+		if (!max_ppb) {
+			pr_err("clock is not adjustable");
+			return -1;
+		}
+	}
+
+	c->servo = servo_create(node->servo_type, -ppb, max_ppb, 0);
+	servo_sync_interval(c->servo, node->phc_interval);
+
+	if (clkid != CLOCK_REALTIME)
+		c->sysoff_supported = (SYSOFF_SUPPORTED ==
+				       sysoff_probe(CLOCKID_TO_FD(clkid),
+						    node->phc_readings));
+
+	LIST_INSERT_HEAD(&node->clocks, c, list);
+	return 0;
+}
+
+static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
+		    int64_t *offset, uint64_t *ts, int64_t *delay)
+{
+	struct timespec tdst1, tdst2, tsrc;
+	int i;
+	int64_t interval, best_interval = INT64_MAX;
+
+	/* Pick the quickest clkid reading. */
+	for (i = 0; i < readings; i++) {
+		if (clock_gettime(sysclk, &tdst1) ||
+				clock_gettime(clkid, &tsrc) ||
+				clock_gettime(sysclk, &tdst2)) {
+			pr_err("failed to read clock: %m");
+			return 0;
+		}
+
+		interval = (tdst2.tv_sec - tdst1.tv_sec) * NS_PER_SEC +
+			tdst2.tv_nsec - tdst1.tv_nsec;
+
+		if (best_interval > interval) {
+			best_interval = interval;
+			*offset = (tdst1.tv_sec - tsrc.tv_sec) * NS_PER_SEC +
+				tdst1.tv_nsec - tsrc.tv_nsec + interval / 2;
+			*ts = tdst2.tv_sec * NS_PER_SEC + tdst2.tv_nsec;
+		}
+	}
+	*delay = best_interval;
+
+	return 1;
+}
 
 static int64_t get_sync_offset(struct node *node, struct clock *dst)
 {
@@ -597,74 +663,6 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 			sysclk_set_leap(node->leap_set);
 	}
 
-	return 0;
-}
-
-static int clock_add(struct node *node, clockid_t clkid)
-{
-	struct clock *c;
-	int max_ppb;
-	double ppb;
-
-	c = calloc(1, sizeof(*c));
-	if (!c) {
-		pr_err("failed to allocate memory for a clock");
-		return -1;
-	}
-	c->clkid = clkid;
-	c->servo_state = SERVO_UNLOCKED;
-
-	if (c->clkid == CLOCK_REALTIME) {
-		c->source_label = "sys";
-		c->is_utc = 1;
-	} else {
-		c->source_label = "phc";
-	}
-
-	if (node->stats_max_count > 0) {
-		c->offset_stats = stats_create();
-		c->freq_stats = stats_create();
-		c->delay_stats = stats_create();
-		if (!c->offset_stats ||
-		    !c->freq_stats ||
-		    !c->delay_stats) {
-			pr_err("failed to create stats");
-			return -1;
-		}
-	}
-	if (node->sanity_freq_limit) {
-		c->sanity_check = clockcheck_create(node->sanity_freq_limit);
-		if (!c->sanity_check) {
-			pr_err("failed to create clock check");
-			return -1;
-		}
-	}
-
-	clockadj_init(c->clkid);
-	ppb = clockadj_get_freq(c->clkid);
-	/* The reading may silently fail and return 0, reset the frequency to
-	   make sure ppb is the actual frequency of the clock. */
-	clockadj_set_freq(c->clkid, ppb);
-	if (c->clkid == CLOCK_REALTIME) {
-		sysclk_set_leap(0);
-		max_ppb = sysclk_max_freq();
-	} else {
-		max_ppb = phc_max_adj(c->clkid);
-		if (!max_ppb) {
-			pr_err("clock is not adjustable");
-			return -1;
-		}
-	}
-
-	c->servo = servo_create(node->servo_type, -ppb, max_ppb, 0);
-	servo_sync_interval(c->servo, node->phc_interval);
-
-	if (clkid != CLOCK_REALTIME)
-		c->sysoff_supported = (SYSOFF_SUPPORTED ==
-				       sysoff_probe(CLOCKID_TO_FD(clkid),
-						    node->phc_readings));
-
-	LIST_INSERT_HEAD(&node->clocks, c, list);
 	return 0;
 }
 
