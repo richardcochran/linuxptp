@@ -43,6 +43,7 @@
 #include "fsm.h"
 #include "missing.h"
 #include "notification.h"
+#include "ntpshm.h"
 #include "phc.h"
 #include "pi.h"
 #include "pmc_common.h"
@@ -1216,6 +1217,8 @@ int main(int argc, char *argv[])
 				node.servo_type = CLOCK_SERVO_PI;
 			} else if (!strcasecmp(optarg, "linreg")) {
 				node.servo_type = CLOCK_SERVO_LINREG;
+			} else if (!strcasecmp(optarg, "ntpshm")) {
+				node.servo_type = CLOCK_SERVO_NTPSHM;
 			} else {
 				fprintf(stderr,
 					"invalid servo name %s\n", optarg);
@@ -1272,6 +1275,7 @@ int main(int argc, char *argv[])
 		case 'n':
 			if (get_arg_val_i(c, optarg, &domain_number, 0, 255))
 				return -1;
+			ntpshm_segment = domain_number;
 			break;
 		case 'x':
 			node.kernel_leap = 0;

@@ -289,7 +289,9 @@ The default is 0 (disabled).
 .TP
 .B clock_servo
 The servo which is used to synchronize the local clock. Valid values are pi for
-a PI controller and linreg for an adaptive controller using linear regression.
+a PI controller, linreg for an adaptive controller using linear regression, and
+ntpshm for the NTP SHM reference clock to allow another process to synchronize
+the local clock (the SHM segment number is set to the domain number).
 The default is pi.
 .TP
 .B pi_proportional_const

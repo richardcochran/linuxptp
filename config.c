@@ -284,6 +284,7 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		dds->domainNumber = uval;
+		*cfg->ntpshm_segment = uval;
 
 	} else if (!strcmp(option, "clockClass")) {
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
@@ -496,6 +497,8 @@ static enum parser_result parse_global_setting(const char *option,
 			cfg->clock_servo = CLOCK_SERVO_PI;
 		else if (!strcasecmp("linreg", value))
 			cfg->clock_servo = CLOCK_SERVO_LINREG;
+		else if (!strcasecmp("ntpshm", value))
+			cfg->clock_servo = CLOCK_SERVO_NTPSHM;
 		else
 			return BAD_VALUE;
 

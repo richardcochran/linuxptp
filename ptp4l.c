@@ -27,6 +27,7 @@
 
 #include "clock.h"
 #include "config.h"
+#include "ntpshm.h"
 #include "pi.h"
 #include "print.h"
 #include "raw.h"
@@ -116,6 +117,7 @@ static struct config cfg_settings = {
 	.pi_integral_scale = &configured_pi_ki_scale,
 	.pi_integral_exponent = &configured_pi_ki_exponent,
 	.pi_integral_norm_max = &configured_pi_ki_norm_max,
+	.ntpshm_segment = &ntpshm_segment,
 
 	.ptp_dst_mac = ptp_dst_mac,
 	.p2p_dst_mac = p2p_dst_mac,

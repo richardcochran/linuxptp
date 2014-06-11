@@ -114,7 +114,9 @@ option.
 .TP
 .BI \-E " servo"
 Specify which clock servo should be used. Valid values are pi for a PI
-controller and linreg for an adaptive controller using linear regression.
+controller, linreg for an adaptive controller using linear regression, and
+ntpshm for the NTP SHM reference clock to allow another process to synchronize
+the local clock (the SHM segment number is set to the domain number).
 The default is pi.
 .TP
 .BI \-P " kp"

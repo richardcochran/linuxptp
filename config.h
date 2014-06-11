@@ -89,6 +89,7 @@ struct config {
 	double *pi_integral_scale;
 	double *pi_integral_exponent;
 	double *pi_integral_norm_max;
+	int *ntpshm_segment;
 
 	unsigned char *ptp_dst_mac;
 	unsigned char *p2p_dst_mac;
