@@ -130,6 +130,7 @@ struct clock {
 	LIST_ENTRY(clock) list;
 	clockid_t clkid;
 	int sysoff_supported;
+	int is_utc;
 	struct servo *servo;
 	enum servo_state servo_state;
 	const char *source_label;
@@ -146,7 +147,7 @@ struct node {
 	int phc_readings;
 	double phc_interval;
 	int sync_offset;
-	int sync_offset_direction;
+	int forced_sync_offset;
 	int leap;
 	int leap_set;
 	int kernel_leap;
@@ -160,6 +161,15 @@ struct node {
 static int update_sync_offset(struct node *node);
 static int clock_handle_leap(struct node *node, struct clock *clock,
 			     int64_t offset, uint64_t ts, int do_leap);
+
+static int64_t get_sync_offset(struct node *node, struct clock *dst)
+{
+	int direction = node->forced_sync_offset;
+
+	if (!direction)
+		direction = dst->is_utc - node->master->is_utc;
+	return (int64_t)node->sync_offset * NS_PER_SEC * direction;
+}
 
 static void update_clock_stats(struct clock *clock, unsigned int max_count,
 			       int64_t offset, double freq, int64_t delay)
@@ -206,9 +216,7 @@ static void update_clock(struct node *node, struct clock *clock,
 	if (clock_handle_leap(node, clock, offset, ts, do_leap))
 		return;
 
-	if (node->sync_offset_direction)
-		offset += node->sync_offset * NS_PER_SEC *
-			node->sync_offset_direction;
+	offset += get_sync_offset(node, clock);
 
 	if (clock->sanity_check && clockcheck_sample(clock->sanity_check, ts))
 		servo_reset(clock->servo);
@@ -290,7 +298,7 @@ static int do_pps_loop(struct node *node, struct clock *clock, int fd)
 
 	if (src == CLOCK_INVALID) {
 		/* The sync offset can't be applied with PPS alone. */
-		node->sync_offset_direction = 0;
+		node->sync_offset = 0;
 	} else {
 		enable_pps_output(node->master->clkid);
 	}
@@ -558,15 +566,14 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 	if (!node->leap && !do_leap)
 		return 0;
 
-	if (clock->clkid != CLOCK_REALTIME &&
-	    node->master->clkid != CLOCK_REALTIME)
+	if (clock->is_utc == node->master->is_utc)
 		return 0;
 
 	/* If the system clock is the master clock, get a time stamp from
 	   it, as it is the clock which will include the leap second. */
-	if (node->master->clkid == CLOCK_REALTIME) {
+	if (node->master->is_utc) {
 		struct timespec tp;
-		if (clock_gettime(CLOCK_REALTIME, &tp)) {
+		if (clock_gettime(node->master->clkid, &tp)) {
 			pr_err("failed to read clock: %m");
 			return -1;
 		}
@@ -575,11 +582,8 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 
 	/* If the clock will be stepped, the time stamp has to be the
 	   target time. Ignore possible 1 second error in UTC offset. */
-	if (clock->clkid == CLOCK_REALTIME &&
-	    clock->servo_state == SERVO_UNLOCKED) {
-		ts -= offset + node->sync_offset * NS_PER_SEC *
-			node->sync_offset_direction;
-	}
+	if (clock->is_utc && clock->servo_state == SERVO_UNLOCKED)
+		ts -= offset + get_sync_offset(node, clock);
 
 	/* Suspend clock updates in the last second before midnight. */
 	if (is_utc_ambiguous(ts)) {
@@ -610,10 +614,12 @@ static int clock_add(struct node *node, clockid_t clkid)
 	c->clkid = clkid;
 	c->servo_state = SERVO_UNLOCKED;
 
-	if (c->clkid == CLOCK_REALTIME)
+	if (c->clkid == CLOCK_REALTIME) {
 		c->source_label = "sys";
-	else
+		c->is_utc = 1;
+	} else {
 		c->source_label = "phc";
+	}
 
 	if (node->stats_max_count > 0) {
 		c->offset_stats = stats_create();
@@ -698,7 +704,7 @@ int main(int argc, char *argv[])
 	clockid_t src = CLOCK_INVALID;
 	clockid_t dst = CLOCK_REALTIME;
 	int c, domain_number = 0, pps_fd = -1;
-	int r, wait_sync = 0, forced_sync_offset = 0;
+	int r, wait_sync = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	double phc_rate;
 	struct node node = {
@@ -779,8 +785,7 @@ int main(int argc, char *argv[])
 			if (get_arg_val_i(c, optarg, &node.sync_offset,
 					  INT_MIN, INT_MAX))
 				return -1;
-			node.sync_offset_direction = -1;
-			forced_sync_offset = 1;
+			node.forced_sync_offset = -1;
 			break;
 		case 'L':
 			if (get_arg_val_i(c, optarg, &node.sanity_freq_limit, 0, INT_MAX))
@@ -841,7 +846,7 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
-	if (!wait_sync && !forced_sync_offset) {
+	if (!wait_sync && !node.forced_sync_offset) {
 		fprintf(stderr,
 			"time offset must be specified using -w or -O\n");
 		goto bad_usage;
@@ -870,24 +875,17 @@ int main(int argc, char *argv[])
 				pr_notice("Waiting for ptp4l...");
 		}
 
-		if (!forced_sync_offset) {
+		if (!node.forced_sync_offset) {
 			r = run_pmc_get_utc_offset(&node, 1000);
 			if (r <= 0) {
 				pr_err("failed to get UTC offset");
 				return -1;
 			}
-
-			if (src != CLOCK_REALTIME &&
-			    dst == CLOCK_REALTIME)
-				node.sync_offset_direction = 1;
-			else if (src == CLOCK_REALTIME &&
-			    dst != CLOCK_REALTIME)
-				node.sync_offset_direction = -1;
-			else
-				node.sync_offset_direction = 0;
 		}
 
-		if (forced_sync_offset || !node.sync_offset_direction)
+		if (node.forced_sync_offset ||
+		    (src != CLOCK_REALTIME && dst != CLOCK_REALTIME) ||
+		    src == CLOCK_INVALID)
 			close_pmc(&node);
 	}
 
