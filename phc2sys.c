@@ -526,9 +526,11 @@ static int is_msg_mgt(struct ptp_message *msg)
 	if (msg->tlv_count != 1)
 		return 0;
 	tlv = (struct TLV *) msg->management.suffix;
-	if (tlv->type != TLV_MANAGEMENT)
-		return 0;
-	return 1;
+	if (tlv->type == TLV_MANAGEMENT)
+		return 1;
+	if (tlv->type == TLV_MANAGEMENT_ERROR_STATUS)
+		return -1;
+	return 0;
 }
 
 static int get_mgt_id(struct ptp_message *msg)
@@ -541,6 +543,14 @@ static void *get_mgt_data(struct ptp_message *msg)
 {
 	struct management_tlv *mgt = (struct management_tlv *) msg->management.suffix;
 	return mgt->data;
+}
+
+static int get_mgt_err_id(struct ptp_message *msg)
+{
+	struct management_error_status *mgt;
+
+	mgt = (struct management_error_status *)msg->management.suffix;
+	return mgt->id;
 }
 
 static int normalize_state(int state)
@@ -630,12 +640,18 @@ static int init_pmc(struct node *node, int domain_number)
 	return 0;
 }
 
+/* Return values:
+ * 1: success
+ * 0: timeout
+ * -1: error reported by the other side
+ * -2: local error, fatal
+ */
 static int run_pmc(struct node *node, int timeout, int ds_id,
 		   struct ptp_message **msg)
 {
 #define N_FD 1
 	struct pollfd pollfd[N_FD];
-	int cnt;
+	int cnt, res;
 
 	while (1) {
 		pollfd[0].fd = pmc_get_transport_fd(node->pmc);
@@ -646,7 +662,7 @@ static int run_pmc(struct node *node, int timeout, int ds_id,
 		cnt = poll(pollfd, N_FD, timeout);
 		if (cnt < 0) {
 			pr_err("poll failed");
-			return -1;
+			return -2;
 		}
 		if (!cnt) {
 			/* Request the data set again in the next run. */
@@ -676,8 +692,12 @@ static int run_pmc(struct node *node, int timeout, int ds_id,
 		if (!*msg)
 			continue;
 
-		if (!is_msg_mgt(*msg) ||
-		    recv_subscribed(node, *msg, ds_id) ||
+		res = is_msg_mgt(*msg);
+		if (res < 0 && get_mgt_err_id(*msg) == ds_id) {
+			node->pmc_ds_requested = 0;
+			return -1;
+		}
+		if (res <= 0 || recv_subscribed(node, *msg, ds_id) ||
 		    get_mgt_id(*msg) != ds_id) {
 			msg_put(*msg);
 			*msg = NULL;
