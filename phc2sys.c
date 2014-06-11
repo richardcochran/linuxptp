@@ -60,7 +60,9 @@
 #define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
 
 struct clock;
-static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts);
+static int update_sync_offset(struct clock *clock);
+static int clock_handle_leap(struct clock *clock, clockid_t src,
+			     int64_t offset, uint64_t ts, int do_leap);
 
 static clockid_t clock_open(char *device)
 {
@@ -181,13 +183,14 @@ static void update_clock_stats(struct clock *clock,
 	stats_reset(clock->delay_stats);
 }
 
-static void update_clock(struct clock *clock,
-			 int64_t offset, uint64_t ts, int64_t delay)
+static void update_clock(struct clock *clock, clockid_t src,
+			 int64_t offset, uint64_t ts, int64_t delay,
+			 int do_leap)
 {
 	enum servo_state state;
 	double ppb;
 
-	if (update_sync_offset(clock, offset, ts))
+	if (clock_handle_leap(clock, src, offset, ts, do_leap))
 		return;
 
 	if (clock->sync_offset_direction)
@@ -268,6 +271,7 @@ static int do_pps_loop(struct clock *clock, int fd,
 {
 	int64_t pps_offset, phc_offset, phc_delay;
 	uint64_t pps_ts, phc_ts;
+	int do_leap;
 
 	clock->source_label = "pps";
 
@@ -304,7 +308,10 @@ static int do_pps_loop(struct clock *clock, int fd,
 			pps_offset = pps_ts - phc_ts;
 		}
 
-		update_clock(clock, pps_offset, pps_ts, -1);
+		do_leap = update_sync_offset(clock);
+		if (do_leap <= 0)
+			continue;
+		update_clock(clock, src, pps_offset, pps_ts, -1, do_leap);
 	}
 	close(fd);
 	return 0;
@@ -316,6 +323,7 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 	uint64_t ts;
 	int64_t offset, delay;
 	int err = 0, fd = CLOCKID_TO_FD(src);
+	int do_leap;
 
 	clock->source_label = "sys";
 
@@ -325,7 +333,10 @@ static int do_sysoff_loop(struct clock *clock, clockid_t src,
 			err = -1;
 			break;
 		}
-		update_clock(clock, offset, ts, delay);
+		do_leap = update_sync_offset(clock);
+		if (do_leap <= 0)
+			continue;
+		update_clock(clock, src, offset, ts, delay, do_leap);
 	}
 	return err;
 }
@@ -335,6 +346,7 @@ static int do_phc_loop(struct clock *clock, clockid_t src,
 {
 	uint64_t ts;
 	int64_t offset, delay;
+	int do_leap;
 
 	clock->source_label = "phc";
 
@@ -344,7 +356,10 @@ static int do_phc_loop(struct clock *clock, clockid_t src,
 			      &offset, &ts, &delay)) {
 			continue;
 		}
-		update_clock(clock, offset, ts, delay);
+		do_leap = update_sync_offset(clock);
+		if (do_leap <= 0)
+			continue;
+		update_clock(clock, src, offset, ts, delay, do_leap);
 	}
 	return 0;
 }
@@ -495,9 +510,18 @@ static void close_pmc(struct clock *clock)
 	clock->pmc = NULL;
 }
 
-static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
+/* Returns: -1 in case of error, 0 for normal sync, 1 to leap clock */
+static int update_sync_offset(struct clock *clock)
 {
+	struct timespec tp;
+	uint64_t ts;
 	int clock_leap;
+
+	if (clock_gettime(CLOCK_REALTIME, &tp)) {
+		pr_err("failed to read clock: %m");
+		return -1;
+	}
+	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
 
 	if (clock->pmc &&
 	    !(ts > clock->pmc_last_update &&
@@ -511,9 +535,28 @@ static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
 	if (!clock->leap && !clock->leap_set)
 		return 0;
 
+	clock_leap = leap_second_status(ts, clock->leap_set,
+					&clock->leap, &clock->sync_offset);
+	if (clock->leap_set != clock_leap) {
+		clock->leap_set = clock_leap;
+		return 1;
+	}
+	return 0;
+}
+
+/* Returns: non-zero to skip clock update */
+static int clock_handle_leap(struct clock *clock, clockid_t src,
+			     int64_t offset, uint64_t ts, int do_leap)
+{
+	if (!clock->leap && !do_leap)
+		return 0;
+
+	if (clock->clkid != CLOCK_REALTIME && src != CLOCK_REALTIME)
+		return 0;
+
 	/* If the system clock is the master clock, get a time stamp from
 	   it, as it is the clock which will include the leap second. */
-	if (clock->clkid != CLOCK_REALTIME) {
+	if (src == CLOCK_REALTIME) {
 		struct timespec tp;
 		if (clock_gettime(CLOCK_REALTIME, &tp)) {
 			pr_err("failed to read clock: %m");
@@ -533,17 +576,13 @@ static int update_sync_offset(struct clock *clock, int64_t offset, uint64_t ts)
 	/* Suspend clock updates in the last second before midnight. */
 	if (is_utc_ambiguous(ts)) {
 		pr_info("clock update suspended due to leap second");
-		return -1;
+		return 1;
 	}
 
-	clock_leap = leap_second_status(ts, clock->leap_set,
-					&clock->leap, &clock->sync_offset);
-
-	if (clock->leap_set != clock_leap) {
+	if (do_leap) {
 		/* Only the system clock can leap. */
 		if (clock->clkid == CLOCK_REALTIME && clock->kernel_leap)
-			sysclk_set_leap(clock_leap);
-		clock->leap_set = clock_leap;
+			sysclk_set_leap(clock->leap_set);
 	}
 
 	return 0;
