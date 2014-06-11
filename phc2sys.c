@@ -72,6 +72,7 @@ struct clock {
 	clockid_t clkid;
 	int sysoff_supported;
 	int is_utc;
+	int dest_only;
 	int state;
 	int new_state;
 	struct servo *servo;
@@ -328,10 +329,16 @@ static void reconfigure(struct node *node)
 		node->master = NULL;
 		return;
 	}
+	if ((!src_cnt && (!rt || rt->dest_only)) ||
+	    (!dst_cnt && !rt)) {
+		pr_info("nothing to synchronize");
+		node->master = NULL;
+		return;
+	}
 	if (!src_cnt) {
 		src = rt;
 		rt->state = PS_SLAVE;
-	} else {
+	} else if (rt) {
 		if (rt->state != PS_MASTER) {
 			rt->state = PS_MASTER;
 			clock_reinit(rt);
@@ -926,7 +933,7 @@ static void close_pmc(struct node *node)
 	node->pmc = NULL;
 }
 
-static int auto_init_ports(struct node *node)
+static int auto_init_ports(struct node *node, int add_rt)
 {
 	struct port *port;
 	struct clock *clock;
@@ -981,8 +988,13 @@ static int auto_init_ports(struct node *node)
 	}
 	node->state_changed = 1;
 
-	if (!clock_add(node, "CLOCK_REALTIME"))
-		return -1;
+	if (add_rt) {
+		clock = clock_add(node, "CLOCK_REALTIME");
+		if (!clock)
+			return -1;
+		if (add_rt == 1)
+			clock->dest_only = 1;
+	}
 
 	/* get initial offset */
 	if (run_pmc_get_utc_offset(node, 1000) <= 0) {
@@ -1077,6 +1089,8 @@ static void usage(char *progname)
 		"\n"
 		" automatic configuration:\n"
 		" -a             turn on autoconfiguration\n"
+		" -r             synchronize system (realtime) clock\n"
+		"                repeat -r to consider it also as a time source\n"
 		" manual configuration:\n"
 		" -c [dev|name]  slave clock (CLOCK_REALTIME)\n"
 		" -d [dev]       master PPS device\n"
@@ -1109,7 +1123,7 @@ int main(int argc, char *argv[])
 	char *progname;
 	char *src_name = NULL, *dst_name = NULL;
 	struct clock *src, *dst;
-	int autocfg = 0;
+	int autocfg = 0, rt = 0;
 	int c, domain_number = 0, pps_fd = -1;
 	int r, wait_sync = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
@@ -1129,10 +1143,13 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "ac:d:s:E:P:I:S:F:R:N:O:L:i:u:wn:xl:mqvh"))) {
+				  "arc:d:s:E:P:I:S:F:R:N:O:L:i:u:wn:xl:mqvh"))) {
 		switch (c) {
 		case 'a':
 			autocfg = 1;
+			break;
+		case 'r':
+			rt++;
 			break;
 		case 'c':
 			dst_name = strdup(optarg);
@@ -1263,7 +1280,7 @@ int main(int argc, char *argv[])
 	if (autocfg) {
 		if (init_pmc(&node, domain_number))
 			return -1;
-		if (auto_init_ports(&node) < 0)
+		if (auto_init_ports(&node, rt) < 0)
 			return -1;
 		return do_loop(&node, 1);
 	}
