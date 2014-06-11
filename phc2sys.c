@@ -75,6 +75,12 @@ struct clock {
 	struct clockcheck *sanity_check;
 };
 
+struct port {
+	LIST_ENTRY(port) list;
+	unsigned int number;
+	struct clock *clock;
+};
+
 struct node {
 	unsigned int stats_max_count;
 	int sanity_freq_limit;
@@ -89,6 +95,7 @@ struct node {
 	struct pmc *pmc;
 	int pmc_ds_requested;
 	uint64_t pmc_last_update;
+	LIST_HEAD(port_head, port) ports;
 	LIST_HEAD(clock_head, clock) clocks;
 	struct clock *master;
 };
@@ -204,6 +211,50 @@ static struct clock *clock_add(struct node *node, char *device)
 
 	LIST_INSERT_HEAD(&node->clocks, c, list);
 	return c;
+}
+
+static struct port *port_get(struct node *node, unsigned int number)
+{
+	struct port *p;
+
+	LIST_FOREACH(p, &node->ports, list) {
+		if (p->number == number)
+			return p;
+	}
+	return NULL;
+}
+
+static struct port *port_add(struct node *node, unsigned int number,
+			     char *device)
+{
+	struct port *p;
+	struct clock *c = NULL, *tmp;
+
+	p = port_get(node, number);
+	if (p)
+		return p;
+	/* port is a new one, look whether we have the device already on
+	 * a different port */
+	LIST_FOREACH(tmp, &node->clocks, list) {
+		if (!strcmp(tmp->device, device)) {
+			c = tmp;
+			break;
+		}
+	}
+	if (!c) {
+		c = clock_add(node, device);
+		if (!c)
+			return NULL;
+	}
+	p = malloc(sizeof(*p));
+	if (!p) {
+		pr_err("failed to allocate memory for a port");
+		return NULL;
+	}
+	p->number = number;
+	p->clock = c;
+	LIST_INSERT_HEAD(&node->ports, p, list);
+	return p;
 }
 
 static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
