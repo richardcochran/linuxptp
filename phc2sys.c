@@ -76,6 +76,8 @@ struct clock {
 	int dest_only;
 	int state;
 	int new_state;
+	int sync_offset;
+	int leap_set;
 	struct servo *servo;
 	enum servo_state servo_state;
 	char *device;
@@ -102,7 +104,6 @@ struct node {
 	int sync_offset;
 	int forced_sync_offset;
 	int leap;
-	int leap_set;
 	int kernel_leap;
 	struct pmc *pmc;
 	int pmc_ds_requested;
@@ -117,7 +118,7 @@ struct node {
 
 static int update_pmc(struct node *node, int subscribe);
 static int clock_handle_leap(struct node *node, struct clock *clock,
-			     int64_t offset, uint64_t ts, int do_leap);
+			     int64_t offset, uint64_t ts);
 static int run_pmc_get_utc_offset(struct node *node, int timeout);
 static void run_pmc_events(struct node *node);
 
@@ -389,7 +390,7 @@ static int64_t get_sync_offset(struct node *node, struct clock *dst)
 
 	if (!direction)
 		direction = dst->is_utc - node->master->is_utc;
-	return (int64_t)node->sync_offset * NS_PER_SEC * direction;
+	return (int64_t)dst->sync_offset * NS_PER_SEC * direction;
 }
 
 static void update_clock_stats(struct clock *clock, unsigned int max_count,
@@ -428,13 +429,12 @@ static void update_clock_stats(struct clock *clock, unsigned int max_count,
 }
 
 static void update_clock(struct node *node, struct clock *clock,
-			 int64_t offset, uint64_t ts, int64_t delay,
-			 int do_leap)
+			 int64_t offset, uint64_t ts, int64_t delay)
 {
 	enum servo_state state;
 	double ppb;
 
-	if (clock_handle_leap(node, clock, offset, ts, do_leap))
+	if (clock_handle_leap(node, clock, offset, ts))
 		return;
 
 	offset += get_sync_offset(node, clock);
@@ -513,7 +513,6 @@ static int do_pps_loop(struct node *node, struct clock *clock, int fd)
 	int64_t pps_offset, phc_offset, phc_delay;
 	uint64_t pps_ts, phc_ts;
 	clockid_t src = node->master->clkid;
-	int do_leap;
 
 	node->master->source_label = "pps";
 
@@ -550,10 +549,9 @@ static int do_pps_loop(struct node *node, struct clock *clock, int fd)
 			pps_offset = pps_ts - phc_ts;
 		}
 
-		do_leap = update_pmc(node, 0);
-		if (do_leap < 0)
+		if (update_pmc(node, 0) < 0)
 			continue;
-		update_clock(node, clock, pps_offset, pps_ts, -1, do_leap);
+		update_clock(node, clock, pps_offset, pps_ts, -1);
 	}
 	close(fd);
 	return 0;
@@ -565,15 +563,13 @@ static int do_loop(struct node *node, int subscriptions)
 	struct clock *clock;
 	uint64_t ts;
 	int64_t offset, delay;
-	int do_leap;
 
 	interval.tv_sec = node->phc_interval;
 	interval.tv_nsec = (node->phc_interval - interval.tv_sec) * 1e9;
 
 	while (1) {
 		clock_nanosleep(CLOCK_MONOTONIC, 0, &interval, NULL);
-		do_leap = update_pmc(node, subscriptions);
-		if (do_leap < 0)
+		if (update_pmc(node, subscriptions) < 0)
 			continue;
 
 		if (subscriptions) {
@@ -609,7 +605,7 @@ static int do_loop(struct node *node, int subscriptions)
 					      &offset, &ts, &delay))
 					continue;
 			}
-			update_clock(node, clock, offset, ts, delay, do_leap);
+			update_clock(node, clock, offset, ts, delay);
 		}
 	}
 	return 0; /* unreachable */
@@ -1048,12 +1044,11 @@ static int auto_init_ports(struct node *node, int add_rt)
 	return 0;
 }
 
-/* Returns: -1 in case of error, 0 for normal sync, 1 to leap clock */
+/* Returns: -1 in case of error, 0 otherwise */
 static int update_pmc(struct node *node, int subscribe)
 {
 	struct timespec tp;
 	uint64_t ts;
-	int clock_leap;
 
 	if (clock_gettime(CLOCK_REALTIME, &tp)) {
 		pr_err("failed to read clock: %m");
@@ -1070,25 +1065,18 @@ static int update_pmc(struct node *node, int subscribe)
 			node->pmc_last_update = ts;
 	}
 
-	/* Handle leap seconds. */
-
-	if (!node->leap && !node->leap_set)
-		return 0;
-
-	clock_leap = leap_second_status(ts, node->leap_set,
-					&node->leap, &node->sync_offset);
-	if (node->leap_set != clock_leap) {
-		node->leap_set = clock_leap;
-		return 1;
-	}
 	return 0;
 }
 
 /* Returns: non-zero to skip clock update */
 static int clock_handle_leap(struct node *node, struct clock *clock,
-			     int64_t offset, uint64_t ts, int do_leap)
+			     int64_t offset, uint64_t ts)
 {
-	if (!node->leap && !do_leap)
+	int clock_leap, node_leap = node->leap;
+
+	clock->sync_offset = node->sync_offset;
+
+	if (!node_leap && !clock->leap_set)
 		return 0;
 
 	if (clock->is_utc == node->master->is_utc)
@@ -1116,10 +1104,14 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 		return 1;
 	}
 
-	if (do_leap) {
+	clock_leap = leap_second_status(ts, clock->leap_set,
+					&node_leap, &clock->sync_offset);
+
+	if (clock->leap_set != clock_leap) {
 		/* Only the system clock can leap. */
 		if (clock->clkid == CLOCK_REALTIME && node->kernel_leap)
-			sysclk_set_leap(node->leap_set);
+			sysclk_set_leap(clock_leap);
+		clock->leap_set = clock_leap;
 	}
 
 	return 0;
