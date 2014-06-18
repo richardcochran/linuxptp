@@ -88,6 +88,7 @@ struct clock {
 	int freq_est_interval;
 	int grand_master_capable; /* for 802.1AS only */
 	int utc_timescale;
+	int utc_offset_set;
 	int leap_set;
 	int kernel_leap;
 	int utc_offset;  /* grand master role */
@@ -700,6 +701,13 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 		}
 	}
 
+	/* Update TAI-UTC offset of the system clock if valid and traceable. */
+	if (c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE &&
+	    c->utc_offset_set != utc_offset && c->clkid == CLOCK_REALTIME) {
+		sysclk_set_tai_offset(utc_offset);
+		c->utc_offset_set = utc_offset;
+	}
+
 	if (!(c->tds.flags & PTP_TIMESCALE))
 		return 0;
 
@@ -789,6 +797,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 		max_adj = sysclk_max_freq();
 		sysclk_set_leap(0);
 	}
+	c->utc_offset_set = 0;
 	c->leap_set = 0;
 	c->time_flags = c->utc_timescale ? 0 : PTP_TIMESCALE;
 

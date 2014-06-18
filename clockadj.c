@@ -129,6 +129,17 @@ void sysclk_set_leap(int leap)
 	realtime_leap_bit = tx.status;
 }
 
+void sysclk_set_tai_offset(int offset)
+{
+	clockid_t clkid = CLOCK_REALTIME;
+	struct timex tx;
+	memset(&tx, 0, sizeof(tx));
+	tx.modes = ADJ_TAI;
+	tx.constant = offset;
+	if (clock_adjtime(clkid, &tx) < 0)
+		pr_err("failed to set TAI offset: %m");
+}
+
 int sysclk_max_freq(void)
 {
 	clockid_t clkid = CLOCK_REALTIME;

@@ -58,6 +58,12 @@ void clockadj_step(clockid_t clkid, int64_t step);
 void sysclk_set_leap(int leap);
 
 /**
+ * Set the TAI offset of the system clock to have correct CLOCK_TAI.
+ * @param offset The TAI-UTC offset in seconds.
+ */
+void sysclk_set_tai_offset(int offset);
+
+/**
  * Read maximum frequency adjustment of the system clock (CLOCK_REALTIME).
  * @return The maximum frequency adjustment in parts per billion (ppb).
  */

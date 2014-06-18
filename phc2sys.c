@@ -78,6 +78,7 @@ struct clock {
 	int new_state;
 	int sync_offset;
 	int leap_set;
+	int utc_offset_set;
 	struct servo *servo;
 	enum servo_state servo_state;
 	char *device;
@@ -103,6 +104,7 @@ struct node {
 	double phc_interval;
 	int sync_offset;
 	int forced_sync_offset;
+	int utc_offset_traceable;
 	int leap;
 	int kernel_leap;
 	struct pmc *pmc;
@@ -864,9 +866,12 @@ static int run_pmc_get_utc_offset(struct node *node, int timeout)
 			node->leap = -1;
 		else
 			node->leap = 0;
+		node->utc_offset_traceable = tds->flags & UTC_OFF_VALID &&
+					     tds->flags & TIME_TRACEABLE;
 	} else {
 		node->sync_offset = 0;
 		node->leap = 0;
+		node->utc_offset_traceable = 0;
 	}
 	msg_put(msg);
 	return 1;
@@ -1076,42 +1081,48 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 
 	clock->sync_offset = node->sync_offset;
 
-	if (!node_leap && !clock->leap_set)
-		return 0;
-
-	if (clock->is_utc == node->master->is_utc)
-		return 0;
-
-	/* If the system clock is the master clock, get a time stamp from
-	   it, as it is the clock which will include the leap second. */
-	if (node->master->is_utc) {
-		struct timespec tp;
-		if (clock_gettime(node->master->clkid, &tp)) {
-			pr_err("failed to read clock: %m");
-			return -1;
+	if ((node_leap || clock->leap_set) &&
+	    clock->is_utc != node->master->is_utc) {
+		/* If the master clock is in UTC, get a time stamp from it, as
+		   it is the clock which will include the leap second. */
+		if (node->master->is_utc) {
+			struct timespec tp;
+			if (clock_gettime(node->master->clkid, &tp)) {
+				pr_err("failed to read clock: %m");
+				return -1;
+			}
+			ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
 		}
-		ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
+
+		/* If the clock will be stepped, the time stamp has to be the
+		   new time. Ignore possible 1 second error in UTC offset. */
+		if (clock->is_utc && clock->servo_state == SERVO_UNLOCKED)
+			ts -= offset + get_sync_offset(node, clock);
+
+		/* Suspend clock updates in the last second before midnight. */
+		if (is_utc_ambiguous(ts)) {
+			pr_info("clock update suspended due to leap second");
+			return 1;
+		}
+
+		clock_leap = leap_second_status(ts, clock->leap_set,
+						&node_leap,
+						&clock->sync_offset);
+
+		if (clock->leap_set != clock_leap) {
+			/* Only the system clock can leap. */
+			if (clock->clkid == CLOCK_REALTIME &&
+			    node->kernel_leap)
+				sysclk_set_leap(clock_leap);
+			clock->leap_set = clock_leap;
+		}
 	}
 
-	/* If the clock will be stepped, the time stamp has to be the
-	   target time. Ignore possible 1 second error in UTC offset. */
-	if (clock->is_utc && clock->servo_state == SERVO_UNLOCKED)
-		ts -= offset + get_sync_offset(node, clock);
-
-	/* Suspend clock updates in the last second before midnight. */
-	if (is_utc_ambiguous(ts)) {
-		pr_info("clock update suspended due to leap second");
-		return 1;
-	}
-
-	clock_leap = leap_second_status(ts, clock->leap_set,
-					&node_leap, &clock->sync_offset);
-
-	if (clock->leap_set != clock_leap) {
-		/* Only the system clock can leap. */
-		if (clock->clkid == CLOCK_REALTIME && node->kernel_leap)
-			sysclk_set_leap(clock_leap);
-		clock->leap_set = clock_leap;
+	if (node->utc_offset_traceable &&
+	    clock->utc_offset_set != clock->sync_offset) {
+		if (clock->clkid == CLOCK_REALTIME)
+			sysclk_set_tai_offset(clock->sync_offset);
+		clock->utc_offset_set = clock->sync_offset;
 	}
 
 	return 0;
