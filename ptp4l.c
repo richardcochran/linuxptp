@@ -300,6 +300,10 @@ int main(int argc, char *argv[])
 	    ds->flags & DDS_SLAVE_ONLY) {
 		ds->clockQuality.clockClass = 255;
 	}
+	if (cfg_settings.clock_servo == CLOCK_SERVO_NTPSHM) {
+		cfg_settings.dds.kernel_leap = 0;
+		cfg_settings.dds.sanity_freq_limit = 0;
+	}
 
 	print_set_progname(progname);
 	print_set_verbose(cfg_settings.verbose);

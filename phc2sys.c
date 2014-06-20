@@ -1324,6 +1324,11 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
+	if (node.servo_type == CLOCK_SERVO_NTPSHM) {
+		node.kernel_leap = 0;
+		node.sanity_freq_limit = 0;
+	}
+
 	print_set_progname(progname);
 	print_set_verbose(verbose);
 	print_set_syslog(use_syslog);
