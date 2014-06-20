@@ -1055,7 +1055,7 @@ static int update_pmc(struct node *node, int subscribe)
 	struct timespec tp;
 	uint64_t ts;
 
-	if (clock_gettime(CLOCK_REALTIME, &tp)) {
+	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
 		pr_err("failed to read clock: %m");
 		return -1;
 	}
