@@ -697,6 +697,8 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 		if (c->leap_set != clock_leap) {
 			if (c->kernel_leap)
 				sysclk_set_leap(clock_leap);
+			else
+				servo_leap(c->servo, clock_leap);
 			c->leap_set = clock_leap;
 		}
 	}

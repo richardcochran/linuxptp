@@ -1114,6 +1114,8 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 			if (clock->clkid == CLOCK_REALTIME &&
 			    node->kernel_leap)
 				sysclk_set_leap(clock_leap);
+			else
+				servo_leap(clock->servo, clock_leap);
 			clock->leap_set = clock_leap;
 		}
 	}

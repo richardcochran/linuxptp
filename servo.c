@@ -107,3 +107,9 @@ double servo_rate_ratio(struct servo *servo)
 
 	return 1.0;
 }
+
+void servo_leap(struct servo *servo, int leap)
+{
+	if (servo->leap)
+		servo->leap(servo, leap);
+}

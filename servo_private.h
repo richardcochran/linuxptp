@@ -38,6 +38,8 @@ struct servo {
 	void (*reset)(struct servo *servo);
 
 	double (*rate_ratio)(struct servo *servo);
+
+	void (*leap)(struct servo *servo, int leap);
 };
 
 #endif
