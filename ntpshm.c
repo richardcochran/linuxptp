@@ -28,6 +28,11 @@
 
 #define NS_PER_SEC 1000000000
 
+/* NTP leap values */
+#define LEAP_NORMAL 0x0
+#define LEAP_INSERT 0x1
+#define LEAP_DELETE 0x2
+
 /* Key of the first SHM segment */
 #define SHMKEY 0x4e545030
 
@@ -61,6 +66,7 @@ struct shmTime {
 struct ntpshm_servo {
 	struct servo servo;
 	struct shmTime *shm;
+	int leap;
 };
 
 static void ntpshm_destroy(struct servo *servo)
@@ -91,7 +97,18 @@ static double ntpshm_sample(struct servo *servo,
 	s->shm->receiveTimeStampNSec = local_ts % NS_PER_SEC;
 	s->shm->receiveTimeStampUSec = s->shm->receiveTimeStampNSec / 1000;
 	s->shm->precision = -30; /* 1 nanosecond */
-	s->shm->leap = 0;
+
+	switch (s->leap) {
+		case -1:
+			s->shm->leap = LEAP_DELETE;
+			break;
+		case 1:
+			s->shm->leap = LEAP_INSERT;
+			break;
+		default:
+			s->shm->leap = LEAP_NORMAL;
+	}
+
 	/* TODO: write memory barrier */
 
 	s->shm->count++;
@@ -109,6 +126,13 @@ static void ntpshm_reset(struct servo *servo)
 {
 }
 
+static void ntpshm_leap(struct servo *servo, int leap)
+{
+	struct ntpshm_servo *s = container_of(servo, struct ntpshm_servo, servo);
+
+	s->leap = leap;
+}
+
 struct servo *ntpshm_servo_create(void)
 {
 	struct ntpshm_servo *s;
@@ -122,6 +146,7 @@ struct servo *ntpshm_servo_create(void)
 	s->servo.sample = ntpshm_sample;
 	s->servo.sync_interval = ntpshm_sync_interval;
 	s->servo.reset = ntpshm_reset;
+	s->servo.leap = ntpshm_leap;
 
 	shmid = shmget(SHMKEY + ntpshm_segment, sizeof (struct shmTime),
 		       IPC_CREAT | 0600);
