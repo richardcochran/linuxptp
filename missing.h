@@ -28,6 +28,10 @@
 #include <sys/timex.h>
 #include <unistd.h>
 
+#ifndef ADJ_TAI
+#define ADJ_TAI 0x0080
+#endif
+
 #ifndef ADJ_NANO
 #define ADJ_NANO 0x2000
 #endif
