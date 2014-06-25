@@ -336,76 +336,76 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	tlv->id = id;
 
 	switch (id) {
-	case USER_DESCRIPTION:
+	case TLV_USER_DESCRIPTION:
 		text = (struct PTPText *) tlv->data;
 		text->length = c->desc.userDescription.length;
 		memcpy(text->text, c->desc.userDescription.text, text->length);
 		datalen = 1 + text->length;
 		respond = 1;
 		break;
-	case DEFAULT_DATA_SET:
+	case TLV_DEFAULT_DATA_SET:
 		memcpy(tlv->data, &c->dds, sizeof(c->dds));
 		datalen = sizeof(c->dds);
 		respond = 1;
 		break;
-	case CURRENT_DATA_SET:
+	case TLV_CURRENT_DATA_SET:
 		memcpy(tlv->data, &c->cur, sizeof(c->cur));
 		datalen = sizeof(c->cur);
 		respond = 1;
 		break;
-	case PARENT_DATA_SET:
+	case TLV_PARENT_DATA_SET:
 		memcpy(tlv->data, &c->dad.pds, sizeof(c->dad.pds));
 		datalen = sizeof(c->dad.pds);
 		respond = 1;
 		break;
-	case TIME_PROPERTIES_DATA_SET:
+	case TLV_TIME_PROPERTIES_DATA_SET:
 		memcpy(tlv->data, &c->tds, sizeof(c->tds));
 		datalen = sizeof(c->tds);
 		respond = 1;
 		break;
-	case PRIORITY1:
+	case TLV_PRIORITY1:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.priority1;
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
-	case PRIORITY2:
+	case TLV_PRIORITY2:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.priority2;
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
-	case DOMAIN:
+	case TLV_DOMAIN:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.domainNumber;
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
-	case SLAVE_ONLY:
+	case TLV_SLAVE_ONLY:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.flags & DDS_SLAVE_ONLY;
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
-	case CLOCK_ACCURACY:
+	case TLV_CLOCK_ACCURACY:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.clockQuality.clockAccuracy;
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
-	case TRACEABILITY_PROPERTIES:
+	case TLV_TRACEABILITY_PROPERTIES:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & (TIME_TRACEABLE|FREQ_TRACEABLE);
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
-	case TIMESCALE_PROPERTIES:
+	case TLV_TIMESCALE_PROPERTIES:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & PTP_TIMESCALE;
 		datalen = sizeof(*mtd);
 		respond = 1;
 		break;
-	case TIME_STATUS_NP:
+	case TLV_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
 		tsn->master_offset = c->master_offset;
 		tsn->ingress_time = tmv_to_nanoseconds(c->t2);
@@ -423,7 +423,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		datalen = sizeof(*tsn);
 		respond = 1;
 		break;
-	case GRANDMASTER_SETTINGS_NP:
+	case TLV_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) tlv->data;
 		gsn->clockQuality = c->dds.clockQuality;
 		gsn->utc_offset = c->utc_offset;
@@ -432,7 +432,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		datalen = sizeof(*gsn);
 		respond = 1;
 		break;
-	case SUBSCRIBE_EVENTS_NP:
+	case TLV_SUBSCRIBE_EVENTS_NP:
 		if (p != c->port[c->nports]) {
 			/* Only the UDS port allowed. */
 			break;
@@ -483,7 +483,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 	tlv = (struct management_tlv *) req->management.suffix;
 
 	switch (id) {
-	case GRANDMASTER_SETTINGS_NP:
+	case TLV_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) tlv->data;
 		c->dds.clockQuality = gsn->clockQuality;
 		c->utc_offset = gsn->utc_offset;
@@ -492,7 +492,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 		*changed = 1;
 		respond = 1;
 		break;
-	case SUBSCRIBE_EVENTS_NP:
+	case TLV_SUBSCRIBE_EVENTS_NP:
 		sen = (struct subscribe_events_np *)tlv->data;
 		clock_update_subscription(c, req, sen->bitmask,
 					  sen->duration);
@@ -1017,13 +1017,13 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 			return changed;
 		break;
 	case SET:
-		if (mgt->length == 2 && mgt->id != NULL_MANAGEMENT) {
-			clock_management_send_error(p, msg, WRONG_LENGTH);
+		if (mgt->length == 2 && mgt->id != TLV_NULL_MANAGEMENT) {
+			clock_management_send_error(p, msg, TLV_WRONG_LENGTH);
 			return changed;
 		}
 		if (p != c->port[c->nports]) {
 			/* Sorry, only allowed on the UDS port. */
-			clock_management_send_error(p, msg, NOT_SUPPORTED);
+			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 			return changed;
 		}
 		if (clock_management_set(c, p, mgt->id, msg, &changed))
@@ -1036,49 +1036,49 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	}
 
 	switch (mgt->id) {
-	case PORT_PROPERTIES_NP:
+	case TLV_PORT_PROPERTIES_NP:
 		if (p != c->port[c->nports]) {
 			/* Only the UDS port allowed. */
-			clock_management_send_error(p, msg, NOT_SUPPORTED);
+			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 			return 0;
 		}
 	}
 
 	switch (mgt->id) {
-	case USER_DESCRIPTION:
-	case SAVE_IN_NON_VOLATILE_STORAGE:
-	case RESET_NON_VOLATILE_STORAGE:
-	case INITIALIZE:
-	case FAULT_LOG:
-	case FAULT_LOG_RESET:
-	case DEFAULT_DATA_SET:
-	case CURRENT_DATA_SET:
-	case PARENT_DATA_SET:
-	case TIME_PROPERTIES_DATA_SET:
-	case PRIORITY1:
-	case PRIORITY2:
-	case DOMAIN:
-	case SLAVE_ONLY:
-	case TIME:
-	case CLOCK_ACCURACY:
-	case UTC_PROPERTIES:
-	case TRACEABILITY_PROPERTIES:
-	case TIMESCALE_PROPERTIES:
-	case PATH_TRACE_LIST:
-	case PATH_TRACE_ENABLE:
-	case GRANDMASTER_CLUSTER_TABLE:
-	case ACCEPTABLE_MASTER_TABLE:
-	case ACCEPTABLE_MASTER_MAX_TABLE_SIZE:
-	case ALTERNATE_TIME_OFFSET_ENABLE:
-	case ALTERNATE_TIME_OFFSET_NAME:
-	case ALTERNATE_TIME_OFFSET_MAX_KEY:
-	case ALTERNATE_TIME_OFFSET_PROPERTIES:
-	case TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
-	case PRIMARY_DOMAIN:
-	case TIME_STATUS_NP:
-	case GRANDMASTER_SETTINGS_NP:
-	case SUBSCRIBE_EVENTS_NP:
-		clock_management_send_error(p, msg, NOT_SUPPORTED);
+	case TLV_USER_DESCRIPTION:
+	case TLV_SAVE_IN_NON_VOLATILE_STORAGE:
+	case TLV_RESET_NON_VOLATILE_STORAGE:
+	case TLV_INITIALIZE:
+	case TLV_FAULT_LOG:
+	case TLV_FAULT_LOG_RESET:
+	case TLV_DEFAULT_DATA_SET:
+	case TLV_CURRENT_DATA_SET:
+	case TLV_PARENT_DATA_SET:
+	case TLV_TIME_PROPERTIES_DATA_SET:
+	case TLV_PRIORITY1:
+	case TLV_PRIORITY2:
+	case TLV_DOMAIN:
+	case TLV_SLAVE_ONLY:
+	case TLV_TIME:
+	case TLV_CLOCK_ACCURACY:
+	case TLV_UTC_PROPERTIES:
+	case TLV_TRACEABILITY_PROPERTIES:
+	case TLV_TIMESCALE_PROPERTIES:
+	case TLV_PATH_TRACE_LIST:
+	case TLV_PATH_TRACE_ENABLE:
+	case TLV_GRANDMASTER_CLUSTER_TABLE:
+	case TLV_ACCEPTABLE_MASTER_TABLE:
+	case TLV_ACCEPTABLE_MASTER_MAX_TABLE_SIZE:
+	case TLV_ALTERNATE_TIME_OFFSET_ENABLE:
+	case TLV_ALTERNATE_TIME_OFFSET_NAME:
+	case TLV_ALTERNATE_TIME_OFFSET_MAX_KEY:
+	case TLV_ALTERNATE_TIME_OFFSET_PROPERTIES:
+	case TLV_TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
+	case TLV_PRIMARY_DOMAIN:
+	case TLV_TIME_STATUS_NP:
+	case TLV_GRANDMASTER_SETTINGS_NP:
+	case TLV_SUBSCRIBE_EVENTS_NP:
+		clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 		break;
 	default:
 		answers = 0;
@@ -1091,8 +1091,8 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		}
 		if (!answers) {
 			/* IEEE 1588 Interpretation #21 suggests to use
-			 * WRONG_VALUE for ports that do not exist */
-			clock_management_send_error(p, msg, WRONG_VALUE);
+			 * TLV_WRONG_VALUE for ports that do not exist */
+			clock_management_send_error(p, msg, TLV_WRONG_VALUE);
 		}
 		break;
 	}

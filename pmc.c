@@ -56,57 +56,57 @@ struct management_id {
 
 struct management_id idtab[] = {
 /* Clock management ID values */
-	{ "USER_DESCRIPTION", USER_DESCRIPTION, do_get_action },
-	{ "SAVE_IN_NON_VOLATILE_STORAGE", SAVE_IN_NON_VOLATILE_STORAGE, not_supported },
-	{ "RESET_NON_VOLATILE_STORAGE", RESET_NON_VOLATILE_STORAGE, not_supported },
-	{ "INITIALIZE", INITIALIZE, not_supported },
-	{ "FAULT_LOG", FAULT_LOG, not_supported },
-	{ "FAULT_LOG_RESET", FAULT_LOG_RESET, not_supported },
-	{ "DEFAULT_DATA_SET", DEFAULT_DATA_SET, do_get_action },
-	{ "CURRENT_DATA_SET", CURRENT_DATA_SET, do_get_action },
-	{ "PARENT_DATA_SET", PARENT_DATA_SET, do_get_action },
-	{ "TIME_PROPERTIES_DATA_SET", TIME_PROPERTIES_DATA_SET, do_get_action },
-	{ "PRIORITY1", PRIORITY1, do_get_action },
-	{ "PRIORITY2", PRIORITY2, do_get_action },
-	{ "DOMAIN", DOMAIN, do_get_action },
-	{ "SLAVE_ONLY", SLAVE_ONLY, do_get_action },
-	{ "TIME", TIME, not_supported },
-	{ "CLOCK_ACCURACY", CLOCK_ACCURACY, do_get_action },
-	{ "UTC_PROPERTIES", UTC_PROPERTIES, not_supported },
-	{ "TRACEABILITY_PROPERTIES", TRACEABILITY_PROPERTIES, do_get_action },
-	{ "TIMESCALE_PROPERTIES", TIMESCALE_PROPERTIES, do_get_action },
-	{ "PATH_TRACE_LIST", PATH_TRACE_LIST, not_supported },
-	{ "PATH_TRACE_ENABLE", PATH_TRACE_ENABLE, not_supported },
-	{ "GRANDMASTER_CLUSTER_TABLE", GRANDMASTER_CLUSTER_TABLE, not_supported },
-	{ "ACCEPTABLE_MASTER_TABLE", ACCEPTABLE_MASTER_TABLE, not_supported },
-	{ "ACCEPTABLE_MASTER_MAX_TABLE_SIZE", ACCEPTABLE_MASTER_MAX_TABLE_SIZE, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_ENABLE", ALTERNATE_TIME_OFFSET_ENABLE, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_NAME", ALTERNATE_TIME_OFFSET_NAME, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", ALTERNATE_TIME_OFFSET_PROPERTIES, not_supported },
-	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
-	{ "PRIMARY_DOMAIN", PRIMARY_DOMAIN, not_supported },
-	{ "TIME_STATUS_NP", TIME_STATUS_NP, do_get_action },
-	{ "GRANDMASTER_SETTINGS_NP", GRANDMASTER_SETTINGS_NP, do_set_action },
+	{ "USER_DESCRIPTION", TLV_USER_DESCRIPTION, do_get_action },
+	{ "SAVE_IN_NON_VOLATILE_STORAGE", TLV_SAVE_IN_NON_VOLATILE_STORAGE, not_supported },
+	{ "RESET_NON_VOLATILE_STORAGE", TLV_RESET_NON_VOLATILE_STORAGE, not_supported },
+	{ "INITIALIZE", TLV_INITIALIZE, not_supported },
+	{ "FAULT_LOG", TLV_FAULT_LOG, not_supported },
+	{ "FAULT_LOG_RESET", TLV_FAULT_LOG_RESET, not_supported },
+	{ "DEFAULT_DATA_SET", TLV_DEFAULT_DATA_SET, do_get_action },
+	{ "CURRENT_DATA_SET", TLV_CURRENT_DATA_SET, do_get_action },
+	{ "PARENT_DATA_SET", TLV_PARENT_DATA_SET, do_get_action },
+	{ "TIME_PROPERTIES_DATA_SET", TLV_TIME_PROPERTIES_DATA_SET, do_get_action },
+	{ "PRIORITY1", TLV_PRIORITY1, do_get_action },
+	{ "PRIORITY2", TLV_PRIORITY2, do_get_action },
+	{ "DOMAIN", TLV_DOMAIN, do_get_action },
+	{ "SLAVE_ONLY", TLV_SLAVE_ONLY, do_get_action },
+	{ "TIME", TLV_TIME, not_supported },
+	{ "CLOCK_ACCURACY", TLV_CLOCK_ACCURACY, do_get_action },
+	{ "UTC_PROPERTIES", TLV_UTC_PROPERTIES, not_supported },
+	{ "TRACEABILITY_PROPERTIES", TLV_TRACEABILITY_PROPERTIES, do_get_action },
+	{ "TIMESCALE_PROPERTIES", TLV_TIMESCALE_PROPERTIES, do_get_action },
+	{ "PATH_TRACE_LIST", TLV_PATH_TRACE_LIST, not_supported },
+	{ "PATH_TRACE_ENABLE", TLV_PATH_TRACE_ENABLE, not_supported },
+	{ "GRANDMASTER_CLUSTER_TABLE", TLV_GRANDMASTER_CLUSTER_TABLE, not_supported },
+	{ "ACCEPTABLE_MASTER_TABLE", TLV_ACCEPTABLE_MASTER_TABLE, not_supported },
+	{ "ACCEPTABLE_MASTER_MAX_TABLE_SIZE", TLV_ACCEPTABLE_MASTER_MAX_TABLE_SIZE, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_ENABLE", TLV_ALTERNATE_TIME_OFFSET_ENABLE, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_NAME", TLV_ALTERNATE_TIME_OFFSET_NAME, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", TLV_ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", TLV_ALTERNATE_TIME_OFFSET_PROPERTIES, not_supported },
+	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", TLV_TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
+	{ "PRIMARY_DOMAIN", TLV_PRIMARY_DOMAIN, not_supported },
+	{ "TIME_STATUS_NP", TLV_TIME_STATUS_NP, do_get_action },
+	{ "GRANDMASTER_SETTINGS_NP", TLV_GRANDMASTER_SETTINGS_NP, do_set_action },
 /* Port management ID values */
-	{ "NULL_MANAGEMENT", NULL_MANAGEMENT, null_management },
-	{ "CLOCK_DESCRIPTION", CLOCK_DESCRIPTION, do_get_action },
-	{ "PORT_DATA_SET", PORT_DATA_SET, do_get_action },
-	{ "LOG_ANNOUNCE_INTERVAL", LOG_ANNOUNCE_INTERVAL, do_get_action },
-	{ "ANNOUNCE_RECEIPT_TIMEOUT", ANNOUNCE_RECEIPT_TIMEOUT, do_get_action },
-	{ "LOG_SYNC_INTERVAL", LOG_SYNC_INTERVAL, do_get_action },
-	{ "VERSION_NUMBER", VERSION_NUMBER, do_get_action },
-	{ "ENABLE_PORT", ENABLE_PORT, not_supported },
-	{ "DISABLE_PORT", DISABLE_PORT, not_supported },
-	{ "UNICAST_NEGOTIATION_ENABLE", UNICAST_NEGOTIATION_ENABLE, not_supported },
-	{ "UNICAST_MASTER_TABLE", UNICAST_MASTER_TABLE, not_supported },
-	{ "UNICAST_MASTER_MAX_TABLE_SIZE", UNICAST_MASTER_MAX_TABLE_SIZE, not_supported },
-	{ "ACCEPTABLE_MASTER_TABLE_ENABLED", ACCEPTABLE_MASTER_TABLE_ENABLED, not_supported },
-	{ "ALTERNATE_MASTER", ALTERNATE_MASTER, not_supported },
-	{ "TRANSPARENT_CLOCK_PORT_DATA_SET", TRANSPARENT_CLOCK_PORT_DATA_SET, not_supported },
-	{ "DELAY_MECHANISM", DELAY_MECHANISM, do_get_action },
-	{ "LOG_MIN_PDELAY_REQ_INTERVAL", LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
-	{ "PORT_DATA_SET_NP", PORT_DATA_SET_NP, do_set_action },
+	{ "NULL_MANAGEMENT", TLV_NULL_MANAGEMENT, null_management },
+	{ "CLOCK_DESCRIPTION", TLV_CLOCK_DESCRIPTION, do_get_action },
+	{ "PORT_DATA_SET", TLV_PORT_DATA_SET, do_get_action },
+	{ "LOG_ANNOUNCE_INTERVAL", TLV_LOG_ANNOUNCE_INTERVAL, do_get_action },
+	{ "ANNOUNCE_RECEIPT_TIMEOUT", TLV_ANNOUNCE_RECEIPT_TIMEOUT, do_get_action },
+	{ "LOG_SYNC_INTERVAL", TLV_LOG_SYNC_INTERVAL, do_get_action },
+	{ "VERSION_NUMBER", TLV_VERSION_NUMBER, do_get_action },
+	{ "ENABLE_PORT", TLV_ENABLE_PORT, not_supported },
+	{ "DISABLE_PORT", TLV_DISABLE_PORT, not_supported },
+	{ "UNICAST_NEGOTIATION_ENABLE", TLV_UNICAST_NEGOTIATION_ENABLE, not_supported },
+	{ "UNICAST_MASTER_TABLE", TLV_UNICAST_MASTER_TABLE, not_supported },
+	{ "UNICAST_MASTER_MAX_TABLE_SIZE", TLV_UNICAST_MASTER_MAX_TABLE_SIZE, not_supported },
+	{ "ACCEPTABLE_MASTER_TABLE_ENABLED", TLV_ACCEPTABLE_MASTER_TABLE_ENABLED, not_supported },
+	{ "ALTERNATE_MASTER", TLV_ALTERNATE_MASTER, not_supported },
+	{ "TRANSPARENT_CLOCK_PORT_DATA_SET", TLV_TRANSPARENT_CLOCK_PORT_DATA_SET, not_supported },
+	{ "DELAY_MECHANISM", TLV_DELAY_MECHANISM, do_get_action },
+	{ "LOG_MIN_PDELAY_REQ_INTERVAL", TLV_LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
+	{ "PORT_DATA_SET_NP", TLV_PORT_DATA_SET_NP, do_set_action },
 };
 
 static const char *action_string[] = {
@@ -219,12 +219,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		fprintf(fp, "unknown-tlv ");
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
-	if (mgt->length == 2 && mgt->id != NULL_MANAGEMENT) {
+	if (mgt->length == 2 && mgt->id != TLV_NULL_MANAGEMENT) {
 		fprintf(fp, "empty-tlv ");
 		goto out;
 	}
 	switch (mgt->id) {
-	case CLOCK_DESCRIPTION:
+	case TLV_CLOCK_DESCRIPTION:
 		cd = &msg->last_tlv.cd;
 		fprintf(fp, "CLOCK_DESCRIPTION "
 			IFMT "clockType             0x%hx"
@@ -248,12 +248,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			text2str(cd->userDescription),
 			bin2str(cd->profileIdentity, PROFILE_ID_LEN));
 		break;
-	case USER_DESCRIPTION:
+	case TLV_USER_DESCRIPTION:
 		fprintf(fp, "USER_DESCRIPTION "
 			IFMT "userDescription  %s",
 			text2str(msg->last_tlv.cd.userDescription));
 		break;
-	case DEFAULT_DATA_SET:
+	case TLV_DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) mgt->data;
 		fprintf(fp, "DEFAULT_DATA_SET "
 			IFMT "twoStepFlag             %d"
@@ -277,7 +277,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			cid2str(&dds->clockIdentity),
 			dds->domainNumber);
 		break;
-	case CURRENT_DATA_SET:
+	case TLV_CURRENT_DATA_SET:
 		cds = (struct currentDS *) mgt->data;
 		fprintf(fp, "CURRENT_DATA_SET "
 			IFMT "stepsRemoved     %hd"
@@ -286,7 +286,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			cds->stepsRemoved, cds->offsetFromMaster / 65536.0,
 			cds->meanPathDelay / 65536.0);
 		break;
-	case PARENT_DATA_SET:
+	case TLV_PARENT_DATA_SET:
 		pds = (struct parentDS *) mgt->data;
 		fprintf(fp, "PARENT_DATA_SET "
 			IFMT "parentPortIdentity                    %s"
@@ -310,7 +310,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pds->grandmasterPriority2,
 			cid2str(&pds->grandmasterIdentity));
 		break;
-	case TIME_PROPERTIES_DATA_SET:
+	case TLV_TIME_PROPERTIES_DATA_SET:
 		tp = (struct timePropertiesDS *) mgt->data;
 		fprintf(fp, "TIME_PROPERTIES_DATA_SET "
 			IFMT "currentUtcOffset      %hd"
@@ -330,32 +330,32 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			tp->flags & FREQ_TRACEABLE ? 1 : 0,
 			tp->timeSource);
 		break;
-	case PRIORITY1:
+	case TLV_PRIORITY1:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "PRIORITY1 "
 			IFMT "priority1 %hhu", mtd->val);
 		break;
-	case PRIORITY2:
+	case TLV_PRIORITY2:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "PRIORITY2 "
 			IFMT "priority2 %hhu", mtd->val);
 		break;
-	case DOMAIN:
+	case TLV_DOMAIN:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "DOMAIN "
 			IFMT "domainNumber %hhu", mtd->val);
 		break;
-	case SLAVE_ONLY:
+	case TLV_SLAVE_ONLY:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "SLAVE_ONLY "
 			IFMT "slaveOnly %d", mtd->val & DDS_SLAVE_ONLY ? 1 : 0);
 		break;
-	case CLOCK_ACCURACY:
+	case TLV_CLOCK_ACCURACY:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "CLOCK_ACCURACY "
 			IFMT "clockAccuracy 0x%02hhx", mtd->val);
 		break;
-	case TRACEABILITY_PROPERTIES:
+	case TLV_TRACEABILITY_PROPERTIES:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "TRACEABILITY_PROPERTIES "
 			IFMT "timeTraceable      %d"
@@ -363,12 +363,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			mtd->val & TIME_TRACEABLE ? 1 : 0,
 			mtd->val & FREQ_TRACEABLE ? 1 : 0);
 		break;
-	case TIMESCALE_PROPERTIES:
+	case TLV_TIMESCALE_PROPERTIES:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "TIMESCALE_PROPERTIES "
 			IFMT "ptpTimescale %d", mtd->val & PTP_TIMESCALE ? 1 : 0);
 		break;
-	case TIME_STATUS_NP:
+	case TLV_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
 		fprintf(fp, "TIME_STATUS_NP "
 			IFMT "master_offset              %" PRId64
@@ -390,7 +390,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			tsn->gmPresent ? "true" : "false",
 			cid2str(&tsn->gmIdentity));
 		break;
-	case GRANDMASTER_SETTINGS_NP:
+	case TLV_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) mgt->data;
 		fprintf(fp, "GRANDMASTER_SETTINGS_NP "
 			IFMT "clockClass              %hhu"
@@ -416,7 +416,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			gsn->time_flags & FREQ_TRACEABLE ? 1 : 0,
 			gsn->time_source);
 		break;
-	case PORT_DATA_SET:
+	case TLV_PORT_DATA_SET:
 		p = (struct portDS *) mgt->data;
 		if (p->portState > PS_SLAVE) {
 			p->portState = 0;
@@ -438,7 +438,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			p->logSyncInterval, p->delayMechanism,
 			p->logMinPdelayReqInterval, p->versionNumber);
 		break;
-	case PORT_DATA_SET_NP:
+	case TLV_PORT_DATA_SET_NP:
 		pnp = (struct port_ds_np *) mgt->data;
 		fprintf(fp, "PORT_DATA_SET_NP "
 			IFMT "neighborPropDelayThresh %u"
@@ -446,32 +446,32 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pnp->neighborPropDelayThresh,
 			pnp->asCapable ? 1 : 0);
 		break;
-	case LOG_ANNOUNCE_INTERVAL:
+	case TLV_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "LOG_ANNOUNCE_INTERVAL "
 			IFMT "logAnnounceInterval %hhd", mtd->val);
 		break;
-	case ANNOUNCE_RECEIPT_TIMEOUT:
+	case TLV_ANNOUNCE_RECEIPT_TIMEOUT:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "ANNOUNCE_RECEIPT_TIMEOUT "
 			IFMT "announceReceiptTimeout %hhu", mtd->val);
 		break;
-	case LOG_SYNC_INTERVAL:
+	case TLV_LOG_SYNC_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "ANNOUNCE_RECEIPT_TIMEOUT "
 			IFMT "logSyncInterval %hhd", mtd->val);
 		break;
-	case VERSION_NUMBER:
+	case TLV_VERSION_NUMBER:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "VERSION_NUMBER "
 			IFMT "versionNumber %hhu", mtd->val);
 		break;
-	case DELAY_MECHANISM:
+	case TLV_DELAY_MECHANISM:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "DELAY_MECHANISM "
 			IFMT "delayMechanism %hhu", mtd->val);
 		break;
-	case LOG_MIN_PDELAY_REQ_INTERVAL:
+	case TLV_LOG_MIN_PDELAY_REQ_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "LOG_MIN_PDELAY_REQ_INTERVAL "
 			IFMT "logMinPdelayReqInterval %hhd", mtd->val);
@@ -513,7 +513,7 @@ static void do_set_action(int action, int index, char *str)
 		return;
 	}
 	switch (code) {
-	case GRANDMASTER_SETTINGS_NP:
+	case TLV_GRANDMASTER_SETTINGS_NP:
 		cnt = sscanf(str, " %*s %*s "
 			     "clockClass              %hhu "
 			     "clockAccuracy           %hhx "
@@ -557,7 +557,7 @@ static void do_set_action(int action, int index, char *str)
 			gsn.time_flags |= FREQ_TRACEABLE;
 		pmc_send_set_action(pmc, code, &gsn, sizeof(gsn));
 		break;
-	case PORT_DATA_SET_NP:
+	case TLV_PORT_DATA_SET_NP:
 		cnt = sscanf(str, " %*s %*s "
 			     "neighborPropDelayThresh %u "
 			     "asCapable               %d ",

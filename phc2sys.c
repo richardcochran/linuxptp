@@ -700,7 +700,7 @@ static int recv_subscribed(struct node *node, struct ptp_message *msg,
 	if (mgt_id == excluded)
 		return 0;
 	switch (mgt_id) {
-	case PORT_DATA_SET:
+	case TLV_PORT_DATA_SET:
 		pds = get_mgt_data(msg);
 		port = port_get(node, pds->portIdentity.portNumber);
 		if (!port) {
@@ -732,7 +732,7 @@ static void send_subscription(struct node *node)
 	memset(&sen, 0, sizeof(sen));
 	sen.duration = PMC_SUBSCRIBE_DURATION;
 	sen.bitmask[0] = 1 << NOTIFY_PORT_STATE;
-	pmc_send_set_action(node->pmc, SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
+	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
 
 static int init_pmc(struct node *node, int domain_number)
@@ -781,7 +781,7 @@ static int run_pmc(struct node *node, int timeout, int ds_id,
 		if ((pollfd[0].revents & POLLOUT) &&
 		    !(pollfd[0].revents & (POLLIN|POLLPRI))) {
 			switch (ds_id) {
-			case SUBSCRIBE_EVENTS_NP:
+			case TLV_SUBSCRIBE_EVENTS_NP:
 				send_subscription(node);
 				break;
 			default:
@@ -829,7 +829,7 @@ static int run_pmc_wait_sync(struct node *node, int timeout)
 	Enumeration8 portState;
 
 	while (1) {
-		res = run_pmc(node, timeout, PORT_DATA_SET, &msg);
+		res = run_pmc(node, timeout, TLV_PORT_DATA_SET, &msg);
 		if (res <= 0)
 			return res;
 
@@ -853,7 +853,7 @@ static int run_pmc_get_utc_offset(struct node *node, int timeout)
 	int res;
 	struct timePropertiesDS *tds;
 
-	res = run_pmc(node, timeout, TIME_PROPERTIES_DATA_SET, &msg);
+	res = run_pmc(node, timeout, TLV_TIME_PROPERTIES_DATA_SET, &msg);
 	if (res <= 0)
 		return res;
 
@@ -883,7 +883,7 @@ static int run_pmc_get_number_ports(struct node *node, int timeout)
 	int res;
 	struct defaultDS *dds;
 
-	res = run_pmc(node, timeout, DEFAULT_DATA_SET, &msg);
+	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
 	if (res <= 0)
 		return res;
 
@@ -898,7 +898,7 @@ static int run_pmc_subscribe(struct node *node, int timeout)
 	struct ptp_message *msg;
 	int res;
 
-	res = run_pmc(node, timeout, SUBSCRIBE_EVENTS_NP, &msg);
+	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
 	if (res <= 0)
 		return res;
 	msg_put(msg);
@@ -922,7 +922,7 @@ static int run_pmc_port_properties(struct node *node, int timeout,
 
 	pmc_target_port(node->pmc, port);
 	while (1) {
-		res = run_pmc(node, timeout, PORT_PROPERTIES_NP, &msg);
+		res = run_pmc(node, timeout, TLV_PORT_PROPERTIES_NP, &msg);
 		if (res <= 0)
 			goto out;
 
@@ -955,7 +955,7 @@ static int run_pmc_clock_identity(struct node *node, int timeout)
 	struct defaultDS *dds;
 	int res;
 
-	res = run_pmc(node, timeout, DEFAULT_DATA_SET, &msg);
+	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
 	if (res <= 0)
 		return res;
 
