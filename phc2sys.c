@@ -738,8 +738,11 @@ static void send_subscription(struct node *node)
 
 static int init_pmc(struct node *node, int domain_number)
 {
-	node->pmc = pmc_create(TRANS_UDS, "/var/run/phc2sys", 0,
-				domain_number, 0, 1);
+	char uds_local[MAX_IFNAME_SIZE + 1];
+
+	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d",
+		 getpid());
+	node->pmc = pmc_create(TRANS_UDS, uds_local, 0, domain_number, 0, 1);
 	if (!node->pmc) {
 		pr_err("failed to create pmc");
 		return -1;

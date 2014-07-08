@@ -700,7 +700,7 @@ static void usage(char *progname)
 		" -d [num]  domain number, default 0\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
-		"           for network and '/var/run/pmc' for UDS.\n"
+		"           for network and '/var/run/pmc.$pid' for UDS.\n"
 		" -s [path] server address for UDS, default '/var/run/ptp4l'.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
 		" -v        prints the software version and exits\n"
@@ -715,7 +715,7 @@ int main(int argc, char *argv[])
 	char *progname;
 	int c, cnt, length, tmo = -1, batch_mode = 0, zero_datalen = 0;
 	int ret = 0;
-	char line[1024], *command = NULL;
+	char line[1024], *command = NULL, uds_local[MAX_IFNAME_SIZE + 1];
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
@@ -781,7 +781,13 @@ int main(int argc, char *argv[])
 	}
 
 	if (!iface_name) {
-		iface_name = transport_type == TRANS_UDS ? "/var/run/pmc" : "eth0";
+		if (transport_type == TRANS_UDS) {
+			snprintf(uds_local, sizeof(uds_local),
+				 "/var/run/pmc.%d", getpid());
+			iface_name = uds_local;
+		} else {
+			iface_name = "eth0";
+		}
 	}
 	if (optind < argc) {
 		batch_mode = 1;
