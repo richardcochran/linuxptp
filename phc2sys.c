@@ -53,6 +53,7 @@
 #include "stats.h"
 #include "sysoff.h"
 #include "tlv.h"
+#include "uds.h"
 #include "util.h"
 #include "version.h"
 
@@ -1158,6 +1159,7 @@ static void usage(char *progname)
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -n [num]       domain number (0)\n"
 		" -x             apply leap seconds by servo instead of kernel\n"
+		" -z [path]      server address for UDS (/var/run/ptp4l)\n"
 		" -l [num]       set the logging level to 'num' (6)\n"
 		" -m             print messages to stdout\n"
 		" -q             do not print messages to the syslog\n"
@@ -1192,7 +1194,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "arc:d:s:E:P:I:S:F:R:N:O:L:i:u:wn:xl:mqvh"))) {
+				  "arc:d:s:E:P:I:S:F:R:N:O:L:i:u:wn:xz:l:mqvh"))) {
 		switch (c) {
 		case 'a':
 			autocfg = 1;
@@ -1284,6 +1286,14 @@ int main(int argc, char *argv[])
 			break;
 		case 'x':
 			node.kernel_leap = 0;
+			break;
+		case 'z':
+			if (strlen(optarg) > MAX_IFNAME_SIZE) {
+				fprintf(stderr, "path %s too long, max is %d\n",
+					optarg, MAX_IFNAME_SIZE);
+				return -1;
+			}
+			strncpy(uds_path, optarg, MAX_IFNAME_SIZE);
 			break;
 		case 'l':
 			if (get_arg_val_i(c, optarg, &print_level,
