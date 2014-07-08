@@ -714,12 +714,15 @@ int main(int argc, char *argv[])
 	const char *iface_name = NULL;
 	char *progname;
 	int c, cnt, length, tmo = -1, batch_mode = 0, zero_datalen = 0;
+	int ret = 0;
 	char line[1024], *command = NULL;
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
 #define N_FD 2
 	struct pollfd pollfd[N_FD];
+
+	handle_term_signals();
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
@@ -798,7 +801,7 @@ int main(int argc, char *argv[])
 	pollfd[0].fd = batch_mode ? -1 : STDIN_FILENO;
 	pollfd[1].fd = pmc_get_transport_fd(pmc);
 
-	while (1) {
+	while (is_running()) {
 		if (batch_mode && !command) {
 			if (optind < argc) {
 				command = argv[optind++];
@@ -823,7 +826,8 @@ int main(int argc, char *argv[])
 				continue;
 			} else {
 				pr_emerg("poll failed");
-				return -1;
+				ret = -1;
+				break;
 			}
 		} else if (!cnt) {
 			break;
@@ -866,5 +870,5 @@ int main(int argc, char *argv[])
 
 	pmc_destroy(pmc);
 	msg_cleanup();
-	return 0;
+	return ret;
 }

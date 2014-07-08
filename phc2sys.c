@@ -526,7 +526,7 @@ static int do_pps_loop(struct node *node, struct clock *clock, int fd)
 		enable_pps_output(node->master->clkid);
 	}
 
-	while (1) {
+	while (is_running()) {
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
 			continue;
 		}
@@ -570,7 +570,7 @@ static int do_loop(struct node *node, int subscriptions)
 	interval.tv_sec = node->phc_interval;
 	interval.tv_nsec = (node->phc_interval - interval.tv_sec) * 1e9;
 
-	while (1) {
+	while (is_running()) {
 		clock_nanosleep(CLOCK_MONOTONIC, 0, &interval, NULL);
 		if (update_pmc(node, subscriptions) < 0)
 			continue;
@@ -611,7 +611,7 @@ static int do_loop(struct node *node, int subscriptions)
 			update_clock(node, clock, offset, ts, delay);
 		}
 	}
-	return 0; /* unreachable */
+	return 0;
 }
 
 static int check_clock_identity(struct node *node, struct ptp_message *msg)
@@ -1187,6 +1187,8 @@ int main(int argc, char *argv[])
 		.kernel_leap = 1,
 	};
 
+	handle_term_signals();
+
 	configured_pi_kp = KP;
 	configured_pi_ki = KI;
 
@@ -1349,7 +1351,8 @@ int main(int argc, char *argv[])
 			return -1;
 		if (auto_init_ports(&node, rt) < 0)
 			return -1;
-		return do_loop(&node, 1);
+		r = do_loop(&node, 1);
+		goto end;
 	}
 
 	src = clock_add(&node, src_name);
@@ -1377,14 +1380,16 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
+	r = -1;
+
 	if (wait_sync) {
 		if (init_pmc(&node, domain_number))
-			return -1;
+			goto end;
 
-		while (1) {
+		while (is_running()) {
 			r = run_pmc_wait_sync(&node, 1000);
 			if (r < 0)
-				return -1;
+				goto end;
 			if (r > 0)
 				break;
 			else
@@ -1395,7 +1400,7 @@ int main(int argc, char *argv[])
 			r = run_pmc_get_utc_offset(&node, 1000);
 			if (r <= 0) {
 				pr_err("failed to get UTC offset");
-				return -1;
+				goto end;
 			}
 		}
 
@@ -1409,11 +1414,16 @@ int main(int argc, char *argv[])
 		/* only one destination clock allowed with PPS until we
 		 * implement a mean to specify PTP port to PPS mapping */
 		servo_sync_interval(dst->servo, 1.0);
-		return do_pps_loop(&node, dst, pps_fd);
+		r = do_pps_loop(&node, dst, pps_fd);
+	} else {
+		r = do_loop(&node, 0);
 	}
 
-	return do_loop(&node, 0);
+end:
+	if (node.pmc)
+		close_pmc(&node);
 
+	return r;
 bad_usage:
 	usage(progname);
 	return -1;
