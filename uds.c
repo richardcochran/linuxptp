@@ -42,6 +42,14 @@ struct uds {
 
 static int uds_close(struct transport *t, struct fdarray *fda)
 {
+	struct sockaddr_un sa;
+	socklen_t len = sizeof(sa);
+
+	if (!getsockname(fda->fd[FD_GENERAL], (struct sockaddr *) &sa, &len) &&
+	    sa.sun_family == AF_LOCAL) {
+		unlink(sa.sun_path);
+	}
+
 	close(fda->fd[FD_GENERAL]);
 	return 0;
 }
