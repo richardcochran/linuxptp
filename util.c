@@ -17,17 +17,21 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "address.h"
+#include "print.h"
 #include "sk.h"
 #include "util.h"
 
 #define NS_PER_SEC 1000000000LL
 #define NS_PER_HOUR (3600 * NS_PER_SEC)
 #define NS_PER_DAY (24 * NS_PER_HOUR)
+
+static int running = 1;
 
 const char *ps_str[] = {
 	"NONE",
@@ -310,4 +314,32 @@ int get_arg_val_d(int op, const char *optarg, double *val,
 		return -1;
 	}
 	return 0;
+}
+
+static void handle_int_quit_term(int s)
+{
+	pr_notice("caught signal %d", s);
+	running = 0;
+}
+
+int handle_term_signals(void)
+{
+	if (SIG_ERR == signal(SIGINT, handle_int_quit_term)) {
+		fprintf(stderr, "cannot handle SIGINT\n");
+		return -1;
+	}
+	if (SIG_ERR == signal(SIGQUIT, handle_int_quit_term)) {
+		fprintf(stderr, "cannot handle SIGQUIT\n");
+		return -1;
+	}
+	if (SIG_ERR == signal(SIGTERM, handle_int_quit_term)) {
+		fprintf(stderr, "cannot handle SIGTERM\n");
+		return -1;
+	}
+	return 0;
+}
+
+int is_running(void)
+{
+	return running;
 }

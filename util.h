@@ -212,4 +212,18 @@ int get_arg_val_ui(int op, const char *optarg, unsigned int *val,
 int get_arg_val_d(int op, const char *optarg, double *val,
 		  double min, double max);
 
+/**
+ * Setup a handler for terminating signals (SIGINT, SIGQUIT, SIGTERM).
+ *
+ * @return       0 on success, -1 on error.
+ */
+int handle_term_signals(void);
+
+/**
+ * Check if a terminating signal was received.
+ *
+ * @return       1 if no terminating signal was received, 0 otherwise.
+ */
+int is_running(void);
+
 #endif

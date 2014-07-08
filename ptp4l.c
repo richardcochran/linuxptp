@@ -18,7 +18,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <limits.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,8 +38,6 @@
 #include "version.h"
 
 int assume_two_step = 0;
-
-static int running = 1;
 
 static struct config cfg_settings = {
 	.dds = {
@@ -131,12 +128,6 @@ static struct config cfg_settings = {
 	.cfg_ignore = 0,
 };
 
-static void handle_int_quit_term(int s)
-{
-	pr_notice("caught signal %d", s);
-	running = 0;
-}
-
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -184,18 +175,8 @@ int main(int argc, char *argv[])
 	struct defaultDS *ds = &cfg_settings.dds.dds;
 	int phc_index = -1, required_modes = 0;
 
-	if (SIG_ERR == signal(SIGINT, handle_int_quit_term)) {
-		fprintf(stderr, "cannot handle SIGINT\n");
+	if (handle_term_signals())
 		return -1;
-	}
-	if (SIG_ERR == signal(SIGQUIT, handle_int_quit_term)) {
-		fprintf(stderr, "cannot handle SIGQUIT\n");
-		return -1;
-	}
-	if (SIG_ERR == signal(SIGTERM, handle_int_quit_term)) {
-		fprintf(stderr, "cannot handle SIGTERM\n");
-		return -1;
-	}
 
 	/* Set fault timeouts to a default value */
 	for (i = 0; i < FT_CNT; i++) {
@@ -404,7 +385,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	while (running) {
+	while (is_running()) {
 		if (clock_poll(clock))
 			break;
 	}
