@@ -1159,6 +1159,7 @@ static void usage(char *progname)
 		" -R [rate]      slave clock update rate in HZ (1.0)\n"
 		" -N [num]       number of master clock readings per update (5)\n"
 		" -L [limit]     sanity frequency limit in ppb (200000000)\n"
+		" -M [num]       NTP SHM segment number (0)\n"
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -n [num]       domain number (0)\n"
 		" -x             apply leap seconds by servo instead of kernel\n"
@@ -1199,7 +1200,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "arc:d:s:E:P:I:S:F:R:N:O:L:i:u:wn:xz:l:mqvh"))) {
+				  "arc:d:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:mqvh"))) {
 		switch (c) {
 		case 'a':
 			autocfg = 1;
@@ -1276,6 +1277,10 @@ int main(int argc, char *argv[])
 			if (get_arg_val_i(c, optarg, &node.sanity_freq_limit, 0, INT_MAX))
 				return -1;
 			break;
+		case 'M':
+			if (get_arg_val_i(c, optarg, &ntpshm_segment, INT_MIN, INT_MAX))
+				return -1;
+			break;
 		case 'u':
 			if (get_arg_val_ui(c, optarg, &node.stats_max_count,
 					  0, UINT_MAX))
@@ -1287,7 +1292,6 @@ int main(int argc, char *argv[])
 		case 'n':
 			if (get_arg_val_i(c, optarg, &domain_number, 0, 255))
 				return -1;
-			ntpshm_segment = domain_number;
 			break;
 		case 'x':
 			node.kernel_leap = 0;

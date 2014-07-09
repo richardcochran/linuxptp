@@ -284,7 +284,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		dds->domainNumber = uval;
-		*cfg->ntpshm_segment = uval;
 
 	} else if (!strcmp(option, "clockClass")) {
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
@@ -407,6 +406,12 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		cfg->dds.sanity_freq_limit = val;
+
+	} else if (!strcmp(option, "ntpshm_segment")) {
+		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
+		*cfg->ntpshm_segment = val;
 
 	} else if (!strcmp(option, "ptp_dst_mac")) {
 		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",

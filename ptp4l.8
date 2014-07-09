@@ -376,6 +376,10 @@ the synchronized clock. When a larger offset is measured, a warning message
 will be printed and the servo will be reset. When set to 0, the sanity check is
 disabled. The default is 200000000 (20%).
 .TP
+.B ntpshm_segment
+The number of the SHM segment used by ntpshm servo.
+The default is 0.
+.TP
 .B ptp_dst_mac
 The MAC address where should be PTP messages sent.
 Relevant only with L2 transport. The default is 01:1B:19:00:00:00.

@@ -116,7 +116,7 @@ option.
 Specify which clock servo should be used. Valid values are pi for a PI
 controller, linreg for an adaptive controller using linear regression, and
 ntpshm for the NTP SHM reference clock to allow another process to synchronize
-the local clock (the SHM segment number is set to the domain number).
+the local clock.
 The default is pi.
 .TP
 .BI \-P " kp"
@@ -165,6 +165,10 @@ monotonic clock in parts per billion (ppb). This is used as a sanity check of
 the synchronized clock. When a larger offset is measured, a warning message
 will be printed and the servo will be reset. When set to 0, the sanity check is
 disabled. The default is 200000000 (20%).
+.TP
+.BI \-M " segment"
+The number of the SHM segment used by ntpshm servo.
+The default is 0.
 .TP
 .BI \-u " summary-updates"
 Specify the number of clock updates included in summary statistics. The
