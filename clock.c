@@ -85,6 +85,7 @@ struct clock {
 	LIST_HEAD(ports_head, port) ports;
 	struct port *uds_port;
 	struct pollfd *pollfd;
+	int pollfd_valid;
 	int nports; /* does not include the UDS port */
 	int free_running;
 	int freq_est_interval;
@@ -1002,16 +1003,24 @@ static void clock_fill_pollfd(struct pollfd *dest, struct port *p)
 	dest[i].events = POLLIN|POLLPRI;
 }
 
-void clock_fda_changed(struct clock *c)
+static void clock_check_pollfd(struct clock *c)
 {
 	struct port *p;
 	struct pollfd *dest = c->pollfd;
 
+	if (c->pollfd_valid)
+		return;
 	LIST_FOREACH(p, &c->ports, list) {
 		clock_fill_pollfd(dest, p);
 		dest += N_CLOCK_PFD;
 	}
 	clock_fill_pollfd(dest, c->uds_port);
+	c->pollfd_valid = 1;
+}
+
+void clock_fda_changed(struct clock *c)
+{
+	c->pollfd_valid = 0;
 }
 
 static int clock_do_forward_mgmt(struct clock *c,
@@ -1212,6 +1221,7 @@ int clock_poll(struct clock *c)
 	struct pollfd *cur;
 	struct port *p;
 
+	clock_check_pollfd(c);
 	cnt = poll(c->pollfd, (c->nports + 1) * N_CLOCK_PFD, -1);
 	if (cnt < 0) {
 		if (EINTR == errno) {
