@@ -20,6 +20,8 @@
 #ifndef HAVE_CONFIG_H
 #define HAVE_CONFIG_H
 
+#include <sys/queue.h>
+
 #include "ds.h"
 #include "dm.h"
 #include "filter.h"
@@ -27,11 +29,11 @@
 #include "servo.h"
 #include "sk.h"
 
-#define MAX_PORTS 8
 #define MAX_IFNAME_SIZE 108 /* = UNIX_PATH_MAX */
 
 /** Defines a network interface, with PTP options. */
 struct interface {
+	STAILQ_ENTRY(interface) list;
 	char name[MAX_IFNAME_SIZE + 1];
 	enum delay_mechanism dm;
 	enum transport_type transport;
@@ -62,8 +64,7 @@ struct config {
 	int cfg_ignore;
 
 	/* configured interfaces */
-	struct interface iface[MAX_PORTS];
-	int nports;
+	STAILQ_HEAD(interfaces_head, interface) interfaces;
 
 	enum timestamp_type timestamping;
 	enum transport_type transport;
@@ -102,6 +103,8 @@ struct config {
 };
 
 int config_read(char *name, struct config *cfg);
-int config_create_interface(char *name, struct config *cfg);
+struct interface *config_create_interface(char *name, struct config *cfg);
+void config_init_interface(struct interface *iface, struct config *cfg);
+void config_destroy(struct config *cfg);
 
 #endif

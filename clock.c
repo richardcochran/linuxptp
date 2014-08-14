@@ -785,15 +785,16 @@ static void clock_remove_port(struct clock *c, struct port *p)
 	port_close(p);
 }
 
-struct clock *clock_create(int phc_index, struct interface *iface, int count,
+struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 			   enum timestamp_type timestamping, struct default_ds *dds,
 			   enum servo_type servo)
 {
-	int i, fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
+	int fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	struct port *p;
 	char phc[32];
 	struct interface *udsif = &c->uds_interface;
+	struct interface *iface;
 	struct timespec ts;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
@@ -909,9 +910,9 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	clock_fda_changed(c);
 
 	/* Create the ports. */
-	for (i = 0; i < count; i++) {
-		if (clock_add_port(c, phc_index, timestamping, &iface[i])) {
-			pr_err("failed to open port %s", iface[i].name);
+	STAILQ_FOREACH(iface, ifaces, list) {
+		if (clock_add_port(c, phc_index, timestamping, iface)) {
+			pr_err("failed to open port %s", iface->name);
 			return NULL;
 		}
 	}

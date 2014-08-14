@@ -43,6 +43,8 @@ int assume_two_step = 0;
 static int running = 1;
 
 static struct config cfg_settings = {
+	.interfaces = STAILQ_HEAD_INITIALIZER(cfg_settings.interfaces),
+
 	.dds = {
 		.dds = {
 			.flags = DDS_TWO_STEP_FLAG,
@@ -173,9 +175,7 @@ int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
 	int c, i;
-	struct interface *iface = cfg_settings.iface;
-	char *ports[MAX_PORTS];
-	int nports = 0;
+	struct interface *iface;
 	int *cfg_ignore = &cfg_settings.cfg_ignore;
 	enum delay_mechanism *dm = &cfg_settings.dm;
 	enum transport_type *transport = &cfg_settings.transport;
@@ -248,8 +248,8 @@ int main(int argc, char *argv[])
 			config = optarg;
 			break;
 		case 'i':
-			ports[nports] = optarg;
-			nports++;
+			if (!config_create_interface(optarg, &cfg_settings))
+				return -1;
 			break;
 		case 'p':
 			req_phc = optarg;
@@ -310,14 +310,7 @@ int main(int argc, char *argv[])
 	print_set_syslog(cfg_settings.use_syslog);
 	print_set_level(cfg_settings.print_level);
 
-	for (i = 0; i < nports; i++) {
-		if (config_create_interface(ports[i], &cfg_settings) < 0) {
-			fprintf(stderr, "too many interfaces\n");
-			return -1;
-		}
-	}
-
-	if (!cfg_settings.nports) {
+	if (STAILQ_EMPTY(&cfg_settings.interfaces)) {
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		return -1;
@@ -357,18 +350,21 @@ int main(int argc, char *argv[])
 		break;
 	}
 
-	/* check whether timestamping mode is supported. */
-	for (i = 0; i < cfg_settings.nports; i++) {
-		if (iface[i].ts_info.valid &&
-		    ((iface[i].ts_info.so_timestamping & required_modes) != required_modes)) {
+	/* Init interface configs and check whether timestamping mode is
+	 * supported. */
+	STAILQ_FOREACH(iface, &cfg_settings.interfaces, list) {
+		config_init_interface(iface, &cfg_settings);
+		if (iface->ts_info.valid &&
+		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
 			fprintf(stderr, "interface '%s' does not support "
 				        "requested timestamping mode.\n",
-				iface[i].name);
+				iface->name);
 			return -1;
 		}
 	}
 
 	/* determine PHC Clock index */
+	iface = STAILQ_FIRST(&cfg_settings.interfaces);
 	if (cfg_settings.dds.free_running) {
 		phc_index = -1;
 	} else if (*timestamping == TS_SOFTWARE || *timestamping == TS_LEGACY_HW) {
@@ -378,8 +374,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "bad ptp device string\n");
 			return -1;
 		}
-	} else if (iface[0].ts_info.valid) {
-		phc_index = iface[0].ts_info.phc_index;
+	} else if (iface->ts_info.valid) {
+		phc_index = iface->ts_info.phc_index;
 	} else {
 		fprintf(stderr, "ptp device not specified and\n"
 			        "automatic determination is not\n"
@@ -391,12 +387,12 @@ int main(int argc, char *argv[])
 		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
 	}
 
-	if (generate_clock_identity(&ds->clockIdentity, iface[0].name)) {
+	if (generate_clock_identity(&ds->clockIdentity, iface->name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");
 		return -1;
 	}
 
-	clock = clock_create(phc_index, iface, cfg_settings.nports,
+	clock = clock_create(phc_index, &cfg_settings.interfaces,
 			     *timestamping, &cfg_settings.dds,
 			     cfg_settings.clock_servo);
 	if (!clock) {
@@ -410,5 +406,6 @@ int main(int argc, char *argv[])
 	}
 
 	clock_destroy(clock);
+	config_destroy(&cfg_settings);
 	return 0;
 }

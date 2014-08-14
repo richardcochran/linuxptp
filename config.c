@@ -20,6 +20,7 @@
 #include <float.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "config.h"
 #include "ether.h"
@@ -162,40 +163,40 @@ static enum parser_result parse_pod_setting(const char *option,
 static enum parser_result parse_port_setting(const char *option,
 					    const char *value,
 					    struct config *cfg,
-					    int p)
+					    struct interface *iface)
 {
 	enum parser_result r;
 	int val;
 
-	r = parse_pod_setting(option, value, &cfg->iface[p].pod);
+	r = parse_pod_setting(option, value, &iface->pod);
 	if (r != NOT_PARSED)
 		return r;
 
 	if (!strcmp(option, "network_transport")) {
 		if (!strcasecmp("L2", value))
-			cfg->iface[p].transport = TRANS_IEEE_802_3;
+			iface->transport = TRANS_IEEE_802_3;
 		else if (!strcasecmp("UDPv4", value))
-			cfg->iface[p].transport = TRANS_UDP_IPV4;
+			iface->transport = TRANS_UDP_IPV4;
 		else if (!strcasecmp("UDPv6", value))
-			cfg->iface[p].transport = TRANS_UDP_IPV6;
+			iface->transport = TRANS_UDP_IPV6;
 		else
 			return BAD_VALUE;
 
 	} else if (!strcmp(option, "delay_mechanism")) {
 		if (!strcasecmp("Auto", value))
-			cfg->iface[p].dm = DM_AUTO;
+			iface->dm = DM_AUTO;
 		else if (!strcasecmp("E2E", value))
-			cfg->iface[p].dm = DM_E2E;
+			iface->dm = DM_E2E;
 		else if (!strcasecmp("P2P", value))
-			cfg->iface[p].dm = DM_P2P;
+			iface->dm = DM_P2P;
 		else
 			return BAD_VALUE;
 
 	} else if (!strcmp(option, "delay_filter")) {
 		if (!strcasecmp("moving_average", value))
-			cfg->iface[p].delay_filter = FILTER_MOVING_AVERAGE;
+			iface->delay_filter = FILTER_MOVING_AVERAGE;
 		else if (!strcasecmp("moving_median", value))
-			cfg->iface[p].delay_filter = FILTER_MOVING_MEDIAN;
+			iface->delay_filter = FILTER_MOVING_MEDIAN;
 		else
 			return BAD_VALUE;
 
@@ -203,7 +204,7 @@ static enum parser_result parse_port_setting(const char *option,
 		r = get_ranged_int(value, &val, 1, INT_MAX);
 		if (r != PARSED_OK)
 			return r;
-		cfg->iface[p].delay_filter_length = val;
+		iface->delay_filter_length = val;
 
 	} else
 		return NOT_PARSED;
@@ -611,7 +612,8 @@ int config_read(char *name, struct config *cfg)
 	FILE *fp;
 	char buf[1024], *line, *c;
 	const char *option, *value;
-	int current_port = 0, line_num;
+	struct interface *current_port = NULL;
+	int line_num;
 
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
 
@@ -647,8 +649,9 @@ int config_read(char *name, struct config *cfg)
 					goto parse_error;
 				}
 				current_port = config_create_interface(port, cfg);
-				if (current_port < 0)
+				if (!current_port)
 					goto parse_error;
+				config_init_interface(current_port, cfg);
 			}
 			continue;
 		}
@@ -660,7 +663,7 @@ int config_read(char *name, struct config *cfg)
 				fprintf(stderr, "could not parse line %d in %s section\n",
 						line_num,
 						current_section == GLOBAL_SECTION ?
-							"global" : cfg->iface[current_port].name);
+							"global" : current_port->name);
 				goto parse_error;
 			}
 
@@ -678,7 +681,7 @@ int config_read(char *name, struct config *cfg)
 				fprintf(stderr, "unknown option %s at line %d in %s section\n",
 						option, line_num,
 						current_section == GLOBAL_SECTION ?
-							"global" : cfg->iface[current_port].name);
+							"global" : current_port->name);
 				goto parse_error;
 			case BAD_VALUE:
 				fprintf(stderr, "%s is a bad value for option %s at line %d\n",
@@ -712,36 +715,45 @@ parse_error:
 	return -2;
 }
 
-/* returns the number matching that interface, or -1 on failure */
-int config_create_interface(char *name, struct config *cfg)
+struct interface *config_create_interface(char *name, struct config *cfg)
 {
 	struct interface *iface;
-	int i;
-
-	if (cfg->nports >= MAX_PORTS) {
-		fprintf(stderr, "more than %d ports specified\n", MAX_PORTS);
-		return -1;
-	}
-
-	iface = &cfg->iface[cfg->nports];
 
 	/* only create each interface once (by name) */
-	for(i = 0; i < cfg->nports; i++) {
-		if (0 == strncmp(name, cfg->iface[i].name, MAX_IFNAME_SIZE))
-			return i;
+	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
+		if (0 == strncmp(name, iface->name, MAX_IFNAME_SIZE))
+			return iface;
+	}
+
+	iface = calloc(1, sizeof(struct interface));
+	if (!iface) {
+		fprintf(stderr, "cannot allocate memory for a port\n");
+		return NULL;
 	}
 
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	STAILQ_INSERT_TAIL(&cfg->interfaces, iface, list);
+	return iface;
+}
+
+void config_init_interface(struct interface *iface, struct config *cfg)
+{
 	iface->dm = cfg->dm;
 	iface->transport = cfg->transport;
 	memcpy(&iface->pod, &cfg->pod, sizeof(cfg->pod));
 
-	sk_get_ts_info(name, &iface->ts_info);
+	sk_get_ts_info(iface->name, &iface->ts_info);
 
 	iface->delay_filter = cfg->dds.delay_filter;
 	iface->delay_filter_length = cfg->dds.delay_filter_length;
+}
 
-	cfg->nports++;
+void config_destroy(struct config *cfg)
+{
+	struct interface *iface;
 
-	return i;
+	while ((iface = STAILQ_FIRST(&cfg->interfaces))) {
+		STAILQ_REMOVE_HEAD(&cfg->interfaces, list);
+		free(iface);
+	}
 }
