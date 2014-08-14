@@ -40,7 +40,6 @@
 #include "uds.h"
 #include "util.h"
 
-#define CLK_N_PORTS (MAX_PORTS + 1) /* plus one for the UDS interface */
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define POW2_41 ((double)(1ULL << 41))
 
@@ -80,8 +79,9 @@ struct clock {
 	struct ClockIdentity ptl[PATH_TRACE_MAX];
 	struct foreign_clock *best;
 	struct ClockIdentity best_id;
-	struct port *port[CLK_N_PORTS];
-	struct pollfd pollfd[CLK_N_PORTS*N_CLOCK_PFD];
+	struct port *port[MAX_PORTS];
+	struct port *uds_port;
+	struct pollfd pollfd[(MAX_PORTS + 1) * N_CLOCK_PFD];
 	int nports; /* does not include the UDS port */
 	int free_running;
 	int freq_est_interval;
@@ -233,7 +233,7 @@ void clock_send_notification(struct clock *c, struct ptp_message *msg,
 {
 	unsigned int event_pos = event / 8;
 	uint8_t mask = 1 << (event % 8);
-	struct port *uds = c->port[c->nports];
+	struct port *uds = c->uds_port;
 	struct clock_subscriber *s;
 
 	LIST_FOREACH(s, &c->subscribers, list) {
@@ -258,7 +258,7 @@ void clock_destroy(struct clock *c)
 	clock_flush_subscriptions(c);
 	for (i = 0; i < c->nports; i++)
 		port_close(c->port[i]);
-	port_close(c->port[i]); /*uds*/
+	port_close(c->uds_port);
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
 	}
@@ -430,7 +430,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		respond = 1;
 		break;
 	case TLV_SUBSCRIBE_EVENTS_NP:
-		if (p != c->port[c->nports]) {
+		if (p != c->uds_port) {
 			/* Only the UDS port allowed. */
 			break;
 		}
@@ -730,7 +730,7 @@ static int forwarding(struct clock *c, struct port *p)
 	default:
 		break;
 	}
-	if (p == c->port[c->nports] && ps != PS_FAULTY) { /*uds*/
+	if (p == c->uds_port && ps != PS_FAULTY) {
 		return 1;
 	}
 	return 0;
@@ -865,10 +865,10 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	}
 
 	/*
-	 * One extra port is for the UDS interface.
+	 * Create the UDS interface.
 	 */
-	c->port[i] = port_open(phc_index, timestamping, 0, udsif, c);
-	if (!c->port[i]) {
+	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
+	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
 		return NULL;
 	}
@@ -878,7 +878,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	for (i = 0; i < c->nports; i++)
 		port_dispatch(c->port[i], EV_INITIALIZE, 0);
 
-	port_dispatch(c->port[i], EV_INITIALIZE, 0); /*uds*/
+	port_dispatch(c->uds_port, EV_INITIALIZE, 0);
 
 	return c;
 }
@@ -938,10 +938,13 @@ struct ClockIdentity clock_identity(struct clock *c)
 void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 {
 	int i, j, k;
-	for (i = 0; i < c->nports + 1; i++) {
+
+	for (i = 0; i < c->nports; i++) {
 		if (p == c->port[i])
 			break;
 	}
+	if (p == c->uds_port)
+		i = c->nports;
 	for (j = 0; j < N_POLLFD; j++) {
 		k = N_CLOCK_PFD * i + j;
 		c->pollfd[k].fd = fda.fd[j];
@@ -949,26 +952,33 @@ void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
 	}
 }
 
+static int clock_do_forward_mgmt(struct clock *c,
+				 struct port *in, struct port *out,
+				 struct ptp_message *msg, int *pre_sent)
+{
+	if (in == out || !forwarding(c, out))
+		return 0;
+	if (!*pre_sent) {
+		/* delay calling msg_pre_send until
+		 * actually forwarding */
+		msg_pre_send(msg);
+		*pre_sent = 1;
+	}
+	return port_forward(out, msg);
+}
+
 static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_message *msg)
 {
 	int i, pdulen = 0, msg_ready = 0;
-	struct port *fwd;
+
 	if (forwarding(c, p) && msg->management.boundaryHops) {
-		for (i = 0; i < c->nports + 1; i++) {
-			fwd = c->port[i];
-			if (fwd != p && forwarding(c, fwd)) {
-				/* delay calling msg_pre_send until
-				 * actually forwarding */
-				if (!msg_ready) {
-					msg_ready = 1;
-					pdulen = msg->header.messageLength;
-					msg->management.boundaryHops--;
-					msg_pre_send(msg);
-				}
-				if (port_forward(fwd, msg))
-					pr_err("port %d: management forward failed", i + 1);
-			}
-		}
+		pdulen = msg->header.messageLength;
+		msg->management.boundaryHops--;
+		for (i = 0; i < c->nports; i++)
+			if (clock_do_forward_mgmt(c, p, c->port[i], msg, &msg_ready))
+				pr_err("port %d: management forward failed", i + 1);
+		if (clock_do_forward_mgmt(c, p, c->uds_port, msg, &msg_ready))
+			pr_err("uds port: management forward failed");
 		if (msg_ready) {
 			msg_post_recv(msg, pdulen);
 			msg->management.boundaryHops++;
@@ -1013,7 +1023,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 			clock_management_send_error(p, msg, TLV_WRONG_LENGTH);
 			return changed;
 		}
-		if (p != c->port[c->nports]) {
+		if (p != c->uds_port) {
 			/* Sorry, only allowed on the UDS port. */
 			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 			return changed;
@@ -1029,7 +1039,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 
 	switch (mgt->id) {
 	case TLV_PORT_PROPERTIES_NP:
-		if (p != c->port[c->nports]) {
+		if (p != c->uds_port) {
 			/* Only the UDS port allowed. */
 			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 			return 0;
@@ -1093,7 +1103,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 
 void clock_notify_event(struct clock *c, enum notification event)
 {
-	struct port *uds = c->port[c->nports];
+	struct port *uds = c->uds_port;
 	struct PortIdentity pid = port_identity(uds);
 	struct ptp_message *msg;
 	UInteger16 msg_len;
@@ -1178,7 +1188,7 @@ int clock_poll(struct clock *c)
 	for (j = 0; j < N_POLLFD; j++) {
 		k = N_CLOCK_PFD * i + j;
 		if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
-			event = port_event(c->port[i], j);
+			event = port_event(c->uds_port, j);
 			if (EV_STATE_DECISION_EVENT == event)
 				sde = 1;
 		}
@@ -1255,10 +1265,12 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
 void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
 {
 	int i, j, k;
-	for (i = 0; i < c->nports + 1; i++) {
+	for (i = 0; i < c->nports; i++) {
 		if (p == c->port[i])
 			break;
 	}
+	if (p == c->uds_port)
+		i = c->nports;
 	for (j = 0; j < N_POLLFD; j++) {
 		k = N_CLOCK_PFD * i + j;
 		c->pollfd[k].fd = -1;
