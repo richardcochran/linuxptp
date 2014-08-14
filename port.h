@@ -201,6 +201,13 @@ struct port *port_open(int phc_index,
 enum port_state port_state(struct port *port);
 
 /**
+ * Return file descriptor of the port.
+ * @param port	A port instance.
+ * @return	File descriptor or -1 if not applicable.
+ */
+int port_fault_fd(struct port *port);
+
+/**
  * Utility function for setting or resetting a file descriptor timer.
  *
  * This function sets the timer 'fd' to the value M(2^N), where M is
@@ -243,6 +250,28 @@ int set_tmo_random(int fd, int min, int span, int log_seconds);
  * @return Zero on success, non-zero otherwise.
  */
 int set_tmo_lin(int fd, int seconds);
+
+/**
+ * Sets port's fault file descriptor timer.
+ * Passing both 'scale' and 'log_seconds' as zero disables the timer.
+ *
+ * @param fd		A port instance.
+ * @param scale		The multiplicative factor for the timer.
+ * @param log_seconds	The exponential factor for the timer.
+ * @return		Zero on success, non-zero otherwise.
+ */
+int port_set_fault_timer_log(struct port *port,
+			     unsigned int scale, int log_seconds);
+
+/**
+ * Sets port's fault file descriptor timer.
+ * Passing 'seconds' as zero disables the timer.
+ *
+ * @param fd		A port instance.
+ * @param seconds	The timeout value for the timer.
+ * @return		Zero on success, non-zero otherwise.
+ */
+int port_set_fault_timer_lin(struct port *port, int seconds);
 
 /**
  * Returns a port's last fault type.

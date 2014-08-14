@@ -82,7 +82,6 @@ struct clock {
 	struct ClockIdentity best_id;
 	struct port *port[CLK_N_PORTS];
 	struct pollfd pollfd[CLK_N_PORTS*N_CLOCK_PFD];
-	int fault_fd[CLK_N_PORTS];
 	int nports; /* does not include the UDS port */
 	int free_running;
 	int freq_est_interval;
@@ -257,10 +256,8 @@ void clock_destroy(struct clock *c)
 	int i;
 
 	clock_flush_subscriptions(c);
-	for (i = 0; i < c->nports; i++) {
+	for (i = 0; i < c->nports; i++)
 		port_close(c->port[i]);
-		close(c->fault_fd[i]);
-	}
 	port_close(c->port[i]); /*uds*/
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
@@ -282,7 +279,7 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 
 	if (!set) {
 		pr_debug("clearing fault on port %d", index + 1);
-		return set_tmo_lin(c->fault_fd[index], 0);
+		return port_set_fault_timer_lin(c->port[index], 0);
 	}
 
 	fault_interval(c->port[index], last_fault_type(c->port[index]), &i);
@@ -290,11 +287,11 @@ static int clock_fault_timeout(struct clock *c, int index, int set)
 	if (i.type == FTMO_LINEAR_SECONDS) {
 		pr_debug("waiting %d seconds to clear fault on port %d",
 			 i.val, index + 1);
-		return set_tmo_lin(c->fault_fd[index], i.val);
+		return port_set_fault_timer_lin(c->port[index], i.val);
 	} else if (i.type == FTMO_LOG2_SECONDS) {
 		pr_debug("waiting 2^{%d} seconds to clear fault on port %d",
 			 i.val, index + 1);
-		return set_tmo_log(c->fault_fd[index], 1, i.val);
+		return port_set_fault_timer_log(c->port[index], 1, i.val);
 	}
 
 	pr_err("Unsupported fault interval type %d", i.type);
@@ -863,12 +860,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 			pr_err("failed to open port %s", iface[i].name);
 			return NULL;
 		}
-		c->fault_fd[i] = timerfd_create(CLOCK_MONOTONIC, 0);
-		if (c->fault_fd[i] < 0) {
-			pr_err("timerfd_create failed: %m");
-			return NULL;
-		}
-		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].fd = c->fault_fd[i];
+		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].fd = port_fault_fd(c->port[i]);
 		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].events = POLLIN|POLLPRI;
 	}
 
