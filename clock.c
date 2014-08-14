@@ -87,6 +87,7 @@ struct clock {
 	struct pollfd *pollfd;
 	int pollfd_valid;
 	int nports; /* does not include the UDS port */
+	int last_port_number;
 	int free_running;
 	int freq_est_interval;
 	int grand_master_capable; /* for 802.1AS only */
@@ -752,14 +753,15 @@ UInteger8 clock_class(struct clock *c)
 }
 
 static int clock_add_port(struct clock *c, int phc_index,
-			  enum timestamp_type timestamping, int number,
+			  enum timestamp_type timestamping,
 			  struct interface *iface)
 {
 	struct port *p;
 
 	if (clock_resize_pollfd(c, c->nports + 1))
 		return -1;
-	p = port_open(phc_index, timestamping, number, iface, c);
+	p = port_open(phc_index, timestamping, ++c->last_port_number,
+		      iface, c);
 	if (!p) {
 		/* No need to shrink pollfd */
 		return -1;
@@ -890,6 +892,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	LIST_INIT(&c->subscribers);
 	LIST_INIT(&c->ports);
+	c->last_port_number = 0;
 
 	/*
 	 * Create the UDS interface.
@@ -907,7 +910,7 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 
 	/* Create the ports. */
 	for (i = 0; i < count; i++) {
-		if (clock_add_port(c, phc_index, timestamping, i + 1, &iface[i])) {
+		if (clock_add_port(c, phc_index, timestamping, &iface[i])) {
 			pr_err("failed to open port %s", iface[i].name);
 			return NULL;
 		}
