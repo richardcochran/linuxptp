@@ -120,6 +120,13 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event);
 struct PortIdentity port_identity(struct port *p);
 
 /**
+ * Obtain a port number.
+ * @param p        A port instance.
+ * @return         The port number of 'p'.
+ */
+int port_number(struct port *p);
+
+/**
  * Manage a port according to a given message.
  * @param p        A pointer previously obtained via port_open().
  * @param ingress  The port on which 'msg' was received.
@@ -199,6 +206,15 @@ struct port *port_open(int phc_index,
  * @return      One of the @ref port_state values.
  */
 enum port_state port_state(struct port *port);
+
+/**
+ * Return array of file descriptors for this port. The fault fd is not
+ * included.
+ * @param port	A port instance
+ * @return	Array of file descriptors. Unused descriptors are guranteed
+ *		to be set to -1.
+ */
+struct fdarray *port_fda(struct port *port);
 
 /**
  * Return file descriptor of the port.
