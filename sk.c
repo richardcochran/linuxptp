@@ -191,14 +191,15 @@ int sk_interface_addr(const char *name, int family, struct address *addr)
 			switch (family) {
 			case AF_INET:
 				addr->len = sizeof(addr->sin);
+				memcpy(&addr->sin, i->ifa_addr, addr->len);
 				break;
 			case AF_INET6:
 				addr->len = sizeof(addr->sin6);
+				memcpy(&addr->sin6, i->ifa_addr, addr->len);
 				break;
 			default:
 				continue;
 			}
-			memcpy(&addr->sa, i->ifa_addr, addr->len);
 			result = 0;
 			break;
 		}
