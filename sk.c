@@ -51,7 +51,7 @@ static int hwts_init(int fd, const char *device, int rx_filter, int one_step)
 	memset(&ifreq, 0, sizeof(ifreq));
 	memset(&cfg, 0, sizeof(cfg));
 
-	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name));
+	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name) - 1);
 
 	ifreq.ifr_data = (void *) &cfg;
 	cfg.tx_type    = one_step ? HWTSTAMP_TX_ONESTEP_SYNC : HWTSTAMP_TX_ON;
@@ -85,7 +85,7 @@ int sk_interface_index(int fd, const char *name)
 	int err;
 
 	memset(&ifreq, 0, sizeof(ifreq));
-	strcpy(ifreq.ifr_name, name);
+	strncpy(ifreq.ifr_name, name, sizeof(ifreq.ifr_name) - 1);
 	err = ioctl(fd, SIOCGIFINDEX, &ifreq);
 	if (err < 0) {
 		pr_err("ioctl SIOCGIFINDEX failed: %m");
@@ -154,7 +154,7 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 	int err, fd;
 
 	memset(&ifreq, 0, sizeof(ifreq));
-	strcpy(ifreq.ifr_name, name);
+	strncpy(ifreq.ifr_name, name, sizeof(ifreq.ifr_name) - 1);
 
 	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (fd < 0) {

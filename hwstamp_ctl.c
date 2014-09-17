@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	memset(&ifreq, 0, sizeof(ifreq));
 	memset(&cfg, 0, sizeof(cfg));
 
-	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name));
+	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name) - 1);
 
 	ifreq.ifr_data = (void *) &cfg;
 
