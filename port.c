@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/queue.h>
 
 #include "bmc.h"
 #include "clock.h"
@@ -60,11 +61,13 @@ struct nrate_estimator {
 };
 
 struct port {
+	LIST_ENTRY(port) list;
 	char *name;
 	struct clock *clock;
 	struct transport *trp;
 	enum timestamp_type timestamping;
 	struct fdarray fda;
+	int fault_fd;
 	struct foreign_clock *best;
 	enum syfu_state syfu;
 	struct ptp_message *last_syncfup;
@@ -193,6 +196,16 @@ int fault_interval(struct port *port, enum fault_type ft,
 	return 0;
 }
 
+int port_fault_fd(struct port *port)
+{
+	return port->fault_fd;
+}
+
+struct fdarray *port_fda(struct port *port)
+{
+	return &port->fda;
+}
+
 int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 {
 	struct itimerspec tmo = {
@@ -251,6 +264,17 @@ int set_tmo_random(int fd, int min, int span, int log_seconds)
 	tmo.it_value.tv_nsec = value_ns % NS_PER_SEC;
 
 	return timerfd_settime(fd, 0, &tmo, NULL);
+}
+
+int port_set_fault_timer_log(struct port *port,
+			     unsigned int scale, int log_seconds)
+{
+	return set_tmo_log(port->fault_fd, scale, log_seconds);
+}
+
+int port_set_fault_timer_lin(struct port *port, int seconds)
+{
+	return set_tmo_lin(port->fault_fd, seconds);
 }
 
 static void fc_clear(struct foreign_clock *fc)
@@ -1343,6 +1367,14 @@ static void flush_peer_delay(struct port *p)
 	}
 }
 
+static void port_clear_fda(struct port *p, int count)
+{
+	int i;
+
+	for (i = 0; i < count; i++)
+		p->fda.fd[i] = -1;
+}
+
 static void port_disable(struct port *p)
 {
 	int i;
@@ -1353,12 +1385,13 @@ static void port_disable(struct port *p)
 
 	p->best = NULL;
 	free_foreign_masters(p);
-	clock_remove_fda(p->clock, p, p->fda);
 	transport_close(p->trp, &p->fda);
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
 	}
+	port_clear_fda(p, N_TIMER_FDS);
+	clock_fda_changed(p->clock);
 }
 
 static int port_initialize(struct port *p)
@@ -1401,7 +1434,7 @@ static int port_initialize(struct port *p)
 
 	port_nrate_initialize(p);
 
-	clock_install_fda(p->clock, p, p->fda);
+	clock_fda_changed(p->clock);
 	return 0;
 
 no_tmo:
@@ -1417,16 +1450,18 @@ no_timers:
 
 static int port_renew_transport(struct port *p)
 {
+	int res;
+
 	if (!port_is_enabled(p)) {
 		return 0;
 	}
-	clock_remove_fda(p->clock, p, p->fda);
 	transport_close(p->trp, &p->fda);
-	if (transport_open(p->trp, p->name, &p->fda, p->timestamping)) {
-		return -1;
-	}
-	clock_install_fda(p->clock, p, p->fda);
-	return 0;
+	port_clear_fda(p, FD_ANNOUNCE_TIMER);
+	res = transport_open(p->trp, p->name, &p->fda, p->timestamping);
+	/* Need to call clock_fda_changed even if transport_open failed in
+	 * order to update clock to the now closed descriptors. */
+	clock_fda_changed(p->clock);
+	return res;
 }
 
 /*
@@ -1903,6 +1938,8 @@ void port_close(struct port *p)
 	}
 	transport_destroy(p->trp);
 	filter_destroy(p->delay_filter);
+	if (p->fault_fd >= 0)
+		close(p->fault_fd);
 	free(p);
 }
 
@@ -2217,6 +2254,11 @@ struct PortIdentity port_identity(struct port *p)
 	return p->portIdentity;
 }
 
+int port_number(struct port *p)
+{
+	return portnum(p);
+}
+
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 {
 	struct management_tlv *mgt;
@@ -2408,18 +2450,15 @@ struct port *port_open(int phc_index,
 		pr_err("port %d: PHC device mismatch", number);
 		pr_err("port %d: /dev/ptp%d requested, but /dev/ptp%d attached",
 		       number, phc_index, interface->ts_info.phc_index);
-		free(p);
-		return NULL;
+		goto err_port;
 	}
 
 	p->pod = interface->pod;
 	p->name = interface->name;
 	p->clock = clock;
 	p->trp = transport_create(interface->transport);
-	if (!p->trp) {
-		free(p);
-		return NULL;
-	}
+	if (!p->trp)
+		goto err_port;
 	p->timestamping = timestamping;
 	p->portIdentity.clockIdentity = clock_identity(clock);
 	p->portIdentity.portNumber = number;
@@ -2431,12 +2470,28 @@ struct port *port_open(int phc_index,
 					interface->delay_filter_length);
 	if (!p->delay_filter) {
 		pr_err("Failed to create delay filter");
-		transport_destroy(p->trp);
-		free(p);
-		return NULL;
+		goto err_transport;
 	}
 	p->nrate.ratio = 1.0;
+
+	port_clear_fda(p, N_TIMER_FDS);
+	p->fault_fd = -1;
+	if (number) {
+		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+		if (p->fault_fd < 0) {
+			pr_err("timerfd_create failed: %m");
+			goto err_filter;
+		}
+	}
 	return p;
+
+err_filter:
+	filter_destroy(p->delay_filter);
+err_transport:
+	transport_destroy(p->trp);
+err_port:
+	free(p);
+	return NULL;
 }
 
 enum port_state port_state(struct port *port)

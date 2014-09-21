@@ -63,14 +63,13 @@ UInteger8 clock_class(struct clock *c);
  *
  * @param phc_index    PTP hardware clock device to use.
  *                     Pass -1 to select CLOCK_REALTIME.
- * @param interface    An array of network interfaces.
- * @param count        The number of elements in @a interfaces.
+ * @param ifaces       A queue of network interfaces.
  * @param timestamping The timestamping mode for this clock.
  * @param dds          A pointer to a default data set for the clock.
  * @param servo        The servo that this clock will use.
  * @return             A pointer to the single global clock instance.
  */
-struct clock *clock_create(int phc_index, struct interface *iface, int count,
+struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 			   enum timestamp_type timestamping, struct default_ds *dds,
 			   enum servo_type servo);
 
@@ -117,12 +116,11 @@ int clock_gm_capable(struct clock *c);
 struct ClockIdentity clock_identity(struct clock *c);
 
 /**
- * Install a port's file descriptor array into its controlling clock.
+ * Informs clock that a file descriptor of one of its ports changed. The
+ * clock will rebuild its array of file descriptors to poll.
  * @param c    The clock instance.
- * @param p    The port installing the array.
- * @param fda  The port's open file decriptors for its sockets and timers.
  */
-void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda);
+void clock_fda_changed(struct clock *c);
 
 /**
  * Manage the clock according to a given message.
@@ -191,14 +189,6 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr);
  * @return  Zero on success, non-zero otherwise.
  */
 int clock_poll(struct clock *c);
-
-/**
- * Remove a port's file descriptor array from its controlling clock.
- * @param c    The clock instance.
- * @param p    The port removing the array.
- * @param fda  The port's file decriptor array.
- */
-void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda);
 
 /**
  * Obtain the slave-only flag from a clock's default data set.

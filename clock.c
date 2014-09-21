@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/queue.h>
 
 #include "address.h"
 #include "bmc.h"
@@ -40,11 +41,12 @@
 #include "uds.h"
 #include "util.h"
 
-#define CLK_N_PORTS (MAX_PORTS + 1) /* plus one for the UDS interface */
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define POW2_41 ((double)(1ULL << 41))
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+struct port {
+	LIST_ENTRY(port) list;
+};
 
 struct freq_estimator {
 	tmv_t origin1;
@@ -80,10 +82,12 @@ struct clock {
 	struct ClockIdentity ptl[PATH_TRACE_MAX];
 	struct foreign_clock *best;
 	struct ClockIdentity best_id;
-	struct port *port[CLK_N_PORTS];
-	struct pollfd pollfd[CLK_N_PORTS*N_CLOCK_PFD];
-	int fault_fd[CLK_N_PORTS];
+	LIST_HEAD(ports_head, port) ports;
+	struct port *uds_port;
+	struct pollfd *pollfd;
+	int pollfd_valid;
 	int nports; /* does not include the UDS port */
+	int last_port_number;
 	int free_running;
 	int freq_est_interval;
 	int grand_master_capable; /* for 802.1AS only */
@@ -116,6 +120,8 @@ struct clock {
 struct clock the_clock;
 
 static void handle_state_decision_event(struct clock *c);
+static int clock_resize_pollfd(struct clock *c, int new_nports);
+static void clock_remove_port(struct clock *c, struct port *p);
 
 static int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
 {
@@ -234,7 +240,7 @@ void clock_send_notification(struct clock *c, struct ptp_message *msg,
 {
 	unsigned int event_pos = event / 8;
 	uint8_t mask = 1 << (event % 8);
-	struct port *uds = c->port[c->nports];
+	struct port *uds = c->uds_port;
 	struct clock_subscriber *s;
 
 	LIST_FOREACH(s, &c->subscribers, list) {
@@ -254,14 +260,14 @@ void clock_send_notification(struct clock *c, struct ptp_message *msg,
 
 void clock_destroy(struct clock *c)
 {
-	int i;
+	struct port *p, *tmp;
 
 	clock_flush_subscriptions(c);
-	for (i = 0; i < c->nports; i++) {
-		port_close(c->port[i]);
-		close(c->fault_fd[i]);
+	LIST_FOREACH_SAFE(p, &c->ports, list, tmp) {
+		clock_remove_port(c, p);
 	}
-	port_close(c->port[i]); /*uds*/
+	port_close(c->uds_port);
+	free(c->pollfd);
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
 	}
@@ -276,25 +282,25 @@ void clock_destroy(struct clock *c)
 	msg_cleanup();
 }
 
-static int clock_fault_timeout(struct clock *c, int index, int set)
+static int clock_fault_timeout(struct port *port, int set)
 {
 	struct fault_interval i;
 
 	if (!set) {
-		pr_debug("clearing fault on port %d", index + 1);
-		return set_tmo_lin(c->fault_fd[index], 0);
+		pr_debug("clearing fault on port %d", port_number(port));
+		return port_set_fault_timer_lin(port, 0);
 	}
 
-	fault_interval(c->port[index], last_fault_type(c->port[index]), &i);
+	fault_interval(port, last_fault_type(port), &i);
 
 	if (i.type == FTMO_LINEAR_SECONDS) {
 		pr_debug("waiting %d seconds to clear fault on port %d",
-			 i.val, index + 1);
-		return set_tmo_lin(c->fault_fd[index], i.val);
+			 i.val, port_number(port));
+		return port_set_fault_timer_lin(port, i.val);
 	} else if (i.type == FTMO_LOG2_SECONDS) {
 		pr_debug("waiting 2^{%d} seconds to clear fault on port %d",
-			 i.val, index + 1);
-		return set_tmo_log(c->fault_fd[index], 1, i.val);
+			 i.val, port_number(port));
+		return port_set_fault_timer_log(port, 1, i.val);
 	}
 
 	pr_err("Unsupported fault interval type %d", i.type);
@@ -433,7 +439,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		respond = 1;
 		break;
 	case TLV_SUBSCRIBE_EVENTS_NP:
-		if (p != c->port[c->nports]) {
+		if (p != c->uds_port) {
 			/* Only the UDS port allowed. */
 			break;
 		}
@@ -733,7 +739,7 @@ static int forwarding(struct clock *c, struct port *p)
 	default:
 		break;
 	}
-	if (p == c->port[c->nports] && ps != PS_FAULTY) { /*uds*/
+	if (p == c->uds_port && ps != PS_FAULTY) {
 		return 1;
 	}
 	return 0;
@@ -746,14 +752,49 @@ UInteger8 clock_class(struct clock *c)
 	return c->dds.clockQuality.clockClass;
 }
 
-struct clock *clock_create(int phc_index, struct interface *iface, int count,
+static int clock_add_port(struct clock *c, int phc_index,
+			  enum timestamp_type timestamping,
+			  struct interface *iface)
+{
+	struct port *p;
+
+	if (clock_resize_pollfd(c, c->nports + 1))
+		return -1;
+	p = port_open(phc_index, timestamping, ++c->last_port_number,
+		      iface, c);
+	if (!p) {
+		/* No need to shrink pollfd */
+		return -1;
+	}
+	LIST_INSERT_HEAD(&c->ports, p, list);
+	c->nports++;
+	clock_fda_changed(c);
+	return 0;
+}
+
+static void clock_remove_port(struct clock *c, struct port *p)
+{
+	/* Do not call clock_resize_pollfd, it's pointless to shrink
+	 * the allocated memory at this point, clock_destroy will free
+	 * it all anyway. This function is usable from other parts of
+	 * the code, but even then we don't mind if pollfd is larger
+	 * than necessary. */
+	LIST_REMOVE(p, list);
+	c->nports--;
+	clock_fda_changed(c);
+	port_close(p);
+}
+
+struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 			   enum timestamp_type timestamping, struct default_ds *dds,
 			   enum servo_type servo)
 {
-	int i, fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
+	int fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
+	struct port *p;
 	char phc[32];
 	struct interface *udsif = &c->uds_interface;
+	struct interface *iface;
 	struct timespec ts;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
@@ -848,45 +889,40 @@ struct clock *clock_create(int phc_index, struct interface *iface, int count,
 	c->dad.pds.observedParentClockPhaseChangeRate    = 0x7fffffff;
 	c->dad.ptl = c->ptl;
 
-	for (i = 0; i < ARRAY_SIZE(c->pollfd); i++) {
-		c->pollfd[i].fd = -1;
-		c->pollfd[i].events = 0;
-	}
-
 	clock_sync_interval(c, 0);
 
 	LIST_INIT(&c->subscribers);
-
-	for (i = 0; i < count; i++) {
-		c->port[i] = port_open(phc_index, timestamping, 1+i, &iface[i], c);
-		if (!c->port[i]) {
-			pr_err("failed to open port %s", iface[i].name);
-			return NULL;
-		}
-		c->fault_fd[i] = timerfd_create(CLOCK_MONOTONIC, 0);
-		if (c->fault_fd[i] < 0) {
-			pr_err("timerfd_create failed: %m");
-			return NULL;
-		}
-		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].fd = c->fault_fd[i];
-		c->pollfd[N_CLOCK_PFD * i + N_POLLFD].events = POLLIN|POLLPRI;
-	}
+	LIST_INIT(&c->ports);
+	c->last_port_number = 0;
 
 	/*
-	 * One extra port is for the UDS interface.
+	 * Create the UDS interface.
 	 */
-	c->port[i] = port_open(phc_index, timestamping, 0, udsif, c);
-	if (!c->port[i]) {
+	if (clock_resize_pollfd(c, 0)) {
+		pr_err("failed to allocate pollfd");
+		return NULL;
+	}
+	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
+	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
 		return NULL;
 	}
+	clock_fda_changed(c);
 
-	c->dds.numberPorts = c->nports = count;
+	/* Create the ports. */
+	STAILQ_FOREACH(iface, ifaces, list) {
+		if (clock_add_port(c, phc_index, timestamping, iface)) {
+			pr_err("failed to open port %s", iface->name);
+			return NULL;
+		}
+	}
 
-	for (i = 0; i < c->nports; i++)
-		port_dispatch(c->port[i], EV_INITIALIZE, 0);
+	c->dds.numberPorts = c->nports;
 
-	port_dispatch(c->port[i], EV_INITIALIZE, 0); /*uds*/
+	LIST_FOREACH(p, &c->ports, list) {
+		port_dispatch(p, EV_INITIALIZE, 0);
+	}
+	port_dispatch(c->uds_port, EV_INITIALIZE, 0);
 
 	return c;
 }
@@ -943,40 +979,84 @@ struct ClockIdentity clock_identity(struct clock *c)
 	return c->dds.clockIdentity;
 }
 
-void clock_install_fda(struct clock *c, struct port *p, struct fdarray fda)
+static int clock_resize_pollfd(struct clock *c, int new_nports)
 {
-	int i, j, k;
-	for (i = 0; i < c->nports + 1; i++) {
-		if (p == c->port[i])
-			break;
+	struct pollfd *new_pollfd;
+
+	/* Need to allocate one extra block of fds for uds */
+	new_pollfd = realloc(c->pollfd,
+			     (new_nports + 1) * N_CLOCK_PFD *
+			     sizeof(struct pollfd));
+	if (!new_pollfd)
+		return -1;
+	c->pollfd = new_pollfd;
+	return 0;
+}
+
+static void clock_fill_pollfd(struct pollfd *dest, struct port *p)
+{
+	struct fdarray *fda;
+	int i;
+
+	fda = port_fda(p);
+	for (i = 0; i < N_POLLFD; i++) {
+		dest[i].fd = fda->fd[i];
+		dest[i].events = POLLIN|POLLPRI;
 	}
-	for (j = 0; j < N_POLLFD; j++) {
-		k = N_CLOCK_PFD * i + j;
-		c->pollfd[k].fd = fda.fd[j];
-		c->pollfd[k].events = POLLIN|POLLPRI;
+	dest[i].fd = port_fault_fd(p);
+	dest[i].events = POLLIN|POLLPRI;
+}
+
+static void clock_check_pollfd(struct clock *c)
+{
+	struct port *p;
+	struct pollfd *dest = c->pollfd;
+
+	if (c->pollfd_valid)
+		return;
+	LIST_FOREACH(p, &c->ports, list) {
+		clock_fill_pollfd(dest, p);
+		dest += N_CLOCK_PFD;
 	}
+	clock_fill_pollfd(dest, c->uds_port);
+	c->pollfd_valid = 1;
+}
+
+void clock_fda_changed(struct clock *c)
+{
+	c->pollfd_valid = 0;
+}
+
+static int clock_do_forward_mgmt(struct clock *c,
+				 struct port *in, struct port *out,
+				 struct ptp_message *msg, int *pre_sent)
+{
+	if (in == out || !forwarding(c, out))
+		return 0;
+	if (!*pre_sent) {
+		/* delay calling msg_pre_send until
+		 * actually forwarding */
+		msg_pre_send(msg);
+		*pre_sent = 1;
+	}
+	return port_forward(out, msg);
 }
 
 static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_message *msg)
 {
-	int i, pdulen = 0, msg_ready = 0;
-	struct port *fwd;
+	struct port *piter;
+	int pdulen = 0, msg_ready = 0;
+
 	if (forwarding(c, p) && msg->management.boundaryHops) {
-		for (i = 0; i < c->nports + 1; i++) {
-			fwd = c->port[i];
-			if (fwd != p && forwarding(c, fwd)) {
-				/* delay calling msg_pre_send until
-				 * actually forwarding */
-				if (!msg_ready) {
-					msg_ready = 1;
-					pdulen = msg->header.messageLength;
-					msg->management.boundaryHops--;
-					msg_pre_send(msg);
-				}
-				if (port_forward(fwd, msg))
-					pr_err("port %d: management forward failed", i + 1);
-			}
+		pdulen = msg->header.messageLength;
+		msg->management.boundaryHops--;
+		LIST_FOREACH(piter, &c->ports, list) {
+			if (clock_do_forward_mgmt(c, p, piter, msg, &msg_ready))
+				pr_err("port %d: management forward failed",
+				       port_number(piter));
 		}
+		if (clock_do_forward_mgmt(c, p, c->uds_port, msg, &msg_ready))
+			pr_err("uds port: management forward failed");
 		if (msg_ready) {
 			msg_post_recv(msg, pdulen);
 			msg->management.boundaryHops++;
@@ -986,7 +1066,8 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 
 int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 {
-	int changed = 0, i, res, answers;
+	int changed = 0, res, answers;
+	struct port *piter;
 	struct management_tlv *mgt;
 	struct ClockIdentity *tcid, wildcard = {
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
@@ -1021,7 +1102,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 			clock_management_send_error(p, msg, TLV_WRONG_LENGTH);
 			return changed;
 		}
-		if (p != c->port[c->nports]) {
+		if (p != c->uds_port) {
 			/* Sorry, only allowed on the UDS port. */
 			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 			return changed;
@@ -1037,7 +1118,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 
 	switch (mgt->id) {
 	case TLV_PORT_PROPERTIES_NP:
-		if (p != c->port[c->nports]) {
+		if (p != c->uds_port) {
 			/* Only the UDS port allowed. */
 			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 			return 0;
@@ -1082,8 +1163,8 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		break;
 	default:
 		answers = 0;
-		for (i = 0; i < c->nports; i++) {
-			res = port_manage(c->port[i], p, msg);
+		LIST_FOREACH(piter, &c->ports, list) {
+			res = port_manage(piter, p, msg);
 			if (res < 0)
 				return changed;
 			if (res > 0)
@@ -1101,7 +1182,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 
 void clock_notify_event(struct clock *c, enum notification event)
 {
-	struct port *uds = c->port[c->nports];
+	struct port *uds = c->uds_port;
 	struct PortIdentity pid = port_identity(uds);
 	struct ptp_message *msg;
 	UInteger16 msg_len;
@@ -1139,10 +1220,13 @@ struct PortIdentity clock_parent_identity(struct clock *c)
 
 int clock_poll(struct clock *c)
 {
-	int cnt, err, i, j, k, sde = 0;
+	int cnt, err, i, sde = 0;
 	enum fsm_event event;
+	struct pollfd *cur;
+	struct port *p;
 
-	cnt = poll(c->pollfd, ARRAY_SIZE(c->pollfd), -1);
+	clock_check_pollfd(c);
+	cnt = poll(c->pollfd, (c->nports + 1) * N_CLOCK_PFD, -1);
 	if (cnt < 0) {
 		if (EINTR == errno) {
 			return 0;
@@ -1154,39 +1238,38 @@ int clock_poll(struct clock *c)
 		return 0;
 	}
 
-	for (i = 0; i < c->nports; i++) {
-
+	cur = c->pollfd;
+	LIST_FOREACH(p, &c->ports, list) {
 		/* Let the ports handle their events. */
-		for (j = err = 0; j < N_POLLFD && !err; j++) {
-			k = N_CLOCK_PFD * i + j;
-			if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
-				event = port_event(c->port[i], j);
+		for (i = err = 0; i < N_POLLFD && !err; i++) {
+			if (cur[i].revents & (POLLIN|POLLPRI)) {
+				event = port_event(p, i);
 				if (EV_STATE_DECISION_EVENT == event)
 					sde = 1;
 				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event)
 					sde = 1;
-				err = port_dispatch(c->port[i], event, 0);
+				err = port_dispatch(p, event, 0);
 				/* Clear any fault after a little while. */
-				if (PS_FAULTY == port_state(c->port[i])) {
-					clock_fault_timeout(c, i, 1);
+				if (PS_FAULTY == port_state(p)) {
+					clock_fault_timeout(p, 1);
 					break;
 				}
 			}
 		}
 
 		/* Check the fault timer. */
-		k = N_CLOCK_PFD * i + N_POLLFD;
-		if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
-			clock_fault_timeout(c, i, 0);
-			port_dispatch(c->port[i], EV_FAULT_CLEARED, 0);
+		if (cur[N_POLLFD].revents & (POLLIN|POLLPRI)) {
+			clock_fault_timeout(p, 0);
+			port_dispatch(p, EV_FAULT_CLEARED, 0);
 		}
+
+		cur += N_CLOCK_PFD;
 	}
 
 	/* Check the UDS port. */
-	for (j = 0; j < N_POLLFD; j++) {
-		k = N_CLOCK_PFD * i + j;
-		if (c->pollfd[k].revents & (POLLIN|POLLPRI)) {
-			event = port_event(c->port[i], j);
+	for (i = 0; i < N_POLLFD; i++) {
+		if (cur[i].revents & (POLLIN|POLLPRI)) {
+			event = port_event(c->uds_port, i);
 			if (EV_STATE_DECISION_EVENT == event)
 				sde = 1;
 		}
@@ -1258,20 +1341,6 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
 
 	if (c->stats.delay)
 		stats_add_value(c->stats.delay, tmv_to_nanoseconds(ppd));
-}
-
-void clock_remove_fda(struct clock *c, struct port *p, struct fdarray fda)
-{
-	int i, j, k;
-	for (i = 0; i < c->nports + 1; i++) {
-		if (p == c->port[i])
-			break;
-	}
-	for (j = 0; j < N_POLLFD; j++) {
-		k = N_CLOCK_PFD * i + j;
-		c->pollfd[k].fd = -1;
-		c->pollfd[k].events = 0;
-	}
 }
 
 int clock_slave_only(struct clock *c)
@@ -1398,10 +1467,11 @@ static void handle_state_decision_event(struct clock *c)
 {
 	struct foreign_clock *best = NULL, *fc;
 	struct ClockIdentity best_id;
-	int fresh_best = 0, i;
+	struct port *piter;
+	int fresh_best = 0;
 
-	for (i = 0; i < c->nports; i++) {
-		fc = port_compute_best(c->port[i]);
+	LIST_FOREACH(piter, &c->ports, list) {
+		fc = port_compute_best(piter);
 		if (!fc)
 			continue;
 		if (!best || dscmp(&fc->dataset, &best->dataset) > 0)
@@ -1430,10 +1500,10 @@ static void handle_state_decision_event(struct clock *c)
 	c->best = best;
 	c->best_id = best_id;
 
-	for (i = 0; i < c->nports; i++) {
+	LIST_FOREACH(piter, &c->ports, list) {
 		enum port_state ps;
 		enum fsm_event event;
-		ps = bmc_state_decision(c, c->port[i]);
+		ps = bmc_state_decision(c, piter);
 		switch (ps) {
 		case PS_LISTENING:
 			event = EV_NONE;
@@ -1457,7 +1527,7 @@ static void handle_state_decision_event(struct clock *c)
 			event = EV_FAULT_DETECTED;
 			break;
 		}
-		port_dispatch(c->port[i], event, fresh_best);
+		port_dispatch(piter, event, fresh_best);
 	}
 }
 
