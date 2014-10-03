@@ -22,13 +22,14 @@ CC	= $(CROSS_COMPILE)gcc
 VER     = -DVER=$(version)
 CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
-PRG	= ptp4l pmc phc2sys hwstamp_ctl phc_ctl
+PRG	= ptp4l pmc phc2sys hwstamp_ctl phc_ctl timemaster
 OBJ     = bmc.o clock.o clockadj.o clockcheck.o config.o fault.o \
  filter.o fsm.o linreg.o mave.o mmedian.o msg.o ntpshm.o phc.o \
  pi.o port.o print.o ptp4l.o raw.o servo.o sk.o stats.o tlv.o \
  transport.o udp.o udp6.o uds.o util.o version.o
 
-OBJECTS	= $(OBJ) hwstamp_ctl.o phc2sys.o pmc.o pmc_common.o sysoff.o phc_ctl.o
+OBJECTS	= $(OBJ) hwstamp_ctl.o phc2sys.o phc_ctl.o pmc.o pmc_common.o \
+ sysoff.o timemaster.o
 SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
@@ -55,6 +56,8 @@ phc2sys: clockadj.o clockcheck.o linreg.o msg.o ntpshm.o phc.o phc2sys.o pi.o \
 hwstamp_ctl: hwstamp_ctl.o version.o
 
 phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
+
+timemaster: print.o sk.o timemaster.o util.o version.o
 
 version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 

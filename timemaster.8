@@ -1,0 +1,335 @@
+.TH TIMEMASTER 8 "October 2014" "linuxptp"
+.SH NAME
+
+timemaster \- run NTP with PTP as reference clocks
+
+.SH SYNOPSIS
+
+.B timemaster
+[
+.B \-nmqv
+] [
+.BI \-l " print-level"
+]
+.BI \-f " file"
+
+.SH DESCRIPTION
+\fBtimemaster\fR is a program that uses \fBptp4l\fR and \fBphc2sys\fR in
+combination with \fBchronyd\fR or \fBntpd\fR to synchronize the system clock to
+NTP and PTP time sources. The PTP time is provided by \fBphc2sys\fR and
+\fBptp4l\fR via SHM reference clocks to \fBchronyd\fR/\fBntpd\fR, which
+can compare all time sources and use the best sources to synchronize the system
+clock.
+
+On start, \fBtimemaster\fR reads a configuration file that specifies the NTP
+and PTP time sources, checks which network interfaces have and share a PTP
+hardware clock (PHC), generates configuration files for \fBptp4l\fR and
+\fBchronyd\fR/\fBntpd\fR, and start the \fBptp4l\fR, \fBphc2sys\fR,
+\fBchronyd\fR/\fBntpd\fR processes as needed. Then, it waits for a signal to
+kill the processes, remove the generated configuration files and exit.
+
+.SH OPTIONS
+
+.TP
+.BI \-f " file"
+Specify the path to the \fBtimemaster\fR configuration file.
+.TP
+.BI \-n
+Don't start the programs, only print their configuration files and the commands
+that would be executed if this option wasn't specified.
+.TP
+.BI \-l " level"
+Set the maximum syslog level of messages which should be printed or sent to
+the system logger. The default value is 6 (LOG_INFO).
+.TP
+.B \-m
+Print messages to the standard output.
+.TP
+.B \-q
+Don't send messages to the system logger.
+.TP
+.B \-v
+Print the software version and exit.
+.TP
+.BI \-h
+Display a help message and exit.
+
+.SH CONFIGURATION FILE
+
+The configuration file is divided into sections. Each section starts with a
+line containing its name enclosed in brackets and it follows with settings.
+Each setting is placed on a separate line, it contains the name of the
+option and the value separated by whitespace characters. Empty lines and lines
+starting with # are ignored.
+
+Sections that can used in the configuration file and options that can be set in
+them are described below.
+
+.SS [timemaster]
+
+.TP
+.B ntp_program
+Select which NTP implementation should be used. Possible values are
+\fBchronyd\fR and \fBntpd\fR. The default value is \fBchronyd\fR. Limitations
+of the implementations relevant to the timemaster configuration are listed in
+\fBNOTES\fR.
+
+.TP
+.B rundir
+Specify the directory where should be generated \fBchronyd\fR, \fBntpd\fR and
+\fBptp4l\fR configuration files and sockets. The directory will be created if
+it doesn't exist. The default value is \fB/var/run/timemaster\fR.
+
+.SS [ntp_server address]
+
+The \fBntp_server\fR section specifies an NTP server that should be used as a
+time source. The address of the server is included in the name of the section.
+
+.TP
+.B minpoll
+.TQ
+.B maxpoll
+Specify the minimum and maximum NTP polling interval as powers of two in
+seconds. The default values are 6 (64 seconds) and 10 (1024 seconds)
+respectively. Shorter polling intervals usually improve the accuracy
+significantly, but they should be used only when allowed by the operators of
+the NTP service (public NTP servers generally don't allow too frequent
+queries). If the NTP server is located on the same LAN, polling intervals
+around 4 (16 seconds) might give best accuracy.
+
+.TP
+.B iburst
+Enable or disable sending a burst of NTP packets on start to speed up the
+initial synchronization. Possible values are 1 and 0. The default value is 0
+(disabled).
+
+.SS [ptp_domain number]
+
+The \fBptp_domain\fR section specifies a PTP domain that should be used as a
+time source. The PTP domain number is included in the name of the section. The
+\fBptp4l\fR instances are configured to run in the \fBslaveOnly\fR mode. In
+this section at least the \fBinterfaces\fR option needs to be set, other
+options are optional.
+
+.TP
+.B interfaces
+Specify which network interfaces should be used for this PTP domain. A separate
+\fBptp4l\fR instance will be started for each group of interfaces sharing the
+same PHC and for each interface that supports only SW time stamping. HW time
+stamping is enabled automatically. If an interface with HW time stamping is
+specified also in other PTP domains, only the \fBptp4l\fR instance from the
+first PTP domain will be using HW time stamping.
+
+.TP
+.B ntp_poll
+Specify the polling interval of the NTP SHM reference clock reading samples
+from \fBptp4l\fR or \fBphc2sys\fR. It's specified as a power of two in seconds.
+The default value is 2 (4 seconds).
+
+.TP
+.B phc2sys_poll
+Specify the polling interval used by \fBphc2sys\fR to read a PTP clock
+synchronized by \fBptp4l\fR and update the SHM sample for
+\fBchronyd\fR/\fBntpd\fR. It's specified as a power of two in seconds. The
+default value is 0 (1 second).
+
+.TP
+.B delay
+Specify the maximum assumed roundtrip delay to the primary source of the time
+in this PTP domain. This value is included in the distance used by
+\fBchronyd\fR in the source selection algorithm to detect falsetickers and
+assign weights for source combining. The default value is 1e-4 (100
+microseconds). With \fBntpd\fR, the \fBtos mindist\fR command can be used to
+set a limit with similar purpose globally for all time sources.
+
+.TP
+.B ptp4l_option
+Specify an extra \fBptp4l\fR option specific to this PTP domain that should be
+added to the configuration files generated for \fBptp4l\fR. This option may be
+used multiple times in one \fBptp_domain\fR section.
+
+.SS [chronyd]
+
+.TP
+.B path
+Specify the path to the \fBchronyd\fR binary. The default value is
+\fBchronyd\fR to search for the binary in \fBPATH\fR.
+
+.TP
+.B options
+Specify extra options that should be added to the \fBchronyd\fR command line.
+No extra options are added by default.
+
+.SS [chrony.conf]
+
+Settings specified in this section are copied directly to the configuration
+file generated for \fBchronyd\fR. If this section is not present in the
+\fBtimemaster\fR configuration file, the following setting will be added:
+
+.EX
+makestep 1 3
+.EE
+
+This configures \fBchronyd\fR to step the system clock in the first three
+updates if the offset is larger than 1 second.
+
+.SS [ntpd]
+
+.TP
+.B path
+Specify the path to the \fBntpd\fR binary. The default value is \fBntpd\fR to
+search for the binary in \fBPATH\fR.
+
+.TP
+.B options
+Specify extra options that should be added to the \fBntpd\fR command line. No
+extra options are added by default.
+
+.SS [ntp.conf]
+
+Settings specified in this section are copied directly to the configuration
+file generated for \fBntpd\fR. If this section is not present in the
+\fBtimemaster\fR configuration file, the following settings will be added:
+
+.EX
+restrict default nomodify notrap nopeer noquery
+restrict 127.0.0.1
+restrict ::1
+.EE
+
+This configures \fBntpd\fR to use safe default restrictions.
+
+.SS [phc2sys]
+
+.TP
+.B path
+Specify the path to the \fBphc2sys\fR binary. The default value is
+\fBphc2sys\fR to search for the binary in \fBPATH\fR.
+
+.TP
+.B options
+Specify extra options that should be added to all \fBphc2sys\fR command lines.
+By default, \fB-l 5\fR is added to the command lines.
+
+.SS [ptp4l]
+
+.TP
+.B path
+Specify the path to the \fBptp4l\fR binary. The default value is \fBptp4l\fR to
+search for the binary in \fBPATH\fR.
+
+.TP
+.B options
+Specify extra options that should be added to all \fBptp4l\fR command lines. By
+default, \fB-l 5\fR is added to the command lines.
+
+.SS [ptp4l.conf]
+Settings specified in this section are copied directly to the configuration
+files generated for all \fBptp4l\fR instances. There is no default content of
+this section.
+
+.SH NOTES
+For best accuracy, \fBchronyd\fR is usually preferred over \fBntpd\fR, it also
+synchronizes the system clock faster. Both NTP implementations, however, have
+some limitations that need to be considered before choosing the one to be used
+in a given \fBtimemaster\fR configuration.
+
+The \fBchronyd\fR limitations are:
+
+.RS
+In version 1.31 and older, the maximum number of reference clocks used at the
+same time is 8. This limits the number of PHCs and interfaces using SW time
+stamping that can be used for PTP.
+
+Using polling intervals (\fBminpoll\fR, \fBmaxpoll\fR, \fBntp_poll\fR options)
+shorter than 2 (4 seconds) is not recommended with versions before 1.30. With
+1.30 and later values of 0 or 1 can be used for NTP sources and negative values
+for PTP sources (\fBntp_poll\fR) to specify a subsecond interval.
+.RE
+
+The \fBntpd\fR limitations are:
+
+.RS
+Only the first two shared-memory segments created by the SHM refclock driver
+in \fBntpd\fR have owner-only access. Other segments are created with world
+access, possibly allowing any user on the system writing to the segments and
+disrupting the synchronization.
+
+The shortest polling interval for all sources is 3 (8 seconds).
+
+Nanosecond resolution in the SHM refclock driver is supported in version
+4.2.7p303 and later, older versions have only microsecond resolution.
+.RE
+
+.SH EXAMPLES
+
+A minimal configuration file using one NTP source and two PTP sources would be:
+
+.EX
+[ntp_server 10.1.1.1]
+
+[ptp_domain 0]
+interfaces eth0
+
+[ptp_domain 1]
+interfaces eth1
+.EE
+
+A more complex example using all \fBtimemaster\fR options would be:
+
+.EX
+[ntp_server 10.1.1.1]
+minpoll 3
+maxpoll 4
+iburst 1
+
+[ptp_domain 0]
+interfaces eth0 eth1
+ntp_poll 0
+phc2sys_poll -2
+delay 10e-6
+ptp4l_option clock_servo linreg
+ptp4l_option delay_mechanism P2P
+
+[timemaster]
+ntp_program chronyd
+rundir /var/run/timemaster
+
+[chronyd]
+path /usr/sbin/chronyd
+options
+
+[chrony.conf]
+makestep 1 3
+logchange 0.5
+rtcsync
+driftfile /var/lib/chrony/drift
+
+[ntpd]
+path /usr/sbin/ntpd
+options -u ntp:ntp
+
+[ntp.conf]
+restrict default nomodify notrap nopeer noquery
+restrict 127.0.0.1
+restrict ::1
+driftfile /var/lib/ntp/drift
+
+[phc2sys]
+path /usr/sbin/phc2sys
+options -l 5
+
+[ptp4l]
+path /usr/sbin/ptp4l
+options
+
+[ptp4l.conf]
+logging_level 5
+.EE
+
+.SH SEE ALSO
+
+.BR chronyd (8),
+.BR ntpd (8),
+.BR phc2sys (8),
+.BR ptp4l (8)

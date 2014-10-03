@@ -19,20 +19,34 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 #
-# Look for the clock_adjtime functional prototype in the C library.
+# Look for functional prototypes in the C library.
 #
 user_flags()
 {
 	# Needed for vasprintf().
 	printf " -D_GNU_SOURCE"
 
+	# Get list of directories searched for header files.
 	dirs=$(echo "" | ${CROSS_COMPILE}cpp -Wp,-v 2>&1 >/dev/null | grep ^" /")
+
+	# Look for clock_adjtime().
 	for d in $dirs; do
 		files=$(find $d -type f -name time.h)
 		for f in $files; do
 			if grep -q clock_adjtime $f; then
 				printf " -DHAVE_CLOCK_ADJTIME"
-				return
+				break 2
+			fi
+		done
+	done
+
+	# Look for posix_spawn().
+	for d in $dirs; do
+		files=$(find $d -type f -name spawn.h)
+		for f in $files; do
+			if grep -q posix_spawn $f; then
+				printf " -DHAVE_POSIX_SPAWN"
+				break 2
 			fi
 		done
 	done
