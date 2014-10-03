@@ -236,4 +236,61 @@ int handle_term_signals(void);
  */
 int is_running(void);
 
+/**
+ * Get an allocated and formatted string. This is a wrapper around asprintf().
+ *
+ * @param format    printf() format string.
+ * @param ...       printf() arguments.
+ * @return          Pointer to the allocated string, NULL on error.
+ */
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+char *string_newf(const char *format, ...);
+
+/**
+ * Reallocate a string and append another string to it.
+ *
+ * @param s         String that should be extended, set to NULL on error.
+ * @param str       String appended to s.
+ */
+void string_append(char **s, const char *str);
+#ifdef __GNUC__
+__attribute__ ((format (printf, 2, 3)))
+#endif
+/**
+ * Reallocate a string and append a formatted string to it.
+ *
+ * @param s         String that should be extended, set to NULL on error.
+ * @param format    printf() format string.
+ * @param ...       printf() arguments.
+ */
+void string_appendf(char **s, const char *format, ...);
+
+/**
+ * Get an empty array of pointers terminated by NULL.
+ *
+ * @return          Pointer to the allocated array, NULL on error.
+ */
+void **parray_new(void);
+
+/**
+ * Append pointer to a NULL-terminated pointer array. The array is reallocated
+ * in exponentially increasing sizes.
+ *
+ * @param a         Pointer to pointer array, set to NULL on error.
+ * @param p         Pointer appended to the array.
+ */
+void parray_append(void ***a, void *p);
+
+
+/**
+ * Append pointers to a NULL-terminated pointer array. The array is reallocated
+ * in exponentially increasing sizes.
+ *
+ * @param a         Pointer to pointer array, set to NULL on error.
+ * @param ...       NULL-terminated list of pointers.
+ */
+void parray_extend(void ***a, ...);
+
 #endif

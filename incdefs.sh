@@ -23,12 +23,15 @@
 #
 user_flags()
 {
+	# Needed for vasprintf().
+	printf " -D_GNU_SOURCE"
+
 	dirs=$(echo "" | ${CROSS_COMPILE}cpp -Wp,-v 2>&1 >/dev/null | grep ^" /")
 	for d in $dirs; do
 		files=$(find $d -type f -name time.h)
 		for f in $files; do
 			if grep -q clock_adjtime $f; then
-				printf " -D_GNU_SOURCE -DHAVE_CLOCK_ADJTIME"
+				printf " -DHAVE_CLOCK_ADJTIME"
 				return
 			fi
 		done

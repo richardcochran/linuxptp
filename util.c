@@ -18,6 +18,7 @@
  */
 #include <errno.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -341,4 +342,98 @@ int handle_term_signals(void)
 int is_running(void)
 {
 	return running;
+}
+
+char *string_newf(const char *format, ...)
+{
+	va_list ap;
+	char *s;
+
+	va_start(ap, format);
+	if (vasprintf(&s, format, ap) < 0)
+		s = NULL;
+	va_end(ap);
+
+	return s;
+}
+
+void string_append(char **s, const char *str)
+{
+	size_t len1, len2;
+
+	len1 = strlen(*s);
+	len2 = strlen(str);
+	*s = realloc(*s, len1 + len2 + 1);
+	if (*s)
+		memcpy((*s) + len1, str, len2 + 1);
+}
+
+void string_appendf(char **s, const char *format, ...)
+{
+	va_list ap;
+	size_t len1, len2;
+	char *s2;
+
+	len1 = strlen(*s);
+
+	va_start(ap, format);
+	len2 = vasprintf(&s2, format, ap);
+	va_end(ap);
+
+	if (len2 < 0) {
+		*s = NULL;
+		return;
+	}
+
+	*s = realloc(*s, len1 + len2 + 1);
+	if (*s)
+		memcpy((*s) + len1, s2, len2 + 1);
+	free(s2);
+}
+
+void **parray_new(void)
+{
+	void **a = malloc(sizeof(*a));
+
+	if (a)
+		*a = NULL;
+	return a;
+}
+
+void parray_append(void ***a, void *p)
+{
+	parray_extend(a, p, NULL);
+}
+
+void parray_extend(void ***a, ...)
+{
+	va_list ap;
+	int ilen, len, alloced;
+	void *p;
+
+	for (len = 0; (*a)[len]; len++)
+		;
+	len++;
+
+	va_start(ap, a);
+	for (ilen = 0; va_arg(ap, void *); ilen++)
+		;
+	va_end(ap);
+
+	/* Reallocate in exponentially increasing sizes. */
+	for (alloced = 1; alloced < len; alloced <<= 1)
+		;
+	if (alloced < len + ilen) {
+		while (alloced < len + ilen)
+			alloced *= 2;
+		*a = realloc(*a, alloced * sizeof **a);
+		if (!*a)
+			return;
+	}
+
+	va_start(ap, a);
+	while ((p = va_arg(ap, void *)))
+		(*a)[len++ - 1] = p;
+	va_end(ap);
+	(*a)[len - 1] = NULL;
 }
