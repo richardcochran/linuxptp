@@ -20,7 +20,6 @@
 #ifndef HAVE_UTIL_H
 #define HAVE_UTIL_H
 
-#include "config.h"
 #include "ddt.h"
 
 /**
@@ -124,6 +123,17 @@ int is_utc_ambiguous(uint64_t ts);
  *                   inserted, -1 if leap second will be deleted.
  */
 int leap_second_status(uint64_t ts, int leap_set, int *leap, int *utc_offset);
+
+/**
+ * Values returned by get_ranged_*().
+ */
+enum parser_result {
+	PARSED_OK,
+	NOT_PARSED,
+	BAD_VALUE,
+	MALFORMED,
+	OUT_OF_RANGE,
+};
 
 /**
  * Get an integer value from string with error checking and range

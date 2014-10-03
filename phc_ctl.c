@@ -43,6 +43,7 @@
 #include "missing.h"
 #include "phc.h"
 #include "print.h"
+#include "sk.h"
 #include "sysoff.h"
 #include "util.h"
 #include "version.h"
