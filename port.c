@@ -484,6 +484,17 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
+				 int event)
+{
+	int cnt;
+	if (msg_pre_send(msg)) {
+		return -1;
+	}
+	cnt = transport_peer(p->trp, &p->fda, event, msg);
+	return cnt <= 0 ? -1 : 0;
+}
+
 static int port_capable(struct port *p)
 {
 	if (!port_is_ieee8021as(p)) {
@@ -1114,7 +1125,7 @@ static int port_pdelay_request(struct port *p)
 	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logMinPdelayReqInterval : 0x7f;
 
-	err = port_prepare_and_send(p, msg, 1);
+	err = peer_prepare_and_send(p, msg, 1);
 	if (err) {
 		pr_err("port %hu: send peer delay request failed", portnum(p));
 		goto out;
@@ -1728,7 +1739,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 	fup->pdelay_resp_fup.requestingPortIdentity = m->header.sourcePortIdentity;
 
-	err = port_prepare_and_send(p, rsp, 1);
+	err = peer_prepare_and_send(p, rsp, 1);
 	if (err) {
 		pr_err("port %hu: send peer delay response failed", portnum(p));
 		goto out;
@@ -1741,7 +1752,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	ts_to_timestamp(&rsp->hwts.ts,
 			&fup->pdelay_resp_fup.responseOriginTimestamp);
 
-	err = port_prepare_and_send(p, fup, 0);
+	err = peer_prepare_and_send(p, fup, 0);
 	if (err)
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
 
