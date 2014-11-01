@@ -2183,6 +2183,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 			break;
 		case -EPROTO:
 			pr_debug("port %hu: ignoring message", portnum(p));
+			break;
 		}
 		msg_put(msg);
 		return EV_NONE;
