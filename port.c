@@ -29,6 +29,7 @@
 #include "filter.h"
 #include "missing.h"
 #include "msg.h"
+#include "phc.h"
 #include "port.h"
 #include "print.h"
 #include "sk.h"
@@ -68,6 +69,8 @@ struct port {
 	enum timestamp_type timestamping;
 	struct fdarray fda;
 	int fault_fd;
+	int phc_index;
+	int jbod;
 	struct foreign_clock *best;
 	enum syfu_state syfu;
 	struct ptp_message *last_syncfup;
@@ -2138,6 +2141,15 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 
 	p->state = next;
 	port_notify_event(p, NOTIFY_PORT_STATE);
+
+	if (p->jbod && next == PS_UNCALIBRATED) {
+		if (clock_switch_phc(p->clock, p->phc_index)) {
+			p->last_fault_type = FT_SWITCH_PHC;
+			return port_dispatch(p, EV_FAULT_DETECTED, 0);
+		}
+		clock_sync_interval(p->clock, p->log_sync_interval);
+	}
+
 	return 0;
 }
 
@@ -2483,15 +2495,23 @@ struct port *port_open(int phc_index,
 
 	memset(p, 0, sizeof(*p));
 
+	p->phc_index = phc_index;
+	p->jbod = interface->boundary_clock_jbod;
+
 	if (interface->transport == TRANS_UDS)
 		; /* UDS cannot have a PHC. */
 	else if (!interface->ts_info.valid)
 		pr_warning("port %d: get_ts_info not supported", number);
 	else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
-		pr_err("port %d: PHC device mismatch", number);
-		pr_err("port %d: /dev/ptp%d requested, but /dev/ptp%d attached",
-		       number, phc_index, interface->ts_info.phc_index);
-		goto err_port;
+		if (interface->boundary_clock_jbod) {
+			pr_warning("port %d: just a bunch of devices", number);
+			p->phc_index = interface->ts_info.phc_index;
+		} else {
+			pr_err("port %d: PHC device mismatch", number);
+			pr_err("port %d: /dev/ptp%d requested, ptp%d attached",
+			       number, phc_index, interface->ts_info.phc_index);
+			goto err_port;
+		}
 	}
 
 	p->pod = interface->pod;

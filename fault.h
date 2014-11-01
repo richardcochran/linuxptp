@@ -21,6 +21,7 @@
 enum fault_type {
 	FT_UNSPECIFIED = 0,
 	FT_BAD_PEER_NETWORK,
+	FT_SWITCH_PHC,
 	FT_CNT,
 };
 
