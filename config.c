@@ -162,7 +162,6 @@ static enum parser_result parse_pod_setting(const char *option,
 
 static enum parser_result parse_port_setting(const char *option,
 					    const char *value,
-					    struct config *cfg,
 					    struct interface *iface)
 {
 	enum parser_result r;
@@ -677,7 +676,7 @@ int config_read(char *name, struct config *cfg)
 			if (current_section == GLOBAL_SECTION)
 				parser_res = parse_global_setting(option, value, cfg);
 			else
-				parser_res = parse_port_setting(option, value, cfg, current_port);
+				parser_res = parse_port_setting(option, value, current_port);
 
 			switch (parser_res) {
 			case PARSED_OK:
