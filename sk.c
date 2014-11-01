@@ -32,6 +32,7 @@
 
 #include "address.h"
 #include "ether.h"
+#include "missing.h"
 #include "print.h"
 #include "sk.h"
 
@@ -208,6 +209,9 @@ int sk_interface_addr(const char *name, int family, struct address *addr)
 	return result;
 }
 
+static short sk_events = POLLPRI;
+static short sk_revents = POLLPRI;
+
 int sk_receive(int fd, void *buf, int buflen,
 	       struct address *addr, struct hw_timestamp *hwts, int flags)
 {
@@ -230,7 +234,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	msg.msg_controllen = sizeof(control);
 
 	if (flags == MSG_ERRQUEUE) {
-		struct pollfd pfd = { fd, 0, 0 };
+		struct pollfd pfd = { fd, sk_events, 0 };
 		res = poll(&pfd, 1, sk_tx_timeout);
 		if (res < 1) {
 			pr_err(res ? "poll for tx timestamp failed: %m" :
@@ -238,7 +242,7 @@ int sk_receive(int fd, void *buf, int buflen,
 			pr_err("increasing tx_timestamp_timeout may correct "
 			       "this issue, but it is likely caused by a driver bug");
 			return res;
-		} else if (!(pfd.revents & POLLERR)) {
+		} else if (!(pfd.revents & sk_revents)) {
 			pr_err("poll for tx timestamp woke up on non ERR event");
 			return -1;
 		}
@@ -350,6 +354,14 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 		       &flags, sizeof(flags)) < 0) {
 		pr_err("ioctl SO_TIMESTAMPING failed: %m");
 		return -1;
+	}
+
+	flags = 1;
+	if (setsockopt(fd, SOL_SOCKET, SO_SELECT_ERR_QUEUE,
+		       &flags, sizeof(flags)) < 0) {
+		pr_warning("%s: SO_SELECT_ERR_QUEUE: %m", device);
+		sk_events = 0;
+		sk_revents = POLLERR;
 	}
 
 	/* Enable the sk_check_fupsync option, perhaps. */

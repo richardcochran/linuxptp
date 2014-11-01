@@ -58,6 +58,10 @@ enum _missing_hwtstamp_tx_types {
 #define SIOCGHWTSTAMP 0x89b1
 #endif
 
+#ifndef SO_SELECT_ERR_QUEUE
+#define SO_SELECT_ERR_QUEUE 45
+#endif
+
 #ifndef HAVE_CLOCK_ADJTIME
 static inline int clock_adjtime(clockid_t id, struct timex *tx)
 {
