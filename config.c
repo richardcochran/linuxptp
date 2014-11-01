@@ -217,6 +217,12 @@ static enum parser_result parse_port_setting(const char *option,
 			return r;
 		iface->delay_filter_length = val;
 
+	} else if (!strcmp(option, "boundary_clock_jbod")) {
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		iface->boundary_clock_jbod = val;
+
 	} else
 		return NOT_PARSED;
 
@@ -574,6 +580,12 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		cfg->dds.delay_filter_length = val;
 
+	} else if (!strcmp(option, "boundary_clock_jbod")) {
+		r = get_ranged_int(value, &val, 0, 1);
+		if (r != PARSED_OK)
+			return r;
+		cfg->dds.boundary_clock_jbod = val;
+
 	} else
 		return NOT_PARSED;
 
@@ -762,6 +774,7 @@ void config_init_interface(struct interface *iface, struct config *cfg)
 
 	iface->delay_filter = cfg->dds.delay_filter;
 	iface->delay_filter_length = cfg->dds.delay_filter_length;
+	iface->boundary_clock_jbod = cfg->dds.boundary_clock_jbod;
 }
 
 void config_destroy(struct config *cfg)

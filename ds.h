@@ -61,6 +61,7 @@ struct default_ds {
 	struct clock_description clock_desc;
 	enum filter_type delay_filter;
 	int delay_filter_length;
+	int boundary_clock_jbod;
 };
 
 struct dataset {

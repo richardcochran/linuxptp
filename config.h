@@ -41,6 +41,7 @@ struct interface {
 	struct sk_ts_info ts_info;
 	enum filter_type delay_filter;
 	int delay_filter_length;
+	int boundary_clock_jbod;
 };
 
 #define CFG_IGNORE_DM           (1 << 0)

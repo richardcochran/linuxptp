@@ -75,6 +75,7 @@ static struct config cfg_settings = {
 		},
 		.delay_filter = FILTER_MOVING_MEDIAN,
 		.delay_filter_length = 10,
+		.boundary_clock_jbod = 0,
 	},
 
 	.pod = {

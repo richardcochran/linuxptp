@@ -1,4 +1,4 @@
-.TH PTP4l 8 "October 2013" "linuxptp"
+.TH PTP4l 8 "December 2014" "linuxptp"
 .SH NAME
 ptp4l \- PTP Boundary/Ordinary Clock
 
@@ -217,6 +217,16 @@ Specifies the difference in nanoseconds between the reported receive
 time stamp and the actual reception time at reference plane. This value
 will be subtracted from ingress time stamps obtained from the hardware.
 The default is 0.
+.TP
+.B boundary_clock_jbod
+When running as a boundary clock (that is, when more than one network
+interface is configured), ptp4l performs a sanity check to make sure
+that all of the ports share the same hardware clock device. This
+option allows ptp4l to work as a boundary clock using "just a bunch of
+devices" that are not synchronized to each other. For this mode, the
+collection of clocks must be synchronized by an external program, for
+example phc2sys(8) in "automatic" mode.
+The default is 0 (disabled).
 
 .SH PROGRAM AND CLOCK OPTIONS
 
