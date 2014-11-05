@@ -794,7 +794,7 @@ struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 			   enum timestamp_type timestamping, struct default_ds *dds,
 			   enum servo_type servo)
 {
-	int fadj = 0, max_adj = 0.0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
+	int fadj = 0, max_adj = 0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	struct port *p;
 	char phc[32];
