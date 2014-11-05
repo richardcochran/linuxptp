@@ -756,7 +756,7 @@ static int clock_add_port(struct clock *c, int phc_index,
 			  enum timestamp_type timestamping,
 			  struct interface *iface)
 {
-	struct port *p;
+	struct port *p, *piter, *lastp = NULL;
 
 	if (clock_resize_pollfd(c, c->nports + 1))
 		return -1;
@@ -766,7 +766,12 @@ static int clock_add_port(struct clock *c, int phc_index,
 		/* No need to shrink pollfd */
 		return -1;
 	}
-	LIST_INSERT_HEAD(&c->ports, p, list);
+	LIST_FOREACH(piter, &c->ports, list)
+		lastp = piter;
+	if (lastp)
+		LIST_INSERT_AFTER(lastp, p, list);
+	else
+		LIST_INSERT_HEAD(&c->ports, p, list);
 	c->nports++;
 	clock_fda_changed(c);
 	return 0;
