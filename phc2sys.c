@@ -313,14 +313,23 @@ static void reconfigure(struct node *node)
 			c->new_state = 0;
 		}
 
-		if (c->state == PS_SLAVE) {
-			src = c;
-			src_cnt++;
-		} else if (c->state == PS_UNCALIBRATED) {
-			src_cnt++;
-		} else if (c->state == PS_MASTER) {
+		switch (c->state) {
+		case PS_FAULTY:
+		case PS_DISABLED:
+		case PS_LISTENING:
+		case PS_PRE_MASTER:
+		case PS_MASTER:
+		case PS_PASSIVE:
 			pr_info("selecting %s for synchronization", c->device);
 			dst_cnt++;
+			break;
+		case PS_UNCALIBRATED:
+			src_cnt++;
+			break;
+		case PS_SLAVE:
+			src = c;
+			src_cnt++;
+			break;
 		}
 	}
 	if (src_cnt > 1) {
@@ -562,6 +571,23 @@ static int do_pps_loop(struct node *node, struct clock *clock, int fd)
 	return 0;
 }
 
+static int update_needed(struct clock *c)
+{
+	switch (c->state) {
+	case PS_FAULTY:
+	case PS_DISABLED:
+	case PS_LISTENING:
+	case PS_PRE_MASTER:
+	case PS_MASTER:
+	case PS_PASSIVE:
+		return 1;
+	case PS_UNCALIBRATED:
+	case PS_SLAVE:
+		break;
+	}
+	return 0;
+}
+
 static int do_loop(struct node *node, int subscriptions)
 {
 	struct timespec interval;
@@ -593,7 +619,7 @@ static int do_loop(struct node *node, int subscriptions)
 			continue;
 
 		LIST_FOREACH(clock, &node->clocks, list) {
-			if (clock->state != PS_MASTER)
+			if (!update_needed(clock))
 				continue;
 
 			if (clock->clkid == CLOCK_REALTIME &&
