@@ -1401,7 +1401,7 @@ static void port_disable(struct port *p)
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
 	}
-	port_clear_fda(p, N_TIMER_FDS);
+	port_clear_fda(p, N_POLLFD);
 	clock_fda_changed(p->clock);
 }
 
@@ -2485,7 +2485,7 @@ struct port *port_open(int phc_index,
 	}
 	p->nrate.ratio = 1.0;
 
-	port_clear_fda(p, N_TIMER_FDS);
+	port_clear_fda(p, N_POLLFD);
 	p->fault_fd = -1;
 	if (number) {
 		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, 0);
