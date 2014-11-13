@@ -305,11 +305,13 @@ static void reconfigure(struct node *node)
 			continue;
 		}
 
-		if (c->new_state == PS_MASTER)
-			clock_reinit(c);
+		if (c->new_state) {
+			if (c->new_state == PS_MASTER)
+				clock_reinit(c);
 
-		c->state = c->new_state;
-		c->new_state = 0;
+			c->state = c->new_state;
+			c->new_state = 0;
+		}
 
 		if (c->state == PS_SLAVE) {
 			src = c;
