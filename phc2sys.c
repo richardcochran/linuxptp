@@ -292,13 +292,12 @@ static void clock_reinit(struct clock *clock)
 
 static void reconfigure(struct node *node)
 {
-	struct clock *c, *rt, *src;
+	struct clock *c, *rt = NULL, *src = NULL, *last = NULL;
 	int src_cnt = 0, dst_cnt = 0;
 
 	pr_info("reconfiguring after port state change");
 	node->state_changed = 0;
 
-	src = rt = NULL;
 	LIST_FOREACH(c, &node->clocks, list) {
 		if (c->clkid == CLOCK_REALTIME) {
 			rt = c;
@@ -330,6 +329,15 @@ static void reconfigure(struct node *node)
 			src = c;
 			src_cnt++;
 			break;
+		}
+		last = c;
+	}
+	if (dst_cnt && !src) {
+		if (!rt || rt->dest_only) {
+			node->master = last;
+			pr_info("no source, selecting %s as the default clock",
+				last->device);
+			return;
 		}
 	}
 	if (src_cnt > 1) {
