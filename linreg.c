@@ -294,7 +294,7 @@ static void linreg_reset(struct servo *servo)
 	s->last_update = 0;
 	s->frequency_ratio = 1.0;
 
-	for (i = MIN_SIZE; i < MAX_SIZE; i++) {
+	for (i = MIN_SIZE; i <= MAX_SIZE; i++) {
 		s->results[i - MIN_SIZE].slope = 0.0;
 		s->results[i - MIN_SIZE].err_updates = 0;
 	}
