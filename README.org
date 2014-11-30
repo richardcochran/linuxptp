@@ -112,16 +112,24 @@
     |------------+--------------------------+---------|
     | Driver     | Hardware                 | Version |
     |------------+--------------------------+---------|
+    | amd-xgbe   | AMD 10GbE Ethernet Soc   |    3.17 |
     | bfin_mac   | Analog Blackfin          |     3.8 |
+    | bnx2x      | Broadcom NetXtremeII 10G |    3.18 |
     | cpts       | Texas Instruments am335x |     3.8 |
     | e1000e     | Intel 82574, 82583       |     3.9 |
+    | fm10k      | Intel FM10000            |    3.18 |
     | fec        | Freescale i.mx6          |     3.8 |
     | gianfar    | Freescale eTSEC PowerPC  |     3.0 |
+    | i40e       | Intel XL710 Family       |    3.14 |
     | igb        | Intel 82576, 82580       |     3.5 |
     | ixgbe      | Intel 82599              |     3.5 |
+    | mlx4       | Mellanox 40G PCI         |    3.14 |
     | ptp_ixp46x | Intel IXP465             |     3.0 |
     | ptp_phc    | Lapis EG20T PCH          |     3.5 |
     | sfc        | Solarflare SFC9000       |     3.7 |
+    | stmmac     | STM Synopsys IP Core     |    3.10 |
+    | tg3        | Broadcom Tigon3 PCI      |     3.8 |
+    | tilegx     | Tilera GBE/XGBE          |    3.12 |
     |------------+--------------------------+---------|
 
 *** Software Timestamping
@@ -136,6 +144,8 @@
     |--------------+--------------------------+---------+-----|
     | Driver       | Hardware                 | Version | PHY |
     |--------------+--------------------------+---------+-----|
+    | 3c59x        | 3Com EtherLink PCI       |    3.14 | N   |
+    | altera_tse   | Altera Triple-Speed MAC  |    3.15 | Y   |
     | bna          | Brocade 1010/1020 10Gb   |    3.14 | N   |
     | bnx2x        | Broadcom Everest         |     3.5 | N   |
     | davinci_emac | TI DaVinci, Sitara       |     3.1 | Y   |
@@ -149,6 +159,7 @@
     | fec_mpc52xx  | Freescale MPC5200        |     3.1 | Y   |
     | forcedeth    | NVIDIA nForce            |     3.5 | N   |
     | fs_enet      | Freescale MPC512x        |     3.1 | Y   |
+    | genet        | Broadcom GENET           |    3.15 | Y   |
     | ixp4xx_eth   | Intel IXP4xx             |     3.0 | Y   |
     | lib8390      | Asix AX88796             |     3.1 | Y   |
     | lib8390      | Various 8390 based HW    |     3.1 | N   |
@@ -158,12 +169,14 @@
     | pxa168_eth   | Marvell pxa168           |     3.1 | Y   |
     | r6040        | RDC Ethernet MAC         |     3.1 | Y   |
     | r8169        | Realtek 8169/8168/8101   |     3.4 | N   |
+    | samsun-sxgbe | Samsung SXGBE 10G        |    3.15 | Y   |
     | smsc911x     | SMSC LAN911x, LAN921x    |     3.1 | Y   |
     | smsc9420     | SMSC LAN9420 PCI         |     3.1 | Y   |
     | stmmac       | STM Synopsys IP Core     |     3.1 | Y   |
     | tg3          | Broadcom Tigon3 PCI      |     3.1 | Y   |
     | ucc_geth     | Freescale QE Gigabit     |     3.1 | Y   |
     | usbnet       | USB network devices      |     3.2 | Y/N |
+    | xgene-enet   | APM X-Gene SoC           |    3.17 | Y   |
     |--------------+--------------------------+---------+-----|
 
 * Installation
