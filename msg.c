@@ -468,5 +468,5 @@ int msg_sots_missing(struct ptp_message *m)
 	default:
 		return 0;
 	}
-	return (!m->hwts.ts.tv_sec && !m->hwts.ts.tv_nsec) ? 1 : 0;
+	return msg_sots_valid(m) ? 0 : 1;
 }

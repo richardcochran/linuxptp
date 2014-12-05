@@ -339,6 +339,16 @@ void msg_put(struct ptp_message *m);
 int msg_sots_missing(struct ptp_message *m);
 
 /**
+ * Test whether a message has a valid SO_TIMESTAMPING time stamp.
+ * @param m  Message to test.
+ * @return   One if the message has a valid time stamp, zero otherwise.
+ */
+static inline int msg_sots_valid(struct ptp_message *m)
+{
+	return (m->hwts.ts.tv_sec || m->hwts.ts.tv_nsec) ? 1 : 0;
+}
+
+/**
  * Work around buggy 802.1AS switches.
  */
 extern int assume_two_step;
