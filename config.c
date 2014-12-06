@@ -132,6 +132,18 @@ static enum parser_result parse_pod_setting(const char *option,
 			return r;
 		pod->min_neighbor_prop_delay = val;
 
+	} else if (!strcmp(option, "egressLatency")) {
+		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->tx_timestamp_offset = val;
+
+	} else if (!strcmp(option, "ingressLatency")) {
+		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
+		if (r != PARSED_OK)
+			return r;
+		pod->rx_timestamp_offset = val;
+
 	} else if (!strcmp(option, "fault_badpeernet_interval")) {
 		pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].type = FTMO_LINEAR_SECONDS;
 		if (!strcasecmp("ASAP", value)) {

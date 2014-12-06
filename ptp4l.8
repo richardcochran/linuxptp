@@ -205,6 +205,18 @@ The default is moving_median.
 .B delay_filter_length
 The length of the delay filter in samples.
 The default is 10.
+.TP
+.B egressLatency
+Specifies the difference in nanoseconds between the actual transmission
+time at the reference plane and the reported transmit time stamp. This
+value will be added to egress time stamps obtained from the hardware.
+The default is 0.
+.TP
+.B ingressLatency
+Specifies the difference in nanoseconds between the reported receive
+time stamp and the actual reception time at reference plane. This value
+will be subtracted from ingress time stamps obtained from the hardware.
+The default is 0.
 
 .SH PROGRAM AND CLOCK OPTIONS
 
