@@ -313,6 +313,22 @@ static void fc_prune(struct foreign_clock *fc)
 	}
 }
 
+static void ts_add(struct timespec *ts, int ns)
+{
+	if (!ns) {
+		return;
+	}
+	ts->tv_nsec += ns;
+	while (ts->tv_nsec < 0) {
+		ts->tv_nsec += (long) NS_PER_SEC;
+		ts->tv_sec--;
+	}
+	while (ts->tv_nsec >= (long) NS_PER_SEC) {
+		ts->tv_nsec -= (long) NS_PER_SEC;
+		ts->tv_sec++;
+	}
+}
+
 static void ts_to_timestamp(struct timespec *src, struct Timestamp *dst)
 {
 	dst->seconds_lsb = src->tv_sec;
@@ -492,7 +508,13 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 		return -1;
 	}
 	cnt = transport_peer(p->trp, &p->fda, event, msg);
-	return cnt <= 0 ? -1 : 0;
+	if (cnt <= 0) {
+		return -1;
+	}
+	if (msg_sots_valid(msg)) {
+		ts_add(&msg->hwts.ts, p->pod.tx_timestamp_offset);
+	}
+	return 0;
 }
 
 static int port_capable(struct port *p)
@@ -2189,6 +2211,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		return EV_NONE;
 	}
 	if (msg_sots_valid(msg)) {
+		ts_add(&msg->hwts.ts, -p->pod.rx_timestamp_offset);
 		clock_check_ts(p->clock, msg->hwts.ts);
 	}
 	if (port_ignore(p, msg)) {
@@ -2258,7 +2281,13 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
 	if (msg_pre_send(msg))
 		return -1;
 	cnt = transport_send(p->trp, &p->fda, event, msg);
-	return cnt <= 0 ? -1 : 0;
+	if (cnt <= 0) {
+		return -1;
+	}
+	if (msg_sots_valid(msg)) {
+		ts_add(&msg->hwts.ts, p->pod.tx_timestamp_offset);
+	}
+	return 0;
 }
 
 struct PortIdentity port_identity(struct port *p)
