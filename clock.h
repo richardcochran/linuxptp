@@ -205,6 +205,14 @@ int clock_slave_only(struct clock *c);
 UInteger16 clock_steps_removed(struct clock *c);
 
 /**
+ * Switch to a new PTP Hardware Clock, for use with the "jbod" mode.
+ * @param c          The clock instance.
+ * @param phc_index  The index of the PHC device to use.
+ * @return           Zero on success, non-zero otherwise.
+ */
+int clock_switch_phc(struct clock *c, int phc_index);
+
+/**
  * Provide a data point to synchronize the clock.
  * @param c            The clock instance to synchronize.
  * @param ingress_ts   The ingress time stamp on the sync message.

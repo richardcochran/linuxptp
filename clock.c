@@ -74,6 +74,7 @@ struct clock_subscriber {
 struct clock {
 	clockid_t clkid;
 	struct servo *servo;
+	enum servo_type servo_type;
 	struct defaultDS dds;
 	struct dataset default_dataset;
 	struct currentDS cur;
@@ -862,6 +863,7 @@ struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 		return NULL;
 	}
 	c->servo_state = SERVO_UNLOCKED;
+	c->servo_type = servo;
 	c->delay_filter = filter_create(dds->delay_filter,
 					dds->delay_filter_length);
 	if (!c->delay_filter) {
@@ -1356,6 +1358,41 @@ int clock_slave_only(struct clock *c)
 UInteger16 clock_steps_removed(struct clock *c)
 {
 	return c->cur.stepsRemoved;
+}
+
+int clock_switch_phc(struct clock *c, int phc_index)
+{
+	struct servo *servo;
+	int fadj, max_adj;
+	clockid_t clkid;
+	char phc[32];
+
+	snprintf(phc, 31, "/dev/ptp%d", phc_index);
+	clkid = phc_open(phc);
+	if (clkid == CLOCK_INVALID) {
+		pr_err("Switching PHC, failed to open %s: %m", phc);
+		return -1;
+	}
+	max_adj = phc_max_adj(clkid);
+	if (!max_adj) {
+		pr_err("Switching PHC, clock is not adjustable");
+		phc_close(clkid);
+		return -1;
+	}
+	fadj = (int) clockadj_get_freq(clkid);
+	clockadj_set_freq(clkid, fadj);
+	servo = servo_create(c->servo_type, -fadj, max_adj, 0);
+	if (!servo) {
+		pr_err("Switching PHC, failed to create clock servo");
+		phc_close(clkid);
+		return -1;
+	}
+	phc_close(c->clkid);
+	servo_destroy(c->servo);
+	c->clkid = clkid;
+	c->servo = servo;
+	c->servo_state = SERVO_UNLOCKED;
+	return 0;
 }
 
 enum servo_state clock_synchronize(struct clock *c,
