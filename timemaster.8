@@ -250,10 +250,12 @@ for PTP sources (\fBntp_poll\fR) to specify a subsecond interval.
 The \fBntpd\fR limitations are:
 
 .RS
-Only the first two shared-memory segments created by the SHM refclock driver
-in \fBntpd\fR have owner-only access. Other segments are created with world
-access, possibly allowing any user on the system writing to the segments and
-disrupting the synchronization.
+In versions before 4.2.8p1, only the first two shared-memory segments created by
+the \fBntpd\fR SHM refclock driver have owner-only access. Other segments
+are created with world access, which allows any user on the system to write to
+the segments and disrupt or take control over the synchronization of the clock.
+In 4.2.8p1 the access was made configurable with the mode option, which is set
+by \fBtimemaster\fR for owner-ownly access.
 
 The shortest polling interval for all sources is 3 (8 seconds).
 

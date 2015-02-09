@@ -623,7 +623,8 @@ static void add_shm_source(int shm_segment, int poll, int dpoll, double delay,
 		break;
 	case NTPD:
 		string_appendf(ntp_config,
-			       "server 127.127.28.%d minpoll %d maxpoll %d\n"
+			       "server 127.127.28.%d minpoll %d maxpoll %d "
+			       "mode 1\n"
 			       "fudge 127.127.28.%d refid %s\n",
 			       shm_segment, poll, poll, shm_segment, refid);
 		break;
