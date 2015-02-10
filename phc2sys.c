@@ -332,9 +332,14 @@ static void reconfigure(struct node *node)
 		}
 		last = c;
 	}
-	if (dst_cnt && !src) {
+	if (dst_cnt > 1 && !src) {
 		if (!rt || rt->dest_only) {
 			node->master = last;
+			/* Reset to original state in next reconfiguration. */
+			node->master->new_state = node->master->state;
+			node->master->state = PS_SLAVE;
+			if (rt)
+				rt->state = PS_SLAVE;
 			pr_info("no source, selecting %s as the default clock",
 				last->device);
 			return;
