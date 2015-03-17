@@ -482,12 +482,25 @@ static int clock_management_set(struct clock *c, struct port *p,
 {
 	int respond = 0;
 	struct management_tlv *tlv;
+	struct management_tlv_datum *mtd;
 	struct grandmaster_settings_np *gsn;
 	struct subscribe_events_np *sen;
 
 	tlv = (struct management_tlv *) req->management.suffix;
 
 	switch (id) {
+	case TLV_PRIORITY1:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		c->dds.priority1 = mtd->val;
+		*changed = 1;
+		respond = 1;
+		break;
+	case TLV_PRIORITY2:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		c->dds.priority2 = mtd->val;
+		*changed = 1;
+		respond = 1;
+		break;
 	case TLV_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) tlv->data;
 		c->dds.clockQuality = gsn->clockQuality;
