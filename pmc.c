@@ -66,8 +66,8 @@ struct management_id idtab[] = {
 	{ "CURRENT_DATA_SET", TLV_CURRENT_DATA_SET, do_get_action },
 	{ "PARENT_DATA_SET", TLV_PARENT_DATA_SET, do_get_action },
 	{ "TIME_PROPERTIES_DATA_SET", TLV_TIME_PROPERTIES_DATA_SET, do_get_action },
-	{ "PRIORITY1", TLV_PRIORITY1, do_get_action },
-	{ "PRIORITY2", TLV_PRIORITY2, do_get_action },
+	{ "PRIORITY1", TLV_PRIORITY1, do_set_action },
+	{ "PRIORITY2", TLV_PRIORITY2, do_set_action },
 	{ "DOMAIN", TLV_DOMAIN, do_get_action },
 	{ "SLAVE_ONLY", TLV_SLAVE_ONLY, do_get_action },
 	{ "TIME", TLV_TIME, not_supported },
@@ -493,6 +493,7 @@ static void do_get_action(int action, int index, char *str)
 static void do_set_action(int action, int index, char *str)
 {
 	struct grandmaster_settings_np gsn;
+	struct management_tlv_datum mtd;
 	struct port_ds_np pnp;
 	int cnt, code = idtab[index].code;
 	int leap_61, leap_59, utc_off_valid;
@@ -513,6 +514,24 @@ static void do_set_action(int action, int index, char *str)
 		return;
 	}
 	switch (code) {
+	case TLV_PRIORITY1:
+		cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
+		if (cnt != 1) {
+			fprintf(stderr, "%s SET needs 1 value\n",
+				idtab[index].name);
+			break;
+		}
+		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case TLV_PRIORITY2:
+		cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
+		if (cnt != 1) {
+			fprintf(stderr, "%s SET needs 1 value\n",
+				idtab[index].name);
+			break;
+		}
+		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
 	case TLV_GRANDMASTER_SETTINGS_NP:
 		cnt = sscanf(str, " %*s %*s "
 			     "clockClass              %hhu "
