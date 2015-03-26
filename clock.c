@@ -38,6 +38,7 @@
 #include "stats.h"
 #include "print.h"
 #include "tlv.h"
+#include "tsproc.h"
 #include "uds.h"
 #include "util.h"
 
@@ -102,12 +103,11 @@ struct clock {
 	enum servo_state servo_state;
 	tmv_t master_offset;
 	tmv_t path_delay;
-	struct filter *delay_filter;
+	tmv_t ingress_ts;
+	struct tsproc *tsproc;
 	struct freq_estimator fest;
 	struct time_status_np status;
 	double nrr;
-	tmv_t t1;
-	tmv_t t2;
 	struct clock_description desc;
 	struct clock_stats stats;
 	int stats_interval;
@@ -271,7 +271,7 @@ void clock_destroy(struct clock *c)
 		phc_close(c->clkid);
 	}
 	servo_destroy(c->servo);
-	filter_destroy(c->delay_filter);
+	tsproc_destroy(c->tsproc);
 	stats_destroy(c->stats.offset);
 	stats_destroy(c->stats.freq);
 	stats_destroy(c->stats.delay);
@@ -413,7 +413,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	case TLV_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
 		tsn->master_offset = c->master_offset;
-		tsn->ingress_time = tmv_to_nanoseconds(c->t2);
+		tsn->ingress_time = tmv_to_nanoseconds(c->ingress_ts);
 		tsn->cumulativeScaledRateOffset =
 			(Integer32) (c->status.cumulativeScaledRateOffset +
 				      c->nrr * POW2_41 - POW2_41);
@@ -543,7 +543,8 @@ static void clock_stats_update(struct clock_stats *s,
 	stats_reset(s->delay);
 }
 
-static enum servo_state clock_no_adjust(struct clock *c)
+static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
+					tmv_t origin)
 {
 	double fui;
 	double ratio, freq;
@@ -561,21 +562,21 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	 * error caused by our imperfect path delay measurement.
 	 */
 	if (!f->ingress1) {
-		f->ingress1 = c->t2;
-		f->origin1 = c->t1;
+		f->ingress1 = ingress;
+		f->origin1 = origin;
 		return state;
 	}
 	f->count++;
 	if (f->count < f->max_count) {
 		return state;
 	}
-	if (tmv_eq(c->t2, f->ingress1)) {
+	if (tmv_eq(ingress, f->ingress1)) {
 		pr_warning("bad timestamps in rate ratio calculation");
 		return state;
 	}
 
-	ratio = tmv_dbl(tmv_sub(c->t1, f->origin1)) /
-		tmv_dbl(tmv_sub(c->t2, f->ingress1));
+	ratio = tmv_dbl(tmv_sub(origin, f->origin1)) /
+		tmv_dbl(tmv_sub(ingress, f->ingress1));
 	freq = (1.0 - ratio) * 1e9;
 
 	if (c->stats.max_count > 1) {
@@ -597,8 +598,8 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	pr_debug("master/local  %.9f", ratio);
 	pr_debug("diff         %+.9f", ratio - (fui + c->nrr - 1.0));
 
-	f->ingress1 = c->t2;
-	f->origin1 = c->t1;
+	f->ingress1 = ingress;
+	f->origin1 = origin;
 	f->count = 0;
 
 	return state;
@@ -851,10 +852,9 @@ struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 	}
 	c->servo_state = SERVO_UNLOCKED;
 	c->servo_type = servo;
-	c->delay_filter = filter_create(dds->delay_filter,
-					dds->delay_filter_length);
-	if (!c->delay_filter) {
-		pr_err("Failed to create delay filter");
+	c->tsproc = tsproc_create(dds->delay_filter, dds->delay_filter_length);
+	if (!c->tsproc) {
+		pr_err("Failed to create time stamp processor");
 		return NULL;
 	}
 	c->nrr = 1.0;
@@ -1278,51 +1278,26 @@ int clock_poll(struct clock *c)
 
 void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 {
-	tmv_t pd, t1, t2, t3, t4;
-	double rr;
+	tsproc_up_ts(c->tsproc, req, rx);
 
-	if (tmv_is_zero(c->t1))
+	if (tsproc_update_delay(c->tsproc, &c->path_delay))
 		return;
-
-	t1 = c->t1;
-	t2 = c->t2;
-	t3 = req;
-	t4 = rx;
-	rr = clock_rate_ratio(c);
-
-	/*
-	 * c->path_delay = (t2 - t3) * rr + (t4 - t1);
-	 * c->path_delay /= 2.0;
-	 */
-
-	pd = tmv_sub(t2, t3);
-	if (rr != 1.0)
-		pd = dbl_tmv(tmv_dbl(pd) * rr);
-	pd = tmv_add(pd, tmv_sub(t4, t1));
-	pd = tmv_div(pd, 2);
-
-	if (pd < 0) {
-		pr_debug("negative path delay %10" PRId64, pd);
-		pr_debug("path_delay = (t2 - t3) * rr + (t4 - t1)");
-		pr_debug("t2 - t3 = %+10" PRId64, t2 - t3);
-		pr_debug("t4 - t1 = %+10" PRId64, t4 - t1);
-		pr_debug("rr = %.9f", rr);
-	}
-
-	c->path_delay = filter_sample(c->delay_filter, pd);
 
 	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
 
-	pr_debug("path delay    %10" PRId64 " %10" PRId64, c->path_delay, pd);
-
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay, tmv_to_nanoseconds(pd));
+		stats_add_value(c->stats.delay,
+				tmv_to_nanoseconds(c->path_delay));
 }
 
-void clock_peer_delay(struct clock *c, tmv_t ppd, double nrr)
+void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
+		      double nrr)
 {
 	c->path_delay = ppd;
 	c->nrr = nrr;
+
+	tsproc_set_delay(c->tsproc, ppd);
+	tsproc_up_ts(c->tsproc, req, rx);
 
 	if (c->stats.delay)
 		stats_add_value(c->stats.delay, tmv_to_nanoseconds(ppd));
@@ -1378,15 +1353,11 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	double adj;
 	enum servo_state state = SERVO_UNLOCKED;
 
-	c->t1 = origin;
-	c->t2 = ingress;
+	c->ingress_ts = ingress;
 
-	/*
-	 * c->master_offset = ingress - origin - c->path_delay;
-	 */
-	c->master_offset = tmv_sub(ingress, tmv_add(origin, c->path_delay));
+	tsproc_down_ts(c->tsproc, origin, ingress);
 
-	if (!c->path_delay)
+	if (tsproc_update_offset(c->tsproc, &c->master_offset))
 		return state;
 
 	if (clock_utc_correct(c, ingress))
@@ -1395,7 +1366,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
 
 	if (c->free_running)
-		return clock_no_adjust(c);
+		return clock_no_adjust(c, ingress, origin);
 
 	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
 			   tmv_to_nanoseconds(ingress), &state);
@@ -1411,19 +1382,21 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 			tmv_to_nanoseconds(c->path_delay));
 	}
 
+	tsproc_set_clock_rate_ratio(c->tsproc, clock_rate_ratio(c));
+
 	switch (state) {
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
 		clockadj_set_freq(c->clkid, -adj);
 		clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset));
-		c->t1 = tmv_zero();
-		c->t2 = tmv_zero();
+		c->ingress_ts = tmv_zero();
 		if (c->sanity_check) {
 			clockcheck_set_freq(c->sanity_check, -adj);
 			clockcheck_step(c->sanity_check,
 					-tmv_to_nanoseconds(c->master_offset));
 		}
+		tsproc_reset(c->tsproc, 0);
 		break;
 	case SERVO_LOCKED:
 		clockadj_set_freq(c->clkid, -adj);
@@ -1497,9 +1470,8 @@ static void handle_state_decision_event(struct clock *c)
 
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
-		filter_reset(c->delay_filter);
-		c->t1 = tmv_zero();
-		c->t2 = tmv_zero();
+		tsproc_reset(c->tsproc, 1);
+		c->ingress_ts = tmv_zero();
 		c->path_delay = 0;
 		c->nrr = 1.0;
 		fresh_best = 1;

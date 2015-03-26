@@ -35,6 +35,7 @@
 #include "sk.h"
 #include "tlv.h"
 #include "tmv.h"
+#include "tsproc.h"
 #include "util.h"
 
 #define ALLOWED_LOST_RESPONSES 3
@@ -86,7 +87,7 @@ struct port {
 		UInteger16 sync;
 	} seqnum;
 	tmv_t peer_delay;
-	struct filter *delay_filter;
+	struct tsproc *tsproc;
 	int log_sync_interval;
 	struct nrate_estimator nrate;
 	unsigned int pdr_missing;
@@ -1798,11 +1799,10 @@ out:
 
 static void port_peer_delay(struct port *p)
 {
-	tmv_t c1, c2, t1, t2, t3, t3c, t4, pd;
+	tmv_t c1, c2, t1, t2, t3, t3c, t4;
 	struct ptp_message *req = p->peer_delay_req;
 	struct ptp_message *rsp = p->peer_delay_resp;
 	struct ptp_message *fup = p->peer_delay_fup;
-	double adj_t41;
 
 	/* Check for response, validate port and sequence number. */
 
@@ -1847,22 +1847,21 @@ static void port_peer_delay(struct port *p)
 	c2 = correction_to_tmv(fup->header.correction);
 calc:
 	t3c = tmv_add(t3, tmv_add(c1, c2));
-	adj_t41 = p->nrate.ratio * clock_rate_ratio(p->clock) *
-			tmv_dbl(tmv_sub(t4, t1));
-	pd = tmv_sub(dbl_tmv(adj_t41), tmv_sub(t3c, t2));
-	pd = tmv_div(pd, 2);
-
-	p->peer_delay = filter_sample(p->delay_filter, pd);
+	tsproc_set_clock_rate_ratio(p->tsproc, p->nrate.ratio *
+				    clock_rate_ratio(p->clock));
+	tsproc_up_ts(p->tsproc, t1, t2);
+	tsproc_down_ts(p->tsproc, t3c, t4);
+	if (tsproc_update_delay(p->tsproc, &p->peer_delay))
+		return;
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
-
-	pr_debug("pdelay %hu   %10" PRId64 "%10" PRId64, portnum(p), p->peer_delay, pd);
 
 	if (p->pod.follow_up_info)
 		port_nrate_calculate(p, t3c, t4);
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
-		clock_peer_delay(p->clock, p->peer_delay, p->nrate.ratio);
+		clock_peer_delay(p->clock, p->peer_delay, t1, t2,
+				 p->nrate.ratio);
 	}
 
 	msg_put(p->peer_delay_req);
@@ -1981,7 +1980,7 @@ void port_close(struct port *p)
 		port_disable(p);
 	}
 	transport_destroy(p->trp);
-	filter_destroy(p->delay_filter);
+	tsproc_destroy(p->tsproc);
 	if (p->fault_fd >= 0)
 		close(p->fault_fd);
 	free(p);
@@ -2535,10 +2534,10 @@ struct port *port_open(int phc_index,
 	p->delayMechanism = interface->dm;
 	p->versionNumber = PTP_VERSION;
 
-	p->delay_filter = filter_create(interface->delay_filter,
-					interface->delay_filter_length);
-	if (!p->delay_filter) {
-		pr_err("Failed to create delay filter");
+	p->tsproc = tsproc_create(interface->delay_filter,
+				  interface->delay_filter_length);
+	if (!p->tsproc) {
+		pr_err("Failed to create time stamp processor");
 		goto err_transport;
 	}
 	p->nrate.ratio = 1.0;
@@ -2549,13 +2548,13 @@ struct port *port_open(int phc_index,
 		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, 0);
 		if (p->fault_fd < 0) {
 			pr_err("timerfd_create failed: %m");
-			goto err_filter;
+			goto err_tsproc;
 		}
 	}
 	return p;
 
-err_filter:
-	filter_destroy(p->delay_filter);
+err_tsproc:
+	tsproc_destroy(p->tsproc);
 err_transport:
 	transport_destroy(p->trp);
 err_port:
