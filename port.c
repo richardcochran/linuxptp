@@ -887,9 +887,8 @@ static int port_management_set(struct port *target,
 	return respond ? 1 : 0;
 }
 
-static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
+static void port_nrate_calculate(struct port *p, tmv_t origin, tmv_t ingress)
 {
-	tmv_t origin2;
 	struct nrate_estimator *n = &p->nrate;
 
 	/*
@@ -899,24 +898,23 @@ static void port_nrate_calculate(struct port *p, tmv_t t3, tmv_t t4, tmv_t c)
 	p->pdr_missing = 0;
 
 	if (!n->ingress1) {
-		n->ingress1 = t4;
-		n->origin1 = tmv_add(t3, c);
+		n->ingress1 = ingress;
+		n->origin1 = origin;
 		return;
 	}
 	n->count++;
 	if (n->count < n->max_count) {
 		return;
 	}
-	origin2 = tmv_add(t3, c);
-	if (tmv_eq(t4, n->ingress1)) {
+	if (tmv_eq(ingress, n->ingress1)) {
 		pr_warning("bad timestamps in nrate calculation");
 		return;
 	}
 	n->ratio =
-		tmv_dbl(tmv_sub(origin2, n->origin1)) /
-		tmv_dbl(tmv_sub(t4, n->ingress1));
-	n->ingress1 = t4;
-	n->origin1 = origin2;
+		tmv_dbl(tmv_sub(origin, n->origin1)) /
+		tmv_dbl(tmv_sub(ingress, n->ingress1));
+	n->ingress1 = ingress;
+	n->origin1 = origin;
 	n->count = 0;
 	n->ratio_valid = 1;
 }
@@ -1012,11 +1010,17 @@ static void port_synchronize(struct port *p,
 			     Integer64 correction1, Integer64 correction2)
 {
 	enum servo_state state;
+	tmv_t t1, t1c, t2, c1, c2;
 
 	port_set_sync_rx_tmo(p);
 
-	state = clock_synchronize(p->clock, ingress_ts, origin_ts,
-				  correction1, correction2);
+	t1 = timestamp_to_tmv(origin_ts);
+	t2 = timespec_to_tmv(ingress_ts);
+	c1 = correction_to_tmv(correction1);
+	c2 = correction_to_tmv(correction2);
+	t1c = tmv_add(t1, tmv_add(c1, c2));
+
+	state = clock_synchronize(p->clock, t2, t1c);
 	switch (state) {
 	case SERVO_UNLOCKED:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
@@ -1623,6 +1627,7 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	struct delay_req_msg *req;
 	struct delay_resp_msg *rsp = &m->delay_resp;
 	struct PortIdentity master;
+	tmv_t c3, t3, t4, t4c;
 
 	if (!p->delay_req)
 		return;
@@ -1639,8 +1644,12 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	if (!pid_eq(&master, &m->header.sourcePortIdentity))
 		return;
 
-	clock_path_delay(p->clock, p->delay_req->hwts.ts, m->ts.pdu,
-			 m->header.correction);
+	c3 = correction_to_tmv(m->header.correction);
+	t3 = timespec_to_tmv(p->delay_req->hwts.ts);
+	t4 = timestamp_to_tmv(m->ts.pdu);
+	t4c = tmv_sub(t4, c3);
+
+	clock_path_delay(p->clock, t3, t4c);
 
 	if (p->logMinDelayReqInterval != rsp->hdr.logMessageInterval) {
 		// TODO - validate the input.
@@ -1789,7 +1798,7 @@ out:
 
 static void port_peer_delay(struct port *p)
 {
-	tmv_t c1, c2, t1, t2, t3, t4, pd;
+	tmv_t c1, c2, t1, t2, t3, t3c, t4, pd;
 	struct ptp_message *req = p->peer_delay_req;
 	struct ptp_message *rsp = p->peer_delay_resp;
 	struct ptp_message *fup = p->peer_delay_fup;
@@ -1837,11 +1846,10 @@ static void port_peer_delay(struct port *p)
 	t3 = timestamp_to_tmv(fup->ts.pdu);
 	c2 = correction_to_tmv(fup->header.correction);
 calc:
+	t3c = tmv_add(t3, tmv_add(c1, c2));
 	adj_t41 = p->nrate.ratio * clock_rate_ratio(p->clock) *
 			tmv_dbl(tmv_sub(t4, t1));
-	pd = tmv_sub(dbl_tmv(adj_t41), tmv_sub(t3, t2));
-	pd = tmv_sub(pd, c1);
-	pd = tmv_sub(pd, c2);
+	pd = tmv_sub(dbl_tmv(adj_t41), tmv_sub(t3c, t2));
 	pd = tmv_div(pd, 2);
 
 	p->peer_delay = filter_sample(p->delay_filter, pd);
@@ -1851,7 +1859,7 @@ calc:
 	pr_debug("pdelay %hu   %10" PRId64 "%10" PRId64, portnum(p), p->peer_delay, pd);
 
 	if (p->pod.follow_up_info)
-		port_nrate_calculate(p, t3, t4, tmv_add(c1, c2));
+		port_nrate_calculate(p, t3c, t4);
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, p->nrate.ratio);

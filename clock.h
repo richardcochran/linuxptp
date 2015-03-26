@@ -169,11 +169,10 @@ struct PortIdentity clock_parent_identity(struct clock *c);
  * @param c           The clock instance.
  * @param req         The transmission time of the delay request message.
  * @param rx          The reception time of the delay request message,
- *                    as reported in the delay response message.
- * @param correction  The correction field from the delay response message.
+ *                    as reported in the delay response message, including
+ *                    correction.
  */
-void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
-		      Integer64 correction);
+void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx);
 
 /**
  * Provide the estimated peer delay from a slave port.
@@ -215,18 +214,16 @@ int clock_switch_phc(struct clock *c, int phc_index);
 /**
  * Provide a data point to synchronize the clock.
  * @param c            The clock instance to synchronize.
- * @param ingress_ts   The ingress time stamp on the sync message.
- * @param origin_ts    The reported transmission time of the sync message.
+ * @param ingress      The ingress time stamp on the sync message.
+ * @param origin       The reported transmission time of the sync message,
+                       including any corrections.
  * @param correction1  The correction field of the sync message.
  * @param correction2  The correction field of the follow up message.
  *                     Pass zero in the case of one step operation.
  * @return             The state of the clock's servo.
  */
-enum servo_state clock_synchronize(struct clock *c,
-				   struct timespec ingress_ts,
-				   struct timestamp origin_ts,
-				   Integer64 correction1,
-				   Integer64 correction2);
+enum servo_state clock_synchronize(struct clock *c, tmv_t ingress,
+				   tmv_t origin);
 
 /**
  * Inform a slaved clock about the master's sync interval.

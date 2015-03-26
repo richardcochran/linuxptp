@@ -106,8 +106,6 @@ struct clock {
 	struct freq_estimator fest;
 	struct time_status_np status;
 	double nrr;
-	tmv_t c1;
-	tmv_t c2;
 	tmv_t t1;
 	tmv_t t2;
 	struct clock_description desc;
@@ -549,16 +547,9 @@ static enum servo_state clock_no_adjust(struct clock *c)
 {
 	double fui;
 	double ratio, freq;
-	tmv_t origin2;
 	struct freq_estimator *f = &c->fest;
 	enum servo_state state = SERVO_UNLOCKED;
 	/*
-	 * We have clock.t1 as the origin time stamp, and clock.t2 as
-	 * the ingress. According to the master's clock, the time at
-	 * which the sync arrived is:
-	 *
-	 *    origin = origin_ts + path_delay + correction
-	 *
 	 * The ratio of the local clock freqency to the master clock
 	 * is estimated by:
 	 *
@@ -571,7 +562,7 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	 */
 	if (!f->ingress1) {
 		f->ingress1 = c->t2;
-		f->origin1 = tmv_add(c->t1, tmv_add(c->c1, c->c2));
+		f->origin1 = c->t1;
 		return state;
 	}
 	f->count++;
@@ -582,12 +573,8 @@ static enum servo_state clock_no_adjust(struct clock *c)
 		pr_warning("bad timestamps in rate ratio calculation");
 		return state;
 	}
-	/*
-	 * origin2 = c->t1 (+c->path_delay) + c->c1 + c->c2;
-	 */
-	origin2 = tmv_add(c->t1, tmv_add(c->c1, c->c2));
 
-	ratio = tmv_dbl(tmv_sub(origin2, f->origin1)) /
+	ratio = tmv_dbl(tmv_sub(c->t1, f->origin1)) /
 		tmv_dbl(tmv_sub(c->t2, f->ingress1));
 	freq = (1.0 - ratio) * 1e9;
 
@@ -611,7 +598,7 @@ static enum servo_state clock_no_adjust(struct clock *c)
 	pr_debug("diff         %+.9f", ratio - (fui + c->nrr - 1.0));
 
 	f->ingress1 = c->t2;
-	f->origin1 = origin2;
+	f->origin1 = c->t1;
 	f->count = 0;
 
 	return state;
@@ -1289,27 +1276,22 @@ int clock_poll(struct clock *c)
 	return 0;
 }
 
-void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
-		      Integer64 correction)
+void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 {
-	tmv_t c1, c2, c3, pd, t1, t2, t3, t4;
+	tmv_t pd, t1, t2, t3, t4;
 	double rr;
 
 	if (tmv_is_zero(c->t1))
 		return;
 
-	c1 = c->c1;
-	c2 = c->c2;
-	c3 = correction_to_tmv(correction);
 	t1 = c->t1;
 	t2 = c->t2;
-	t3 = timespec_to_tmv(req);
-	t4 = timestamp_to_tmv(rx);
+	t3 = req;
+	t4 = rx;
 	rr = clock_rate_ratio(c);
 
 	/*
 	 * c->path_delay = (t2 - t3) * rr + (t4 - t1);
-	 * c->path_delay -= c_sync + c_fup + c_delay_resp;
 	 * c->path_delay /= 2.0;
 	 */
 
@@ -1317,18 +1299,14 @@ void clock_path_delay(struct clock *c, struct timespec req, struct timestamp rx,
 	if (rr != 1.0)
 		pd = dbl_tmv(tmv_dbl(pd) * rr);
 	pd = tmv_add(pd, tmv_sub(t4, t1));
-	pd = tmv_sub(pd, tmv_add(c1, tmv_add(c2, c3)));
 	pd = tmv_div(pd, 2);
 
 	if (pd < 0) {
 		pr_debug("negative path delay %10" PRId64, pd);
-		pr_debug("path_delay = (t2 - t3) * rr + (t4 - t1) - (c1 + c2 + c3)");
+		pr_debug("path_delay = (t2 - t3) * rr + (t4 - t1)");
 		pr_debug("t2 - t3 = %+10" PRId64, t2 - t3);
 		pr_debug("t4 - t1 = %+10" PRId64, t4 - t1);
 		pr_debug("rr = %.9f", rr);
-		pr_debug("c1 %10" PRId64, c1);
-		pr_debug("c2 %10" PRId64, c2);
-		pr_debug("c3 %10" PRId64, c3);
 	}
 
 	c->path_delay = filter_sample(c->delay_filter, pd);
@@ -1395,30 +1373,18 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	return 0;
 }
 
-enum servo_state clock_synchronize(struct clock *c,
-				   struct timespec ingress_ts,
-				   struct timestamp origin_ts,
-				   Integer64 correction1,
-				   Integer64 correction2)
+enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 {
 	double adj;
-	tmv_t ingress, origin;
 	enum servo_state state = SERVO_UNLOCKED;
-
-	ingress = timespec_to_tmv(ingress_ts);
-	origin  = timestamp_to_tmv(origin_ts);
 
 	c->t1 = origin;
 	c->t2 = ingress;
 
-	c->c1 = correction_to_tmv(correction1);
-	c->c2 = correction_to_tmv(correction2);
-
 	/*
-	 * c->master_offset = ingress - origin - c->path_delay - c->c1 - c->c2;
+	 * c->master_offset = ingress - origin - c->path_delay;
 	 */
-	c->master_offset = tmv_sub(ingress,
-		tmv_add(origin, tmv_add(c->path_delay, tmv_add(c->c1, c->c2))));
+	c->master_offset = tmv_sub(ingress, tmv_add(origin, c->path_delay));
 
 	if (!c->path_delay)
 		return state;
