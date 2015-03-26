@@ -42,6 +42,7 @@
 struct point {
 	uint64_t x;
 	uint64_t y;
+	double w;
 };
 
 struct result {
@@ -70,6 +71,8 @@ struct linreg_servo {
 	uint64_t last_update;
 	/* Regression results for all sizes */
 	struct result results[MAX_SIZE - MIN_SIZE + 1];
+	/* Selected size */
+	unsigned int size;
 	/* Current frequency offset of the clock */
 	double clock_freq;
 	/* Expected interval between updates */
@@ -120,12 +123,13 @@ static void update_reference(struct linreg_servo *s, uint64_t local_ts)
 	s->last_update = local_ts;
 }
 
-static void add_sample(struct linreg_servo *s, int64_t offset)
+static void add_sample(struct linreg_servo *s, int64_t offset, double weight)
 {
 	s->last_point = (s->last_point + 1) % MAX_POINTS;
 
 	s->points[s->last_point].x = s->reference.x;
 	s->points[s->last_point].y = s->reference.y - offset;
+	s->points[s->last_point].w = weight;
 
 	if (s->num_points < MAX_POINTS)
 		s->num_points++;
@@ -133,11 +137,11 @@ static void add_sample(struct linreg_servo *s, int64_t offset)
 
 static void regress(struct linreg_servo *s)
 {
-	double x, y, y0, e, x_sum, y_sum, xy_sum, x2_sum;
+	double x, y, y0, e, x_sum, y_sum, xy_sum, x2_sum, w, w_sum;
 	unsigned int i, l, n, size;
 	struct result *res;
 
-	x_sum = 0.0, y_sum = 0.0, xy_sum = 0.0, x2_sum = 0.0;
+	x_sum = 0.0, y_sum = 0.0, xy_sum = 0.0, x2_sum = 0.0; w_sum = 0.0;
 	i = 0;
 
 	y0 = (int64_t)(s->points[s->last_point].y - s->reference.y);
@@ -169,26 +173,29 @@ static void regress(struct linreg_servo *s)
 
 			x = (int64_t)(s->points[l].x - s->reference.x);
 			y = (int64_t)(s->points[l].y - s->reference.y);
+			w = s->points[l].w;
 
-			x_sum += x;
-			y_sum += y;
-			xy_sum += x * y;
-			x2_sum += x * x;
+			x_sum += x * w;
+			y_sum += y * w;
+			xy_sum += x * y * w;
+			x2_sum += x * x * w;
+			w_sum += w;
 		}
 
 		/* Get new intercept and slope */
-		res->slope = (xy_sum - x_sum * y_sum / n) /
-				(x2_sum - x_sum * x_sum / n);
-		res->intercept = (y_sum - res->slope * x_sum) / n;
+		res->slope = (xy_sum - x_sum * y_sum / w_sum) /
+				(x2_sum - x_sum * x_sum / w_sum);
+		res->intercept = (y_sum - res->slope * x_sum) / w_sum;
 	}
 }
 
-/* Return largest size with smallest prediction error */
-static int get_best_size(struct linreg_servo *s)
+static void update_size(struct linreg_servo *s)
 {
 	struct result *res;
 	double best_err;
 	int size, best_size;
+
+	/* Find largest size with smallest prediction error */
 
 	best_size = 0;
 	best_err = 0.0;
@@ -203,7 +210,7 @@ static int get_best_size(struct linreg_servo *s)
 		}
 	}
 
-	return best_size;
+	s->size = best_size;
 }
 
 static double linreg_sample(struct servo *servo,
@@ -214,7 +221,7 @@ static double linreg_sample(struct servo *servo,
 {
 	struct linreg_servo *s = container_of(servo, struct linreg_servo, servo);
 	struct result *res;
-	int size, corr_interval;
+	int corr_interval;
 
 	/*
 	 * The current time and the time when will be the frequency of the
@@ -225,21 +232,21 @@ static double linreg_sample(struct servo *servo,
 	 */
 
 	update_reference(s, local_ts);
-	add_sample(s, offset);
+	add_sample(s, offset, weight);
 	regress(s);
 
-	size = get_best_size(s);
+	update_size(s);
 
-	if (size < MIN_SIZE) {
+	if (s->size < MIN_SIZE) {
 		/* Not enough points, wait for more */
 		*state = SERVO_UNLOCKED;
 		return -s->clock_freq;
 	}
 
-	res = &s->results[size - MIN_SIZE];
+	res = &s->results[s->size - MIN_SIZE];
 
 	pr_debug("linreg: points %d slope %.9f intercept %.0f err %.0f",
-			1 << size, res->slope, res->intercept, res->err);
+		 1 << s->size, res->slope, res->intercept, res->err);
 
 	if ((servo->first_update &&
 	     servo->first_step_threshold &&
@@ -265,7 +272,7 @@ static double linreg_sample(struct servo *servo,
 	 * correction slowing down the clock will result in an overshoot. With
 	 * the system clock's maximum adjustment of 10% that's acceptable.
 	 */
-	corr_interval = size <= 4 ? 1 : size / 2;
+	corr_interval = s->size <= 4 ? 1 : s->size / 2;
 	s->clock_freq += res->intercept / s->update_interval / corr_interval;
 
 	/* Clamp the frequency to the allowed maximum */
@@ -293,6 +300,7 @@ static void linreg_reset(struct servo *servo)
 
 	s->num_points = 0;
 	s->last_update = 0;
+	s->size = 0;
 	s->frequency_ratio = 1.0;
 
 	for (i = MIN_SIZE; i <= MAX_SIZE; i++) {
