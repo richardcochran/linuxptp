@@ -852,7 +852,8 @@ struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 	}
 	c->servo_state = SERVO_UNLOCKED;
 	c->servo_type = servo;
-	c->tsproc = tsproc_create(dds->delay_filter, dds->delay_filter_length);
+	c->tsproc = tsproc_create(dds->tsproc_mode, dds->delay_filter,
+				  dds->delay_filter_length);
 	if (!c->tsproc) {
 		pr_err("Failed to create time stamp processor");
 		return NULL;
@@ -1357,7 +1358,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 
 	tsproc_down_ts(c->tsproc, origin, ingress);
 
-	if (tsproc_update_offset(c->tsproc, &c->master_offset))
+	if (tsproc_update_offset(c->tsproc, &c->master_offset, NULL))
 		return state;
 
 	if (clock_utc_correct(c, ingress))

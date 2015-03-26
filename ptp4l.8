@@ -197,6 +197,14 @@ greater than this value the port is marked as not 802.1AS capable.
 Lower limit for peer delay in nanoseconds. If the estimated peer delay is
 smaller than this value the port is marked as not 802.1AS capable.
 .TP
+.B tsproc_mode
+Select the time stamp processing mode used to calculate offset and delay.
+Possible values are filter, raw, filter_weight, raw_weight. Raw modes perform
+well when the rate of sync messages (logSyncInterval) is similar to the rate of
+delay messages (logMinDelayReqInterval or logMinPdelayReqInterval). Weighting
+is useful with larger network jitters (e.g. software time stamping).
+The default is filter.
+.TP
 .B delay_filter
 Select the algorithm used to filter the measured delay and peer delay. Possible
 values are moving_average and moving_median.

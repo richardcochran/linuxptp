@@ -203,6 +203,18 @@ static enum parser_result parse_port_setting(const char *option,
 		else
 			return BAD_VALUE;
 
+	} else if (!strcmp(option, "tsproc_mode")) {
+		if (!strcasecmp("filter", value))
+			iface->tsproc_mode = TSPROC_FILTER;
+		else if (!strcasecmp("raw", value))
+			iface->tsproc_mode = TSPROC_RAW;
+		else if (!strcasecmp("filter_weight", value))
+			iface->tsproc_mode = TSPROC_FILTER_WEIGHT;
+		else if (!strcasecmp("raw_weight", value))
+			iface->tsproc_mode = TSPROC_RAW_WEIGHT;
+		else
+			return BAD_VALUE;
+
 	} else if (!strcmp(option, "delay_filter")) {
 		if (!strcasecmp("moving_average", value))
 			iface->delay_filter = FILTER_MOVING_AVERAGE;
@@ -565,6 +577,18 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		cfg->dds.time_source = val;
+
+	} else if (!strcmp(option, "tsproc_mode")) {
+		if (!strcasecmp("filter", value))
+			cfg->dds.tsproc_mode = TSPROC_FILTER;
+		else if (!strcasecmp("raw", value))
+			cfg->dds.tsproc_mode = TSPROC_RAW;
+		else if (!strcasecmp("filter_weight", value))
+			cfg->dds.tsproc_mode = TSPROC_FILTER_WEIGHT;
+		else if (!strcasecmp("raw_weight", value))
+			cfg->dds.tsproc_mode = TSPROC_RAW_WEIGHT;
+		else
+			return BAD_VALUE;
 
 	} else if (!strcmp(option, "delay_filter")) {
 		if (!strcasecmp("moving_average", value))

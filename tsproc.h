@@ -26,12 +26,24 @@
 struct tsproc;
 
 /**
+ * Defines the available modes.
+ */
+enum tsproc_mode {
+	TSPROC_FILTER,
+	TSPROC_RAW,
+	TSPROC_FILTER_WEIGHT,
+	TSPROC_RAW_WEIGHT,
+};
+
+/**
  * Create a new instance of the time stamp processor.
+ * @param mode           Time stamp processing mode.
  * @param delay_filter   Type of the filter that will be applied to delay.
  * @param filter_length  Length of the filter.
  * @return               A pointer to a new tsproc on success, NULL otherwise.
  */
-struct tsproc *tsproc_create(enum filter_type delay_filter, int filter_length);
+struct tsproc *tsproc_create(enum tsproc_mode mode,
+			     enum filter_type delay_filter, int filter_length);
 
 /**
  * Destroy a time stamp processor.
@@ -82,9 +94,10 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay);
  * Update offset in a time stamp processor using new measurements.
  * @param tsp    Pointer obtained via @ref tsproc_create().
  * @param offset A pointer to store the new offset.
+ * @param weight A pointer to store the weight of the sample, may be NULL.
  * @return       0 on success, -1 when missing a measurement.
  */
-int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset);
+int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight);
 
 /**
  * Reset a time stamp processor.

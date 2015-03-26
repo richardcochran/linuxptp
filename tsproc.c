@@ -25,6 +25,10 @@
 #include "print.h"
 
 struct tsproc {
+	/* Processing options */
+	int raw_mode;
+	int weighting;
+
 	/* Current ratio between remote and local clock frequency */
 	double clock_rate_ratio;
 
@@ -43,13 +47,36 @@ struct tsproc {
 	struct filter *delay_filter;
 };
 
-struct tsproc *tsproc_create(enum filter_type delay_filter, int filter_length)
+struct tsproc *tsproc_create(enum tsproc_mode mode,
+			     enum filter_type delay_filter, int filter_length)
 {
 	struct tsproc *tsp;
 
 	tsp = calloc(1, sizeof(*tsp));
 	if (!tsp)
 		return NULL;
+
+	switch (mode) {
+	case TSPROC_FILTER:
+		tsp->raw_mode = 0;
+		tsp->weighting = 0;
+		break;
+	case TSPROC_RAW:
+		tsp->raw_mode = 1;
+		tsp->weighting = 0;
+		break;
+	case TSPROC_FILTER_WEIGHT:
+		tsp->raw_mode = 0;
+		tsp->weighting = 1;
+		break;
+	case TSPROC_RAW_WEIGHT:
+		tsp->raw_mode = 1;
+		tsp->weighting = 1;
+		break;
+	default:
+		free(tsp);
+		return NULL;
+	}
 
 	tsp->delay_filter = filter_create(delay_filter, filter_length);
 	if (!tsp->delay_filter) {
@@ -128,23 +155,37 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 		 tsp->filtered_delay, raw_delay);
 
 	if (delay)
-		*delay = tsp->filtered_delay;
+		*delay = tsp->raw_mode ? raw_delay : tsp->filtered_delay;
 
 	return 0;
 }
 
-int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset)
+int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 {
-	tmv_t delay;
+	tmv_t delay, raw_delay = 0;
 
 	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2) ||
 	    tmv_is_zero(tsp->t3) || tmv_is_zero(tsp->t4))
 		return -1;
 
-	delay = tsp->filtered_delay;
+	if (tsp->raw_mode || tsp->weighting)
+		raw_delay = get_raw_delay(tsp);
+
+	delay = tsp->raw_mode ? raw_delay : tsp->filtered_delay;
 
 	/* offset = t2 - t1 - delay */
 	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
+
+	if (!weight)
+		return 0;
+
+	if (tsp->weighting && tsp->filtered_delay > 0 && raw_delay > 0) {
+		*weight = (double)tsp->filtered_delay / raw_delay;
+		if (*weight > 1.0)
+			*weight = 1.0;
+	} else {
+		*weight = 1.0;
+	}
 
 	return 0;
 }
