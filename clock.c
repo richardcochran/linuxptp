@@ -1351,14 +1351,14 @@ int clock_switch_phc(struct clock *c, int phc_index)
 
 enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 {
-	double adj;
+	double adj, weight;
 	enum servo_state state = SERVO_UNLOCKED;
 
 	c->ingress_ts = ingress;
 
 	tsproc_down_ts(c->tsproc, origin, ingress);
 
-	if (tsproc_update_offset(c->tsproc, &c->master_offset, NULL))
+	if (tsproc_update_offset(c->tsproc, &c->master_offset, &weight))
 		return state;
 
 	if (clock_utc_correct(c, ingress))
@@ -1370,7 +1370,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 		return clock_no_adjust(c, ingress, origin);
 
 	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
-			   tmv_to_nanoseconds(ingress), &state);
+			   tmv_to_nanoseconds(ingress), weight, &state);
 	c->servo_state = state;
 
 	if (c->stats.max_count > 1) {

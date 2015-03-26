@@ -78,11 +78,12 @@ void servo_destroy(struct servo *servo)
 double servo_sample(struct servo *servo,
 		    int64_t offset,
 		    uint64_t local_ts,
+		    double weight,
 		    enum servo_state *state)
 {
 	double r;
 
-	r = servo->sample(servo, offset, local_ts, state);
+	r = servo->sample(servo, offset, local_ts, weight, state);
 
 	if (*state != SERVO_UNLOCKED)
 		servo->first_update = 0;

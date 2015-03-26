@@ -469,7 +469,7 @@ static void update_clock(struct node *node, struct clock *clock,
 	if (clock->sanity_check && clockcheck_sample(clock->sanity_check, ts))
 		servo_reset(clock->servo);
 
-	ppb = servo_sample(clock->servo, offset, ts, &state);
+	ppb = servo_sample(clock->servo, offset, ts, 1.0, &state);
 	clock->servo_state = state;
 
 	switch (state) {

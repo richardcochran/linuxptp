@@ -104,12 +104,15 @@ void servo_destroy(struct servo *servo);
  * @param servo     Pointer to a servo obtained via @ref servo_create().
  * @param offset    The estimated clock offset in nanoseconds.
  * @param local_ts  The local time stamp of the sample in nanoseconds.
+ * @param weight    The weight of the sample, larger if more reliable,
+ *                  1.0 is the maximum value.
  * @param state     Returns the servo's state.
  * @return The clock adjustment in parts per billion.
  */
 double servo_sample(struct servo *servo,
 		    int64_t offset,
 		    uint64_t local_ts,
+		    double weight,
 		    enum servo_state *state);
 
 /**

@@ -64,6 +64,7 @@ static void pi_destroy(struct servo *servo)
 static double pi_sample(struct servo *servo,
 			int64_t offset,
 			uint64_t local_ts,
+			double weight,
 			enum servo_state *state)
 {
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);

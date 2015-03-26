@@ -209,6 +209,7 @@ static int get_best_size(struct linreg_servo *s)
 static double linreg_sample(struct servo *servo,
 			    int64_t offset,
 			    uint64_t local_ts,
+			    double weight,
 			    enum servo_state *state)
 {
 	struct linreg_servo *s = container_of(servo, struct linreg_servo, servo);
