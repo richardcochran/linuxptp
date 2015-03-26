@@ -137,8 +137,8 @@ static double pi_sample(struct servo *servo,
 			break;
 		}
 
-		ki_term = s->ki * offset;
-		ppb = s->kp * offset + s->drift + ki_term;
+		ki_term = s->ki * offset * weight;
+		ppb = s->kp * offset * weight + s->drift + ki_term;
 		if (ppb < -servo->max_frequency) {
 			ppb = -servo->max_frequency;
 		} else if (ppb > servo->max_frequency) {
