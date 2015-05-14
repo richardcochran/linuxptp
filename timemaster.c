@@ -897,7 +897,7 @@ static struct script *script_create(struct timemaster_config *config)
 	return script;
 }
 
-static int start_program(char **command, sigset_t *mask)
+static pid_t start_program(char **command, sigset_t *mask)
 {
 	char **arg, *s;
 	pid_t pid;
@@ -907,7 +907,7 @@ static int start_program(char **command, sigset_t *mask)
 
 	if (posix_spawnattr_init(&attr)) {
 		pr_err("failed to init spawn attributes: %m");
-		return 1;
+		return 0;
 	}
 
 	if (posix_spawnattr_setsigmask(&attr, mask) ||
@@ -915,7 +915,7 @@ static int start_program(char **command, sigset_t *mask)
 	    posix_spawnp(&pid, command[0], NULL, &attr, command, environ)) {
 		pr_err("failed to spawn %s: %m", command[0]);
 		posix_spawnattr_destroy(&attr);
-		return 1;
+		return 0;
 	}
 
 	posix_spawnattr_destroy(&attr);
@@ -924,7 +924,7 @@ static int start_program(char **command, sigset_t *mask)
 
 	if (pid < 0) {
 		pr_err("fork() failed: %m");
-		return 1;
+		return 0;
 	}
 
 	if (!pid) {
@@ -949,7 +949,7 @@ static int start_program(char **command, sigset_t *mask)
 
 	free(s);
 
-	return 0;
+	return pid;
 }
 
 static int create_config_files(struct config_file **configs)
@@ -1009,9 +1009,8 @@ static int script_run(struct script *script)
 {
 	sigset_t mask, old_mask;
 	siginfo_t info;
-	pid_t pid;
-	int status, ret = 0;
-	char ***command;
+	pid_t pid, *pids;
+	int i, num_commands, status, ret = 0;
 
 	if (create_config_files(script->configs))
 		return 1;
@@ -1028,8 +1027,14 @@ static int script_run(struct script *script)
 		return 1;
 	}
 
-	for (command = script->commands; *command; command++) {
-		if (start_program(*command, &old_mask)) {
+	for (num_commands = 0; script->commands[num_commands]; num_commands++)
+		;
+
+	pids = calloc(num_commands, sizeof(*pids));
+
+	for (i = 0; i < num_commands; i++) {
+		pids[i] = start_program(script->commands[i], &old_mask);
+		if (!pids[i]) {
 			kill(getpid(), SIGTERM);
 			break;
 		}
@@ -1047,8 +1052,13 @@ static int script_run(struct script *script)
 
 	pr_info("received signal %d", info.si_signo);
 
-	/* kill the process group */
-	kill(0, SIGTERM);
+	/* kill all started processes */
+	for (i = 0; i < num_commands; i++) {
+		if (pids[i] > 0) {
+			pr_debug("killing process %d", pids[i]);
+			kill(pids[i], SIGTERM);
+		}
+	}
 
 	while ((pid = wait(&status)) >= 0) {
 		if (!WIFEXITED(status)) {
@@ -1061,6 +1071,8 @@ static int script_run(struct script *script)
 				WEXITSTATUS(status));
 		}
 	}
+
+	free(pids);
 
 	if (remove_config_files(script->configs))
 		return 1;
