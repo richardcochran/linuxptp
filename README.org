@@ -245,6 +245,40 @@
 
    https://lists.sourceforge.net/lists/listinfo/linuxptp-devel
 
+*** Submitting Patches
+
+   1. Before submitting patches, please make sure that you are starting
+      your work on the *current HEAD* of the git repository.
+
+   2. Please checkout the ~CODING_STYLE.org~ file for guidelines on how to
+      properly format your code.
+
+   3. Describe your changes. Each patch will be reviewed, and the reviewers
+      need to understand why you did what you did.
+
+   4. *Sign-Off* each commit, so the changes can be properly attributed to
+      you and you explicitely give your agreement for distribution under
+      linuxptp's license. Signing-off is as simple as:
+
+      #+BEGIN_EXAMPLE
+      git commit -s
+      #+END_EXAMPLE
+
+      or by adding the following line (replace your real name and email)
+      to your patch:
+
+      #+BEGIN_EXAMPLE
+      Signed-off-by: Random J Developer <random@developer.example.org>
+      #+END_EXAMPLE
+
+   5. Finally, send your patches via email to the linuxptp-devel mailing
+      list, where they will be reviewed, and eventually be included in the
+      official code base.
+
+      #+BEGIN_EXAMPLE
+      git send-email --to linuxptp-devel@lists.sourceforge.net origin/master
+      #+END_EXAMPLE
+
 * Thanks
 
   Thanks to AudioScience Inc for sponsoring the 8021.AS support.
