@@ -69,9 +69,9 @@ version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 force:
 
 install: $(PRG)
-	mkdir -p $(sbindir) $(man8dir)
-	install $(PRG) $(sbindir)
-	install -p -m 644 -t $(man8dir) $(PRG:%=%.8)
+	install -p -m 755 -d $(DESTDIR)$(sbindir) $(DESTDIR)$(man8dir)
+	install $(PRG) $(DESTDIR)$(sbindir)
+	install -p -m 644 -t $(DESTDIR)$(man8dir) $(PRG:%=%.8)
 
 clean:
 	rm -f $(OBJECTS) $(DEPEND)
