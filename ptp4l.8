@@ -1,6 +1,6 @@
 .TH PTP4l 8 "December 2014" "linuxptp"
 .SH NAME
-ptp4l \- PTP Boundary/Ordinary Clock
+ptp4l - PTP Boundary/Ordinary Clock
 
 .SH SYNOPSIS
 .B ptp4l
@@ -170,7 +170,7 @@ The default is 0 (disabled).
 .B fault_reset_interval
 The time in seconds between the detection of a port's fault and the fault
 being reset. This value is expressed as a power of two. Setting this
-value to -128 or to the special key word "ASAP" will let the fault be
+value to \-128 or to the special key word "ASAP" will let the fault be
 reset immediately.
 The default is 4 (16 seconds).
 .TP
@@ -350,7 +350,7 @@ The default is 0.0.
 .B pi_proportional_exponent
 The kp_exponent constant in the formula used to set the proportional constant of
 the PI controller from the sync interval.
-The default is -0.3.
+The default is \-0.3.
 .TP
 .B pi_proportional_norm_max
 The kp_norm_max constant in the formula used to set the proportional constant of

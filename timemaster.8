@@ -1,7 +1,7 @@
 .TH TIMEMASTER 8 "October 2014" "linuxptp"
 .SH NAME
 
-timemaster \- run NTP with PTP as reference clocks
+timemaster - run NTP with PTP as reference clocks
 
 .SH SYNOPSIS
 
@@ -138,7 +138,7 @@ default value is 0 (1 second).
 Specify the maximum assumed roundtrip delay to the primary source of the time
 in this PTP domain. This value is included in the distance used by
 \fBchronyd\fR in the source selection algorithm to detect falsetickers and
-assign weights for source combining. The default value is 1e-4 (100
+assign weights for source combining. The default value is 1e\-4 (100
 microseconds). With \fBntpd\fR, the \fBtos mindist\fR command can be used to
 set a limit with similar purpose globally for all time sources.
 
@@ -209,7 +209,7 @@ Specify the path to the \fBphc2sys\fR binary. The default value is
 .TP
 .B options
 Specify extra options that should be added to all \fBphc2sys\fR command lines.
-By default, \fB-l 5\fR is added to the command lines.
+By default, \fB\-l 5\fR is added to the command lines.
 
 .SS [ptp4l]
 
@@ -221,7 +221,7 @@ search for the binary in \fBPATH\fR.
 .TP
 .B options
 Specify extra options that should be added to all \fBptp4l\fR command lines. By
-default, \fB-l 5\fR is added to the command lines.
+default, \fB\-l 5\fR is added to the command lines.
 
 .SS [ptp4l.conf]
 Settings specified in this section are copied directly to the configuration
@@ -288,8 +288,8 @@ iburst 1
 [ptp_domain 0]
 interfaces eth0 eth1
 ntp_poll 0
-phc2sys_poll -2
-delay 10e-6
+phc2sys_poll \-2
+delay 10e\-6
 ptp4l_option clock_servo linreg
 ptp4l_option delay_mechanism P2P
 
@@ -309,7 +309,7 @@ driftfile /var/lib/chrony/drift
 
 [ntpd]
 path /usr/sbin/ntpd
-options -u ntp:ntp
+options \-u ntp:ntp
 
 [ntp.conf]
 restrict default nomodify notrap nopeer noquery
@@ -319,7 +319,7 @@ driftfile /var/lib/ntp/drift
 
 [phc2sys]
 path /usr/sbin/phc2sys
-options -l 5
+options \-l 5
 
 [ptp4l]
 path /usr/sbin/ptp4l
