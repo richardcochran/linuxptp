@@ -534,6 +534,8 @@ static enum parser_result parse_global_setting(const char *option,
 			cfg->clock_servo = CLOCK_SERVO_LINREG;
 		else if (!strcasecmp("ntpshm", value))
 			cfg->clock_servo = CLOCK_SERVO_NTPSHM;
+		else if (!strcasecmp("nullf", value))
+			cfg->clock_servo = CLOCK_SERVO_NULLF;
 		else
 			return BAD_VALUE;
 
