@@ -211,9 +211,9 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	}
 	tlv = (struct TLV *) msg->management.suffix;
 	if (tlv->type == TLV_MANAGEMENT) {
-		fprintf(fp, "MANAGMENT ");
+		fprintf(fp, "MANAGEMENT ");
 	} else if (tlv->type == TLV_MANAGEMENT_ERROR_STATUS) {
-		fprintf(fp, "MANAGMENT_ERROR_STATUS ");
+		fprintf(fp, "MANAGEMENT_ERROR_STATUS ");
 		goto out;
 	} else {
 		fprintf(fp, "unknown-tlv ");
