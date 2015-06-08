@@ -20,6 +20,7 @@
 
 #include "linreg.h"
 #include "ntpshm.h"
+#include "nullf.h"
 #include "pi.h"
 #include "servo_private.h"
 
@@ -42,6 +43,9 @@ struct servo *servo_create(enum servo_type type, int fadj, int max_ppb, int sw_t
 		break;
 	case CLOCK_SERVO_NTPSHM:
 		servo = ntpshm_servo_create();
+		break;
+	case CLOCK_SERVO_NULLF:
+		servo = nullf_servo_create();
 		break;
 	default:
 		return NULL;

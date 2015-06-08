@@ -24,7 +24,7 @@ CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l pmc phc2sys hwstamp_ctl phc_ctl timemaster
 OBJ     = bmc.o clock.o clockadj.o clockcheck.o config.o fault.o \
- filter.o fsm.o linreg.o mave.o mmedian.o msg.o ntpshm.o phc.o \
+ filter.o fsm.o linreg.o mave.o mmedian.o msg.o ntpshm.o nullf.o phc.o \
  pi.o port.o print.o ptp4l.o raw.o servo.o sk.o stats.o tlv.o \
  transport.o tsproc.o udp.o udp6.o uds.o util.o version.o
 
@@ -49,8 +49,8 @@ ptp4l: $(OBJ)
 pmc: msg.o pmc.o pmc_common.o print.o raw.o sk.o tlv.o transport.o udp.o \
  udp6.o uds.o util.o version.o
 
-phc2sys: clockadj.o clockcheck.o linreg.o msg.o ntpshm.o phc.o phc2sys.o pi.o \
- pmc_common.o print.o raw.o servo.o sk.o stats.o sysoff.o tlv.o \
+phc2sys: clockadj.o clockcheck.o linreg.o msg.o ntpshm.o nullf.o phc.o \
+ phc2sys.o pi.o pmc_common.o print.o raw.o servo.o sk.o stats.o sysoff.o tlv.o \
  transport.o udp.o udp6.o uds.o util.o version.o
 
 hwstamp_ctl: hwstamp_ctl.o version.o

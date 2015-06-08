@@ -56,6 +56,7 @@ enum servo_type {
 	CLOCK_SERVO_PI,
 	CLOCK_SERVO_LINREG,
 	CLOCK_SERVO_NTPSHM,
+	CLOCK_SERVO_NULLF,
 };
 
 /**
