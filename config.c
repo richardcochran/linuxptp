@@ -24,6 +24,7 @@
 #include <string.h>
 #include "config.h"
 #include "ether.h"
+#include "hash.h"
 #include "print.h"
 #include "util.h"
 
@@ -803,6 +804,15 @@ void config_init_interface(struct interface *iface, struct config *cfg)
 	iface->boundary_clock_jbod = cfg->dds.boundary_clock_jbod;
 }
 
+int config_init(struct config *cfg)
+{
+	cfg->htab = hash_create();
+	if (!cfg->htab) {
+		return -1;
+	}
+	return 0;
+}
+
 void config_destroy(struct config *cfg)
 {
 	struct interface *iface;
@@ -811,4 +821,5 @@ void config_destroy(struct config *cfg)
 		STAILQ_REMOVE_HEAD(&cfg->interfaces, list);
 		free(iface);
 	}
+	hash_destroy(cfg->htab, free);
 }

@@ -60,6 +60,10 @@ struct config {
 	/* configured interfaces */
 	STAILQ_HEAD(interfaces_head, interface) interfaces;
 
+	/* hash of all non-legacy items */
+	struct hash *htab;
+
+	/* the rest are legacy fields */
 	enum timestamp_type timestamping;
 	enum transport_type transport;
 	enum delay_mechanism dm;
