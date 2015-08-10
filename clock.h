@@ -61,6 +61,7 @@ UInteger8 clock_class(struct clock *c);
  * Create a clock instance. There can only be one clock in any system,
  * so subsequent calls will destroy the previous clock instance.
  *
+ * @param config       Pointer to the configuration database.
  * @param phc_index    PTP hardware clock device to use.
  *                     Pass -1 to select CLOCK_REALTIME.
  * @param ifaces       A queue of network interfaces.
@@ -69,9 +70,10 @@ UInteger8 clock_class(struct clock *c);
  * @param servo        The servo that this clock will use.
  * @return             A pointer to the single global clock instance.
  */
-struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
-			   enum timestamp_type timestamping, struct default_ds *dds,
-			   enum servo_type servo);
+struct clock *clock_create(struct config *config, int phc_index,
+			   struct interfaces_head *ifaces,
+			   enum timestamp_type timestamping,
+			   struct default_ds *dds, enum servo_type servo);
 
 /**
  * Obtains a clock's default data set.

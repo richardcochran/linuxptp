@@ -73,6 +73,7 @@ struct clock_subscriber {
 };
 
 struct clock {
+	struct config *config;
 	clockid_t clkid;
 	struct servo *servo;
 	enum servo_type servo_type;
@@ -792,9 +793,10 @@ static void clock_remove_port(struct clock *c, struct port *p)
 	port_close(p);
 }
 
-struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
-			   enum timestamp_type timestamping, struct default_ds *dds,
-			   enum servo_type servo)
+struct clock *clock_create(struct config *config, int phc_index,
+			   struct interfaces_head *ifaces,
+			   enum timestamp_type timestamping,
+			   struct default_ds *dds, enum servo_type servo)
 {
 	int fadj = 0, max_adj = 0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
@@ -814,6 +816,7 @@ struct clock *clock_create(int phc_index, struct interfaces_head *ifaces,
 	udsif->transport = TRANS_UDS;
 	udsif->delay_filter_length = 1;
 
+	c->config = config;
 	c->free_running = dds->free_running;
 	c->freq_est_interval = dds->freq_est_interval;
 	c->grand_master_capable = dds->grand_master_capable;

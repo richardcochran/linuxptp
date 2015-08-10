@@ -377,7 +377,8 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	clock = clock_create(phc_index, &cfg_settings.interfaces,
+	clock = clock_create(&cfg_settings,
+			     phc_index, &cfg_settings.interfaces,
 			     *timestamping, &cfg_settings.dds,
 			     cfg_settings.clock_servo);
 	if (!clock) {
