@@ -58,6 +58,13 @@ struct port *clock_best_port(struct clock *c);
 UInteger8 clock_class(struct clock *c);
 
 /**
+ * Obtains a reference to the configuration database.
+ * @param c  The clock instance.
+ * @return   A pointer to the configuration, without fail.
+ */
+struct config *clock_config(struct clock *c);
+
+/**
  * Create a clock instance. There can only be one clock in any system,
  * so subsequent calls will destroy the previous clock instance.
  *

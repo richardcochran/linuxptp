@@ -755,6 +755,11 @@ UInteger8 clock_class(struct clock *c)
 	return c->dds.clockQuality.clockClass;
 }
 
+struct config *clock_config(struct clock *c)
+{
+	return c->config;
+}
+
 static int clock_add_port(struct clock *c, int phc_index,
 			  enum timestamp_type timestamping,
 			  struct interface *iface)
