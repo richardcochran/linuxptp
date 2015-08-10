@@ -42,6 +42,7 @@
 #define P41 ((double)(1ULL << 41))
 
 static struct pmc *pmc;
+static struct config pmc_config;
 
 static void do_get_action(int action, int index, char *str);
 static void do_set_action(int action, int index, char *str);
@@ -816,7 +817,7 @@ int main(int argc, char *argv[])
 	print_set_syslog(1);
 	print_set_verbose(1);
 
-	pmc = pmc_create(transport_type, iface_name, boundary_hops,
+	pmc = pmc_create(&pmc_config, transport_type, iface_name, boundary_hops,
 			 domain_number, transport_specific, zero_datalen);
 	if (!pmc) {
 		fprintf(stderr, "failed to create pmc\n");
