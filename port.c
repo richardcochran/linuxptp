@@ -2495,6 +2495,7 @@ struct port *port_open(int phc_index,
 		       struct interface *interface,
 		       struct clock *clock)
 {
+	struct config *cfg = clock_config(clock);
 	struct port *p = malloc(sizeof(*p));
 
 	if (!p)
@@ -2524,7 +2525,7 @@ struct port *port_open(int phc_index,
 	p->pod = interface->pod;
 	p->name = interface->name;
 	p->clock = clock;
-	p->trp = transport_create(interface->transport);
+	p->trp = transport_create(cfg, interface->transport);
 	if (!p->trp)
 		goto err_port;
 	p->timestamping = timestamping;

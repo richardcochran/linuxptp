@@ -87,7 +87,8 @@ enum transport_type transport_type(struct transport *t)
 	return t->type;
 }
 
-struct transport *transport_create(enum transport_type type)
+struct transport *transport_create(struct config *cfg,
+				   enum transport_type type)
 {
 	struct transport *t = NULL;
 	switch (type) {
@@ -108,8 +109,10 @@ struct transport *transport_create(enum transport_type type)
 	case TRANS_PROFINET:
 		break;
 	}
-	if (t)
+	if (t) {
 		t->type = type;
+		t->cfg = cfg;
+	}
 	return t;
 }
 

@@ -26,6 +26,8 @@
 #include "fd.h"
 #include "msg.h"
 
+struct config;
+
 /* Values from networkProtocol enumeration 7.4.1 Table 3 */
 enum transport_type {
 	/* 0 is Reserved in spec. Use it for UDS */
@@ -123,10 +125,12 @@ int transport_protocol_addr(struct transport *t, uint8_t *addr);
 
 /**
  * Allocate an instance of the specified transport.
+ * @param config Pointer to the configuration database.
  * @param type  Which transport to obtain.
  * @return      Pointer to a transport instance on success, NULL otherwise.
  */
-struct transport *transport_create(enum transport_type type);
+struct transport *transport_create(struct config *cfg,
+				   enum transport_type type);
 
 /**
  * Free an instance of a transport.
