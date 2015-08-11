@@ -30,7 +30,8 @@ double servo_step_threshold = 0.0;
 double servo_first_step_threshold = 0.00002; /* 20 microseconds */
 int servo_max_frequency = 900000000;
 
-struct servo *servo_create(enum servo_type type, int fadj, int max_ppb, int sw_ts)
+struct servo *servo_create(struct config *cfg, enum servo_type type,
+			   int fadj, int max_ppb, int sw_ts)
 {
 	struct servo *servo;
 

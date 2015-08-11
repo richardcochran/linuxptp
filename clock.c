@@ -866,7 +866,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 		   the actual frequency of the clock. */
 		clockadj_set_freq(c->clkid, fadj);
 	}
-	c->servo = servo_create(servo, -fadj, max_adj, sw_ts);
+	c->servo = servo_create(c->config, servo, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
 		return NULL;
@@ -1356,7 +1356,7 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	}
 	fadj = (int) clockadj_get_freq(clkid);
 	clockadj_set_freq(clkid, fadj);
-	servo = servo_create(c->servo_type, -fadj, max_adj, 0);
+	servo = servo_create(c->config, c->servo_type, -fadj, max_adj, 0);
 	if (!servo) {
 		pr_err("Switching PHC, failed to create clock servo");
 		phc_close(clkid);

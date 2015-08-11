@@ -224,7 +224,8 @@ static struct clock *clock_add(struct node *node, char *device)
 		}
 	}
 
-	c->servo = servo_create(node->servo_type, -ppb, max_ppb, 0);
+	c->servo = servo_create(&phc2sys_config, node->servo_type,
+				-ppb, max_ppb, 0);
 	servo_sync_interval(c->servo, node->phc_interval);
 
 	if (clkid != CLOCK_REALTIME)

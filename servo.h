@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 
+struct config;
+
 /**
  * When set to a non-zero value, this variable controls the maximum allowed
  * offset before a clock jump occurs instead of the default clock-slewing
@@ -92,7 +94,8 @@ enum servo_state {
  *                and the servo should use more aggressive filtering.
  * @return A pointer to a new servo on success, NULL otherwise.
  */
-struct servo *servo_create(enum servo_type type, int fadj, int max_ppb, int sw_ts);
+struct servo *servo_create(struct config *cfg, enum servo_type type,
+			   int fadj, int max_ppb, int sw_ts);
 
 /**
  * Destroy an instance of a clock servo.
