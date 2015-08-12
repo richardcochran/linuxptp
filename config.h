@@ -70,7 +70,6 @@ struct config {
 
 	struct default_ds dds;
 	struct port_defaults pod;
-	int *assume_two_step;
 	int *tx_timestamp_timeout;
 	int *check_fup_sync;
 

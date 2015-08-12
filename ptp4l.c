@@ -102,7 +102,6 @@ static struct config cfg_settings = {
 	.dm = DM_E2E,
 	.transport = TRANS_UDP_IPV4,
 
-	.assume_two_step = &assume_two_step,
 	.tx_timestamp_timeout = &sk_tx_timeout,
 	.check_fup_sync = &sk_check_fupsync,
 
@@ -176,6 +175,7 @@ int main(int argc, char *argv[])
 	enum transport_type *transport = &cfg_settings.transport;
 	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
+	struct config *cfg = &cfg_settings;
 	struct defaultDS *ds = &cfg_settings.dds.dds;
 	int phc_index = -1, required_modes = 0;
 
@@ -279,6 +279,9 @@ int main(int argc, char *argv[])
 	if (config && (c = config_read(config, &cfg_settings))) {
 		return c;
 	}
+
+	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
+
 	if (!cfg_settings.dds.grand_master_capable &&
 	    ds->flags & DDS_SLAVE_ONLY) {
 		fprintf(stderr,

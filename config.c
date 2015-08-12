@@ -77,6 +77,7 @@ struct config_item {
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
 
 struct config_item config_tab[] = {
+	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 };
 
@@ -517,12 +518,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		cfg->dds.freq_est_interval = val;
 		pod->freq_est_interval = val;
-
-	} else if (!strcmp(option, "assume_two_step")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		*cfg->assume_two_step = val;
 
 	} else if (!strcmp(option, "tx_timestamp_timeout")) {
 		r = get_ranged_int(value, &val, 1, INT_MAX);
