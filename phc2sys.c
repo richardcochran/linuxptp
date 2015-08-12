@@ -1236,6 +1236,10 @@ int main(int argc, char *argv[])
 
 	handle_term_signals();
 
+	if (config_init(&phc2sys_config)) {
+		return -1;
+	}
+
 	configured_pi_kp = KP;
 	configured_pi_ki = KI;
 

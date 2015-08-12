@@ -739,10 +739,15 @@ int main(int argc, char *argv[])
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
+	struct config *cfg = &pmc_config;
 #define N_FD 2
 	struct pollfd pollfd[N_FD];
 
 	handle_term_signals();
+
+	if (config_init(&pmc_config)) {
+		return -1;
+	}
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
@@ -774,6 +779,7 @@ int main(int argc, char *argv[])
 			if (strlen(optarg) > MAX_IFNAME_SIZE) {
 				fprintf(stderr, "path %s too long, max is %d\n",
 					optarg, MAX_IFNAME_SIZE);
+				config_destroy(cfg);
 				return -1;
 			}
 			strncpy(uds_path, optarg, MAX_IFNAME_SIZE);
@@ -784,18 +790,19 @@ int main(int argc, char *argv[])
 			break;
 		case 'v':
 			version_show(stdout);
+			config_destroy(cfg);
 			return 0;
 		case 'z':
 			zero_datalen = 1;
 			break;
 		case 'h':
 			usage(progname);
+			config_destroy(cfg);
 			return 0;
 		case '?':
-			usage(progname);
-			return -1;
 		default:
 			usage(progname);
+			config_destroy(cfg);
 			return -1;
 		}
 	}
@@ -821,6 +828,7 @@ int main(int argc, char *argv[])
 			 domain_number, transport_specific, zero_datalen);
 	if (!pmc) {
 		fprintf(stderr, "failed to create pmc\n");
+		config_destroy(cfg);
 		return -1;
 	}
 
@@ -896,5 +904,6 @@ int main(int argc, char *argv[])
 
 	pmc_destroy(pmc);
 	msg_cleanup();
+	config_destroy(cfg);
 	return ret;
 }

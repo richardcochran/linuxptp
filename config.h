@@ -105,4 +105,14 @@ struct interface *config_create_interface(char *name, struct config *cfg);
 void config_init_interface(struct interface *iface, struct config *cfg);
 void config_destroy(struct config *cfg);
 
+/* New, hash table based methods: */
+
+int config_init(struct config *cfg);
+
+double config_get_double(struct config *cfg, const char *section,
+			 const char *option);
+
+int config_get_int(struct config *cfg, const char *section,
+		   const char *option);
+
 #endif

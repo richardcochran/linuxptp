@@ -182,6 +182,10 @@ int main(int argc, char *argv[])
 	if (handle_term_signals())
 		return -1;
 
+	if (config_init(&cfg_settings)) {
+		return -1;
+	}
+
 	/* Set fault timeouts to a default value */
 	for (i = 0; i < FT_CNT; i++) {
 		cfg_settings.pod.flt_interval_pertype[i].type = FTMO_LOG2_SECONDS;

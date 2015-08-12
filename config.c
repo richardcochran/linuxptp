@@ -34,6 +34,116 @@ enum config_section {
 	UNKNOWN_SECTION,
 };
 
+enum config_type {
+	CFG_TYPE_INT,
+	CFG_TYPE_DOUBLE,
+};
+
+typedef union {
+	int i;
+	double d;
+} any_t;
+
+#define CONFIG_LABEL_SIZE 32
+
+#define CFG_ITEM_STATIC (1 << 0) /* statically allocated, not to be freed */
+#define CFG_ITEM_LOCKED (1 << 1) /* command line value, may not be changed */
+#define CFG_ITEM_PORT   (1 << 2) /* item may appear in port sections */
+
+struct config_item {
+	char label[CONFIG_LABEL_SIZE];
+	enum config_type type;
+	unsigned int flags;
+	any_t val;
+	any_t min;
+	any_t max;
+};
+
+#define N_CONFIG_ITEMS (sizeof(config_tab) / sizeof(config_tab[0]))
+
+#define CONFIG_ITEM_INT(_label, _port, _default, _min, _max) {	\
+	.label	= _label,				\
+	.type	= CFG_TYPE_INT,				\
+	.flags	= _port ? CFG_ITEM_PORT : 0,		\
+	.val.i	= _default,				\
+	.min.i	= _min,					\
+	.max.i	= _max,					\
+}
+
+#define GLOB_ITEM_INT(label, _default, min, max) \
+	CONFIG_ITEM_INT(label, 0, _default, min, max)
+
+#define PORT_ITEM_INT(label, _default, min, max) \
+	CONFIG_ITEM_INT(label, 1, _default, min, max)
+
+struct config_item config_tab[] = {
+	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
+};
+
+static struct config_item *config_section_item(struct config *cfg,
+					       const char *section,
+					       const char *name)
+{
+	char buf[CONFIG_LABEL_SIZE + MAX_IFNAME_SIZE];
+
+	snprintf(buf, sizeof(buf), "%s.%s", section, name);
+	return hash_lookup(cfg->htab, buf);
+}
+
+static struct config_item *config_global_item(struct config *cfg,
+					      const char *name)
+{
+	return config_section_item(cfg, "global", name);
+}
+
+static struct config_item *config_find_item(struct config *cfg,
+					    const char *section,
+					    const char *name)
+{
+	struct config_item *ci;
+	if (section) {
+		ci = config_section_item(cfg, section, name);
+		if (ci) {
+			return ci;
+		}
+	}
+	return config_global_item(cfg, name);
+}
+
+static struct config_item *config_item_alloc(struct config *cfg,
+					     const char *section,
+					     const char *name,
+					     enum config_type type)
+{
+	struct config_item *ci;
+	char buf[CONFIG_LABEL_SIZE + MAX_IFNAME_SIZE];
+
+	ci = calloc(1, sizeof(*ci));
+	if (!ci) {
+		fprintf(stderr, "low memory\n");
+		return NULL;
+	}
+	strncpy(ci->label, name, CONFIG_LABEL_SIZE - 1);
+	ci->type = type;
+
+	snprintf(buf, sizeof(buf), "%s.%s", section, ci->label);
+	if (hash_insert(cfg->htab, buf, ci)) {
+		fprintf(stderr, "low memory or duplicate item %s\n", name);
+		free(ci);
+		return NULL;
+	}
+
+	return ci;
+}
+
+static void config_item_free(void *ptr)
+{
+	struct config_item *ci = ptr;
+	if (ci->flags & CFG_ITEM_STATIC)
+		return;
+	free(ci);
+}
+
 static enum parser_result parse_section_line(char *s, enum config_section *section)
 {
 	if (!strcasecmp(s, "[global]")) {
@@ -49,6 +159,65 @@ static enum parser_result parse_section_line(char *s, enum config_section *secti
 		}
 	} else
 		return NOT_PARSED;
+	return PARSED_OK;
+}
+
+static enum parser_result parse_item(struct config *cfg,
+				     const char *section,
+				     const char *option,
+				     const char *value)
+{
+	struct config_item *cgi, *dst;
+	enum parser_result r = BAD_VALUE;
+	double df;
+	int val;
+
+	/* If there is no default value, then the option is bogus. */
+	cgi = config_global_item(cfg, option);
+	if (!cgi) {
+		return NOT_PARSED;
+	}
+
+	switch (cgi->type) {
+	case CFG_TYPE_INT:
+		r = get_ranged_int(value, &val, cgi->min.i, cgi->max.i);
+		break;
+	case CFG_TYPE_DOUBLE:
+		r = get_ranged_double(value, &df, cgi->min.d, cgi->max.d);
+		break;
+	}
+	if (r != PARSED_OK) {
+		return r;
+	}
+
+	if (section) {
+		if (!(cgi->flags & CFG_ITEM_PORT)) {
+			return NOT_PARSED;
+		}
+		/* Create or update this port specific item. */
+		dst = config_section_item(cfg, section, option);
+		if (!dst) {
+			dst = config_item_alloc(cfg, section, option, cgi->type);
+			if (!dst) {
+				return NOT_PARSED;
+			}
+		}
+	} else if (cgi->flags & CFG_ITEM_LOCKED) {
+		/* This global option was set on the command line. */
+		return PARSED_OK;
+	} else {
+		/* Update the global default value. */
+		dst = cgi;
+	}
+
+	switch (dst->type) {
+	case CFG_TYPE_INT:
+		dst->val.i = val;
+		break;
+	case CFG_TYPE_DOUBLE:
+		dst->val.d = df;
+		break;
+	}
 	return PARSED_OK;
 }
 
@@ -173,9 +342,10 @@ static enum parser_result parse_pod_setting(const char *option,
 	return PARSED_OK;
 }
 
-static enum parser_result parse_port_setting(const char *option,
-					    const char *value,
-					    struct interface *iface)
+static enum parser_result parse_port_setting(struct config *cfg,
+					     const char *option,
+					     const char *value,
+					     struct interface *iface)
 {
 	enum parser_result r;
 	int val;
@@ -237,7 +407,7 @@ static enum parser_result parse_port_setting(const char *option,
 		iface->boundary_clock_jbod = val;
 
 	} else
-		return NOT_PARSED;
+		return parse_item(cfg, iface->name, option, value);
 
 	return PARSED_OK;
 }
@@ -614,7 +784,7 @@ static enum parser_result parse_global_setting(const char *option,
 		cfg->dds.boundary_clock_jbod = val;
 
 	} else
-		return NOT_PARSED;
+		return parse_item(cfg, NULL, option, value);
 
 	return PARSED_OK;
 }
@@ -727,7 +897,7 @@ int config_read(char *name, struct config *cfg)
 			if (current_section == GLOBAL_SECTION)
 				parser_res = parse_global_setting(option, value, cfg);
 			else
-				parser_res = parse_port_setting(option, value, current_port);
+				parser_res = parse_port_setting(cfg, option, value, current_port);
 
 			switch (parser_res) {
 			case PARSED_OK:
@@ -806,11 +976,40 @@ void config_init_interface(struct interface *iface, struct config *cfg)
 
 int config_init(struct config *cfg)
 {
+	char buf[CONFIG_LABEL_SIZE + 8];
+	struct config_item *ci;
+	int i;
+
 	cfg->htab = hash_create();
 	if (!cfg->htab) {
 		return -1;
 	}
+
+	/* Populate the hash table with global defaults. */
+	for (i = 0; i < N_CONFIG_ITEMS; i++) {
+		ci = &config_tab[i];
+		ci->flags |= CFG_ITEM_STATIC;
+		snprintf(buf, sizeof(buf), "global.%s", ci->label);
+		if (hash_insert(cfg->htab, buf, ci)) {
+			fprintf(stderr, "duplicate item %s\n", ci->label);
+			goto fail;
+		}
+	}
+
+	/* Perform a Built In Self Test.*/
+	for (i = 0; i < N_CONFIG_ITEMS; i++) {
+		ci = &config_tab[i];
+		ci = config_global_item(cfg, ci->label);
+		if (ci != &config_tab[i]) {
+			fprintf(stderr, "config BIST failed at %s\n",
+				config_tab[i].label);
+			goto fail;
+		}
+	}
 	return 0;
+fail:
+	hash_destroy(cfg->htab, NULL);
+	return -1;
 }
 
 void config_destroy(struct config *cfg)
@@ -821,5 +1020,37 @@ void config_destroy(struct config *cfg)
 		STAILQ_REMOVE_HEAD(&cfg->interfaces, list);
 		free(iface);
 	}
-	hash_destroy(cfg->htab, free);
+	hash_destroy(cfg->htab, config_item_free);
+}
+
+double config_get_double(struct config *cfg, const char *section,
+			 const char *option)
+{
+	struct config_item *ci = config_find_item(cfg, section, option);
+
+	if (!ci || ci->type != CFG_TYPE_DOUBLE) {
+		pr_err("bug: config option %s missing or invalid!", option);
+		exit(-1);
+	}
+	pr_debug("config item %s.%s is %f", section, option, ci->val.d);
+	return ci->val.d;
+}
+
+int config_get_int(struct config *cfg, const char *section, const char *option)
+{
+	struct config_item *ci = config_find_item(cfg, section, option);
+
+	if (!ci) {
+		pr_err("bug: config option %s missing!", option);
+		exit(-1);
+	}
+	switch (ci->type) {
+	case CFG_TYPE_DOUBLE:
+		pr_err("bug: config option %s type mismatch!", option);
+		exit(-1);
+	case CFG_TYPE_INT:
+		break;
+	}
+	pr_debug("config item %s.%s is %d", section, option, ci->val.i);
+	return ci->val.i;
 }
