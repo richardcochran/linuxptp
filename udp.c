@@ -30,6 +30,7 @@
 #include <unistd.h>
 
 #include "address.h"
+#include "config.h"
 #include "contain.h"
 #include "print.h"
 #include "sk.h"
@@ -92,7 +93,8 @@ static int udp_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int open_socket(const char *name, struct in_addr mc_addr[2], short port)
+static int open_socket(const char *name, struct in_addr mc_addr[2], short port,
+		       int ttl)
 {
 	struct sockaddr_in addr;
 	int fd, index, on = 1;
@@ -123,6 +125,10 @@ static int open_socket(const char *name, struct in_addr mc_addr[2], short port)
 		pr_err("setsockopt SO_BINDTODEVICE failed: %m");
 		goto no_option;
 	}
+	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl))) {
+		pr_err("setsockopt IP_MULTICAST_TTL failed: %m");
+		goto no_option;
+	}
 	addr.sin_addr = mc_addr[0];
 	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
 		pr_err("mcast_join failed");
@@ -151,8 +157,9 @@ static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
 	struct udp *udp = container_of(t, struct udp, t);
-	int efd, gfd;
+	int efd, gfd, ttl;
 
+	ttl = config_get_int(t->cfg, name, "udp_ttl");
 	udp->mac.len = 0;
 	sk_interface_macaddr(name, &udp->mac);
 
@@ -165,11 +172,11 @@ static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
 	if (!inet_aton(PTP_PDELAY_MCAST_IPADDR, &mcast_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket(name, mcast_addr, EVENT_PORT);
+	efd = open_socket(name, mcast_addr, EVENT_PORT, ttl);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, mcast_addr, GENERAL_PORT);
+	gfd = open_socket(name, mcast_addr, GENERAL_PORT, ttl);
 	if (gfd < 0)
 		goto no_general;
 
