@@ -103,7 +103,6 @@ static struct config cfg_settings = {
 	.transport = TRANS_UDP_IPV4,
 	.clock_servo = CLOCK_SERVO_PI,
 
-	.step_threshold = &servo_step_threshold,
 	.first_step_threshold = &servo_first_step_threshold,
 	.max_frequency = &servo_max_frequency,
 

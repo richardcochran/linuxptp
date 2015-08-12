@@ -72,7 +72,6 @@ struct config {
 	struct port_defaults pod;
 	enum servo_type clock_servo;
 
-	double *step_threshold;
 	double *first_step_threshold;
 	int *max_frequency;
 

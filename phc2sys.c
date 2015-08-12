@@ -1222,11 +1222,12 @@ int main(int argc, char *argv[])
 	char *progname;
 	char *src_name = NULL, *dst_name = NULL;
 	struct clock *src, *dst;
+	struct config *cfg;
 	int autocfg = 0, rt = 0;
 	int c, domain_number = 0, pps_fd = -1;
 	int r, wait_sync = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
-	double phc_rate;
+	double phc_rate, tmp;
 	struct node node = {
 		.sanity_freq_limit = 200000000,
 		.servo_type = CLOCK_SERVO_PI,
@@ -1240,6 +1241,7 @@ int main(int argc, char *argv[])
 	if (config_init(&phc2sys_config)) {
 		return -1;
 	}
+	cfg = &phc2sys_config;
 
 	configured_pi_kp = KP;
 	configured_pi_ki = KI;
@@ -1297,8 +1299,9 @@ int main(int argc, char *argv[])
 				return -1;
 			break;
 		case 'S':
-			if (get_arg_val_d(c, optarg, &servo_step_threshold,
-					  0.0, DBL_MAX))
+			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX))
+				return -1;
+			if (config_set_double(cfg, "step_threshold", tmp))
 				return -1;
 			break;
 		case 'F':

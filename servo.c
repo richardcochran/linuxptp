@@ -18,6 +18,7 @@
  */
 #include <string.h>
 
+#include "config.h"
 #include "linreg.h"
 #include "ntpshm.h"
 #include "nullf.h"
@@ -26,13 +27,13 @@
 
 #define NSEC_PER_SEC 1000000000
 
-double servo_step_threshold = 0.0;
 double servo_first_step_threshold = 0.00002; /* 20 microseconds */
 int servo_max_frequency = 900000000;
 
 struct servo *servo_create(struct config *cfg, enum servo_type type,
 			   int fadj, int max_ppb, int sw_ts)
 {
+	double servo_step_threshold;
 	struct servo *servo;
 
 	switch (type) {
@@ -52,6 +53,7 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 		return NULL;
 	}
 
+	servo_step_threshold = config_get_double(cfg, NULL, "step_threshold");
 	if (servo_step_threshold > 0.0) {
 		servo->step_threshold = servo_step_threshold * NSEC_PER_SEC;
 	} else {
