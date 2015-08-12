@@ -102,7 +102,6 @@ static struct config cfg_settings = {
 	.dm = DM_E2E,
 	.transport = TRANS_UDP_IPV4,
 
-	.tx_timestamp_timeout = &sk_tx_timeout,
 	.check_fup_sync = &sk_check_fupsync,
 
 	.clock_servo = CLOCK_SERVO_PI,
@@ -281,6 +280,7 @@ int main(int argc, char *argv[])
 	}
 
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
+	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 
 	if (!cfg_settings.dds.grand_master_capable &&
 	    ds->flags & DDS_SLAVE_ONLY) {
