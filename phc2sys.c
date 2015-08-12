@@ -1305,8 +1305,9 @@ int main(int argc, char *argv[])
 				return -1;
 			break;
 		case 'F':
-			if (get_arg_val_d(c, optarg, &servo_first_step_threshold,
-					  0.0, DBL_MAX))
+			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX))
+				return -1;
+			if (config_set_double(cfg, "first_step_threshold", tmp))
 				return -1;
 			break;
 		case 'R':

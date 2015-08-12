@@ -27,12 +27,12 @@
 
 #define NSEC_PER_SEC 1000000000
 
-double servo_first_step_threshold = 0.00002; /* 20 microseconds */
 int servo_max_frequency = 900000000;
 
 struct servo *servo_create(struct config *cfg, enum servo_type type,
 			   int fadj, int max_ppb, int sw_ts)
 {
+	double servo_first_step_threshold;
 	double servo_step_threshold;
 	struct servo *servo;
 
@@ -59,6 +59,9 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 	} else {
 		servo->step_threshold = 0.0;
 	}
+
+	servo_first_step_threshold =
+		config_get_double(cfg, NULL, "first_step_threshold");
 
 	if (servo_first_step_threshold > 0.0) {
 		servo->first_step_threshold =
