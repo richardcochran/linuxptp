@@ -1039,3 +1039,53 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 	pr_debug("config item %s.%s is %d", section, option, ci->val.i);
 	return ci->val.i;
 }
+
+int config_set_double(struct config *cfg, const char *option, double val)
+{
+	struct config_item *ci = config_find_item(cfg, NULL, option);
+
+	if (!ci || ci->type != CFG_TYPE_DOUBLE) {
+		pr_err("bug: config option %s missing or invalid!", option);
+		return -1;
+	}
+	ci->flags |= CFG_ITEM_LOCKED;
+	ci->val.d = val;
+	pr_debug("locked item global.%s as %f", option, ci->val.d);
+	return 0;
+}
+
+int config_set_section_int(struct config *cfg, const char *section,
+			   const char *option, int val)
+{
+	struct config_item *cgi, *dst;
+
+	cgi = config_find_item(cfg, NULL, option);
+	if (!cgi) {
+		pr_err("bug: config option %s missing!", option);
+		return -1;
+	}
+	switch (cgi->type) {
+	case CFG_TYPE_DOUBLE:
+		pr_err("bug: config option %s type mismatch!", option);
+		return -1;
+	case CFG_TYPE_INT:
+		break;
+	}
+	if (!section) {
+		cgi->flags |= CFG_ITEM_LOCKED;
+		cgi->val.i = val;
+		pr_debug("locked item global.%s as %d", option, cgi->val.i);
+		return 0;
+	}
+	/* Create or update this port specific item. */
+	dst = config_section_item(cfg, section, option);
+	if (!dst) {
+		dst = config_item_alloc(cfg, section, option, cgi->type);
+		if (!dst) {
+			return -1;
+		}
+	}
+	dst->val.i = val;
+	pr_debug("section item %s.%s now %d", section, option, dst->val.i);
+	return 0;
+}

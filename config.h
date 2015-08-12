@@ -111,4 +111,15 @@ double config_get_double(struct config *cfg, const char *section,
 int config_get_int(struct config *cfg, const char *section,
 		   const char *option);
 
+int config_set_double(struct config *cfg, const char *option, double val);
+
+int config_set_section_int(struct config *cfg, const char *section,
+			   const char *option, int val);
+
+static inline int config_set_int(struct config *cfg,
+				 const char *option, int val)
+{
+	return config_set_section_int(cfg, NULL, option, val);
+}
+
 #endif
