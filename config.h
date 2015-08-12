@@ -70,8 +70,6 @@ struct config {
 
 	struct default_ds dds;
 	struct port_defaults pod;
-	int *check_fup_sync;
-
 	enum servo_type clock_servo;
 
 	double *step_threshold;

@@ -101,9 +101,6 @@ static struct config cfg_settings = {
 	.timestamping = TS_HARDWARE,
 	.dm = DM_E2E,
 	.transport = TRANS_UDP_IPV4,
-
-	.check_fup_sync = &sk_check_fupsync,
-
 	.clock_servo = CLOCK_SERVO_PI,
 
 	.step_threshold = &servo_step_threshold,
@@ -280,6 +277,7 @@ int main(int argc, char *argv[])
 	}
 
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
+	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 
 	if (!cfg_settings.dds.grand_master_capable &&
