@@ -24,12 +24,6 @@
 
 struct config;
 
-/**
- * When set to a non-zero value, this variable sets an additional limit for
- * the frequency adjustment of the clock. It's in ppb.
- */
-extern int servo_max_frequency;
-
 /** Opaque type */
 struct servo;
 

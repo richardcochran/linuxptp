@@ -103,8 +103,6 @@ static struct config cfg_settings = {
 	.transport = TRANS_UDP_IPV4,
 	.clock_servo = CLOCK_SERVO_PI,
 
-	.max_frequency = &servo_max_frequency,
-
 	.pi_proportional_const = &configured_pi_kp,
 	.pi_integral_const = &configured_pi_ki,
 	.pi_proportional_scale = &configured_pi_kp_scale,

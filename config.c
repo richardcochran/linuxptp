@@ -94,6 +94,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
+	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
@@ -584,12 +585,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		*cfg->pi_integral_norm_max = df;
-
-	} else if (!strcmp(option, "max_frequency")) {
-		r = get_ranged_int(value, &val, 0, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		*cfg->max_frequency = val;
 
 	} else if (!strcmp(option, "sanity_freq_limit")) {
 		r = get_ranged_int(value, &val, 0, INT_MAX);
