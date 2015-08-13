@@ -36,7 +36,6 @@
 #define FREQ_EST_MARGIN 0.001
 
 /* These take their values from the configuration file. (see ptp4l.c) */
-double configured_pi_ki = 0.0;
 double configured_pi_kp_scale = 0.0;
 double configured_pi_kp_exponent = -0.3;
 double configured_pi_kp_norm_max = 0.7;
@@ -55,6 +54,7 @@ struct pi_servo {
 	int count;
 	/* configuration: */
 	double configured_pi_kp;
+	double configured_pi_ki;
 };
 
 static void pi_destroy(struct servo *servo)
@@ -196,13 +196,14 @@ struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
 	s->kp            = 0.0;
 	s->ki            = 0.0;
 	s->configured_pi_kp = config_get_double(cfg, NULL, "pi_proportional_const");
+	s->configured_pi_ki = config_get_double(cfg, NULL, "pi_integral_const");
 
-	if (s->configured_pi_kp && configured_pi_ki) {
+	if (s->configured_pi_kp && s->configured_pi_ki) {
 		/* Use the constants as configured by the user without
 		   adjusting for sync interval unless they make the servo
 		   unstable. */
 		configured_pi_kp_scale = s->configured_pi_kp;
-		configured_pi_ki_scale = configured_pi_ki;
+		configured_pi_ki_scale = s->configured_pi_ki;
 		configured_pi_kp_exponent = 0.0;
 		configured_pi_ki_exponent = 0.0;
 		configured_pi_kp_norm_max = MAX_KP_NORM_MAX;

@@ -22,12 +22,6 @@
 #include "servo.h"
 
 /**
- * When set to a non-zero value, this variable determines the
- * integral constant for the PI controller.
- */
-extern double configured_pi_ki;
-
-/**
  * When set to a non-zero value, this variable determines the scale in the
  * formula used to set the proportional constant of the PI controller from the
  * sync interval.
