@@ -23,12 +23,6 @@
 
 /**
  * When set to a non-zero value, this variable determines the
- * proportional constant for the PI controller.
- */
-extern double configured_pi_kp;
-
-/**
- * When set to a non-zero value, this variable determines the
  * integral constant for the PI controller.
  */
 extern double configured_pi_ki;
@@ -77,6 +71,6 @@ extern double configured_pi_ki_exponent;
  */
 extern double configured_pi_ki_norm_max;
 
-struct servo *pi_servo_create(int fadj, int sw_ts);
+struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts);
 
 #endif

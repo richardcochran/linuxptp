@@ -1243,7 +1243,7 @@ int main(int argc, char *argv[])
 	}
 	cfg = &phc2sys_config;
 
-	configured_pi_kp = KP;
+	config_set_double(cfg, "pi_proportional_const", KP);
 	configured_pi_ki = KI;
 
 	/* Process the command line arguments. */
@@ -1289,8 +1289,9 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'P':
-			if (get_arg_val_d(c, optarg, &configured_pi_kp,
-					  0.0, DBL_MAX))
+			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX))
+				return -1;
+			if (config_set_double(cfg, "pi_proportional_const", tmp))
 				return -1;
 			break;
 		case 'I':
