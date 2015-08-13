@@ -118,8 +118,6 @@ static struct config cfg_settings = {
 	.udp6_scope = &udp6_scope,
 	.uds_address = uds_path,
 
-	.verbose = 0,
-
 	.cfg_ignore = 0,
 };
 
@@ -244,8 +242,7 @@ int main(int argc, char *argv[])
 			config_set_int(cfg, "logging_level", print_level);
 			break;
 		case 'm':
-			cfg_settings.verbose = 1;
-			*cfg_ignore |= CFG_IGNORE_VERBOSE;
+			config_set_int(cfg, "verbose", 1);
 			break;
 		case 'q':
 			config_set_int(cfg, "use_syslog", 0);
@@ -289,7 +286,7 @@ int main(int argc, char *argv[])
 	}
 
 	print_set_progname(progname);
-	print_set_verbose(cfg_settings.verbose);
+	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 

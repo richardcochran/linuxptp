@@ -49,7 +49,6 @@ struct interface {
 #define CFG_IGNORE_TRANSPORT    (1 << 1)
 #define CFG_IGNORE_TIMESTAMPING (1 << 2)
 #define CFG_IGNORE_SLAVEONLY    (1 << 3)
-#define CFG_IGNORE_VERBOSE      (1 << 6)
 
 struct config {
 	/* configuration override */
@@ -84,8 +83,6 @@ struct config {
 	unsigned char *p2p_dst_mac;
 	unsigned char *udp6_scope;
 	char *uds_address;
-
-	int verbose;
 };
 
 int config_read(char *name, struct config *cfg);
