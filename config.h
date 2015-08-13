@@ -69,7 +69,6 @@ struct config {
 	struct port_defaults pod;
 	enum servo_type clock_servo;
 
-	double *pi_proportional_scale;
 	double *pi_proportional_exponent;
 	double *pi_proportional_norm_max;
 	double *pi_integral_scale;

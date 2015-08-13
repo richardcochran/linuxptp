@@ -36,7 +36,6 @@
 #define FREQ_EST_MARGIN 0.001
 
 /* These take their values from the configuration file. (see ptp4l.c) */
-double configured_pi_kp_scale = 0.0;
 double configured_pi_kp_exponent = -0.3;
 double configured_pi_kp_norm_max = 0.7;
 double configured_pi_ki_scale = 0.0;
@@ -55,6 +54,7 @@ struct pi_servo {
 	/* configuration: */
 	double configured_pi_kp;
 	double configured_pi_ki;
+	double configured_pi_kp_scale;
 };
 
 static void pi_destroy(struct servo *servo)
@@ -160,7 +160,7 @@ static void pi_sync_interval(struct servo *servo, double interval)
 {
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
 
-	s->kp = configured_pi_kp_scale * pow(interval, configured_pi_kp_exponent);
+	s->kp = s->configured_pi_kp_scale * pow(interval, configured_pi_kp_exponent);
 	if (s->kp > configured_pi_kp_norm_max / interval)
 		s->kp = configured_pi_kp_norm_max / interval;
 
@@ -197,23 +197,24 @@ struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
 	s->ki            = 0.0;
 	s->configured_pi_kp = config_get_double(cfg, NULL, "pi_proportional_const");
 	s->configured_pi_ki = config_get_double(cfg, NULL, "pi_integral_const");
+	s->configured_pi_kp_scale = config_get_double(cfg, NULL, "pi_proportional_scale");
 
 	if (s->configured_pi_kp && s->configured_pi_ki) {
 		/* Use the constants as configured by the user without
 		   adjusting for sync interval unless they make the servo
 		   unstable. */
-		configured_pi_kp_scale = s->configured_pi_kp;
+		s->configured_pi_kp_scale = s->configured_pi_kp;
 		configured_pi_ki_scale = s->configured_pi_ki;
 		configured_pi_kp_exponent = 0.0;
 		configured_pi_ki_exponent = 0.0;
 		configured_pi_kp_norm_max = MAX_KP_NORM_MAX;
 		configured_pi_ki_norm_max = MAX_KI_NORM_MAX;
-	} else if (!configured_pi_kp_scale || !configured_pi_ki_scale) {
+	} else if (!s->configured_pi_kp_scale || !configured_pi_ki_scale) {
 		if (sw_ts) {
-			configured_pi_kp_scale = SWTS_KP_SCALE;
+			s->configured_pi_kp_scale = SWTS_KP_SCALE;
 			configured_pi_ki_scale = SWTS_KI_SCALE;
 		} else {
-			configured_pi_kp_scale = HWTS_KP_SCALE;
+			s->configured_pi_kp_scale = HWTS_KP_SCALE;
 			configured_pi_ki_scale = HWTS_KI_SCALE;
 		}
 	}

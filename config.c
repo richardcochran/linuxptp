@@ -98,6 +98,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_proportional_const", 0.0, 0.0, DBL_MAX),
+	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
@@ -542,12 +543,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		cfg->dds.freq_est_interval = val;
 		pod->freq_est_interval = val;
-
-	} else if (!strcmp(option, "pi_proportional_scale")) {
-		r = get_ranged_double(value, &df, 0.0, DBL_MAX);
-		if (r != PARSED_OK)
-			return r;
-		*cfg->pi_proportional_scale = df;
 
 	} else if (!strcmp(option, "pi_proportional_exponent")) {
 		r = get_ranged_double(value, &df, -DBL_MAX, DBL_MAX);
