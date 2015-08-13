@@ -118,7 +118,6 @@ static struct config cfg_settings = {
 	.udp6_scope = &udp6_scope,
 	.uds_address = uds_path,
 
-	.print_level = LOG_INFO,
 	.use_syslog = 1,
 	.verbose = 0,
 
@@ -169,7 +168,7 @@ int main(int argc, char *argv[])
 	struct clock *clock;
 	struct config *cfg = &cfg_settings;
 	struct defaultDS *ds = &cfg_settings.dds.dds;
-	int phc_index = -1, required_modes = 0;
+	int phc_index = -1, print_level, required_modes = 0;
 
 	if (handle_term_signals())
 		return -1;
@@ -240,10 +239,10 @@ int main(int argc, char *argv[])
 			*cfg_ignore |= CFG_IGNORE_SLAVEONLY;
 			break;
 		case 'l':
-			if (get_arg_val_i(c, optarg, &cfg_settings.print_level,
+			if (get_arg_val_i(c, optarg, &print_level,
 					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
 				return -1;
-			*cfg_ignore |= CFG_IGNORE_PRINT_LEVEL;
+			config_set_int(cfg, "logging_level", print_level);
 			break;
 		case 'm':
 			cfg_settings.verbose = 1;
@@ -294,7 +293,7 @@ int main(int argc, char *argv[])
 	print_set_progname(progname);
 	print_set_verbose(cfg_settings.verbose);
 	print_set_syslog(cfg_settings.use_syslog);
-	print_set_level(cfg_settings.print_level);
+	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	if (STAILQ_EMPTY(&cfg_settings.interfaces)) {
 		fprintf(stderr, "no interface specified\n");

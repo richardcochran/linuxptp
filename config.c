@@ -94,6 +94,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
+	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
@@ -622,15 +623,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (strlen(value) > MAX_IFNAME_SIZE)
 			return OUT_OF_RANGE;
 		strncpy(cfg->uds_address, value, MAX_IFNAME_SIZE);
-
-	} else if (!strcmp(option, "logging_level")) {
-		r = get_ranged_int(value, &val,
-				   PRINT_LEVEL_MIN, PRINT_LEVEL_MAX);
-		if (r != PARSED_OK)
-			return r;
-		if (!(cfg_ignore & CFG_IGNORE_PRINT_LEVEL)) {
-			cfg->print_level = val;
-		}
 
 	} else if (!strcmp(option, "verbose")) {
 		r = get_ranged_int(value, &val, 0, 1);
