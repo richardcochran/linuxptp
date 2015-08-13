@@ -49,7 +49,6 @@ struct interface {
 #define CFG_IGNORE_TRANSPORT    (1 << 1)
 #define CFG_IGNORE_TIMESTAMPING (1 << 2)
 #define CFG_IGNORE_SLAVEONLY    (1 << 3)
-#define CFG_IGNORE_USE_SYSLOG   (1 << 5)
 #define CFG_IGNORE_VERBOSE      (1 << 6)
 
 struct config {
@@ -86,7 +85,6 @@ struct config {
 	unsigned char *udp6_scope;
 	char *uds_address;
 
-	int use_syslog;
 	int verbose;
 };
 

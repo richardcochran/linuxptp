@@ -99,6 +99,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
+	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
 };
 
 static struct config_item *config_section_item(struct config *cfg,
@@ -630,13 +631,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		if (!(cfg_ignore & CFG_IGNORE_VERBOSE))
 			cfg->verbose = val;
-
-	} else if (!strcmp(option, "use_syslog")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		if (!(cfg_ignore & CFG_IGNORE_USE_SYSLOG))
-			cfg->use_syslog = val;
 
 	} else if (!strcmp(option, "time_stamping")) {
 		if (!(cfg_ignore & CFG_IGNORE_TIMESTAMPING)) {

@@ -118,7 +118,6 @@ static struct config cfg_settings = {
 	.udp6_scope = &udp6_scope,
 	.uds_address = uds_path,
 
-	.use_syslog = 1,
 	.verbose = 0,
 
 	.cfg_ignore = 0,
@@ -249,8 +248,7 @@ int main(int argc, char *argv[])
 			*cfg_ignore |= CFG_IGNORE_VERBOSE;
 			break;
 		case 'q':
-			cfg_settings.use_syslog = 0;
-			*cfg_ignore |= CFG_IGNORE_USE_SYSLOG;
+			config_set_int(cfg, "use_syslog", 0);
 			break;
 		case 'v':
 			version_show(stdout);
@@ -292,7 +290,7 @@ int main(int argc, char *argv[])
 
 	print_set_progname(progname);
 	print_set_verbose(cfg_settings.verbose);
-	print_set_syslog(cfg_settings.use_syslog);
+	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	if (STAILQ_EMPTY(&cfg_settings.interfaces)) {
