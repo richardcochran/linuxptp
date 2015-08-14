@@ -97,6 +97,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
+	GLOB_ITEM_DBL("pi_integral_exponent", 0.4, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_scale", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_proportional_const", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_proportional_exponent", -0.3, -DBL_MAX, DBL_MAX),
@@ -546,12 +547,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return r;
 		cfg->dds.freq_est_interval = val;
 		pod->freq_est_interval = val;
-
-	} else if (!strcmp(option, "pi_integral_exponent")) {
-		r = get_ranged_double(value, &df, -DBL_MAX, DBL_MAX);
-		if (r != PARSED_OK)
-			return r;
-		*cfg->pi_integral_exponent = df;
 
 	} else if (!strcmp(option, "pi_integral_norm_max")) {
 		r = get_ranged_double(value, &df, DBL_MIN, 2.0);

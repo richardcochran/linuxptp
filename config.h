@@ -69,7 +69,6 @@ struct config {
 	struct port_defaults pod;
 	enum servo_type clock_servo;
 
-	double *pi_integral_exponent;
 	double *pi_integral_norm_max;
 	int *ntpshm_segment;
 

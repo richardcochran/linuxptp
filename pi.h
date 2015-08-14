@@ -22,13 +22,6 @@
 #include "servo.h"
 
 /**
- * This variable determines the exponent in the formula used to set the
- * integral constant of the PI controller from the sync interval.
- * ki = min(ki_scale * sync^ki_exponent, ki_norm_max / sync)
- */
-extern double configured_pi_ki_exponent;
-
-/**
  * This variable determines the normalized maximum in the formula used to set
  * the integral constant of the PI controller from the sync interval.
  * ki = min(ki_scale * sync^ki_exponent, ki_norm_max / sync)
