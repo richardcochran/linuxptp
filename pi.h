@@ -22,13 +22,6 @@
 #include "servo.h"
 
 /**
- * This variable determines the exponent in the formula used to set the
- * proportional constant of the PI controller from the sync interval.
- * kp = min(kp_scale * sync^kp_exponent, kp_norm_max / sync)
- */
-extern double configured_pi_kp_exponent;
-
-/**
  * This variable determines the normalized maximum in the formula used to set
  * the proportional constant of the PI controller from the sync interval.
  * kp = min(kp_scale * sync^kp_exponent, kp_norm_max / sync)
