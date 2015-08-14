@@ -36,7 +36,6 @@
 #define FREQ_EST_MARGIN 0.001
 
 /* These take their values from the configuration file. (see ptp4l.c) */
-double configured_pi_kp_norm_max = 0.7;
 double configured_pi_ki_scale = 0.0;
 double configured_pi_ki_exponent = 0.4;
 double configured_pi_ki_norm_max = 0.3;
@@ -55,6 +54,7 @@ struct pi_servo {
 	double configured_pi_ki;
 	double configured_pi_kp_scale;
 	double configured_pi_kp_exponent;
+	double configured_pi_kp_norm_max;
 };
 
 static void pi_destroy(struct servo *servo)
@@ -161,8 +161,8 @@ static void pi_sync_interval(struct servo *servo, double interval)
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
 
 	s->kp = s->configured_pi_kp_scale * pow(interval, s->configured_pi_kp_exponent);
-	if (s->kp > configured_pi_kp_norm_max / interval)
-		s->kp = configured_pi_kp_norm_max / interval;
+	if (s->kp > s->configured_pi_kp_norm_max / interval)
+		s->kp = s->configured_pi_kp_norm_max / interval;
 
 	s->ki = configured_pi_ki_scale * pow(interval, configured_pi_ki_exponent);
 	if (s->ki > configured_pi_ki_norm_max / interval)
@@ -200,6 +200,8 @@ struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
 	s->configured_pi_kp_scale = config_get_double(cfg, NULL, "pi_proportional_scale");
 	s->configured_pi_kp_exponent =
 		config_get_double(cfg, NULL, "pi_proportional_exponent");
+	s->configured_pi_kp_norm_max =
+		config_get_double(cfg, NULL, "pi_proportional_norm_max");
 
 	if (s->configured_pi_kp && s->configured_pi_ki) {
 		/* Use the constants as configured by the user without
@@ -209,7 +211,7 @@ struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
 		configured_pi_ki_scale = s->configured_pi_ki;
 		s->configured_pi_kp_exponent = 0.0;
 		configured_pi_ki_exponent = 0.0;
-		configured_pi_kp_norm_max = MAX_KP_NORM_MAX;
+		s->configured_pi_kp_norm_max = MAX_KP_NORM_MAX;
 		configured_pi_ki_norm_max = MAX_KI_NORM_MAX;
 	} else if (!s->configured_pi_kp_scale || !configured_pi_ki_scale) {
 		if (sw_ts) {
