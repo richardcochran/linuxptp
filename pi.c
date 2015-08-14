@@ -35,9 +35,6 @@
 
 #define FREQ_EST_MARGIN 0.001
 
-/* These take their values from the configuration file. (see ptp4l.c) */
-double configured_pi_ki_norm_max = 0.3;
-
 struct pi_servo {
 	struct servo servo;
 	int64_t offset[2];
@@ -55,6 +52,7 @@ struct pi_servo {
 	double configured_pi_kp_norm_max;
 	double configured_pi_ki_scale;
 	double configured_pi_ki_exponent;
+	double configured_pi_ki_norm_max;
 };
 
 static void pi_destroy(struct servo *servo)
@@ -165,8 +163,8 @@ static void pi_sync_interval(struct servo *servo, double interval)
 		s->kp = s->configured_pi_kp_norm_max / interval;
 
 	s->ki = s->configured_pi_ki_scale * pow(interval, s->configured_pi_ki_exponent);
-	if (s->ki > configured_pi_ki_norm_max / interval)
-		s->ki = configured_pi_ki_norm_max / interval;
+	if (s->ki > s->configured_pi_ki_norm_max / interval)
+		s->ki = s->configured_pi_ki_norm_max / interval;
 
 	pr_debug("PI servo: sync interval %.3f kp %.3f ki %.6f",
 		 interval, s->kp, s->ki);
@@ -206,6 +204,8 @@ struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
 		config_get_double(cfg, NULL, "pi_integral_scale");
 	s->configured_pi_ki_exponent =
 		config_get_double(cfg, NULL, "pi_integral_exponent");
+	s->configured_pi_ki_norm_max =
+		config_get_double(cfg, NULL, "pi_integral_norm_max");
 
 	if (s->configured_pi_kp && s->configured_pi_ki) {
 		/* Use the constants as configured by the user without
@@ -216,7 +216,7 @@ struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
 		s->configured_pi_kp_exponent = 0.0;
 		s->configured_pi_ki_exponent = 0.0;
 		s->configured_pi_kp_norm_max = MAX_KP_NORM_MAX;
-		configured_pi_ki_norm_max = MAX_KI_NORM_MAX;
+		s->configured_pi_ki_norm_max = MAX_KI_NORM_MAX;
 	} else if (!s->configured_pi_kp_scale || !s->configured_pi_ki_scale) {
 		if (sw_ts) {
 			s->configured_pi_kp_scale = SWTS_KP_SCALE;
