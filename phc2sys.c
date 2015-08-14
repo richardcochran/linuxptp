@@ -1227,6 +1227,7 @@ int main(int argc, char *argv[])
 	int c, domain_number = 0, pps_fd = -1;
 	int r, wait_sync = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
+	int ntpshm_segment;
 	double phc_rate, tmp;
 	struct node node = {
 		.sanity_freq_limit = 200000000,
@@ -1333,6 +1334,8 @@ int main(int argc, char *argv[])
 			break;
 		case 'M':
 			if (get_arg_val_i(c, optarg, &ntpshm_segment, INT_MIN, INT_MAX))
+				return -1;
+			if (config_set_int(cfg, "ntpshm_segment", ntpshm_segment))
 				return -1;
 			break;
 		case 'u':

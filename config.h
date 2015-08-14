@@ -69,8 +69,6 @@ struct config {
 	struct port_defaults pod;
 	enum servo_type clock_servo;
 
-	int *ntpshm_segment;
-
 	unsigned char *ptp_dst_mac;
 	unsigned char *p2p_dst_mac;
 	unsigned char *udp6_scope;

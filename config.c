@@ -96,6 +96,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
+	GLOB_ITEM_INT("ntpshm_segment", 0, INT_MIN, INT_MAX),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_exponent", 0.4, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_norm_max", 0.3, DBL_MIN, 2.0),
@@ -553,12 +554,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		cfg->dds.sanity_freq_limit = val;
-
-	} else if (!strcmp(option, "ntpshm_segment")) {
-		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		*cfg->ntpshm_segment = val;
 
 	} else if (!strcmp(option, "ptp_dst_mac")) {
 		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",

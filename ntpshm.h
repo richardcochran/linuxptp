@@ -21,11 +21,6 @@
 
 #include "servo.h"
 
-/**
- * The number of the SHM segment that will be used by newly created servo
- */
-extern int ntpshm_segment;
-
-struct servo *ntpshm_servo_create(void);
+struct servo *ntpshm_servo_create(struct config *cfg);
 
 #endif

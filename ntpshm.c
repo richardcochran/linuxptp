@@ -22,11 +22,10 @@
 #include <sys/types.h>
 #include <sys/shm.h>
 
+#include "config.h"
 #include "print.h"
 #include "ntpshm.h"
 #include "servo_private.h"
-
-#define NS_PER_SEC 1000000000
 
 /* NTP leap values */
 #define LEAP_NORMAL 0x0
@@ -35,9 +34,6 @@
 
 /* Key of the first SHM segment */
 #define SHMKEY 0x4e545030
-
-/* Number of the SHM segment to be used */
-int ntpshm_segment = 0;
 
 /* Declaration of the SHM segment from ntp (ntpd/refclock_shm.c) */
 struct shmTime {
@@ -134,9 +130,10 @@ static void ntpshm_leap(struct servo *servo, int leap)
 	s->leap = leap;
 }
 
-struct servo *ntpshm_servo_create(void)
+struct servo *ntpshm_servo_create(struct config *cfg)
 {
 	struct ntpshm_servo *s;
+	int ntpshm_segment = config_get_int(cfg, NULL, "ntpshm_segment");
 	int shmid;
 
 	s = calloc(1, sizeof(*s));

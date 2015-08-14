@@ -43,7 +43,7 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 		servo = linreg_servo_create(fadj);
 		break;
 	case CLOCK_SERVO_NTPSHM:
-		servo = ntpshm_servo_create();
+		servo = ntpshm_servo_create(cfg);
 		break;
 	case CLOCK_SERVO_NULLF:
 		servo = nullf_servo_create();
