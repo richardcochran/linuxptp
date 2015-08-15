@@ -44,11 +44,9 @@ static struct config cfg_settings = {
 
 	.dds = {
 		.dds = {
-			.priority1 = 128,
 			.clockQuality.clockClass = 248,
 			.clockQuality.clockAccuracy = 0xfe,
 			.clockQuality.offsetScaledLogVariance = 0xffff,
-			.priority2 = 128,
 			.domainNumber = 0,
 		},
 		.clock_desc = {
@@ -232,6 +230,8 @@ int main(int argc, char *argv[])
 	if (config_get_int(cfg, NULL, "twoStepFlag")) {
 	    ds->flags |= DDS_TWO_STEP_FLAG;
 	}
+	ds->priority1 = config_get_int(cfg, NULL, "priority1");
+	ds->priority2 = config_get_int(cfg, NULL, "priority2");
 
 	if (!config_get_int(cfg, NULL, "gmCapable") &&
 	    ds->flags & DDS_SLAVE_ONLY) {

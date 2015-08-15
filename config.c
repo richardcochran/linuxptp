@@ -125,6 +125,8 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_exponent", -0.3, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_proportional_norm_max", 0.7, DBL_MIN, 1.0),
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
+	GLOB_ITEM_INT("priority1", 128, 0, UINT8_MAX),
+	GLOB_ITEM_INT("priority2", 128, 0, UINT8_MAX),
 	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),
 	GLOB_ITEM_INT("slaveOnly", 0, 0, 1),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
@@ -396,19 +398,7 @@ static enum parser_result parse_global_setting(const char *option,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "priority1")) {
-		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
-		if (r != PARSED_OK)
-			return r;
-		dds->priority1 = uval;
-
-	} else if (!strcmp(option, "priority2")) {
-		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
-		if (r != PARSED_OK)
-			return r;
-		dds->priority2 = uval;
-
-	} else if (!strcmp(option, "domainNumber")) {
+	if (!strcmp(option, "domainNumber")) {
 		r = get_ranged_uint(value, &uval, 0, 127);
 		if (r != PARSED_OK)
 			return r;
