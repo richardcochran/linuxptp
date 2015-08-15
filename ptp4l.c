@@ -52,7 +52,6 @@ static struct config cfg_settings = {
 			.priority2 = 128,
 			.domainNumber = 0,
 		},
-		.stats_interval = 0,
 		.kernel_leap = 1,
 		.sanity_freq_limit = 200000000,
 		.time_source = INTERNAL_OSCILLATOR,

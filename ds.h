@@ -52,7 +52,6 @@ struct clock_description {
 
 struct default_ds {
 	struct defaultDS dds;
-	int stats_interval; /*log seconds*/
 	int kernel_leap;
 	int sanity_freq_limit;
 	int time_source;

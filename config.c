@@ -123,6 +123,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_norm_max", 0.7, DBL_MIN, 1.0),
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
+	GLOB_ITEM_INT("summary_interval", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
@@ -551,12 +552,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		for (i = 0; i < OUI_LEN; i++)
 			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
-
-	} else if (!strcmp(option, "summary_interval")) {
-		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.stats_interval = val;
 
 	} else if (!strcmp(option, "kernel_leap")) {
 		r = get_ranged_int(value, &val, 0, 1);

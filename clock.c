@@ -882,7 +882,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 		return NULL;
 	}
 	c->nrr = 1.0;
-	c->stats_interval = dds->stats_interval;
+	c->stats_interval = config_get_int(config, NULL, "summary_interval");
 	c->stats.offset = stats_create();
 	c->stats.freq = stats_create();
 	c->stats.delay = stats_create();
