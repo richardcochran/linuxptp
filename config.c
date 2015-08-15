@@ -102,6 +102,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
 	GLOB_ITEM_INT("free_running", 0, 0, 1),
 	PORT_ITEM_INT("freq_est_interval", 1, 0, INT_MAX),
+	GLOB_ITEM_INT("gmCapable", 1, 0, 1),
 	PORT_ITEM_INT("ingressLatency", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logMinDelayReqInterval", 0, INT8_MIN, INT8_MAX),
@@ -411,12 +412,6 @@ static enum parser_result parse_global_setting(const char *option,
 			else
 				dds->flags &= ~DDS_SLAVE_ONLY;
 		}
-
-	} else if (!strcmp(option, "gmCapable")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.grand_master_capable = val;
 
 	} else if (!strcmp(option, "priority1")) {
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);

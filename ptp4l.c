@@ -52,7 +52,6 @@ static struct config cfg_settings = {
 			.priority2 = 128,
 			.domainNumber = 0,
 		},
-		.grand_master_capable = 1,
 		.stats_interval = 0,
 		.kernel_leap = 1,
 		.sanity_freq_limit = 200000000,
@@ -237,13 +236,13 @@ int main(int argc, char *argv[])
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 
-	if (!cfg_settings.dds.grand_master_capable &&
+	if (!config_get_int(cfg, NULL, "gmCapable") &&
 	    ds->flags & DDS_SLAVE_ONLY) {
 		fprintf(stderr,
 			"Cannot mix 1588 slaveOnly with 802.1AS !gmCapable.\n");
 		return -1;
 	}
-	if (!cfg_settings.dds.grand_master_capable ||
+	if (!config_get_int(cfg, NULL, "gmCapable") ||
 	    ds->flags & DDS_SLAVE_ONLY) {
 		ds->clockQuality.clockClass = 255;
 	}
