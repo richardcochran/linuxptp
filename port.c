@@ -97,6 +97,7 @@ struct port {
 	struct port_defaults pod;
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
+	Integer64           asymmetry;
 	int                 asCapable;
 	Integer8            logMinDelayReqInterval;
 	TimeInterval        peerMeanPathDelay;
@@ -1148,7 +1149,7 @@ static int port_pdelay_request(struct port *p)
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = sizeof(struct pdelay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
-	msg->header.correction         = -p->pod.asymmetry;
+	msg->header.correction         = -p->asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_OTHER;
@@ -1205,7 +1206,7 @@ static int port_delay_request(struct port *p)
 	msg->header.ver                = PTP_VERSION;
 	msg->header.messageLength      = sizeof(struct delay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
-	msg->header.correction         = -p->pod.asymmetry;
+	msg->header.correction         = -p->asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_DELAY_REQ;
@@ -1817,7 +1818,7 @@ static void port_peer_delay(struct port *p)
 
 	t1 = timespec_to_tmv(req->hwts.ts);
 	t4 = timespec_to_tmv(rsp->hwts.ts);
-	c1 = correction_to_tmv(rsp->header.correction + p->pod.asymmetry);
+	c1 = correction_to_tmv(rsp->header.correction + p->asymmetry);
 
 	/* Process one-step response immediately. */
 	if (one_step(rsp)) {
@@ -1953,7 +1954,7 @@ static void process_sync(struct port *p, struct ptp_message *m)
 		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
 
-	m->header.correction += p->pod.asymmetry;
+	m->header.correction += p->asymmetry;
 
 	if (one_step(m)) {
 		port_synchronize(p, m->hwts.ts, m->ts.pdu,
@@ -2524,6 +2525,8 @@ struct port *port_open(int phc_index,
 
 	p->pod = interface->pod;
 	p->name = interface->name;
+	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
+	p->asymmetry <<= 16;
 	p->clock = clock;
 	p->trp = transport_create(cfg, interface->transport);
 	if (!p->trp)
