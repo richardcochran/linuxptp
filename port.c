@@ -111,6 +111,7 @@ struct port {
 	Integer8            logMinPdelayReqInterval;
 	UInteger32          neighborPropDelayThresh;
 	int                 min_neighbor_prop_delay;
+	int                 path_trace_enabled;
 	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
@@ -484,7 +485,7 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 	struct path_trace_tlv *ptt;
 	int i, cnt;
 
-	if (!p->pod.path_trace_enabled) {
+	if (!p->path_trace_enabled) {
 		return 0;
 	}
 	if (msg_type(m) != ANNOUNCE) {
@@ -1249,7 +1250,7 @@ static int port_tx_announce(struct port *p)
 	pdulen = sizeof(struct announce_msg);
 	msg->hwts.type = p->timestamping;
 
-	if (p->pod.path_trace_enabled)
+	if (p->path_trace_enabled)
 		pdulen += path_trace_append(p, msg, dad);
 
 	msg->header.tsmt               = ANNOUNCE | p->transportSpecific;
@@ -1529,7 +1530,7 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 		tds.timeSource = m->announce.timeSource;
 		clock_update_time_properties(p->clock, tds);
 	}
-	if (p->pod.path_trace_enabled) {
+	if (p->path_trace_enabled) {
 		ptt = (struct path_trace_tlv *) m->announce.suffix;
 		dad = clock_parent_ds(p->clock);
 		memcpy(dad->ptl, ptt->cid, ptt->length);
@@ -2530,6 +2531,7 @@ struct port *port_open(int phc_index,
 	p->name = interface->name;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
+	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->clock = clock;
 	p->trp = transport_create(cfg, interface->transport);
 	if (!p->trp)

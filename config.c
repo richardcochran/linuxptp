@@ -103,6 +103,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	GLOB_ITEM_INT("ntpshm_segment", 0, INT_MIN, INT_MAX),
+	PORT_ITEM_INT("path_trace_enabled", 0, 0, 1),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_exponent", 0.4, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_norm_max", 0.3, DBL_MIN, 2.0),
@@ -270,13 +271,7 @@ static enum parser_result parse_pod_setting(const char *option,
 
 	enum parser_result r;
 
-	if (!strcmp(option, "path_trace_enabled")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		pod->path_trace_enabled = val;
-
-	} else if (!strcmp(option, "follow_up_info")) {
+	if (!strcmp(option, "follow_up_info")) {
 		r = get_ranged_int(value, &val, 0, 1);
 		if (r != PARSED_OK)
 			return r;

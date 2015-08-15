@@ -125,7 +125,6 @@ struct portDS {
 #define FRI_ASAP (-128)
 
 struct port_defaults {
-	int path_trace_enabled;
 	int follow_up_info;
 	int freq_est_interval; /*log seconds*/
 	struct fault_interval flt_interval_pertype[FT_CNT];
