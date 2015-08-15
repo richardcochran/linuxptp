@@ -880,7 +880,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 	c->servo_state = SERVO_UNLOCKED;
 	c->servo_type = servo;
 	c->tsproc = tsproc_create(config_get_int(config, NULL, "tsproc_mode"),
-				  dds->delay_filter,
+				  config_get_int(config, NULL, "delay_filter"),
 				  config_get_int(config, NULL, "delay_filter_length"));
 	if (!c->tsproc) {
 		pr_err("Failed to create time stamp processor");

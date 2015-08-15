@@ -36,7 +36,6 @@ struct interface {
 	STAILQ_ENTRY(interface) list;
 	char name[MAX_IFNAME_SIZE + 1];
 	struct sk_ts_info ts_info;
-	enum filter_type delay_filter;
 };
 
 #define CFG_IGNORE_TIMESTAMPING (1 << 2)

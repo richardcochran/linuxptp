@@ -110,6 +110,12 @@ struct config_item {
 #define PORT_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
 
+static struct config_enum delay_filter_enu[] = {
+	{ "moving_average", FILTER_MOVING_AVERAGE },
+	{ "moving_median",  FILTER_MOVING_MEDIAN  },
+	{ NULL, 0 },
+};
+
 static struct config_enum delay_mech_enu[] = {
 	{ "Auto", DM_AUTO },
 	{ "E2E",  DM_E2E },
@@ -140,6 +146,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("clockAccuracy", 0xfe, 0, UINT8_MAX),
 	GLOB_ITEM_INT("clockClass", 248, 0, UINT8_MAX),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
+	PORT_ITEM_ENU("delay_filter", FILTER_MOVING_MEDIAN, delay_filter_enu),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
 	PORT_ITEM_ENU("delay_mechanism", DM_E2E, delay_mech_enu),
 	GLOB_ITEM_INT("domainNumber", 0, 0, 127),
@@ -384,18 +391,7 @@ static enum parser_result parse_port_setting(struct config *cfg,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "delay_filter")) {
-		if (!strcasecmp("moving_average", value))
-			iface->delay_filter = FILTER_MOVING_AVERAGE;
-		else if (!strcasecmp("moving_median", value))
-			iface->delay_filter = FILTER_MOVING_MEDIAN;
-		else
-			return BAD_VALUE;
-
-	} else
-		return parse_item(cfg, iface->name, option, value);
-
-	return PARSED_OK;
+	return parse_item(cfg, iface->name, option, value);
 }
 
 static int count_char(const char *str, char c)
@@ -487,14 +483,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		for (i = 0; i < OUI_LEN; i++)
 			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
-
-	} else if (!strcmp(option, "delay_filter")) {
-		if (!strcasecmp("moving_average", value))
-			cfg->dds.delay_filter = FILTER_MOVING_AVERAGE;
-		else if (!strcasecmp("moving_median", value))
-			cfg->dds.delay_filter = FILTER_MOVING_MEDIAN;
-		else
-			return BAD_VALUE;
 
 	} else
 		return parse_item(cfg, NULL, option, value);
@@ -677,7 +665,6 @@ struct interface *config_create_interface(char *name, struct config *cfg)
 void config_init_interface(struct interface *iface, struct config *cfg)
 {
 	sk_get_ts_info(iface->name, &iface->ts_info);
-	iface->delay_filter = cfg->dds.delay_filter;
 }
 
 int config_init(struct config *cfg)
