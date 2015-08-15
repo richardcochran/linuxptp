@@ -52,7 +52,6 @@ static struct config cfg_settings = {
 			.priority2 = 128,
 			.domainNumber = 0,
 		},
-		.kernel_leap = 1,
 		.sanity_freq_limit = 200000000,
 		.time_source = INTERNAL_OSCILLATOR,
 		.clock_desc = {
@@ -246,7 +245,7 @@ int main(int argc, char *argv[])
 		ds->clockQuality.clockClass = 255;
 	}
 	if (cfg_settings.clock_servo == CLOCK_SERVO_NTPSHM) {
-		cfg_settings.dds.kernel_leap = 0;
+		config_set_int(cfg, "kernel_leap", 0);
 		cfg_settings.dds.sanity_freq_limit = 0;
 	}
 

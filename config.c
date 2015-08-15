@@ -104,6 +104,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("freq_est_interval", 1, 0, INT_MAX),
 	GLOB_ITEM_INT("gmCapable", 1, 0, 1),
 	PORT_ITEM_INT("ingressLatency", 0, INT_MIN, INT_MAX),
+	GLOB_ITEM_INT("kernel_leap", 1, 0, 1),
 	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logMinDelayReqInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logMinPdelayReqInterval", 0, INT8_MIN, INT8_MAX),
@@ -552,12 +553,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		for (i = 0; i < OUI_LEN; i++)
 			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
-
-	} else if (!strcmp(option, "kernel_leap")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.kernel_leap = val;
 
 	} else if (!strcmp(option, "timeSource")) {
 		r = get_ranged_int(value, &val, 0x10, 0xfe);
