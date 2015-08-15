@@ -125,7 +125,6 @@ struct portDS {
 #define FRI_ASAP (-128)
 
 struct port_defaults {
-	UInteger8 transportSpecific;
 	int announce_span;
 	int path_trace_enabled;
 	int follow_up_info;

@@ -113,6 +113,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
+	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
@@ -269,13 +270,7 @@ static enum parser_result parse_pod_setting(const char *option,
 
 	enum parser_result r;
 
-	if (!strcmp(option, "transportSpecific")) {
-		r = get_ranged_uint(value, &uval, 0, 0x0F);
-		if (r != PARSED_OK)
-			return r;
-		pod->transportSpecific = uval << 4;
-
-	} else if (!strcmp(option, "path_trace_enabled")) {
+	if (!strcmp(option, "path_trace_enabled")) {
 		r = get_ranged_int(value, &val, 0, 1);
 		if (r != PARSED_OK)
 			return r;
