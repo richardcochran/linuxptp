@@ -1450,7 +1450,7 @@ static int port_initialize(struct port *p)
 	p->announceReceiptTimeout  = p->pod.announceReceiptTimeout;
 	p->syncReceiptTimeout      = p->pod.syncReceiptTimeout;
 	p->transportSpecific       = p->pod.transportSpecific;
-	p->logSyncInterval         = p->pod.logSyncInterval;
+	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logMinPdelayReqInterval = p->pod.logMinPdelayReqInterval;
 	p->neighborPropDelayThresh = p->pod.neighborPropDelayThresh;
 	p->min_neighbor_prop_delay = p->pod.min_neighbor_prop_delay;
