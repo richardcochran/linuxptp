@@ -44,7 +44,6 @@ static struct config cfg_settings = {
 
 	.dds = {
 		.dds = {
-			.clockQuality.clockClass = 248,
 			.clockQuality.clockAccuracy = 0xfe,
 			.clockQuality.offsetScaledLogVariance = 0xffff,
 			.domainNumber = 0,
@@ -222,6 +221,8 @@ int main(int argc, char *argv[])
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
+
+	ds->clockQuality.clockClass = config_get_int(cfg, NULL, "clockClass");
 
 	if (config_get_int(cfg, NULL, "slaveOnly")) {
 	    ds->flags |= DDS_SLAVE_ONLY;
