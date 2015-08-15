@@ -130,6 +130,13 @@ static struct config_enum nw_trans_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum timestamping_enu[] = {
+	{ "hardware", TS_HARDWARE  },
+	{ "software", TS_SOFTWARE  },
+	{ "legacy",   TS_LEGACY_HW },
+	{ NULL, 0 },
+};
+
 static struct config_enum tsproc_enu[] = {
 	{ "filter",        TSPROC_FILTER        },
 	{ "raw",           TSPROC_RAW           },
@@ -188,6 +195,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("summary_interval", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
 	GLOB_ITEM_INT("timeSource", INTERNAL_OSCILLATOR, 0x10, 0xfe),
+	GLOB_ITEM_ENU("time_stamping", TS_HARDWARE, timestamping_enu),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
 	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),
 	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),
@@ -409,7 +417,7 @@ static enum parser_result parse_global_setting(const char *option,
 					       const char *value,
 					       struct config *cfg)
 {
-	int i, cfg_ignore = cfg->cfg_ignore;
+	int i;
 	unsigned char mac[MAC_LEN];
 	unsigned char oui[OUI_LEN];
 	enum parser_result r;
@@ -436,18 +444,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (strlen(value) > MAX_IFNAME_SIZE)
 			return OUT_OF_RANGE;
 		strncpy(cfg->uds_address, value, MAX_IFNAME_SIZE);
-
-	} else if (!strcmp(option, "time_stamping")) {
-		if (!(cfg_ignore & CFG_IGNORE_TIMESTAMPING)) {
-			if (0 == strcasecmp("hardware", value))
-				cfg->timestamping = TS_HARDWARE;
-			else if (0 == strcasecmp("software", value))
-				cfg->timestamping = TS_SOFTWARE;
-			else if (0 == strcasecmp("legacy", value))
-				cfg->timestamping = TS_LEGACY_HW;
-			else
-				return BAD_VALUE;
-		}
 
 	} else if (!strcmp(option, "clock_servo")) {
 		if (!strcasecmp("pi", value))

@@ -38,12 +38,7 @@ struct interface {
 	struct sk_ts_info ts_info;
 };
 
-#define CFG_IGNORE_TIMESTAMPING (1 << 2)
-
 struct config {
-	/* configuration override */
-	int cfg_ignore;
-
 	/* configured interfaces */
 	STAILQ_HEAD(interfaces_head, interface) interfaces;
 
@@ -51,7 +46,6 @@ struct config {
 	struct hash *htab;
 
 	/* the rest are legacy fields */
-	enum timestamp_type timestamping;
 	struct default_ds dds;
 	enum servo_type clock_servo;
 

@@ -59,14 +59,11 @@ static struct config cfg_settings = {
 		},
 	},
 
-	.timestamping = TS_HARDWARE,
 	.clock_servo = CLOCK_SERVO_PI,
 
 	.ptp_dst_mac = ptp_dst_mac,
 	.p2p_dst_mac = p2p_dst_mac,
 	.uds_address = uds_path,
-
-	.cfg_ignore = 0,
 };
 
 static void usage(char *progname)
@@ -106,8 +103,6 @@ int main(int argc, char *argv[])
 	char *config = NULL, *req_phc = NULL, *progname;
 	int c;
 	struct interface *iface;
-	int *cfg_ignore = &cfg_settings.cfg_ignore;
-	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
 	struct config *cfg = &cfg_settings;
 	struct defaultDS *ds = &cfg_settings.dds.dds;
@@ -153,16 +148,16 @@ int main(int argc, char *argv[])
 				return -1;
 			break;
 		case 'H':
-			*timestamping = TS_HARDWARE;
-			*cfg_ignore |= CFG_IGNORE_TIMESTAMPING;
+			if (config_set_int(cfg, "time_stamping", TS_HARDWARE))
+				return -1;
 			break;
 		case 'S':
-			*timestamping = TS_SOFTWARE;
-			*cfg_ignore |= CFG_IGNORE_TIMESTAMPING;
+			if (config_set_int(cfg, "time_stamping", TS_SOFTWARE))
+				return -1;
 			break;
 		case 'L':
-			*timestamping = TS_LEGACY_HW;
-			*cfg_ignore |= CFG_IGNORE_TIMESTAMPING;
+			if (config_set_int(cfg, "time_stamping", TS_LEGACY_HW))
+				return -1;
 			break;
 		case 'f':
 			config = optarg;
@@ -258,21 +253,22 @@ int main(int argc, char *argv[])
 	}
 
 	if (!(ds->flags & DDS_TWO_STEP_FLAG)) {
-		switch (*timestamping) {
+		switch (config_get_int(cfg, NULL, "time_stamping")) {
 		case TS_SOFTWARE:
 		case TS_LEGACY_HW:
 			fprintf(stderr, "one step is only possible "
 				"with hardware time stamping\n");
 			return -1;
 		case TS_HARDWARE:
-			*timestamping = TS_ONESTEP;
+			if (config_set_int(cfg, "time_stamping", TS_ONESTEP))
+				return -1;
 			break;
 		case TS_ONESTEP:
 			break;
 		}
 	}
 
-	switch (*timestamping) {
+	switch (config_get_int(cfg, NULL, "time_stamping")) {
 	case TS_SOFTWARE:
 		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
 			SOF_TIMESTAMPING_RX_SOFTWARE |
@@ -308,7 +304,8 @@ int main(int argc, char *argv[])
 	iface = STAILQ_FIRST(&cfg_settings.interfaces);
 	if (config_get_int(cfg, NULL, "free_running")) {
 		phc_index = -1;
-	} else if (*timestamping == TS_SOFTWARE || *timestamping == TS_LEGACY_HW) {
+	} else if (config_get_int(cfg, NULL, "time_stamping") == TS_SOFTWARE ||
+		   config_get_int(cfg, NULL, "time_stamping") == TS_LEGACY_HW) {
 		phc_index = -1;
 	} else if (req_phc) {
 		if (1 != sscanf(req_phc, "/dev/ptp%d", &phc_index)) {
@@ -335,7 +332,7 @@ int main(int argc, char *argv[])
 
 	clock = clock_create(&cfg_settings,
 			     phc_index, &cfg_settings.interfaces,
-			     *timestamping, &cfg_settings.dds,
+			     &cfg_settings.dds,
 			     cfg_settings.clock_servo);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");

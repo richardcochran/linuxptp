@@ -800,9 +800,10 @@ static void clock_remove_port(struct clock *c, struct port *p)
 
 struct clock *clock_create(struct config *config, int phc_index,
 			   struct interfaces_head *ifaces,
-			   enum timestamp_type timestamping,
 			   struct default_ds *dds, enum servo_type servo)
 {
+	enum timestamp_type timestamping =
+		config_get_int(config, NULL, "time_stamping");
 	int fadj = 0, max_adj = 0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	struct clock *c = &the_clock;
 	struct port *p;
