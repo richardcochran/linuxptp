@@ -123,6 +123,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_exponent", -0.3, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_proportional_norm_max", 0.7, DBL_MIN, 1.0),
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
+	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("summary_interval", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
@@ -451,12 +452,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		dds->clockQuality.offsetScaledLogVariance = uval;
-
-	} else if (!strcmp(option, "sanity_freq_limit")) {
-		r = get_ranged_int(value, &val, 0, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.sanity_freq_limit = val;
 
 	} else if (!strcmp(option, "ptp_dst_mac")) {
 		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",

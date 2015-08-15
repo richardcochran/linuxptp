@@ -810,6 +810,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 	struct interface *udsif = &c->uds_interface;
 	struct interface *iface;
 	struct timespec ts;
+	int sfl;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
@@ -890,8 +891,9 @@ struct clock *clock_create(struct config *config, int phc_index,
 		pr_err("failed to create stats");
 		return NULL;
 	}
-	if (dds->sanity_freq_limit) {
-		c->sanity_check = clockcheck_create(dds->sanity_freq_limit);
+	sfl = config_get_int(config, NULL, "sanity_freq_limit");
+	if (sfl) {
+		c->sanity_check = clockcheck_create(sfl);
 		if (!c->sanity_check) {
 			pr_err("Failed to create clock sanity check");
 			return NULL;

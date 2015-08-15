@@ -52,7 +52,6 @@ struct clock_description {
 
 struct default_ds {
 	struct defaultDS dds;
-	int sanity_freq_limit;
 	int time_source;
 	struct clock_description clock_desc;
 	enum tsproc_mode tsproc_mode;
