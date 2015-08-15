@@ -110,6 +110,13 @@ struct config_item {
 #define PORT_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
 
+static struct config_enum delay_mech_enu[] = {
+	{ "Auto", DM_AUTO },
+	{ "E2E",  DM_E2E },
+	{ "P2P",  DM_P2P },
+	{ NULL, 0 },
+};
+
 static struct config_enum nw_trans_enu[] = {
 	{ "L2",    TRANS_IEEE_802_3 },
 	{ "UDPv4", TRANS_UDP_IPV4   },
@@ -126,6 +133,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("clockClass", 248, 0, UINT8_MAX),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
+	PORT_ITEM_ENU("delay_mechanism", DM_E2E, delay_mech_enu),
 	GLOB_ITEM_INT("domainNumber", 0, 0, 127),
 	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("fault_badpeernet_interval", 16, INT32_MIN, INT32_MAX),
@@ -367,17 +375,7 @@ static enum parser_result parse_port_setting(struct config *cfg,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "delay_mechanism")) {
-		if (!strcasecmp("Auto", value))
-			iface->dm = DM_AUTO;
-		else if (!strcasecmp("E2E", value))
-			iface->dm = DM_E2E;
-		else if (!strcasecmp("P2P", value))
-			iface->dm = DM_P2P;
-		else
-			return BAD_VALUE;
-
-	} else if (!strcmp(option, "tsproc_mode")) {
+	if (!strcmp(option, "tsproc_mode")) {
 		if (!strcasecmp("filter", value))
 			iface->tsproc_mode = TSPROC_FILTER;
 		else if (!strcasecmp("raw", value))
@@ -454,18 +452,6 @@ static enum parser_result parse_global_setting(const char *option,
 				cfg->timestamping = TS_SOFTWARE;
 			else if (0 == strcasecmp("legacy", value))
 				cfg->timestamping = TS_LEGACY_HW;
-			else
-				return BAD_VALUE;
-		}
-
-	} else if (!strcmp(option, "delay_mechanism")) {
-		if (!(cfg_ignore & CFG_IGNORE_DM)) {
-			if (0 == strcasecmp("E2E", value))
-				cfg->dm = DM_E2E;
-			else if (0 == strcasecmp("P2P", value))
-				cfg->dm = DM_P2P;
-			else if (0 == strcasecmp("Auto", value))
-				cfg->dm = DM_AUTO;
 			else
 				return BAD_VALUE;
 		}
@@ -705,7 +691,6 @@ struct interface *config_create_interface(char *name, struct config *cfg)
 
 void config_init_interface(struct interface *iface, struct config *cfg)
 {
-	iface->dm = cfg->dm;
 	sk_get_ts_info(iface->name, &iface->ts_info);
 	iface->delay_filter = cfg->dds.delay_filter;
 }

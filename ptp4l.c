@@ -62,7 +62,6 @@ static struct config cfg_settings = {
 	},
 
 	.timestamping = TS_HARDWARE,
-	.dm = DM_E2E,
 	.clock_servo = CLOCK_SERVO_PI,
 
 	.ptp_dst_mac = ptp_dst_mac,
@@ -110,7 +109,6 @@ int main(int argc, char *argv[])
 	int c;
 	struct interface *iface;
 	int *cfg_ignore = &cfg_settings.cfg_ignore;
-	enum delay_mechanism *dm = &cfg_settings.dm;
 	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
 	struct config *cfg = &cfg_settings;
@@ -130,16 +128,16 @@ int main(int argc, char *argv[])
 	while (EOF != (c = getopt(argc, argv, "AEP246HSLf:i:p:sl:mqvh"))) {
 		switch (c) {
 		case 'A':
-			*dm = DM_AUTO;
-			*cfg_ignore |= CFG_IGNORE_DM;
+			if (config_set_int(cfg, "delay_mechanism", DM_AUTO))
+				return -1;
 			break;
 		case 'E':
-			*dm = DM_E2E;
-			*cfg_ignore |= CFG_IGNORE_DM;
+			if (config_set_int(cfg, "delay_mechanism", DM_E2E))
+				return -1;
 			break;
 		case 'P':
-			*dm = DM_P2P;
-			*cfg_ignore |= CFG_IGNORE_DM;
+			if (config_set_int(cfg, "delay_mechanism", DM_P2P))
+				return -1;
 			break;
 		case '2':
 			if (config_set_int(cfg, "network_transport",

@@ -2550,7 +2550,7 @@ struct port *port_open(int phc_index,
 	p->portIdentity.clockIdentity = clock_identity(clock);
 	p->portIdentity.portNumber = number;
 	p->state = PS_INITIALIZING;
-	p->delayMechanism = interface->dm;
+	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_VERSION;
 
 	/* Set fault timeouts to a default value */
