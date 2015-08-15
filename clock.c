@@ -830,7 +830,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 	c->grand_master_capable = config_get_int(config, NULL, "gmCapable");
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
 	c->utc_offset = CURRENT_UTC_OFFSET;
-	c->time_source = dds->time_source;
+	c->time_source = config_get_int(config, NULL, "timeSource");
 	c->desc = dds->clock_desc;
 
 	if (c->free_running) {

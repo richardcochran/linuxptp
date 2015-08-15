@@ -52,7 +52,6 @@ static struct config cfg_settings = {
 			.priority2 = 128,
 			.domainNumber = 0,
 		},
-		.time_source = INTERNAL_OSCILLATOR,
 		.clock_desc = {
 			.productDescription = {
 				.max_symbols = 64,

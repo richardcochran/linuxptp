@@ -127,6 +127,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("summary_interval", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
+	GLOB_ITEM_INT("timeSource", INTERNAL_OSCILLATOR, 0x10, 0xfe),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
@@ -548,12 +549,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		for (i = 0; i < OUI_LEN; i++)
 			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
-
-	} else if (!strcmp(option, "timeSource")) {
-		r = get_ranged_int(value, &val, 0x10, 0xfe);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.time_source = val;
 
 	} else if (!strcmp(option, "tsproc_mode")) {
 		if (!strcasecmp("filter", value))
