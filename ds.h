@@ -125,7 +125,6 @@ struct portDS {
 #define FRI_ASAP (-128)
 
 struct port_defaults {
-	int announce_span;
 	int path_trace_enabled;
 	int follow_up_info;
 	int freq_est_interval; /*log seconds*/

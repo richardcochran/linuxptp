@@ -39,6 +39,7 @@
 #include "util.h"
 
 #define ALLOWED_LOST_RESPONSES 3
+#define ANNOUNCE_SPAN 1
 
 enum syfu_state {
 	SF_EMPTY,
@@ -950,7 +951,7 @@ static int port_set_announce_tmo(struct port *p)
 {
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
 			      p->announceReceiptTimeout,
-			      p->pod.announce_span, p->logAnnounceInterval);
+			      ANNOUNCE_SPAN, p->logAnnounceInterval);
 }
 
 static int port_set_delay_tmo(struct port *p)
