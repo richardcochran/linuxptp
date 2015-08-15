@@ -95,6 +95,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
+	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
 	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	GLOB_ITEM_INT("ntpshm_segment", 0, INT_MIN, INT_MAX),
@@ -263,13 +264,7 @@ static enum parser_result parse_pod_setting(const char *option,
 
 	enum parser_result r;
 
-	if (!strcmp(option, "logAnnounceInterval")) {
-		r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
-		if (r != PARSED_OK)
-			return r;
-		pod->logAnnounceInterval = val;
-
-	} else if (!strcmp(option, "logSyncInterval")) {
+	if (!strcmp(option, "logSyncInterval")) {
 		r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
 		if (r != PARSED_OK)
 			return r;

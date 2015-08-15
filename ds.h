@@ -125,7 +125,6 @@ struct portDS {
 #define FRI_ASAP (-128)
 
 struct port_defaults {
-	Integer8 logAnnounceInterval;
 	Integer8 logSyncInterval;
 	Integer8 logMinDelayReqInterval;
 	Integer8 logMinPdelayReqInterval;

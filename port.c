@@ -1438,6 +1438,7 @@ static void port_disable(struct port *p)
 
 static int port_initialize(struct port *p)
 {
+	struct config *cfg = clock_config(p->clock);
 	int fd[N_TIMER_FDS], i;
 
 	p->multiple_seq_pdr_count  = 0;
@@ -1445,7 +1446,7 @@ static int port_initialize(struct port *p)
 	p->last_fault_type         = FT_UNSPECIFIED;
 	p->logMinDelayReqInterval  = p->pod.logMinDelayReqInterval;
 	p->peerMeanPathDelay       = 0;
-	p->logAnnounceInterval     = p->pod.logAnnounceInterval;
+	p->logAnnounceInterval     = config_get_int(cfg, p->name, "logAnnounceInterval");
 	p->announceReceiptTimeout  = p->pod.announceReceiptTimeout;
 	p->syncReceiptTimeout      = p->pod.syncReceiptTimeout;
 	p->transportSpecific       = p->pod.transportSpecific;
