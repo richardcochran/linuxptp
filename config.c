@@ -97,6 +97,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
+	PORT_ITEM_INT("freq_est_interval", 1, 0, INT_MAX),
 	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logMinDelayReqInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logMinPdelayReqInterval", 0, INT8_MIN, INT8_MAX),
@@ -491,13 +492,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		cfg->dds.free_running = val;
-
-	} else if (!strcmp(option, "freq_est_interval")) {
-		r = get_ranged_int(value, &val, 0, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.freq_est_interval = val;
-		pod->freq_est_interval = val;
 
 	} else if (!strcmp(option, "sanity_freq_limit")) {
 		r = get_ranged_int(value, &val, 0, INT_MAX);

@@ -111,6 +111,7 @@ struct port {
 	Integer8            logMinPdelayReqInterval;
 	UInteger32          neighborPropDelayThresh;
 	int                 follow_up_info;
+	int                 freq_est_interval;
 	int                 min_neighbor_prop_delay;
 	int                 path_trace_enabled;
 	enum fault_type     last_fault_type;
@@ -926,7 +927,7 @@ static void port_nrate_calculate(struct port *p, tmv_t origin, tmv_t ingress)
 
 static void port_nrate_initialize(struct port *p)
 {
-	int shift = p->pod.freq_est_interval - p->logMinPdelayReqInterval;
+	int shift = p->freq_est_interval - p->logMinPdelayReqInterval;
 
 	if (shift < 0)
 		shift = 0;
@@ -2533,6 +2534,7 @@ struct port *port_open(int phc_index,
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
+	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->clock = clock;
 	p->trp = transport_create(cfg, interface->transport);

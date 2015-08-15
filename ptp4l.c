@@ -53,7 +53,6 @@ static struct config cfg_settings = {
 			.domainNumber = 0,
 		},
 		.free_running = 0,
-		.freq_est_interval = 1,
 		.grand_master_capable = 1,
 		.stats_interval = 0,
 		.kernel_leap = 1,
@@ -80,7 +79,6 @@ static struct config cfg_settings = {
 	},
 
 	.pod = {
-		.freq_est_interval = 1,
 		/* Default to very a large neighborPropDelay threshold */
 		.neighborPropDelayThresh = 20000000,
 		.min_neighbor_prop_delay = -20000000,

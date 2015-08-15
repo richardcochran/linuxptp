@@ -53,7 +53,6 @@ struct clock_description {
 struct default_ds {
 	struct defaultDS dds;
 	int free_running;
-	int freq_est_interval; /*log seconds*/
 	int grand_master_capable; /*802.1AS only*/
 	int stats_interval; /*log seconds*/
 	int kernel_leap;
@@ -125,7 +124,6 @@ struct portDS {
 #define FRI_ASAP (-128)
 
 struct port_defaults {
-	int freq_est_interval; /*log seconds*/
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	UInteger32 neighborPropDelayThresh; /*nanoseconds*/
 	int min_neighbor_prop_delay; /*nanoseconds*/
