@@ -37,7 +37,6 @@ struct interface {
 	char name[MAX_IFNAME_SIZE + 1];
 	enum delay_mechanism dm;
 	enum transport_type transport;
-	struct port_defaults pod;
 	struct sk_ts_info ts_info;
 	enum tsproc_mode tsproc_mode;
 	enum filter_type delay_filter;
@@ -64,7 +63,6 @@ struct config {
 	enum delay_mechanism dm;
 
 	struct default_ds dds;
-	struct port_defaults pod;
 	enum servo_type clock_servo;
 
 	unsigned char *ptp_dst_mac;

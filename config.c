@@ -748,10 +748,7 @@ void config_init_interface(struct interface *iface, struct config *cfg)
 {
 	iface->dm = cfg->dm;
 	iface->transport = cfg->transport;
-	memcpy(&iface->pod, &cfg->pod, sizeof(cfg->pod));
-
 	sk_get_ts_info(iface->name, &iface->ts_info);
-
 	iface->delay_filter = cfg->dds.delay_filter;
 }
 

@@ -115,7 +115,4 @@ struct portDS {
 
 #define FRI_ASAP (-128)
 
-struct port_defaults {
-};
-
 #endif

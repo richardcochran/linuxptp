@@ -95,7 +95,6 @@ struct port {
 	unsigned int multiple_seq_pdr_count;
 	unsigned int multiple_pdr_detected;
 	/* portDS */
-	struct port_defaults pod;
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
 	Integer64           asymmetry;
@@ -2533,7 +2532,6 @@ struct port *port_open(int phc_index,
 		}
 	}
 
-	p->pod = interface->pod;
 	p->name = interface->name;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
