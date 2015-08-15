@@ -100,6 +100,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
+	GLOB_ITEM_INT("free_running", 0, 0, 1),
 	PORT_ITEM_INT("freq_est_interval", 1, 0, INT_MAX),
 	PORT_ITEM_INT("ingressLatency", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
@@ -453,12 +454,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		dds->clockQuality.offsetScaledLogVariance = uval;
-
-	} else if (!strcmp(option, "free_running")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.free_running = val;
 
 	} else if (!strcmp(option, "sanity_freq_limit")) {
 		r = get_ranged_int(value, &val, 0, INT_MAX);

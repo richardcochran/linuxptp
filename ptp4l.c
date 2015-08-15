@@ -52,7 +52,6 @@ static struct config cfg_settings = {
 			.priority2 = 128,
 			.domainNumber = 0,
 		},
-		.free_running = 0,
 		.grand_master_capable = 1,
 		.stats_interval = 0,
 		.kernel_leap = 1,
@@ -313,7 +312,7 @@ int main(int argc, char *argv[])
 
 	/* determine PHC Clock index */
 	iface = STAILQ_FIRST(&cfg_settings.interfaces);
-	if (cfg_settings.dds.free_running) {
+	if (config_get_int(cfg, NULL, "free_running")) {
 		phc_index = -1;
 	} else if (*timestamping == TS_SOFTWARE || *timestamping == TS_LEGACY_HW) {
 		phc_index = -1;
