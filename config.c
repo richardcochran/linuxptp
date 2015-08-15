@@ -37,6 +37,12 @@ enum config_section {
 enum config_type {
 	CFG_TYPE_INT,
 	CFG_TYPE_DOUBLE,
+	CFG_TYPE_ENUM,
+};
+
+struct config_enum {
+	const char *label;
+	int value;
 };
 
 typedef union {
@@ -53,6 +59,7 @@ typedef union {
 struct config_item {
 	char label[CONFIG_LABEL_SIZE];
 	enum config_type type;
+	struct config_enum *tab;
 	unsigned int flags;
 	any_t val;
 	any_t min;
@@ -69,6 +76,13 @@ struct config_item {
 	.min.d	= _min,					\
 	.max.d	= _max,					\
 }
+#define CONFIG_ITEM_ENUM(_label, _port, _default, _table) { \
+	.label	= _label,				\
+	.type	= CFG_TYPE_ENUM,			\
+	.flags	= _port ? CFG_ITEM_PORT : 0,		\
+	.tab	= _table,				\
+	.val.i	= _default,				\
+}
 #define CONFIG_ITEM_INT(_label, _port, _default, _min, _max) {	\
 	.label	= _label,				\
 	.type	= CFG_TYPE_INT,				\
@@ -81,11 +95,17 @@ struct config_item {
 #define GLOB_ITEM_DBL(label, _default, min, max) \
 	CONFIG_ITEM_DBL(label, 0, _default, min, max)
 
+#define GLOB_ITEM_ENU(label, _default, table) \
+	CONFIG_ITEM_ENUM(label, 0, _default, table)
+
 #define GLOB_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 0, _default, min, max)
 
 #define PORT_ITEM_DBL(label, _default, min, max) \
 	CONFIG_ITEM_DBL(label, 1, _default, min, max)
+
+#define PORT_ITEM_ENU(label, _default, table) \
+	CONFIG_ITEM_ENUM(label, 1, _default, table)
 
 #define PORT_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
@@ -233,8 +253,9 @@ static enum parser_result parse_item(struct config *cfg,
 				     const char *option,
 				     const char *value)
 {
-	struct config_item *cgi, *dst;
 	enum parser_result r = BAD_VALUE;
+	struct config_item *cgi, *dst;
+	struct config_enum *cte;
 	double df;
 	int val;
 
@@ -251,6 +272,14 @@ static enum parser_result parse_item(struct config *cfg,
 	case CFG_TYPE_DOUBLE:
 		r = get_ranged_double(value, &df, cgi->min.d, cgi->max.d);
 		break;
+	case CFG_TYPE_ENUM:
+		for (cte = cgi->tab; cte->label; cte++) {
+			if (!strcasecmp(cte->label, value)) {
+				val = cte->value;
+				r = PARSED_OK;
+				break;
+			}
+		}
 	}
 	if (r != PARSED_OK) {
 		return r;
@@ -278,6 +307,7 @@ static enum parser_result parse_item(struct config *cfg,
 
 	switch (dst->type) {
 	case CFG_TYPE_INT:
+	case CFG_TYPE_ENUM:
 		dst->val.i = val;
 		break;
 	case CFG_TYPE_DOUBLE:
@@ -770,6 +800,7 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 		pr_err("bug: config option %s type mismatch!", option);
 		exit(-1);
 	case CFG_TYPE_INT:
+	case CFG_TYPE_ENUM:
 		break;
 	}
 	pr_debug("config item %s.%s is %d", section, option, ci->val.i);
@@ -805,6 +836,7 @@ int config_set_section_int(struct config *cfg, const char *section,
 		pr_err("bug: config option %s type mismatch!", option);
 		return -1;
 	case CFG_TYPE_INT:
+	case CFG_TYPE_ENUM:
 		break;
 	}
 	if (!section) {
