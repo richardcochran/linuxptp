@@ -95,6 +95,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	PORT_ITEM_INT("boundary_clock_jbod", 0, 0, 1),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
+	GLOB_ITEM_INT("clockAccuracy", 0xfe, 0, UINT8_MAX),
 	GLOB_ITEM_INT("clockClass", 248, 0, UINT8_MAX),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
@@ -404,12 +405,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		dds->domainNumber = uval;
-
-	} else if (!strcmp(option, "clockAccuracy")) {
-		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
-		if (r != PARSED_OK)
-			return r;
-		dds->clockQuality.clockAccuracy = uval;
 
 	} else if (!strcmp(option, "offsetScaledLogVariance")) {
 		r = get_ranged_uint(value, &uval, 0, UINT16_MAX);

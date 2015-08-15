@@ -44,7 +44,6 @@ static struct config cfg_settings = {
 
 	.dds = {
 		.dds = {
-			.clockQuality.clockAccuracy = 0xfe,
 			.clockQuality.offsetScaledLogVariance = 0xffff,
 			.domainNumber = 0,
 		},
@@ -223,6 +222,7 @@ int main(int argc, char *argv[])
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 
 	ds->clockQuality.clockClass = config_get_int(cfg, NULL, "clockClass");
+	ds->clockQuality.clockAccuracy = config_get_int(cfg, NULL, "clockAccuracy");
 
 	if (config_get_int(cfg, NULL, "slaveOnly")) {
 	    ds->flags |= DDS_SLAVE_ONLY;
