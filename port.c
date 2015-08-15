@@ -2513,14 +2513,14 @@ struct port *port_open(int phc_index,
 	memset(p, 0, sizeof(*p));
 
 	p->phc_index = phc_index;
-	p->jbod = interface->boundary_clock_jbod;
+	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 
 	if (interface->transport == TRANS_UDS)
 		; /* UDS cannot have a PHC. */
 	else if (!interface->ts_info.valid)
 		pr_warning("port %d: get_ts_info not supported", number);
 	else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
-		if (interface->boundary_clock_jbod) {
+		if (p->jbod) {
 			pr_warning("port %d: just a bunch of devices", number);
 			p->phc_index = interface->ts_info.phc_index;
 		} else {
