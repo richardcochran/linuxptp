@@ -1444,7 +1444,7 @@ static int port_initialize(struct port *p)
 	p->multiple_seq_pdr_count  = 0;
 	p->multiple_pdr_detected   = 0;
 	p->last_fault_type         = FT_UNSPECIFIED;
-	p->logMinDelayReqInterval  = p->pod.logMinDelayReqInterval;
+	p->logMinDelayReqInterval  = config_get_int(cfg, p->name, "logMinDelayReqInterval");
 	p->peerMeanPathDelay       = 0;
 	p->logAnnounceInterval     = config_get_int(cfg, p->name, "logAnnounceInterval");
 	p->announceReceiptTimeout  = p->pod.announceReceiptTimeout;

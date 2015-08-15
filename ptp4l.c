@@ -80,7 +80,6 @@ static struct config cfg_settings = {
 	},
 
 	.pod = {
-		.logMinDelayReqInterval = 0,
 		.logMinPdelayReqInterval = 0,
 		.announceReceiptTimeout = 3,
 		.syncReceiptTimeout = 0,
