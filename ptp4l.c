@@ -44,7 +44,6 @@ static struct config cfg_settings = {
 
 	.dds = {
 		.dds = {
-			.flags = DDS_TWO_STEP_FLAG,
 			.priority1 = 128,
 			.clockQuality.clockClass = 248,
 			.clockQuality.clockAccuracy = 0xfe,
@@ -187,8 +186,9 @@ int main(int argc, char *argv[])
 			req_phc = optarg;
 			break;
 		case 's':
-			ds->flags |= DDS_SLAVE_ONLY;
-			*cfg_ignore |= CFG_IGNORE_SLAVEONLY;
+			if (config_set_int(cfg, "slaveOnly", 1)) {
+				return -1;
+			}
 			break;
 		case 'l':
 			if (get_arg_val_i(c, optarg, &print_level,
@@ -224,6 +224,14 @@ int main(int argc, char *argv[])
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
+
+	if (config_get_int(cfg, NULL, "slaveOnly")) {
+	    ds->flags |= DDS_SLAVE_ONLY;
+	    ds->clockQuality.clockClass = 248;
+	}
+	if (config_get_int(cfg, NULL, "twoStepFlag")) {
+	    ds->flags |= DDS_TWO_STEP_FLAG;
+	}
 
 	if (!config_get_int(cfg, NULL, "gmCapable") &&
 	    ds->flags & DDS_SLAVE_ONLY) {

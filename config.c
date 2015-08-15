@@ -126,11 +126,13 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_norm_max", 0.7, DBL_MIN, 1.0),
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),
+	GLOB_ITEM_INT("slaveOnly", 0, 0, 1),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("summary_interval", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
 	GLOB_ITEM_INT("timeSource", INTERNAL_OSCILLATOR, 0x10, 0xfe),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
+	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
@@ -382,7 +384,7 @@ static enum parser_result parse_global_setting(const char *option,
 					       const char *value,
 					       struct config *cfg)
 {
-	int i, val, cfg_ignore = cfg->cfg_ignore;
+	int i, cfg_ignore = cfg->cfg_ignore;
 	unsigned int uval;
 	unsigned char mac[MAC_LEN];
 	unsigned char oui[OUI_LEN];
@@ -394,27 +396,7 @@ static enum parser_result parse_global_setting(const char *option,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "twoStepFlag")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		if (val)
-			dds->flags |=  DDS_TWO_STEP_FLAG;
-		else
-			dds->flags &= ~DDS_TWO_STEP_FLAG;
-
-	} else if (!strcmp(option, "slaveOnly")) {
-		r = get_ranged_int(value, &val, 0, 1);
-		if (r != PARSED_OK)
-			return r;
-		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY)) {
-			if (val)
-				dds->flags |=  DDS_SLAVE_ONLY;
-			else
-				dds->flags &= ~DDS_SLAVE_ONLY;
-		}
-
-	} else if (!strcmp(option, "priority1")) {
+	if (!strcmp(option, "priority1")) {
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
 		if (r != PARSED_OK)
 			return r;
@@ -436,8 +418,7 @@ static enum parser_result parse_global_setting(const char *option,
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
 		if (r != PARSED_OK)
 			return r;
-		if (!(cfg_ignore & CFG_IGNORE_SLAVEONLY))
-			dds->clockQuality.clockClass = uval;
+		dds->clockQuality.clockClass = uval;
 
 	} else if (!strcmp(option, "clockAccuracy")) {
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
