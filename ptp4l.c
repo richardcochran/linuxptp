@@ -77,7 +77,6 @@ static struct config cfg_settings = {
 
 	.ptp_dst_mac = ptp_dst_mac,
 	.p2p_dst_mac = p2p_dst_mac,
-	.udp6_scope = &udp6_scope,
 	.uds_address = uds_path,
 
 	.cfg_ignore = 0,

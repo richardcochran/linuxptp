@@ -133,6 +133,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
+	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
 	GLOB_ITEM_INT("verbose", 0, 0, 1),
 };
@@ -463,12 +464,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		for (i = 0; i < MAC_LEN; i++)
 			cfg->p2p_dst_mac[i] = mac[i];
-
-	} else if (!strcmp(option, "udp6_scope")) {
-		r = get_ranged_uint(value, &uval, 0x00, 0x0F);
-		if (r != PARSED_OK)
-			return r;
-		*cfg->udp6_scope = uval;
 
 	} else if (!strcmp(option, "uds_address")) {
 		if (strlen(value) > MAX_IFNAME_SIZE)
