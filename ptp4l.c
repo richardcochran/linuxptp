@@ -118,7 +118,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	int c, i;
+	int c;
 	struct interface *iface;
 	int *cfg_ignore = &cfg_settings.cfg_ignore;
 	enum delay_mechanism *dm = &cfg_settings.dm;
@@ -134,12 +134,6 @@ int main(int argc, char *argv[])
 
 	if (config_init(&cfg_settings)) {
 		return -1;
-	}
-
-	/* Set fault timeouts to a default value */
-	for (i = 0; i < FT_CNT; i++) {
-		cfg_settings.pod.flt_interval_pertype[i].type = FTMO_LOG2_SECONDS;
-		cfg_settings.pod.flt_interval_pertype[i].val = 4;
 	}
 
 	/* Process the command line arguments. */

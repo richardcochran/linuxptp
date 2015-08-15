@@ -116,6 +116,7 @@ struct port {
 	int                 path_trace_enabled;
 	int                 rx_timestamp_offset;
 	int                 tx_timestamp_offset;
+	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
@@ -202,8 +203,8 @@ int fault_interval(struct port *port, enum fault_type ft,
 		return -EINVAL;
 	if (ft < 0 || ft >= FT_CNT)
 		return -EINVAL;
-	i->type = port->pod.flt_interval_pertype[ft].type;
-	i->val = port->pod.flt_interval_pertype[ft].val;
+	i->type = port->flt_interval_pertype[ft].type;
+	i->val = port->flt_interval_pertype[ft].val;
 	return 0;
 }
 
@@ -2506,6 +2507,7 @@ struct port *port_open(int phc_index,
 {
 	struct config *cfg = clock_config(clock);
 	struct port *p = malloc(sizeof(*p));
+	int i;
 
 	if (!p)
 		return NULL;
@@ -2550,6 +2552,18 @@ struct port *port_open(int phc_index,
 	p->state = PS_INITIALIZING;
 	p->delayMechanism = interface->dm;
 	p->versionNumber = PTP_VERSION;
+
+	/* Set fault timeouts to a default value */
+	for (i = 0; i < FT_CNT; i++) {
+		p->flt_interval_pertype[i].type = FTMO_LOG2_SECONDS;
+		p->flt_interval_pertype[i].val = 4;
+	}
+	p->flt_interval_pertype[FT_BAD_PEER_NETWORK].type = FTMO_LINEAR_SECONDS;
+	p->flt_interval_pertype[FT_BAD_PEER_NETWORK].val =
+		config_get_int(cfg, p->name, "fault_badpeernet_interval");
+
+	p->flt_interval_pertype[FT_UNSPECIFIED].val =
+		config_get_int(cfg, p->name, "fault_reset_interval");
 
 	p->tsproc = tsproc_create(interface->tsproc_mode,
 				  interface->delay_filter,

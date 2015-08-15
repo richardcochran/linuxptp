@@ -116,7 +116,6 @@ struct portDS {
 #define FRI_ASAP (-128)
 
 struct port_defaults {
-	struct fault_interval flt_interval_pertype[FT_CNT];
 };
 
 #endif

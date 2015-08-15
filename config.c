@@ -98,6 +98,8 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
 	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
+	PORT_ITEM_INT("fault_badpeernet_interval", 16, INT32_MIN, INT32_MAX),
+	PORT_ITEM_INT("fault_reset_interval", 4, INT8_MIN, INT8_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
 	GLOB_ITEM_INT("free_running", 0, 0, 1),
@@ -276,39 +278,35 @@ static enum parser_result parse_item(struct config *cfg,
 	return PARSED_OK;
 }
 
-static enum parser_result parse_pod_setting(const char *option,
-					    const char *value,
-					    struct port_defaults *pod)
+static enum parser_result parse_fault_interval(struct config *cfg,
+					       const char *section,
+					       const char *option,
+					       const char *value)
 {
-	int val;
-	enum parser_result r;
+	int i, val;
+	const char *str, *fault_options[2] = {
+		"fault_badpeernet_interval",
+		"fault_reset_interval",
+	};
+	int fault_values[2] = {
+		0, FRI_ASAP,
+	};
 
-	if (!strcmp(option, "fault_badpeernet_interval")) {
-		pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].type = FTMO_LINEAR_SECONDS;
-		if (!strcasecmp("ASAP", value)) {
-			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = 0;
-		} else {
-			r = get_ranged_int(value, &val, INT32_MIN, INT32_MAX);
-			if (r != PARSED_OK)
-				return r;
-			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = val;
-		}
-
-	} else if (!strcmp(option, "fault_reset_interval")) {
-		pod->flt_interval_pertype[FT_UNSPECIFIED].type = FTMO_LOG2_SECONDS;
-		if (!strcasecmp("ASAP", value)) {
-			pod->flt_interval_pertype[FT_UNSPECIFIED].val = FRI_ASAP;
-		} else {
-			r = get_ranged_int(value, &val, INT8_MIN, INT8_MAX);
-			if (r != PARSED_OK)
-				return r;
-			pod->flt_interval_pertype[FT_UNSPECIFIED].val = val;
-		}
-
-	} else
+	if (strcasecmp("ASAP", value)) {
 		return NOT_PARSED;
-
-	return PARSED_OK;
+	}
+	for (i = 0; i < 2; i++) {
+		str = fault_options[i];
+		val = fault_values[i];
+		if (!strcmp(option, str)) {
+			if (config_set_section_int(cfg, section, str, val)) {
+				pr_err("bug: failed to set option %s!", option);
+				exit(-1);
+			}
+			return PARSED_OK;
+		}
+	}
+	return NOT_PARSED;
 }
 
 static enum parser_result parse_port_setting(struct config *cfg,
@@ -318,7 +316,7 @@ static enum parser_result parse_port_setting(struct config *cfg,
 {
 	enum parser_result r;
 
-	r = parse_pod_setting(option, value, &iface->pod);
+	r = parse_fault_interval(cfg, iface->name, option, value);
 	if (r != NOT_PARSED)
 		return r;
 
@@ -389,11 +387,9 @@ static enum parser_result parse_global_setting(const char *option,
 	unsigned char oui[OUI_LEN];
 
 	struct defaultDS *dds = &cfg->dds.dds;
-	struct port_defaults *pod = &cfg->pod;
-
 	enum parser_result r;
 
-	r = parse_pod_setting(option, value, pod);
+	r = parse_fault_interval(cfg, NULL, option, value);
 	if (r != NOT_PARSED)
 		return r;
 
