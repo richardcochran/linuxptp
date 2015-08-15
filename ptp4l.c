@@ -80,7 +80,6 @@ static struct config cfg_settings = {
 	},
 
 	.pod = {
-		.syncReceiptTimeout = 0,
 		.transportSpecific = 0,
 		.announce_span = 1,
 		.path_trace_enabled = 0,
