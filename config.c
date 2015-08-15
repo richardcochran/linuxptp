@@ -118,6 +118,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("min_neighbor_prop_delay", -20000000, INT_MIN, -1),
 	PORT_ITEM_INT("neighborPropDelayThresh", 20000000, 0, INT_MAX),
 	GLOB_ITEM_INT("ntpshm_segment", 0, INT_MIN, INT_MAX),
+	GLOB_ITEM_INT("offsetScaledLogVariance", 0xffff, 0, UINT16_MAX),
 	PORT_ITEM_INT("path_trace_enabled", 0, 0, 1),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_exponent", 0.4, -DBL_MAX, DBL_MAX),
@@ -405,12 +406,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (r != PARSED_OK)
 			return r;
 		dds->domainNumber = uval;
-
-	} else if (!strcmp(option, "offsetScaledLogVariance")) {
-		r = get_ranged_uint(value, &uval, 0, UINT16_MAX);
-		if (r != PARSED_OK)
-			return r;
-		dds->clockQuality.offsetScaledLogVariance = uval;
 
 	} else if (!strcmp(option, "ptp_dst_mac")) {
 		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",

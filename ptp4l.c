@@ -44,7 +44,6 @@ static struct config cfg_settings = {
 
 	.dds = {
 		.dds = {
-			.clockQuality.offsetScaledLogVariance = 0xffff,
 			.domainNumber = 0,
 		},
 		.clock_desc = {
@@ -223,6 +222,8 @@ int main(int argc, char *argv[])
 
 	ds->clockQuality.clockClass = config_get_int(cfg, NULL, "clockClass");
 	ds->clockQuality.clockAccuracy = config_get_int(cfg, NULL, "clockAccuracy");
+	ds->clockQuality.offsetScaledLogVariance =
+		config_get_int(cfg, NULL, "offsetScaledLogVariance");
 
 	if (config_get_int(cfg, NULL, "slaveOnly")) {
 	    ds->flags |= DDS_SLAVE_ONLY;
