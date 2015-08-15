@@ -1458,7 +1458,7 @@ static int port_initialize(struct port *p)
 	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
-	p->min_neighbor_prop_delay = p->pod.min_neighbor_prop_delay;
+	p->min_neighbor_prop_delay = config_get_int(cfg, p->name, "min_neighbor_prop_delay");
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		fd[i] = -1;
