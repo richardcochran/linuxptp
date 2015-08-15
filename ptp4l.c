@@ -63,7 +63,6 @@ static struct config cfg_settings = {
 
 	.timestamping = TS_HARDWARE,
 	.dm = DM_E2E,
-	.transport = TRANS_UDP_IPV4,
 	.clock_servo = CLOCK_SERVO_PI,
 
 	.ptp_dst_mac = ptp_dst_mac,
@@ -112,7 +111,6 @@ int main(int argc, char *argv[])
 	struct interface *iface;
 	int *cfg_ignore = &cfg_settings.cfg_ignore;
 	enum delay_mechanism *dm = &cfg_settings.dm;
-	enum transport_type *transport = &cfg_settings.transport;
 	enum timestamp_type *timestamping = &cfg_settings.timestamping;
 	struct clock *clock;
 	struct config *cfg = &cfg_settings;
@@ -144,16 +142,19 @@ int main(int argc, char *argv[])
 			*cfg_ignore |= CFG_IGNORE_DM;
 			break;
 		case '2':
-			*transport = TRANS_IEEE_802_3;
-			*cfg_ignore |= CFG_IGNORE_TRANSPORT;
+			if (config_set_int(cfg, "network_transport",
+					    TRANS_IEEE_802_3))
+				return -1;
 			break;
 		case '4':
-			*transport = TRANS_UDP_IPV4;
-			*cfg_ignore |= CFG_IGNORE_TRANSPORT;
+			if (config_set_int(cfg, "network_transport",
+					    TRANS_UDP_IPV4))
+				return -1;
 			break;
 		case '6':
-			*transport = TRANS_UDP_IPV6;
-			*cfg_ignore |= CFG_IGNORE_TRANSPORT;
+			if (config_set_int(cfg, "network_transport",
+					    TRANS_UDP_IPV6))
+				return -1;
 			break;
 		case 'H':
 			*timestamping = TS_HARDWARE;

@@ -2506,6 +2506,7 @@ struct port *port_open(int phc_index,
 {
 	struct config *cfg = clock_config(clock);
 	struct port *p = malloc(sizeof(*p));
+	enum transport_type transport;
 	int i;
 
 	if (!p)
@@ -2515,8 +2516,9 @@ struct port *port_open(int phc_index,
 
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
+	transport = config_get_int(cfg, interface->name, "network_transport");
 
-	if (interface->transport == TRANS_UDS)
+	if (transport == TRANS_UDS)
 		; /* UDS cannot have a PHC. */
 	else if (!interface->ts_info.valid)
 		pr_warning("port %d: get_ts_info not supported", number);
@@ -2541,7 +2543,7 @@ struct port *port_open(int phc_index,
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
 	p->clock = clock;
-	p->trp = transport_create(cfg, interface->transport);
+	p->trp = transport_create(cfg, transport);
 	if (!p->trp)
 		goto err_port;
 	p->timestamping = timestamping;

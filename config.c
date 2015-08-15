@@ -110,6 +110,13 @@ struct config_item {
 #define PORT_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
 
+static struct config_enum nw_trans_enu[] = {
+	{ "L2",    TRANS_IEEE_802_3 },
+	{ "UDPv4", TRANS_UDP_IPV4   },
+	{ "UDPv6", TRANS_UDP_IPV6   },
+	{ NULL, 0 },
+};
+
 struct config_item config_tab[] = {
 	PORT_ITEM_INT("announceReceiptTimeout", 3, 2, UINT8_MAX),
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
@@ -138,6 +145,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	PORT_ITEM_INT("min_neighbor_prop_delay", -20000000, INT_MIN, -1),
 	PORT_ITEM_INT("neighborPropDelayThresh", 20000000, 0, INT_MAX),
+	PORT_ITEM_ENU("network_transport", TRANS_UDP_IPV4, nw_trans_enu),
 	GLOB_ITEM_INT("ntpshm_segment", 0, INT_MIN, INT_MAX),
 	GLOB_ITEM_INT("offsetScaledLogVariance", 0xffff, 0, UINT16_MAX),
 	PORT_ITEM_INT("path_trace_enabled", 0, 0, 1),
@@ -359,17 +367,7 @@ static enum parser_result parse_port_setting(struct config *cfg,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "network_transport")) {
-		if (!strcasecmp("L2", value))
-			iface->transport = TRANS_IEEE_802_3;
-		else if (!strcasecmp("UDPv4", value))
-			iface->transport = TRANS_UDP_IPV4;
-		else if (!strcasecmp("UDPv6", value))
-			iface->transport = TRANS_UDP_IPV6;
-		else
-			return BAD_VALUE;
-
-	} else if (!strcmp(option, "delay_mechanism")) {
+	if (!strcmp(option, "delay_mechanism")) {
 		if (!strcasecmp("Auto", value))
 			iface->dm = DM_AUTO;
 		else if (!strcasecmp("E2E", value))
@@ -468,18 +466,6 @@ static enum parser_result parse_global_setting(const char *option,
 				cfg->dm = DM_P2P;
 			else if (0 == strcasecmp("Auto", value))
 				cfg->dm = DM_AUTO;
-			else
-				return BAD_VALUE;
-		}
-
-	} else if (!strcmp(option, "network_transport")) {
-		if (!(cfg_ignore & CFG_IGNORE_TRANSPORT)) {
-			if (!strcasecmp("UDPv4", value))
-				cfg->transport = TRANS_UDP_IPV4;
-			else if (!strcasecmp("UDPv6", value))
-				cfg->transport = TRANS_UDP_IPV6;
-			else if (!strcasecmp("L2", value))
-				cfg->transport = TRANS_IEEE_802_3;
 			else
 				return BAD_VALUE;
 		}
@@ -720,7 +706,6 @@ struct interface *config_create_interface(char *name, struct config *cfg)
 void config_init_interface(struct interface *iface, struct config *cfg)
 {
 	iface->dm = cfg->dm;
-	iface->transport = cfg->transport;
 	sk_get_ts_info(iface->name, &iface->ts_info);
 	iface->delay_filter = cfg->dds.delay_filter;
 }

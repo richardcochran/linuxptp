@@ -819,7 +819,10 @@ struct clock *clock_create(struct config *config, int phc_index,
 		clock_destroy(c);
 
 	snprintf(udsif->name, sizeof(udsif->name), "%s", uds_path);
-	udsif->transport = TRANS_UDS;
+	if (config_set_section_int(config, udsif->name,
+				    "network_transport", TRANS_UDS)) {
+		return NULL;
+	}
 	if (config_set_section_int(config, udsif->name, "delay_filter_length", 1)) {
 		return NULL;
 	}

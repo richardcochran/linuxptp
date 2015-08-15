@@ -36,14 +36,12 @@ struct interface {
 	STAILQ_ENTRY(interface) list;
 	char name[MAX_IFNAME_SIZE + 1];
 	enum delay_mechanism dm;
-	enum transport_type transport;
 	struct sk_ts_info ts_info;
 	enum tsproc_mode tsproc_mode;
 	enum filter_type delay_filter;
 };
 
 #define CFG_IGNORE_DM           (1 << 0)
-#define CFG_IGNORE_TRANSPORT    (1 << 1)
 #define CFG_IGNORE_TIMESTAMPING (1 << 2)
 
 struct config {
@@ -58,7 +56,6 @@ struct config {
 
 	/* the rest are legacy fields */
 	enum timestamp_type timestamping;
-	enum transport_type transport;
 	enum delay_mechanism dm;
 
 	struct default_ds dds;
