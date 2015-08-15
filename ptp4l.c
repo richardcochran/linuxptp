@@ -80,7 +80,6 @@ static struct config cfg_settings = {
 	},
 
 	.pod = {
-		.follow_up_info = 0,
 		.freq_est_interval = 1,
 		/* Default to very a large neighborPropDelay threshold */
 		.neighborPropDelayThresh = 20000000,

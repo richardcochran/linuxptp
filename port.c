@@ -110,6 +110,7 @@ struct port {
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;
 	UInteger32          neighborPropDelayThresh;
+	int                 follow_up_info;
 	int                 min_neighbor_prop_delay;
 	int                 path_trace_enabled;
 	enum fault_type     last_fault_type;
@@ -654,7 +655,7 @@ static int port_sync_incapable(struct port *p)
 
 static int port_is_ieee8021as(struct port *p)
 {
-	return p->pod.follow_up_info ? 1 : 0;
+	return p->follow_up_info ? 1 : 0;
 }
 
 static void port_management_send_error(struct port *p, struct port *ingress,
@@ -1334,7 +1335,7 @@ static int port_tx_sync(struct port *p)
 	pdulen = sizeof(struct follow_up_msg);
 	fup->hwts.type = p->timestamping;
 
-	if (p->pod.follow_up_info)
+	if (p->follow_up_info)
 		pdulen += follow_up_info_append(p, fup);
 
 	fup->header.tsmt               = FOLLOW_UP | p->transportSpecific;
@@ -1687,7 +1688,7 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master)))
 		return;
 
-	if (p->pod.follow_up_info) {
+	if (p->follow_up_info) {
 		struct follow_up_info_tlv *fui = follow_up_info_extract(m);
 		if (!fui)
 			return;
@@ -1861,7 +1862,7 @@ calc:
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
 
-	if (p->pod.follow_up_info)
+	if (p->follow_up_info)
 		port_nrate_calculate(p, t3c, t4);
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
@@ -2531,6 +2532,7 @@ struct port *port_open(int phc_index,
 	p->name = interface->name;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
+	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->clock = clock;
 	p->trp = transport_create(cfg, interface->transport);
