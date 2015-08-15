@@ -73,12 +73,11 @@ struct config *clock_config(struct clock *c);
  *                     Pass -1 to select CLOCK_REALTIME.
  * @param ifaces       A queue of network interfaces.
  * @param dds          A pointer to a default data set for the clock.
- * @param servo        The servo that this clock will use.
  * @return             A pointer to the single global clock instance.
  */
 struct clock *clock_create(struct config *config, int phc_index,
 			   struct interfaces_head *ifaces,
-			   struct default_ds *dds, enum servo_type servo);
+			   struct default_ds *dds);
 
 /**
  * Obtains a clock's default data set.

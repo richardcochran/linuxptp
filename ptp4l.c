@@ -59,8 +59,6 @@ static struct config cfg_settings = {
 		},
 	},
 
-	.clock_servo = CLOCK_SERVO_PI,
-
 	.ptp_dst_mac = ptp_dst_mac,
 	.p2p_dst_mac = p2p_dst_mac,
 	.uds_address = uds_path,
@@ -236,7 +234,7 @@ int main(int argc, char *argv[])
 	    ds->flags & DDS_SLAVE_ONLY) {
 		ds->clockQuality.clockClass = 255;
 	}
-	if (cfg_settings.clock_servo == CLOCK_SERVO_NTPSHM) {
+	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
@@ -332,8 +330,7 @@ int main(int argc, char *argv[])
 
 	clock = clock_create(&cfg_settings,
 			     phc_index, &cfg_settings.interfaces,
-			     &cfg_settings.dds,
-			     cfg_settings.clock_servo);
+			     &cfg_settings.dds);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

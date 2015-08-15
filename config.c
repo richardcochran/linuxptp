@@ -110,6 +110,14 @@ struct config_item {
 #define PORT_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
 
+static struct config_enum clock_servo_enu[] = {
+	{ "pi",     CLOCK_SERVO_PI     },
+	{ "linreg", CLOCK_SERVO_LINREG },
+	{ "ntpshm", CLOCK_SERVO_NTPSHM },
+	{ "nullf",  CLOCK_SERVO_NULLF  },
+	{ NULL, 0 },
+};
+
 static struct config_enum delay_filter_enu[] = {
 	{ "moving_average", FILTER_MOVING_AVERAGE },
 	{ "moving_median",  FILTER_MOVING_MEDIAN  },
@@ -152,6 +160,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	GLOB_ITEM_INT("clockAccuracy", 0xfe, 0, UINT8_MAX),
 	GLOB_ITEM_INT("clockClass", 248, 0, UINT8_MAX),
+	GLOB_ITEM_ENU("clock_servo", CLOCK_SERVO_PI, clock_servo_enu),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_ENU("delay_filter", FILTER_MOVING_MEDIAN, delay_filter_enu),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
@@ -444,18 +453,6 @@ static enum parser_result parse_global_setting(const char *option,
 		if (strlen(value) > MAX_IFNAME_SIZE)
 			return OUT_OF_RANGE;
 		strncpy(cfg->uds_address, value, MAX_IFNAME_SIZE);
-
-	} else if (!strcmp(option, "clock_servo")) {
-		if (!strcasecmp("pi", value))
-			cfg->clock_servo = CLOCK_SERVO_PI;
-		else if (!strcasecmp("linreg", value))
-			cfg->clock_servo = CLOCK_SERVO_LINREG;
-		else if (!strcasecmp("ntpshm", value))
-			cfg->clock_servo = CLOCK_SERVO_NTPSHM;
-		else if (!strcasecmp("nullf", value))
-			cfg->clock_servo = CLOCK_SERVO_NULLF;
-		else
-			return BAD_VALUE;
 
 	} else if (!strcmp(option, "productDescription")) {
 		if (count_char(value, ';') != 2)

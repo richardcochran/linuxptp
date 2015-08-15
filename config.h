@@ -47,8 +47,6 @@ struct config {
 
 	/* the rest are legacy fields */
 	struct default_ds dds;
-	enum servo_type clock_servo;
-
 	unsigned char *ptp_dst_mac;
 	unsigned char *p2p_dst_mac;
 	char *uds_address;
