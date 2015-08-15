@@ -104,6 +104,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("logSyncInterval", 0, INT8_MIN, INT8_MAX),
 	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
+	PORT_ITEM_INT("neighborPropDelayThresh", 20000000, 0, INT_MAX),
 	GLOB_ITEM_INT("ntpshm_segment", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("path_trace_enabled", 0, 0, 1),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
@@ -269,17 +270,9 @@ static enum parser_result parse_pod_setting(const char *option,
 					    struct port_defaults *pod)
 {
 	int val;
-	unsigned int uval;
-
 	enum parser_result r;
 
-	if (!strcmp(option, "neighborPropDelayThresh")) {
-		r = get_ranged_uint(value, &uval, 0, UINT32_MAX);
-		if (r != PARSED_OK)
-			return r;
-		pod->neighborPropDelayThresh = uval;
-
-	} else if (!strcmp(option, "min_neighbor_prop_delay")) {
+	if (!strcmp(option, "min_neighbor_prop_delay")) {
 		r = get_ranged_int(value, &val, INT_MIN, -1);
 		if (r != PARSED_OK)
 			return r;

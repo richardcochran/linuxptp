@@ -79,9 +79,6 @@ static struct config cfg_settings = {
 	},
 
 	.pod = {
-		/* Default to very a large neighborPropDelay threshold */
-		.neighborPropDelayThresh = 20000000,
-		.min_neighbor_prop_delay = -20000000,
 		.tx_timestamp_offset = 0,
 		.rx_timestamp_offset = 0,
 	},
