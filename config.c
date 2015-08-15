@@ -99,6 +99,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("clockClass", 248, 0, UINT8_MAX),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
+	GLOB_ITEM_INT("domainNumber", 0, 0, 127),
 	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("fault_badpeernet_interval", 16, INT32_MIN, INT32_MAX),
 	PORT_ITEM_INT("fault_reset_interval", 4, INT8_MIN, INT8_MAX),
@@ -390,24 +391,15 @@ static enum parser_result parse_global_setting(const char *option,
 					       struct config *cfg)
 {
 	int i, cfg_ignore = cfg->cfg_ignore;
-	unsigned int uval;
 	unsigned char mac[MAC_LEN];
 	unsigned char oui[OUI_LEN];
-
-	struct defaultDS *dds = &cfg->dds.dds;
 	enum parser_result r;
 
 	r = parse_fault_interval(cfg, NULL, option, value);
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "domainNumber")) {
-		r = get_ranged_uint(value, &uval, 0, 127);
-		if (r != PARSED_OK)
-			return r;
-		dds->domainNumber = uval;
-
-	} else if (!strcmp(option, "ptp_dst_mac")) {
+	if (!strcmp(option, "ptp_dst_mac")) {
 		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
 				      &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]))
 			return BAD_VALUE;

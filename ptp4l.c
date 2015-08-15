@@ -43,9 +43,6 @@ static struct config cfg_settings = {
 	.interfaces = STAILQ_HEAD_INITIALIZER(cfg_settings.interfaces),
 
 	.dds = {
-		.dds = {
-			.domainNumber = 0,
-		},
 		.clock_desc = {
 			.productDescription = {
 				.max_symbols = 64,
@@ -224,6 +221,8 @@ int main(int argc, char *argv[])
 	ds->clockQuality.clockAccuracy = config_get_int(cfg, NULL, "clockAccuracy");
 	ds->clockQuality.offsetScaledLogVariance =
 		config_get_int(cfg, NULL, "offsetScaledLogVariance");
+
+	ds->domainNumber = config_get_int(cfg, NULL, "domainNumber");
 
 	if (config_get_int(cfg, NULL, "slaveOnly")) {
 	    ds->flags |= DDS_SLAVE_ONLY;
