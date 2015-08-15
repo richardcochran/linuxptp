@@ -125,7 +125,6 @@ struct portDS {
 #define FRI_ASAP (-128)
 
 struct port_defaults {
-	UInteger8 announceReceiptTimeout;
 	UInteger8 syncReceiptTimeout;
 	UInteger8 transportSpecific;
 	int announce_span;

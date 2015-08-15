@@ -91,6 +91,7 @@ struct config_item {
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
 
 struct config_item config_tab[] = {
+	PORT_ITEM_INT("announceReceiptTimeout", 3, 2, UINT8_MAX),
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
@@ -267,13 +268,7 @@ static enum parser_result parse_pod_setting(const char *option,
 
 	enum parser_result r;
 
-	if (!strcmp(option, "announceReceiptTimeout")) {
-		r = get_ranged_uint(value, &uval, 2, UINT8_MAX);
-		if (r != PARSED_OK)
-			return r;
-		pod->announceReceiptTimeout = uval;
-
-	} else if (!strcmp(option, "syncReceiptTimeout")) {
+	if (!strcmp(option, "syncReceiptTimeout")) {
 		r = get_ranged_uint(value, &uval, 0, UINT8_MAX);
 		if (r != PARSED_OK)
 			return r;
