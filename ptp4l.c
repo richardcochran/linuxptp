@@ -79,7 +79,6 @@ static struct config cfg_settings = {
 	},
 
 	.pod = {
-		.tx_timestamp_offset = 0,
 		.rx_timestamp_offset = 0,
 	},
 

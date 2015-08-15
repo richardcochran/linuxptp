@@ -114,6 +114,7 @@ struct port {
 	int                 freq_est_interval;
 	int                 min_neighbor_prop_delay;
 	int                 path_trace_enabled;
+	int                 tx_timestamp_offset;
 	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
@@ -521,7 +522,7 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 		return -1;
 	}
 	if (msg_sots_valid(msg)) {
-		ts_add(&msg->hwts.ts, p->pod.tx_timestamp_offset);
+		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
 	return 0;
 }
@@ -2311,7 +2312,7 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
 		return -1;
 	}
 	if (msg_sots_valid(msg)) {
-		ts_add(&msg->hwts.ts, p->pod.tx_timestamp_offset);
+		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
 	return 0;
 }
@@ -2536,6 +2537,7 @@ struct port *port_open(int phc_index,
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
+	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
 	p->clock = clock;
 	p->trp = transport_create(cfg, interface->transport);
 	if (!p->trp)

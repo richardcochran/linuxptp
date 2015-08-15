@@ -95,6 +95,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
+	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
 	PORT_ITEM_INT("freq_est_interval", 1, 0, INT_MAX),
@@ -273,13 +274,7 @@ static enum parser_result parse_pod_setting(const char *option,
 	int val;
 	enum parser_result r;
 
-	if (!strcmp(option, "egressLatency")) {
-		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		pod->tx_timestamp_offset = val;
-
-	} else if (!strcmp(option, "ingressLatency")) {
+	if (!strcmp(option, "ingressLatency")) {
 		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
 		if (r != PARSED_OK)
 			return r;
