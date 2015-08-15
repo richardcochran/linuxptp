@@ -57,7 +57,6 @@ static struct config cfg_settings = {
 			.userDescription      = { .max_symbols = 128 },
 			.manufacturerIdentity = { 0, 0, 0 },
 		},
-		.tsproc_mode = TSPROC_FILTER,
 		.delay_filter = FILTER_MOVING_MEDIAN,
 	},
 

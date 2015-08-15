@@ -2565,7 +2565,7 @@ struct port *port_open(int phc_index,
 	p->flt_interval_pertype[FT_UNSPECIFIED].val =
 		config_get_int(cfg, p->name, "fault_reset_interval");
 
-	p->tsproc = tsproc_create(interface->tsproc_mode,
+	p->tsproc = tsproc_create(config_get_int(cfg, p->name, "tsproc_mode"),
 				  interface->delay_filter,
 				  config_get_int(cfg, p->name, "delay_filter_length"));
 	if (!p->tsproc) {

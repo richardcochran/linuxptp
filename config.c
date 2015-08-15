@@ -124,6 +124,14 @@ static struct config_enum nw_trans_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum tsproc_enu[] = {
+	{ "filter",        TSPROC_FILTER        },
+	{ "raw",           TSPROC_RAW           },
+	{ "filter_weight", TSPROC_FILTER_WEIGHT },
+	{ "raw_weight",    TSPROC_RAW_WEIGHT    },
+	{ NULL, 0 },
+};
+
 struct config_item config_tab[] = {
 	PORT_ITEM_INT("announceReceiptTimeout", 3, 2, UINT8_MAX),
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
@@ -174,6 +182,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
 	GLOB_ITEM_INT("timeSource", INTERNAL_OSCILLATOR, 0x10, 0xfe),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
+	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),
 	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
@@ -375,19 +384,7 @@ static enum parser_result parse_port_setting(struct config *cfg,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "tsproc_mode")) {
-		if (!strcasecmp("filter", value))
-			iface->tsproc_mode = TSPROC_FILTER;
-		else if (!strcasecmp("raw", value))
-			iface->tsproc_mode = TSPROC_RAW;
-		else if (!strcasecmp("filter_weight", value))
-			iface->tsproc_mode = TSPROC_FILTER_WEIGHT;
-		else if (!strcasecmp("raw_weight", value))
-			iface->tsproc_mode = TSPROC_RAW_WEIGHT;
-		else
-			return BAD_VALUE;
-
-	} else if (!strcmp(option, "delay_filter")) {
+	if (!strcmp(option, "delay_filter")) {
 		if (!strcasecmp("moving_average", value))
 			iface->delay_filter = FILTER_MOVING_AVERAGE;
 		else if (!strcasecmp("moving_median", value))
@@ -490,18 +487,6 @@ static enum parser_result parse_global_setting(const char *option,
 			return BAD_VALUE;
 		for (i = 0; i < OUI_LEN; i++)
 			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
-
-	} else if (!strcmp(option, "tsproc_mode")) {
-		if (!strcasecmp("filter", value))
-			cfg->dds.tsproc_mode = TSPROC_FILTER;
-		else if (!strcasecmp("raw", value))
-			cfg->dds.tsproc_mode = TSPROC_RAW;
-		else if (!strcasecmp("filter_weight", value))
-			cfg->dds.tsproc_mode = TSPROC_FILTER_WEIGHT;
-		else if (!strcasecmp("raw_weight", value))
-			cfg->dds.tsproc_mode = TSPROC_RAW_WEIGHT;
-		else
-			return BAD_VALUE;
 
 	} else if (!strcmp(option, "delay_filter")) {
 		if (!strcasecmp("moving_average", value))

@@ -53,7 +53,6 @@ struct clock_description {
 struct default_ds {
 	struct defaultDS dds;
 	struct clock_description clock_desc;
-	enum tsproc_mode tsproc_mode;
 	enum filter_type delay_filter;
 };
 
