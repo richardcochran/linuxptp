@@ -125,7 +125,6 @@ struct portDS {
 
 struct port_defaults {
 	struct fault_interval flt_interval_pertype[FT_CNT];
-	int rx_timestamp_offset; /*nanoseconds*/
 };
 
 #endif

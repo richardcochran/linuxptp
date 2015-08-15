@@ -114,6 +114,7 @@ struct port {
 	int                 freq_est_interval;
 	int                 min_neighbor_prop_delay;
 	int                 path_trace_enabled;
+	int                 rx_timestamp_offset;
 	int                 tx_timestamp_offset;
 	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
@@ -2238,7 +2239,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		return EV_NONE;
 	}
 	if (msg_sots_valid(msg)) {
-		ts_add(&msg->hwts.ts, -p->pod.rx_timestamp_offset);
+		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
 		clock_check_ts(p->clock, msg->hwts.ts);
 	}
 	if (port_ignore(p, msg)) {
@@ -2537,6 +2538,7 @@ struct port *port_open(int phc_index,
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
+	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
 	p->clock = clock;
 	p->trp = transport_create(cfg, interface->transport);

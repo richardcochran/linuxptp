@@ -78,10 +78,6 @@ static struct config cfg_settings = {
 		.boundary_clock_jbod = 0,
 	},
 
-	.pod = {
-		.rx_timestamp_offset = 0,
-	},
-
 	.timestamping = TS_HARDWARE,
 	.dm = DM_E2E,
 	.transport = TRANS_UDP_IPV4,

@@ -99,6 +99,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
 	PORT_ITEM_INT("freq_est_interval", 1, 0, INT_MAX),
+	PORT_ITEM_INT("ingressLatency", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logMinDelayReqInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logMinPdelayReqInterval", 0, INT8_MIN, INT8_MAX),
@@ -274,13 +275,7 @@ static enum parser_result parse_pod_setting(const char *option,
 	int val;
 	enum parser_result r;
 
-	if (!strcmp(option, "ingressLatency")) {
-		r = get_ranged_int(value, &val, INT_MIN, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		pod->rx_timestamp_offset = val;
-
-	} else if (!strcmp(option, "fault_badpeernet_interval")) {
+	if (!strcmp(option, "fault_badpeernet_interval")) {
 		pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].type = FTMO_LINEAR_SECONDS;
 		if (!strcasecmp("ASAP", value)) {
 			pod->flt_interval_pertype[FT_BAD_PEER_NETWORK].val = 0;
