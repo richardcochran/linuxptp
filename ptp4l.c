@@ -203,6 +203,11 @@ int main(int argc, char *argv[])
 		return c;
 	}
 
+	print_set_progname(progname);
+	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
+	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
+	print_set_level(config_get_int(cfg, NULL, "logging_level"));
+
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
@@ -238,11 +243,6 @@ int main(int argc, char *argv[])
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
-
-	print_set_progname(progname);
-	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
-	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
-	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	if (STAILQ_EMPTY(&cfg_settings.interfaces)) {
 		fprintf(stderr, "no interface specified\n");
