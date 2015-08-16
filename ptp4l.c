@@ -74,7 +74,6 @@ static struct config cfg_settings = {
 		},
 		.tsproc_mode = TSPROC_FILTER,
 		.delay_filter = FILTER_MOVING_MEDIAN,
-		.delay_filter_length = 10,
 		.boundary_clock_jbod = 0,
 	},
 

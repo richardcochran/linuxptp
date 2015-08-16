@@ -2553,7 +2553,7 @@ struct port *port_open(int phc_index,
 
 	p->tsproc = tsproc_create(interface->tsproc_mode,
 				  interface->delay_filter,
-				  interface->delay_filter_length);
+				  config_get_int(cfg, p->name, "delay_filter_length"));
 	if (!p->tsproc) {
 		pr_err("Failed to create time stamp processor");
 		goto err_transport;

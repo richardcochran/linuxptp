@@ -819,7 +819,9 @@ struct clock *clock_create(struct config *config, int phc_index,
 
 	snprintf(udsif->name, sizeof(udsif->name), "%s", uds_path);
 	udsif->transport = TRANS_UDS;
-	udsif->delay_filter_length = 1;
+	if (config_set_section_int(config, udsif->name, "delay_filter_length", 1)) {
+		return NULL;
+	}
 
 	c->config = config;
 	c->free_running = dds->free_running;
@@ -874,7 +876,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 	c->servo_state = SERVO_UNLOCKED;
 	c->servo_type = servo;
 	c->tsproc = tsproc_create(dds->tsproc_mode, dds->delay_filter,
-				  dds->delay_filter_length);
+				  config_get_int(config, NULL, "delay_filter_length"));
 	if (!c->tsproc) {
 		pr_err("Failed to create time stamp processor");
 		return NULL;

@@ -95,6 +95,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
+	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
 	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
@@ -355,12 +356,6 @@ static enum parser_result parse_port_setting(struct config *cfg,
 		else
 			return BAD_VALUE;
 
-	} else if (!strcmp(option, "delay_filter_length")) {
-		r = get_ranged_int(value, &val, 1, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		iface->delay_filter_length = val;
-
 	} else if (!strcmp(option, "boundary_clock_jbod")) {
 		r = get_ranged_int(value, &val, 0, 1);
 		if (r != PARSED_OK)
@@ -611,12 +606,6 @@ static enum parser_result parse_global_setting(const char *option,
 		else
 			return BAD_VALUE;
 
-	} else if (!strcmp(option, "delay_filter_length")) {
-		r = get_ranged_int(value, &val, 1, INT_MAX);
-		if (r != PARSED_OK)
-			return r;
-		cfg->dds.delay_filter_length = val;
-
 	} else if (!strcmp(option, "boundary_clock_jbod")) {
 		r = get_ranged_int(value, &val, 0, 1);
 		if (r != PARSED_OK)
@@ -810,7 +799,6 @@ void config_init_interface(struct interface *iface, struct config *cfg)
 	sk_get_ts_info(iface->name, &iface->ts_info);
 
 	iface->delay_filter = cfg->dds.delay_filter;
-	iface->delay_filter_length = cfg->dds.delay_filter_length;
 	iface->boundary_clock_jbod = cfg->dds.boundary_clock_jbod;
 }
 

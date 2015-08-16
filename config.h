@@ -41,7 +41,6 @@ struct interface {
 	struct sk_ts_info ts_info;
 	enum tsproc_mode tsproc_mode;
 	enum filter_type delay_filter;
-	int delay_filter_length;
 	int boundary_clock_jbod;
 };
 
