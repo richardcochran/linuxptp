@@ -58,8 +58,6 @@ static struct config cfg_settings = {
 			.manufacturerIdentity = { 0, 0, 0 },
 		},
 	},
-
-	.uds_address = uds_path,
 };
 
 static void usage(char *progname)

@@ -820,7 +820,8 @@ struct clock *clock_create(struct config *config, int phc_index,
 	if (c->nports)
 		clock_destroy(c);
 
-	snprintf(udsif->name, sizeof(udsif->name), "%s", uds_path);
+	snprintf(udsif->name, sizeof(udsif->name), "%s",
+		 config_get_string(config, NULL, "uds_address"));
 	if (config_set_section_int(config, udsif->name,
 				    "network_transport", TRANS_UDS)) {
 		return NULL;

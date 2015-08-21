@@ -1359,7 +1359,10 @@ int main(int argc, char *argv[])
 					optarg, MAX_IFNAME_SIZE);
 				return -1;
 			}
-			strncpy(uds_path, optarg, MAX_IFNAME_SIZE);
+			if (config_set_string(&phc2sys_config, "uds_address",
+					      optarg)) {
+				return -1;
+			}
 			break;
 		case 'l':
 			if (get_arg_val_i(c, optarg, &print_level,

@@ -228,6 +228,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
+	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
 	GLOB_ITEM_INT("verbose", 0, 0, 1),
 };
@@ -468,12 +469,7 @@ static enum parser_result parse_global_setting(const char *option,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "uds_address")) {
-		if (strlen(value) > MAX_IFNAME_SIZE)
-			return OUT_OF_RANGE;
-		strncpy(cfg->uds_address, value, MAX_IFNAME_SIZE);
-
-	} else if (!strcmp(option, "productDescription")) {
+	if (!strcmp(option, "productDescription")) {
 		if (count_char(value, ';') != 2)
 			return BAD_VALUE;
 		if (static_ptp_text_set(&cfg->dds.clock_desc.productDescription, value) != 0)

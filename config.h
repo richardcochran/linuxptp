@@ -47,7 +47,6 @@ struct config {
 
 	/* the rest are legacy fields */
 	struct default_ds dds;
-	char *uds_address;
 };
 
 int config_read(char *name, struct config *cfg);

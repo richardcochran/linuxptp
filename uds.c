@@ -31,8 +31,6 @@
 #include "transport_private.h"
 #include "uds.h"
 
-char uds_path[MAX_IFNAME_SIZE + 1] = "/var/run/ptp4l";
-
 #define UDS_FILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) /*0660*/
 
 struct uds {
@@ -60,6 +58,7 @@ static int uds_open(struct transport *t, const char *name, struct fdarray *fda,
 	int fd, err;
 	struct sockaddr_un sa;
 	struct uds *uds = container_of(t, struct uds, t);
+	char *uds_path = config_get_string(t->cfg, NULL, "uds_address");
 
 	fd = socket(AF_LOCAL, SOCK_DGRAM, 0);
 	if (fd < 0) {

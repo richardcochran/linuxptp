@@ -25,11 +25,6 @@
 #include "transport.h"
 
 /**
- * Address of the server.
- */
-extern char uds_path[MAX_IFNAME_SIZE + 1];
-
-/**
  * Allocate an instance of a UDS transport.
  * @return Pointer to a new transport instance on success, NULL otherwise.
  */
