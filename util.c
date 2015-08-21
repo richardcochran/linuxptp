@@ -88,6 +88,19 @@ char *pid2str(struct PortIdentity *id)
 	return buf;
 }
 
+int str2mac(const char *s, unsigned char mac[MAC_LEN])
+{
+	unsigned char buf[MAC_LEN];
+	int c;
+	c = sscanf(s, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+		   &buf[0], &buf[1], &buf[2], &buf[3], &buf[4], &buf[5]);
+	if (c != MAC_LEN) {
+		return -1;
+	}
+	memcpy(mac, buf, MAC_LEN);
+	return 0;
+}
+
 int str2pid(const char *s, struct PortIdentity *result)
 {
 	struct PortIdentity pid;

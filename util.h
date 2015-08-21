@@ -21,6 +21,7 @@
 #define HAVE_UTIL_H
 
 #include "ddt.h"
+#include "ether.h"
 
 /**
  * Table of human readable strings, one for each port state.
@@ -53,6 +54,15 @@ char *cid2str(struct ClockIdentity *id);
  * @return    Pointer to a static global buffer holding the result.
  */
 char *pid2str(struct PortIdentity *id);
+
+/**
+ * Scan a string containing a MAC address and convert it into binary form.
+ *
+ * @param s       String in human readable form.
+ * @param mac     Pointer to a buffer to hold the result.
+ * @return Zero on success, or -1 if the string is incorrectly formatted.
+ */
+int str2mac(const char *s, unsigned char mac[MAC_LEN]);
 
 /**
  * Scan a string containing a port identity and convert it into binary form.
