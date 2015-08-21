@@ -38,6 +38,7 @@ enum config_type {
 	CFG_TYPE_INT,
 	CFG_TYPE_DOUBLE,
 	CFG_TYPE_ENUM,
+	CFG_TYPE_STRING,
 };
 
 struct config_enum {
@@ -48,6 +49,7 @@ struct config_enum {
 typedef union {
 	int i;
 	double d;
+	char *s;
 } any_t;
 
 #define CONFIG_LABEL_SIZE 32
@@ -55,6 +57,7 @@ typedef union {
 #define CFG_ITEM_STATIC (1 << 0) /* statically allocated, not to be freed */
 #define CFG_ITEM_LOCKED (1 << 1) /* command line value, may not be changed */
 #define CFG_ITEM_PORT   (1 << 2) /* item may appear in port sections */
+#define CFG_ITEM_DYNSTR (1 << 4) /* string value dynamically allocated */
 
 struct config_item {
 	char label[CONFIG_LABEL_SIZE];
@@ -91,6 +94,12 @@ struct config_item {
 	.min.i	= _min,					\
 	.max.i	= _max,					\
 }
+#define CONFIG_ITEM_STRING(_label, _port, _default) {	\
+	.label	= _label,				\
+	.type	= CFG_TYPE_STRING,			\
+	.flags	= _port ? CFG_ITEM_PORT : 0,		\
+	.val.s	= _default,				\
+}
 
 #define GLOB_ITEM_DBL(label, _default, min, max) \
 	CONFIG_ITEM_DBL(label, 0, _default, min, max)
@@ -101,6 +110,9 @@ struct config_item {
 #define GLOB_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 0, _default, min, max)
 
+#define GLOB_ITEM_STR(label, _default) \
+	CONFIG_ITEM_STRING(label, 0, _default)
+
 #define PORT_ITEM_DBL(label, _default, min, max) \
 	CONFIG_ITEM_DBL(label, 1, _default, min, max)
 
@@ -109,6 +121,9 @@ struct config_item {
 
 #define PORT_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
+
+#define PORT_ITEM_STR(label, _default) \
+	CONFIG_ITEM_STRING(label, 1, _default)
 
 static struct config_enum clock_servo_enu[] = {
 	{ "pi",     CLOCK_SERVO_PI     },
@@ -274,6 +289,8 @@ static struct config_item *config_item_alloc(struct config *cfg,
 static void config_item_free(void *ptr)
 {
 	struct config_item *ci = ptr;
+	if (ci->type == CFG_TYPE_STRING && ci->flags & CFG_ITEM_DYNSTR)
+		free(ci->val.s);
 	if (ci->flags & CFG_ITEM_STATIC)
 		return;
 	free(ci);
@@ -329,6 +346,10 @@ static enum parser_result parse_item(struct config *cfg,
 				break;
 			}
 		}
+		break;
+	case CFG_TYPE_STRING:
+		r = PARSED_OK;
+		break;
 	}
 	if (r != PARSED_OK) {
 		return r;
@@ -361,6 +382,17 @@ static enum parser_result parse_item(struct config *cfg,
 		break;
 	case CFG_TYPE_DOUBLE:
 		dst->val.d = df;
+		break;
+	case CFG_TYPE_STRING:
+		if (dst->flags & CFG_ITEM_DYNSTR) {
+			free(dst->val.s);
+		}
+		dst->val.s = strdup(value);
+		if (!dst->val.s) {
+			pr_err("low memory");
+			return NOT_PARSED;
+		}
+		dst->flags |= CFG_ITEM_DYNSTR;
 		break;
 	}
 	return PARSED_OK;
@@ -732,6 +764,7 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 	}
 	switch (ci->type) {
 	case CFG_TYPE_DOUBLE:
+	case CFG_TYPE_STRING:
 		pr_err("bug: config option %s type mismatch!", option);
 		exit(-1);
 	case CFG_TYPE_INT:
@@ -740,6 +773,19 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 	}
 	pr_debug("config item %s.%s is %d", section, option, ci->val.i);
 	return ci->val.i;
+}
+
+char *config_get_string(struct config *cfg, const char *section,
+			const char *option)
+{
+	struct config_item *ci = config_find_item(cfg, section, option);
+
+	if (!ci || ci->type != CFG_TYPE_STRING) {
+		pr_err("bug: config option %s missing or invalid!", option);
+		exit(-1);
+	}
+	pr_debug("config item %s.%s is '%s'", section, option, ci->val.s);
+	return ci->val.s;
 }
 
 int config_set_double(struct config *cfg, const char *option, double val)
@@ -768,6 +814,7 @@ int config_set_section_int(struct config *cfg, const char *section,
 	}
 	switch (cgi->type) {
 	case CFG_TYPE_DOUBLE:
+	case CFG_TYPE_STRING:
 		pr_err("bug: config option %s type mismatch!", option);
 		return -1;
 	case CFG_TYPE_INT:
@@ -790,5 +837,28 @@ int config_set_section_int(struct config *cfg, const char *section,
 	}
 	dst->val.i = val;
 	pr_debug("section item %s.%s now %d", section, option, dst->val.i);
+	return 0;
+}
+
+int config_set_string(struct config *cfg, const char *option,
+		      const char *val)
+{
+	struct config_item *ci = config_find_item(cfg, NULL, option);
+
+	if (!ci || ci->type != CFG_TYPE_STRING) {
+		pr_err("bug: config option %s missing or invalid!", option);
+		return -1;
+	}
+	ci->flags |= CFG_ITEM_LOCKED;
+	if (ci->flags & CFG_ITEM_DYNSTR) {
+		free(ci->val.s);
+	}
+	ci->val.s = strdup(val);
+	if (!ci->val.s) {
+		pr_err("low memory");
+		return -1;
+	}
+	ci->flags |= CFG_ITEM_DYNSTR;
+	pr_debug("locked item global.%s as '%s'", option, ci->val.s);
 	return 0;
 }
