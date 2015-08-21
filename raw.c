@@ -149,9 +149,8 @@ static int raw_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-unsigned char p2p_dst_mac[MAC_LEN] = { P2P_DST_MAC };
-
-static int open_socket(const char *name, int event, unsigned char *ptp_dst_mac)
+static int open_socket(const char *name, int event, unsigned char *ptp_dst_mac,
+		       unsigned char *p2p_dst_mac)
 {
 	struct sockaddr_ll addr;
 	int fd, index;
@@ -204,6 +203,7 @@ static int raw_open(struct transport *t, const char *name,
 {
 	struct raw *raw = container_of(t, struct raw, t);
 	unsigned char ptp_dst_mac[MAC_LEN];
+	unsigned char p2p_dst_mac[MAC_LEN];
 	int efd, gfd;
 	char *str;
 
@@ -212,17 +212,22 @@ static int raw_open(struct transport *t, const char *name,
 		pr_err("invalid ptp_dst_mac %s", str);
 		return -1;
 	}
+	str = config_get_string(t->cfg, name, "p2p_dst_mac");
+	if (str2mac(str, p2p_dst_mac)) {
+		pr_err("invalid p2p_dst_mac %s", str);
+		return -1;
+	}
 	mac_to_addr(&raw->ptp_addr, ptp_dst_mac);
 	mac_to_addr(&raw->p2p_addr, p2p_dst_mac);
 
 	if (sk_interface_macaddr(name, &raw->src_addr))
 		goto no_mac;
 
-	efd = open_socket(name, 1, ptp_dst_mac);
+	efd = open_socket(name, 1, ptp_dst_mac, p2p_dst_mac);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, 0, ptp_dst_mac);
+	gfd = open_socket(name, 0, ptp_dst_mac, p2p_dst_mac);
 	if (gfd < 0)
 		goto no_general;
 

@@ -24,11 +24,6 @@
 #include "transport.h"
 
 /**
- * The MAC address to use for peer messages.
- */
-extern unsigned char p2p_dst_mac[];
-
-/**
  * Allocate an instance of a raw Ethernet transport.
  * @return Pointer to a new transport instance on success, NULL otherwise.
  */

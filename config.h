@@ -47,7 +47,6 @@ struct config {
 
 	/* the rest are legacy fields */
 	struct default_ds dds;
-	unsigned char *p2p_dst_mac;
 	char *uds_address;
 };
 

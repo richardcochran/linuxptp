@@ -59,7 +59,6 @@ static struct config cfg_settings = {
 		},
 	},
 
-	.p2p_dst_mac = p2p_dst_mac,
 	.uds_address = uds_path,
 };
 

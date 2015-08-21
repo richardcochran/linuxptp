@@ -214,6 +214,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("priority1", 128, 0, UINT8_MAX),
 	GLOB_ITEM_INT("priority2", 128, 0, UINT8_MAX),
 	PORT_ITEM_STR("ptp_dst_mac", "01:1B:19:00:00:00"),
+	PORT_ITEM_STR("p2p_dst_mac", "01:80:C2:00:00:0E"),
 	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),
 	GLOB_ITEM_INT("slaveOnly", 0, 0, 1),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
@@ -460,7 +461,6 @@ static enum parser_result parse_global_setting(const char *option,
 					       struct config *cfg)
 {
 	int i;
-	unsigned char mac[MAC_LEN];
 	unsigned char oui[OUI_LEN];
 	enum parser_result r;
 
@@ -468,14 +468,7 @@ static enum parser_result parse_global_setting(const char *option,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "p2p_dst_mac")) {
-		if (MAC_LEN != sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-				      &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]))
-			return BAD_VALUE;
-		for (i = 0; i < MAC_LEN; i++)
-			cfg->p2p_dst_mac[i] = mac[i];
-
-	} else if (!strcmp(option, "uds_address")) {
+	if (!strcmp(option, "uds_address")) {
 		if (strlen(value) > MAX_IFNAME_SIZE)
 			return OUT_OF_RANGE;
 		strncpy(cfg->uds_address, value, MAX_IFNAME_SIZE);
