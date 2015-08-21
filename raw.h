@@ -24,11 +24,6 @@
 #include "transport.h"
 
 /**
- * The MAC address to use for non-peer messages.
- */
-extern unsigned char ptp_dst_mac[];
-
-/**
  * The MAC address to use for peer messages.
  */
 extern unsigned char p2p_dst_mac[];

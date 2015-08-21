@@ -37,12 +37,14 @@
 #include <linux/sockios.h>
 
 #include "address.h"
+#include "config.h"
 #include "contain.h"
 #include "ether.h"
 #include "print.h"
 #include "raw.h"
 #include "sk.h"
 #include "transport_private.h"
+#include "util.h"
 
 struct raw {
 	struct transport t;
@@ -147,10 +149,9 @@ static int raw_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-unsigned char ptp_dst_mac[MAC_LEN] = { PTP_DST_MAC };
 unsigned char p2p_dst_mac[MAC_LEN] = { P2P_DST_MAC };
 
-static int open_socket(const char *name, int event)
+static int open_socket(const char *name, int event, unsigned char *ptp_dst_mac)
 {
 	struct sockaddr_ll addr;
 	int fd, index;
@@ -202,19 +203,26 @@ static int raw_open(struct transport *t, const char *name,
 		    struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct raw *raw = container_of(t, struct raw, t);
+	unsigned char ptp_dst_mac[MAC_LEN];
 	int efd, gfd;
+	char *str;
 
+	str = config_get_string(t->cfg, name, "ptp_dst_mac");
+	if (str2mac(str, ptp_dst_mac)) {
+		pr_err("invalid ptp_dst_mac %s", str);
+		return -1;
+	}
 	mac_to_addr(&raw->ptp_addr, ptp_dst_mac);
 	mac_to_addr(&raw->p2p_addr, p2p_dst_mac);
 
 	if (sk_interface_macaddr(name, &raw->src_addr))
 		goto no_mac;
 
-	efd = open_socket(name, 1);
+	efd = open_socket(name, 1, ptp_dst_mac);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, 0);
+	gfd = open_socket(name, 0, ptp_dst_mac);
 	if (gfd < 0)
 		goto no_general;
 

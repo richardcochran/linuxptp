@@ -185,6 +185,10 @@ The default is 16 seconds.
 Select the delay mechanism. Possible values are E2E, P2P and Auto.
 The default is E2E.
 .TP
+.B ptp_dst_mac
+The MAC address to which PTP messages should be sent.
+Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
+.TP
 .B network_transport
 Select the network transport. Possible values are UDPv4, UDPv6 and L2.
 The default is UDPv4.
@@ -411,10 +415,6 @@ disabled. The default is 200000000 (20%).
 .B ntpshm_segment
 The number of the SHM segment used by ntpshm servo.
 The default is 0.
-.TP
-.B ptp_dst_mac
-The MAC address where should be PTP messages sent.
-Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
 .TP
 .B p2p_dst_mac
 The MAC address where should be peer delay messages the PTP peer.
