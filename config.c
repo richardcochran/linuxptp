@@ -232,6 +232,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
 	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
+	GLOB_ITEM_STR("userDescription", ""),
 	GLOB_ITEM_INT("verbose", 0, 0, 1),
 };
 
@@ -460,11 +461,7 @@ static enum parser_result parse_global_setting(const char *option,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "userDescription")) {
-		if (static_ptp_text_set(&cfg->dds.clock_desc.userDescription, value) != 0)
-			return BAD_VALUE;
-
-	} else if (!strcmp(option, "manufacturerIdentity")) {
+	if (!strcmp(option, "manufacturerIdentity")) {
 		if (OUI_LEN != sscanf(value, "%hhx:%hhx:%hhx",
 				      &oui[0], &oui[1], &oui[2]))
 			return BAD_VALUE;

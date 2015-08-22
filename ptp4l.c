@@ -44,7 +44,6 @@ static struct config cfg_settings = {
 
 	.dds = {
 		.clock_desc = {
-			.userDescription      = { .max_symbols = 128 },
 			.manufacturerIdentity = { 0, 0, 0 },
 		},
 	},
@@ -206,6 +205,7 @@ int main(int argc, char *argv[])
 
 	dds->clock_desc.productDescription.max_symbols = 64;
 	dds->clock_desc.revisionData.max_symbols = 32;
+	dds->clock_desc.userDescription.max_symbols = 128;
 
 	tmp = config_get_string(cfg, NULL, "productDescription");
 	if (count_char(tmp, ';') != 2 ||
@@ -217,6 +217,11 @@ int main(int argc, char *argv[])
 	if (count_char(tmp, ';') != 2 ||
 	    static_ptp_text_set(&dds->clock_desc.revisionData, tmp)) {
 		fprintf(stderr, "invalid revisionData '%s'.\n", tmp);
+		return -1;
+	}
+	tmp = config_get_string(cfg, NULL, "userDescription");
+	if (static_ptp_text_set(&dds->clock_desc.userDescription, tmp)) {
+		fprintf(stderr, "invalid userDescription '%s'.\n", tmp);
 		return -1;
 	}
 
