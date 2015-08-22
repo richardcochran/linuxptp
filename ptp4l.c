@@ -43,6 +43,8 @@ static struct config cfg_settings = {
 	.interfaces = STAILQ_HEAD_INITIALIZER(cfg_settings.interfaces),
 };
 
+static struct default_ds ptp4l_dds;
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -82,8 +84,8 @@ int main(int argc, char *argv[])
 	struct interface *iface;
 	struct clock *clock;
 	struct config *cfg = &cfg_settings;
-	struct default_ds *dds = &cfg_settings.dds;
-	struct defaultDS *ds = &cfg_settings.dds.dds;
+	struct default_ds *dds = &ptp4l_dds;
+	struct defaultDS *ds = &ptp4l_dds.dds;
 	int phc_index = -1, print_level, required_modes = 0;
 	unsigned char oui[OUI_LEN];
 
@@ -339,7 +341,7 @@ int main(int argc, char *argv[])
 
 	clock = clock_create(&cfg_settings,
 			     phc_index, &cfg_settings.interfaces,
-			     &cfg_settings.dds);
+			     &ptp4l_dds);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		return -1;

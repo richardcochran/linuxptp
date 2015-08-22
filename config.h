@@ -44,9 +44,6 @@ struct config {
 
 	/* hash of all non-legacy items */
 	struct hash *htab;
-
-	/* the rest are legacy fields */
-	struct default_ds dds;
 };
 
 int config_read(char *name, struct config *cfg);
