@@ -41,12 +41,6 @@ int assume_two_step = 0;
 
 static struct config cfg_settings = {
 	.interfaces = STAILQ_HEAD_INITIALIZER(cfg_settings.interfaces),
-
-	.dds = {
-		.clock_desc = {
-			.manufacturerIdentity = { 0, 0, 0 },
-		},
-	},
 };
 
 static void usage(char *progname)
@@ -91,6 +85,7 @@ int main(int argc, char *argv[])
 	struct default_ds *dds = &cfg_settings.dds;
 	struct defaultDS *ds = &cfg_settings.dds.dds;
 	int phc_index = -1, print_level, required_modes = 0;
+	unsigned char oui[OUI_LEN];
 
 	if (handle_term_signals())
 		return -1;
@@ -224,6 +219,12 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "invalid userDescription '%s'.\n", tmp);
 		return -1;
 	}
+	tmp = config_get_string(cfg, NULL, "manufacturerIdentity");
+	if (OUI_LEN != sscanf(tmp, "%hhx:%hhx:%hhx", &oui[0], &oui[1], &oui[2])) {
+		fprintf(stderr, "invalid manufacturerIdentity '%s'.\n", tmp);
+		return -1;
+	}
+	memcpy(dds->clock_desc.manufacturerIdentity, oui, OUI_LEN);
 
 	ds->domainNumber = config_get_int(cfg, NULL, "domainNumber");
 

@@ -196,6 +196,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("logMinPdelayReqInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logSyncInterval", 0, INT8_MIN, INT8_MAX),
 	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
+	GLOB_ITEM_STR("manufacturerIdentity", "00:00:00"),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	PORT_ITEM_INT("min_neighbor_prop_delay", -20000000, INT_MIN, -1),
 	PORT_ITEM_INT("neighborPropDelayThresh", 20000000, 0, INT_MAX),
@@ -453,25 +454,13 @@ static enum parser_result parse_global_setting(const char *option,
 					       const char *value,
 					       struct config *cfg)
 {
-	int i;
-	unsigned char oui[OUI_LEN];
 	enum parser_result r;
 
 	r = parse_fault_interval(cfg, NULL, option, value);
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "manufacturerIdentity")) {
-		if (OUI_LEN != sscanf(value, "%hhx:%hhx:%hhx",
-				      &oui[0], &oui[1], &oui[2]))
-			return BAD_VALUE;
-		for (i = 0; i < OUI_LEN; i++)
-			cfg->dds.clock_desc.manufacturerIdentity[i] = oui[i];
-
-	} else
-		return parse_item(cfg, NULL, option, value);
-
-	return PARSED_OK;
+	return parse_item(cfg, NULL, option, value);
 }
 
 static enum parser_result parse_setting_line(char *line,
