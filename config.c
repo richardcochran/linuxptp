@@ -446,17 +446,6 @@ static enum parser_result parse_port_setting(struct config *cfg,
 	return parse_item(cfg, iface->name, option, value);
 }
 
-static int count_char(const char *str, char c)
-{
-	int num = 0;
-	char s;
-	while ((s = *(str++))) {
-		if (s == c)
-			num++;
-	}
-	return num;
-}
-
 static enum parser_result parse_global_setting(const char *option,
 					       const char *value,
 					       struct config *cfg)

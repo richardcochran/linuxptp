@@ -77,6 +77,17 @@ char *cid2str(struct ClockIdentity *id)
 	return buf;
 }
 
+int count_char(const char *str, char c)
+{
+	int num = 0;
+	char s;
+	while ((s = *(str++))) {
+		if (s == c)
+			num++;
+	}
+	return num;
+}
+
 char *pid2str(struct PortIdentity *id)
 {
 	static char buf[64];

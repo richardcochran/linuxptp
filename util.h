@@ -45,6 +45,14 @@ extern const char *ev_str[];
 char *cid2str(struct ClockIdentity *id);
 
 /**
+ * Counts the number of occurrences of a given character.
+ * @param str  String to evaluate.
+ * @param c    The character of interest.
+ * @return     The number of time 'c' appears in 'str'.
+ */
+int count_char(const char *str, char c);
+
+/**
  * Convert a port identity into a human readable string.
  *
  * Note that this function uses a static global variable to store the
