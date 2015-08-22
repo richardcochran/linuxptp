@@ -237,6 +237,10 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("verbose", 0, 0, 1),
 };
 
+static enum parser_result
+parse_fault_interval(struct config *cfg, const char *section,
+		     const char *option, const char *value);
+
 static struct config_item *config_section_item(struct config *cfg,
 					       const char *section,
 					       const char *name)
@@ -326,11 +330,17 @@ static enum parser_result parse_item(struct config *cfg,
 				     const char *option,
 				     const char *value)
 {
-	enum parser_result r = BAD_VALUE;
+	enum parser_result r;
 	struct config_item *cgi, *dst;
 	struct config_enum *cte;
 	double df;
 	int val;
+
+	r = parse_fault_interval(cfg, section, option, value);
+	if (r != NOT_PARSED)
+		return r;
+
+	r = BAD_VALUE;
 
 	/* If there is no default value, then the option is bogus. */
 	cgi = config_global_item(cfg, option);
@@ -434,33 +444,6 @@ static enum parser_result parse_fault_interval(struct config *cfg,
 		}
 	}
 	return NOT_PARSED;
-}
-
-static enum parser_result parse_port_setting(struct config *cfg,
-					     const char *option,
-					     const char *value,
-					     struct interface *iface)
-{
-	enum parser_result r;
-
-	r = parse_fault_interval(cfg, iface->name, option, value);
-	if (r != NOT_PARSED)
-		return r;
-
-	return parse_item(cfg, iface->name, option, value);
-}
-
-static enum parser_result parse_global_setting(const char *option,
-					       const char *value,
-					       struct config *cfg)
-{
-	enum parser_result r;
-
-	r = parse_fault_interval(cfg, NULL, option, value);
-	if (r != NOT_PARSED)
-		return r;
-
-	return parse_item(cfg, NULL, option, value);
 }
 
 static enum parser_result parse_setting_line(char *line,
@@ -569,10 +552,8 @@ int config_read(char *name, struct config *cfg)
 
 		check_deprecated_options(&option);
 
-		if (current_section == GLOBAL_SECTION)
-			parser_res = parse_global_setting(option, value, cfg);
-		else
-			parser_res = parse_port_setting(cfg, option, value, current_port);
+		parser_res = parse_item(cfg, current_section == GLOBAL_SECTION ?
+					NULL : current_port->name, option, value);
 
 		switch (parser_res) {
 		case PARSED_OK:
