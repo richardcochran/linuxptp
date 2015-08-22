@@ -555,53 +555,46 @@ int config_read(char *name, struct config *cfg)
 			continue;
 		}
 
-		switch (current_section) {
-		case GLOBAL_SECTION:
-		case PORT_SECTION:
-			if (parse_setting_line(line, &option, &value)) {
-				fprintf(stderr, "could not parse line %d in %s section\n",
-						line_num,
-						current_section == GLOBAL_SECTION ?
-							"global" : current_port->name);
-				goto parse_error;
-			}
-
-			check_deprecated_options(&option);
-
-			if (current_section == GLOBAL_SECTION)
-				parser_res = parse_global_setting(option, value, cfg);
-			else
-				parser_res = parse_port_setting(cfg, option, value, current_port);
-
-			switch (parser_res) {
-			case PARSED_OK:
-				break;
-			case NOT_PARSED:
-				fprintf(stderr, "unknown option %s at line %d in %s section\n",
-						option, line_num,
-						current_section == GLOBAL_SECTION ?
-							"global" : current_port->name);
-				goto parse_error;
-			case BAD_VALUE:
-				fprintf(stderr, "%s is a bad value for option %s at line %d\n",
-						value, option, line_num);
-				goto parse_error;
-			case MALFORMED:
-				fprintf(stderr, "%s is a malformed value for option %s at line %d\n",
-						value, option, line_num);
-				goto parse_error;
-			case OUT_OF_RANGE:
-				fprintf(stderr, "%s is an out of range value for option %s at line %d\n",
-						value, option, line_num);
-				goto parse_error;
-			}
-
-			break;
-		case UNKNOWN_SECTION:
+		if (current_section == UNKNOWN_SECTION) {
 			fprintf(stderr, "line %d is not in a section\n", line_num);
 			goto parse_error;
-		default:
-			continue;
+		}
+
+		if (parse_setting_line(line, &option, &value)) {
+			fprintf(stderr, "could not parse line %d in %s section\n",
+				line_num, current_section == GLOBAL_SECTION ?
+				"global" : current_port->name);
+			goto parse_error;
+		}
+
+		check_deprecated_options(&option);
+
+		if (current_section == GLOBAL_SECTION)
+			parser_res = parse_global_setting(option, value, cfg);
+		else
+			parser_res = parse_port_setting(cfg, option, value, current_port);
+
+		switch (parser_res) {
+		case PARSED_OK:
+			break;
+		case NOT_PARSED:
+			fprintf(stderr, "unknown option %s at line %d in %s section\n",
+				option, line_num,
+				current_section == GLOBAL_SECTION ? "global" :
+				current_port->name);
+			goto parse_error;
+		case BAD_VALUE:
+			fprintf(stderr, "%s is a bad value for option %s at line %d\n",
+				value, option, line_num);
+			goto parse_error;
+		case MALFORMED:
+			fprintf(stderr, "%s is a malformed value for option %s at line %d\n",
+				value, option, line_num);
+			goto parse_error;
+		case OUT_OF_RANGE:
+			fprintf(stderr, "%s is an out of range value for option %s at line %d\n",
+				value, option, line_num);
+			goto parse_error;
 		}
 	}
 
