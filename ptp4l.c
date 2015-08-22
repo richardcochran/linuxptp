@@ -44,11 +44,6 @@ static struct config cfg_settings = {
 
 	.dds = {
 		.clock_desc = {
-			.productDescription = {
-				.max_symbols = 64,
-				.text = ";;",
-				.length = 2,
-			},
 			.revisionData = {
 				.max_symbols = 32,
 				.text = ";;",
@@ -94,11 +89,12 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *config = NULL, *req_phc = NULL, *progname;
+	char *config = NULL, *req_phc = NULL, *progname, *tmp;
 	int c;
 	struct interface *iface;
 	struct clock *clock;
 	struct config *cfg = &cfg_settings;
+	struct default_ds *dds = &cfg_settings.dds;
 	struct defaultDS *ds = &cfg_settings.dds.dds;
 	int phc_index = -1, print_level, required_modes = 0;
 
@@ -212,6 +208,15 @@ int main(int argc, char *argv[])
 	ds->clockQuality.clockAccuracy = config_get_int(cfg, NULL, "clockAccuracy");
 	ds->clockQuality.offsetScaledLogVariance =
 		config_get_int(cfg, NULL, "offsetScaledLogVariance");
+
+	dds->clock_desc.productDescription.max_symbols = 64;
+
+	tmp = config_get_string(cfg, NULL, "productDescription");
+	if (count_char(tmp, ';') != 2 ||
+	    static_ptp_text_set(&dds->clock_desc.productDescription, tmp)) {
+		fprintf(stderr, "invalid productDescription '%s'.\n", tmp);
+		return -1;
+	}
 
 	ds->domainNumber = config_get_int(cfg, NULL, "domainNumber");
 

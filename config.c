@@ -213,6 +213,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("priority1", 128, 0, UINT8_MAX),
 	GLOB_ITEM_INT("priority2", 128, 0, UINT8_MAX),
+	GLOB_ITEM_STR("productDescription", ";;"),
 	PORT_ITEM_STR("ptp_dst_mac", "01:1B:19:00:00:00"),
 	PORT_ITEM_STR("p2p_dst_mac", "01:80:C2:00:00:0E"),
 	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),
@@ -458,13 +459,7 @@ static enum parser_result parse_global_setting(const char *option,
 	if (r != NOT_PARSED)
 		return r;
 
-	if (!strcmp(option, "productDescription")) {
-		if (count_char(value, ';') != 2)
-			return BAD_VALUE;
-		if (static_ptp_text_set(&cfg->dds.clock_desc.productDescription, value) != 0)
-			return BAD_VALUE;
-
-	} else if (!strcmp(option, "revisionData")) {
+	if (!strcmp(option, "revisionData")) {
 		if (count_char(value, ';') != 2)
 			return BAD_VALUE;
 		if (static_ptp_text_set(&cfg->dds.clock_desc.revisionData, value) != 0)
