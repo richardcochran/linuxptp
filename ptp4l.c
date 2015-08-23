@@ -39,10 +39,6 @@
 
 int assume_two_step = 0;
 
-static struct config cfg_settings = {
-	.interfaces = STAILQ_HEAD_INITIALIZER(cfg_settings.interfaces),
-};
-
 static struct default_ds ptp4l_dds;
 
 static void usage(char *progname)
@@ -80,10 +76,10 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname, *tmp;
-	int c;
+	int c, err = -1;
 	struct interface *iface;
-	struct clock *clock;
-	struct config *cfg = &cfg_settings;
+	struct clock *clock = NULL;
+	struct config *cfg;
 	struct default_ds *dds = &ptp4l_dds;
 	struct defaultDS *ds = &ptp4l_dds.dds;
 	int phc_index = -1, print_level, required_modes = 0;
@@ -92,7 +88,8 @@ int main(int argc, char *argv[])
 	if (handle_term_signals())
 		return -1;
 
-	if (config_init(&cfg_settings)) {
+	cfg = config_create();
+	if (!cfg) {
 		return -1;
 	}
 
@@ -103,62 +100,62 @@ int main(int argc, char *argv[])
 		switch (c) {
 		case 'A':
 			if (config_set_int(cfg, "delay_mechanism", DM_AUTO))
-				return -1;
+				goto out;
 			break;
 		case 'E':
 			if (config_set_int(cfg, "delay_mechanism", DM_E2E))
-				return -1;
+				goto out;
 			break;
 		case 'P':
 			if (config_set_int(cfg, "delay_mechanism", DM_P2P))
-				return -1;
+				goto out;
 			break;
 		case '2':
 			if (config_set_int(cfg, "network_transport",
 					    TRANS_IEEE_802_3))
-				return -1;
+				goto out;
 			break;
 		case '4':
 			if (config_set_int(cfg, "network_transport",
 					    TRANS_UDP_IPV4))
-				return -1;
+				goto out;
 			break;
 		case '6':
 			if (config_set_int(cfg, "network_transport",
 					    TRANS_UDP_IPV6))
-				return -1;
+				goto out;
 			break;
 		case 'H':
 			if (config_set_int(cfg, "time_stamping", TS_HARDWARE))
-				return -1;
+				goto out;
 			break;
 		case 'S':
 			if (config_set_int(cfg, "time_stamping", TS_SOFTWARE))
-				return -1;
+				goto out;
 			break;
 		case 'L':
 			if (config_set_int(cfg, "time_stamping", TS_LEGACY_HW))
-				return -1;
+				goto out;
 			break;
 		case 'f':
 			config = optarg;
 			break;
 		case 'i':
-			if (!config_create_interface(optarg, &cfg_settings))
-				return -1;
+			if (!config_create_interface(optarg, cfg))
+				goto out;
 			break;
 		case 'p':
 			req_phc = optarg;
 			break;
 		case 's':
 			if (config_set_int(cfg, "slaveOnly", 1)) {
-				return -1;
+				goto out;
 			}
 			break;
 		case 'l':
 			if (get_arg_val_i(c, optarg, &print_level,
 					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
-				return -1;
+				goto out;
 			config_set_int(cfg, "logging_level", print_level);
 			break;
 		case 'm':
@@ -175,14 +172,14 @@ int main(int argc, char *argv[])
 			return 0;
 		case '?':
 			usage(progname);
-			return -1;
+			goto out;
 		default:
 			usage(progname);
-			return -1;
+			goto out;
 		}
 	}
 
-	if (config && (c = config_read(config, &cfg_settings))) {
+	if (config && (c = config_read(config, cfg))) {
 		return c;
 	}
 
@@ -208,23 +205,23 @@ int main(int argc, char *argv[])
 	if (count_char(tmp, ';') != 2 ||
 	    static_ptp_text_set(&dds->clock_desc.productDescription, tmp)) {
 		fprintf(stderr, "invalid productDescription '%s'.\n", tmp);
-		return -1;
+		goto out;
 	}
 	tmp = config_get_string(cfg, NULL, "revisionData");
 	if (count_char(tmp, ';') != 2 ||
 	    static_ptp_text_set(&dds->clock_desc.revisionData, tmp)) {
 		fprintf(stderr, "invalid revisionData '%s'.\n", tmp);
-		return -1;
+		goto out;
 	}
 	tmp = config_get_string(cfg, NULL, "userDescription");
 	if (static_ptp_text_set(&dds->clock_desc.userDescription, tmp)) {
 		fprintf(stderr, "invalid userDescription '%s'.\n", tmp);
-		return -1;
+		goto out;
 	}
 	tmp = config_get_string(cfg, NULL, "manufacturerIdentity");
 	if (OUI_LEN != sscanf(tmp, "%hhx:%hhx:%hhx", &oui[0], &oui[1], &oui[2])) {
 		fprintf(stderr, "invalid manufacturerIdentity '%s'.\n", tmp);
-		return -1;
+		goto out;
 	}
 	memcpy(dds->clock_desc.manufacturerIdentity, oui, OUI_LEN);
 
@@ -244,7 +241,7 @@ int main(int argc, char *argv[])
 	    ds->flags & DDS_SLAVE_ONLY) {
 		fprintf(stderr,
 			"Cannot mix 1588 slaveOnly with 802.1AS !gmCapable.\n");
-		return -1;
+		goto out;
 	}
 	if (!config_get_int(cfg, NULL, "gmCapable") ||
 	    ds->flags & DDS_SLAVE_ONLY) {
@@ -255,10 +252,10 @@ int main(int argc, char *argv[])
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
 
-	if (STAILQ_EMPTY(&cfg_settings.interfaces)) {
+	if (STAILQ_EMPTY(&cfg->interfaces)) {
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
-		return -1;
+		goto out;
 	}
 
 	if (!(ds->flags & DDS_TWO_STEP_FLAG)) {
@@ -267,10 +264,10 @@ int main(int argc, char *argv[])
 		case TS_LEGACY_HW:
 			fprintf(stderr, "one step is only possible "
 				"with hardware time stamping\n");
-			return -1;
+			goto out;
 		case TS_HARDWARE:
 			if (config_set_int(cfg, "time_stamping", TS_ONESTEP))
-				return -1;
+				goto out;
 			break;
 		case TS_ONESTEP:
 			break;
@@ -298,19 +295,19 @@ int main(int argc, char *argv[])
 
 	/* Init interface configs and check whether timestamping mode is
 	 * supported. */
-	STAILQ_FOREACH(iface, &cfg_settings.interfaces, list) {
-		config_init_interface(iface, &cfg_settings);
+	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
+		config_init_interface(iface, cfg);
 		if (iface->ts_info.valid &&
 		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
 			fprintf(stderr, "interface '%s' does not support "
 				        "requested timestamping mode.\n",
 				iface->name);
-			return -1;
+			goto out;
 		}
 	}
 
 	/* determine PHC Clock index */
-	iface = STAILQ_FIRST(&cfg_settings.interfaces);
+	iface = STAILQ_FIRST(&cfg->interfaces);
 	if (config_get_int(cfg, NULL, "free_running")) {
 		phc_index = -1;
 	} else if (config_get_int(cfg, NULL, "time_stamping") == TS_SOFTWARE ||
@@ -319,7 +316,7 @@ int main(int argc, char *argv[])
 	} else if (req_phc) {
 		if (1 != sscanf(req_phc, "/dev/ptp%d", &phc_index)) {
 			fprintf(stderr, "bad ptp device string\n");
-			return -1;
+			goto out;
 		}
 	} else if (iface->ts_info.valid) {
 		phc_index = iface->ts_info.phc_index;
@@ -327,7 +324,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "ptp device not specified and\n"
 			        "automatic determination is not\n"
 			        "supported. please specify ptp device\n");
-		return -1;
+		goto out;
 	}
 
 	if (phc_index >= 0) {
@@ -336,23 +333,24 @@ int main(int argc, char *argv[])
 
 	if (generate_clock_identity(&ds->clockIdentity, iface->name)) {
 		fprintf(stderr, "failed to generate a clock identity\n");
-		return -1;
+		goto out;
 	}
 
-	clock = clock_create(&cfg_settings,
-			     phc_index, &cfg_settings.interfaces,
-			     &ptp4l_dds);
+	clock = clock_create(cfg, phc_index, &cfg->interfaces, &ptp4l_dds);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
-		return -1;
+		goto out;
 	}
+
+	err = 0;
 
 	while (is_running()) {
 		if (clock_poll(clock))
 			break;
 	}
-
-	clock_destroy(clock);
-	config_destroy(&cfg_settings);
-	return 0;
+out:
+	if (clock)
+		clock_destroy(clock);
+	config_destroy(cfg);
+	return err;
 }

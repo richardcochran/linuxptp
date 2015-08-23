@@ -42,7 +42,6 @@
 #define P41 ((double)(1ULL << 41))
 
 static struct pmc *pmc;
-static struct config pmc_config;
 
 static void do_get_action(int action, int index, char *str);
 static void do_set_action(int action, int index, char *str);
@@ -739,13 +738,14 @@ int main(int argc, char *argv[])
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
-	struct config *cfg = &pmc_config;
+	struct config *cfg;
 #define N_FD 2
 	struct pollfd pollfd[N_FD];
 
 	handle_term_signals();
 
-	if (config_init(&pmc_config)) {
+	cfg = config_create();
+	if (!cfg) {
 		return -1;
 	}
 
@@ -782,8 +782,7 @@ int main(int argc, char *argv[])
 				config_destroy(cfg);
 				return -1;
 			}
-			if (config_set_string(&pmc_config, "uds_address",
-					      optarg)) {
+			if (config_set_string(cfg, "uds_address", optarg)) {
 				config_destroy(cfg);
 				return -1;
 			}
@@ -828,7 +827,7 @@ int main(int argc, char *argv[])
 	print_set_syslog(1);
 	print_set_verbose(1);
 
-	pmc = pmc_create(&pmc_config, transport_type, iface_name, boundary_hops,
+	pmc = pmc_create(cfg, transport_type, iface_name, boundary_hops,
 			 domain_number, transport_specific, zero_datalen);
 	if (!pmc) {
 		fprintf(stderr, "failed to create pmc\n");

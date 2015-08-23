@@ -614,15 +614,23 @@ void config_init_interface(struct interface *iface, struct config *cfg)
 	sk_get_ts_info(iface->name, &iface->ts_info);
 }
 
-int config_init(struct config *cfg)
+struct config *config_create(void)
 {
 	char buf[CONFIG_LABEL_SIZE + 8];
 	struct config_item *ci;
+	struct config *cfg;
 	int i;
+
+	cfg = calloc(1, sizeof(*cfg));
+	if (!cfg) {
+		return NULL;
+	}
+	STAILQ_INIT(&cfg->interfaces);
 
 	cfg->htab = hash_create();
 	if (!cfg->htab) {
-		return -1;
+		free(cfg);
+		return NULL;
 	}
 
 	/* Populate the hash table with global defaults. */
@@ -646,10 +654,11 @@ int config_init(struct config *cfg)
 			goto fail;
 		}
 	}
-	return 0;
+	return cfg;
 fail:
 	hash_destroy(cfg->htab, NULL);
-	return -1;
+	free(cfg);
+	return NULL;
 }
 
 void config_destroy(struct config *cfg)
@@ -661,6 +670,7 @@ void config_destroy(struct config *cfg)
 		free(iface);
 	}
 	hash_destroy(cfg->htab, config_item_free);
+	free(cfg);
 }
 
 double config_get_double(struct config *cfg, const char *section,

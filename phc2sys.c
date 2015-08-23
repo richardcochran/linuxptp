@@ -119,7 +119,7 @@ struct node {
 	struct clock *master;
 };
 
-static struct config phc2sys_config;
+static struct config *phc2sys_config;
 
 static int update_pmc(struct node *node, int subscribe);
 static int clock_handle_leap(struct node *node, struct clock *clock,
@@ -224,7 +224,7 @@ static struct clock *clock_add(struct node *node, char *device)
 		}
 	}
 
-	c->servo = servo_create(&phc2sys_config, node->servo_type,
+	c->servo = servo_create(phc2sys_config, node->servo_type,
 				-ppb, max_ppb, 0);
 	servo_sync_interval(c->servo, node->phc_interval);
 
@@ -1225,7 +1225,7 @@ int main(int argc, char *argv[])
 	struct config *cfg;
 	int autocfg = 0, rt = 0;
 	int c, domain_number = 0, pps_fd = -1;
-	int r, wait_sync = 0;
+	int r = -1, wait_sync = 0;
 	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
 	int ntpshm_segment;
 	double phc_rate, tmp;
@@ -1239,10 +1239,10 @@ int main(int argc, char *argv[])
 
 	handle_term_signals();
 
-	if (config_init(&phc2sys_config)) {
+	cfg = phc2sys_config = config_create();
+	if (!cfg) {
 		return -1;
 	}
-	cfg = &phc2sys_config;
 
 	config_set_double(cfg, "pi_proportional_const", KP);
 	config_set_double(cfg, "pi_integral_const", KI);
@@ -1267,7 +1267,7 @@ int main(int argc, char *argv[])
 			if (pps_fd < 0) {
 				fprintf(stderr,
 					"cannot open '%s': %m\n", optarg);
-				return -1;
+				goto end;
 			}
 			break;
 		case 'i':
@@ -1286,69 +1286,64 @@ int main(int argc, char *argv[])
 			} else {
 				fprintf(stderr,
 					"invalid servo name %s\n", optarg);
-				return -1;
+				goto end;
 			}
 			break;
 		case 'P':
-			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX))
-				return -1;
-			if (config_set_double(cfg, "pi_proportional_const", tmp))
-				return -1;
+			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX) ||
+			    config_set_double(cfg, "pi_proportional_const", tmp))
+				goto end;
 			break;
 		case 'I':
-			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX))
-				return -1;
-			if (config_set_double(cfg, "pi_integral_const", tmp))
-				return -1;
+			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX) ||
+			    config_set_double(cfg, "pi_integral_const", tmp))
+				goto end;
 			break;
 		case 'S':
-			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX))
-				return -1;
-			if (config_set_double(cfg, "step_threshold", tmp))
-				return -1;
+			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX) ||
+			    config_set_double(cfg, "step_threshold", tmp))
+				goto end;
 			break;
 		case 'F':
-			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX))
-				return -1;
-			if (config_set_double(cfg, "first_step_threshold", tmp))
-				return -1;
+			if (get_arg_val_d(c, optarg, &tmp, 0.0, DBL_MAX) ||
+			    config_set_double(cfg, "first_step_threshold", tmp))
+				goto end;
 			break;
 		case 'R':
 			if (get_arg_val_d(c, optarg, &phc_rate, 1e-9, DBL_MAX))
-				return -1;
+				goto end;
 			node.phc_interval = 1.0 / phc_rate;
 			break;
 		case 'N':
 			if (get_arg_val_i(c, optarg, &node.phc_readings, 1, INT_MAX))
-				return -1;
+				goto end;
 			break;
 		case 'O':
 			if (get_arg_val_i(c, optarg, &node.sync_offset,
 					  INT_MIN, INT_MAX))
-				return -1;
+				goto end;
 			node.forced_sync_offset = -1;
 			break;
 		case 'L':
 			if (get_arg_val_i(c, optarg, &node.sanity_freq_limit, 0, INT_MAX))
-				return -1;
+				goto end;
 			break;
 		case 'M':
-			if (get_arg_val_i(c, optarg, &ntpshm_segment, INT_MIN, INT_MAX))
-				return -1;
-			if (config_set_int(cfg, "ntpshm_segment", ntpshm_segment))
-				return -1;
+			if (get_arg_val_i(c, optarg, &ntpshm_segment, INT_MIN, INT_MAX) ||
+			    config_set_int(cfg, "ntpshm_segment", ntpshm_segment))
+				goto end;
 			break;
 		case 'u':
 			if (get_arg_val_ui(c, optarg, &node.stats_max_count,
 					  0, UINT_MAX))
-				return -1;
+				goto end;
 			break;
 		case 'w':
 			wait_sync = 1;
 			break;
 		case 'n':
 			if (get_arg_val_i(c, optarg, &domain_number, 0, 255))
-				return -1;
+				goto end;
 			break;
 		case 'x':
 			node.kernel_leap = 0;
@@ -1357,17 +1352,16 @@ int main(int argc, char *argv[])
 			if (strlen(optarg) > MAX_IFNAME_SIZE) {
 				fprintf(stderr, "path %s too long, max is %d\n",
 					optarg, MAX_IFNAME_SIZE);
-				return -1;
+				goto end;
 			}
-			if (config_set_string(&phc2sys_config, "uds_address",
-					      optarg)) {
-				return -1;
+			if (config_set_string(cfg, "uds_address", optarg)) {
+				goto end;
 			}
 			break;
 		case 'l':
 			if (get_arg_val_i(c, optarg, &print_level,
 					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
-				return -1;
+				goto end;
 			break;
 		case 'm':
 			verbose = 1;
@@ -1377,9 +1371,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'v':
 			version_show(stdout);
+			config_destroy(cfg);
 			return 0;
 		case 'h':
 			usage(progname);
+			config_destroy(cfg);
 			return 0;
 		default:
 			goto bad_usage;
@@ -1414,10 +1410,10 @@ int main(int argc, char *argv[])
 	print_set_level(print_level);
 
 	if (autocfg) {
-		if (init_pmc(&phc2sys_config, &node, domain_number))
-			return -1;
+		if (init_pmc(cfg, &node, domain_number))
+			goto end;
 		if (auto_init_ports(&node, rt) < 0)
-			return -1;
+			goto end;
 		r = do_loop(&node, 1);
 		goto end;
 	}
@@ -1450,7 +1446,7 @@ int main(int argc, char *argv[])
 	r = -1;
 
 	if (wait_sync) {
-		if (init_pmc(&phc2sys_config, &node, domain_number))
+		if (init_pmc(cfg, &node, domain_number))
 			goto end;
 
 		while (is_running()) {
@@ -1489,9 +1485,10 @@ int main(int argc, char *argv[])
 end:
 	if (node.pmc)
 		close_pmc(&node);
-
+	config_destroy(cfg);
 	return r;
 bad_usage:
 	usage(progname);
+	config_destroy(cfg);
 	return -1;
 }

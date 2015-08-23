@@ -53,7 +53,7 @@ void config_destroy(struct config *cfg);
 
 /* New, hash table based methods: */
 
-int config_init(struct config *cfg);
+struct config *config_create(void);
 
 double config_get_double(struct config *cfg, const char *section,
 			 const char *option);
