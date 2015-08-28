@@ -426,8 +426,10 @@ char *string_newf(const char *format, ...)
 	char *s;
 
 	va_start(ap, format);
-	if (vasprintf(&s, format, ap) < 0)
-		s = NULL;
+	if (vasprintf(&s, format, ap) < 0) {
+		pr_err("failed to allocate memory");
+		exit(1);
+	}
 	va_end(ap);
 
 	return s;
@@ -439,9 +441,8 @@ void string_append(char **s, const char *str)
 
 	len1 = strlen(*s);
 	len2 = strlen(str);
-	*s = realloc(*s, len1 + len2 + 1);
-	if (*s)
-		memcpy((*s) + len1, str, len2 + 1);
+	*s = xrealloc(*s, len1 + len2 + 1);
+	memcpy((*s) + len1, str, len2 + 1);
 }
 
 void string_appendf(char **s, const char *format, ...)
@@ -461,18 +462,18 @@ void string_appendf(char **s, const char *format, ...)
 		return;
 	}
 
-	*s = realloc(*s, len1 + len2 + 1);
-	if (*s)
-		memcpy((*s) + len1, s2, len2 + 1);
+	*s = xrealloc(*s, len1 + len2 + 1);
+	memcpy((*s) + len1, s2, len2 + 1);
 	free(s2);
 }
 
 void **parray_new(void)
 {
-	void **a = malloc(sizeof(*a));
+	void **a;
 
-	if (a)
-		*a = NULL;
+	a = xmalloc(sizeof(*a));
+	*a = NULL;
+
 	return a;
 }
 
@@ -502,9 +503,7 @@ void parray_extend(void ***a, ...)
 	if (alloced < len + ilen) {
 		while (alloced < len + ilen)
 			alloced *= 2;
-		*a = realloc(*a, alloced * sizeof **a);
-		if (!*a)
-			return;
+		*a = xrealloc(*a, alloced * sizeof **a);
 	}
 
 	va_start(ap, a);

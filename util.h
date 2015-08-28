@@ -292,11 +292,12 @@ void *xrealloc(void *ptr, size_t size);
 char *xstrdup(const char *s);
 
 /**
- * Get an allocated and formatted string. This is a wrapper around asprintf().
+ * Get an allocated and formatted string. This is a wrapper around asprintf()
+ * that terminates the process on errors.
  *
  * @param format    printf() format string.
  * @param ...       printf() arguments.
- * @return          Pointer to the allocated string, NULL on error.
+ * @return          Pointer to the allocated string.
  */
 #ifdef __GNUC__
 __attribute__ ((format (printf, 1, 2)))
@@ -304,9 +305,10 @@ __attribute__ ((format (printf, 1, 2)))
 char *string_newf(const char *format, ...);
 
 /**
- * Reallocate a string and append another string to it.
+ * Reallocate a string and append another string to it. The process is
+ * terminated when the allocation fails.
  *
- * @param s         String that should be extended, set to NULL on error.
+ * @param s         String that should be extended.
  * @param str       String appended to s.
  */
 void string_append(char **s, const char *str);
@@ -314,26 +316,29 @@ void string_append(char **s, const char *str);
 __attribute__ ((format (printf, 2, 3)))
 #endif
 /**
- * Reallocate a string and append a formatted string to it.
+ * Reallocate a string and append a formatted string to it. The process is
+ * terminated when the allocation fails.
  *
- * @param s         String that should be extended, set to NULL on error.
+ * @param s         String that should be extended.
  * @param format    printf() format string.
  * @param ...       printf() arguments.
  */
 void string_appendf(char **s, const char *format, ...);
 
 /**
- * Get an empty array of pointers terminated by NULL.
+ * Get an empty array of pointers terminated by NULL. The process is terminated
+ * when the allocation fails.
  *
- * @return          Pointer to the allocated array, NULL on error.
+ * @return          Pointer to the allocated array.
  */
 void **parray_new(void);
 
 /**
  * Append pointer to a NULL-terminated pointer array. The array is reallocated
- * in exponentially increasing sizes.
+ * in exponentially increasing sizes. The process is terminated when the
+ * allocation fails.
  *
- * @param a         Pointer to pointer array, set to NULL on error.
+ * @param a         Pointer to pointer array.
  * @param p         Pointer appended to the array.
  */
 void parray_append(void ***a, void *p);
@@ -341,9 +346,10 @@ void parray_append(void ***a, void *p);
 
 /**
  * Append pointers to a NULL-terminated pointer array. The array is reallocated
- * in exponentially increasing sizes.
+ * in exponentially increasing sizes. The process is terminated when the
+ * allocation fails.
  *
- * @param a         Pointer to pointer array, set to NULL on error.
+ * @param a         Pointer to pointer array.
  * @param ...       NULL-terminated list of pointers.
  */
 void parray_extend(void ***a, ...);
