@@ -255,6 +255,43 @@ int handle_term_signals(void);
 int is_running(void);
 
 /**
+ * Allocate memory. This is a malloc() wrapper that terminates the process when
+ * the allocation fails.
+ *
+ * @param size      Size of the block. Must be larger than 0.
+ * @return          Pointer to the allocated memory.
+ */
+void *xmalloc(size_t size);
+
+/**
+ * Allocate and clear an array. This is a calloc() wrapper that terminates the
+ * process when the allocation fails.
+ *
+ * @param nmemb     Number of elements. Must be larger than 0.
+ * @param size      Size of the element. Must be larger than 0.
+ * @return          Pointer to the allocated memory.
+ */
+void *xcalloc(size_t nmemb, size_t size);
+
+/**
+ * Reallocate memory. This is a realloc() wrapper that terminates the process
+ * when the allocation fails.
+ *
+ * @param size      Size of the block. Must be larger than 0.
+ * @return          Pointer to the allocated memory.
+ */
+void *xrealloc(void *ptr, size_t size);
+
+/**
+ * Duplicate a string. This is a strdup() wrapper that terminates the process
+ * when the allocation fails.
+ *
+ * @param s         String that should be duplicated.
+ * @return          Pointer to the duplicated string.
+ */
+char *xstrdup(const char *s);
+
+/**
  * Get an allocated and formatted string. This is a wrapper around asprintf().
  *
  * @param format    printf() format string.

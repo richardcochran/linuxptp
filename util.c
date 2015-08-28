@@ -368,6 +368,58 @@ int is_running(void)
 	return running;
 }
 
+void *xmalloc(size_t size)
+{
+	void *r;
+
+	r = malloc(size);
+	if (!r) {
+		pr_err("failed to allocate memory");
+		exit(1);
+	}
+
+	return r;
+}
+
+void *xcalloc(size_t nmemb, size_t size)
+{
+	void *r;
+
+	r = calloc(nmemb, size);
+	if (!r) {
+		pr_err("failed to allocate memory");
+		exit(1);
+	}
+
+	return r;
+}
+
+void *xrealloc(void *ptr, size_t size)
+{
+	void *r;
+
+	r = realloc(ptr, size);
+	if (!r) {
+		pr_err("failed to allocate memory");
+		exit(1);
+	}
+
+	return r;
+}
+
+char *xstrdup(const char *s)
+{
+	void *r;
+
+	r = strdup(s);
+	if (!r) {
+		pr_err("failed to allocate memory");
+		exit(1);
+	}
+
+	return r;
+}
+
 char *string_newf(const char *format, ...)
 {
 	va_list ap;
