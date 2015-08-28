@@ -1666,12 +1666,18 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 
 	clock_path_delay(p->clock, t3, t4c);
 
-	if (p->logMinDelayReqInterval != rsp->hdr.logMessageInterval) {
-		// TODO - validate the input.
-		p->logMinDelayReqInterval = rsp->hdr.logMessageInterval;
-		pr_notice("port %hu: minimum delay request interval 2^%d",
-			portnum(p), p->logMinDelayReqInterval);
+	if (p->logMinDelayReqInterval == rsp->hdr.logMessageInterval) {
+		return;
 	}
+	if (rsp->hdr.logMessageInterval < -10 ||
+	    rsp->hdr.logMessageInterval > 22) {
+		pr_debug("port %hu: ignore bogus delay request interval 2^%d",
+			 portnum(p), rsp->hdr.logMessageInterval);
+		return;
+	}
+	p->logMinDelayReqInterval = rsp->hdr.logMessageInterval;
+	pr_notice("port %hu: minimum delay request interval 2^%d",
+		  portnum(p), p->logMinDelayReqInterval);
 }
 
 static void process_follow_up(struct port *p, struct ptp_message *m)
