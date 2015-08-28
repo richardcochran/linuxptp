@@ -131,7 +131,7 @@ static void extend_string_array(char ***a, char **strings)
 	char **s;
 
 	for (s = strings; *s; s++)
-		parray_append((void ***)a, strdup(*s));
+		parray_append((void ***)a, xstrdup(*s));
 }
 
 static void extend_config_string(char **s, char **lines)
@@ -184,7 +184,7 @@ static void parse_words(char *s, char ***a)
 	while (*s) {
 		w = s;
 		s = parse_word(s);
-		parray_append((void ***)a, strdup(w));
+		parray_append((void ***)a, xstrdup(w));
 	}
 }
 
@@ -192,7 +192,7 @@ static void replace_string(char *s, char **str)
 {
 	if (*str)
 		free(*str);
-	*str = strdup(s);
+	*str = xstrdup(s);
 }
 
 static char *parse_section_name(char *s)
@@ -204,7 +204,7 @@ static char *parse_section_name(char *s)
 		;
 	*s2 = '\0';
 
-	return strdup(s1);
+	return xstrdup(s1);
 }
 
 static void parse_setting(char *s, char **name, char **value)
@@ -267,10 +267,10 @@ static struct source *source_ntp_parse(char *parameter, char **settings)
 		}
 	}
 
-	source = malloc(sizeof(*source));
+	source = xmalloc(sizeof(*source));
 	source->type = NTP_SERVER;
 	source->ntp = ntp_server;
-	source->ntp.address = strdup(source->ntp.address);
+	source->ntp.address = xstrdup(source->ntp.address);
 
 	return source;
 }
@@ -281,7 +281,7 @@ static struct source *source_ptp_parse(char *parameter, char **settings)
 	struct source *source;
 	int r = 0;
 
-	source = malloc(sizeof(*source));
+	source = xmalloc(sizeof(*source));
 	source->type = PTP_DOMAIN;
 	source->ptp.delay = DEFAULT_PTP_DELAY;
 	source->ptp.ntp_poll = DEFAULT_PTP_NTP_POLL;
@@ -304,7 +304,7 @@ static struct source *source_ptp_parse(char *parameter, char **settings)
 			r = parse_int(value, &source->ptp.phc2sys_poll);
 		} else if (!strcasecmp(name, "ptp4l_option")) {
 			parray_append((void ***)&source->ptp.ptp4l_settings,
-				      strdup(value));
+				      xstrdup(value));
 		} else if (!strcasecmp(name, "interfaces")) {
 			parse_words(value, &source->ptp.interfaces);
 		} else {
@@ -436,7 +436,7 @@ static void init_program_config(struct program_config *config,
 	const char *s;
 	va_list ap;
 
-	config->path = strdup(name);
+	config->path = xstrdup(name);
 	config->settings = (char **)parray_new();
 	config->options = (char **)parray_new();
 
@@ -444,9 +444,9 @@ static void init_program_config(struct program_config *config,
 
 	/* add default options and settings */
 	while ((s = va_arg(ap, const char *)))
-		parray_append((void ***)&config->options, strdup(s));
+		parray_append((void ***)&config->options, xstrdup(s));
 	while ((s = va_arg(ap, const char *)))
-		parray_append((void ***)&config->settings, strdup(s));
+		parray_append((void ***)&config->settings, xstrdup(s));
 
 	va_end(ap);
 }
@@ -477,7 +477,7 @@ static void config_destroy(struct timemaster_config *config)
 
 static struct timemaster_config *config_parse(char *path)
 {
-	struct timemaster_config *config = calloc(1, sizeof(*config));
+	struct timemaster_config *config = xcalloc(1, sizeof(*config));
 	FILE *f;
 	char buf[4096], *line, *section_name = NULL;
 	char **section_lines = NULL;
@@ -485,7 +485,7 @@ static struct timemaster_config *config_parse(char *path)
 
 	config->sources = (struct source **)parray_new();
 	config->ntp_program = DEFAULT_NTP_PROGRAM;
-	config->rundir = strdup(DEFAULT_RUNDIR);
+	config->rundir = xstrdup(DEFAULT_RUNDIR);
 
 	init_program_config(&config->chronyd, "chronyd",
 			    NULL, DEFAULT_CHRONYD_SETTINGS, NULL);
@@ -536,7 +536,7 @@ static struct timemaster_config *config_parse(char *path)
 			break;
 		}
 
-		parray_append((void ***)&section_lines, strdup(line));
+		parray_append((void ***)&section_lines, xstrdup(line));
 	}
 
 	if (!ret && section_name &&
@@ -565,15 +565,15 @@ static char **get_ptp4l_command(struct program_config *config,
 {
 	char **command = (char **)parray_new();
 
-	parray_append((void ***)&command, strdup(config->path));
+	parray_append((void ***)&command, xstrdup(config->path));
 	extend_string_array(&command, config->options);
 	parray_extend((void ***)&command,
-		      strdup("-f"), strdup(file->path),
-		      strdup(hw_ts ? "-H" : "-S"), NULL);
+		      xstrdup("-f"), xstrdup(file->path),
+		      xstrdup(hw_ts ? "-H" : "-S"), NULL);
 
 	for (; *interfaces; interfaces++)
 		parray_extend((void ***)&command,
-			      strdup("-i"), strdup(*interfaces), NULL);
+			      xstrdup("-i"), xstrdup(*interfaces), NULL);
 
 	return command;
 }
@@ -583,16 +583,16 @@ static char **get_phc2sys_command(struct program_config *config, int domain,
 {
 	char **command = (char **)parray_new();
 
-	parray_append((void ***)&command, strdup(config->path));
+	parray_append((void ***)&command, xstrdup(config->path));
 	extend_string_array(&command, config->options);
 	parray_extend((void ***)&command,
-		      strdup("-a"), strdup("-r"),
-		      strdup("-R"), string_newf("%.2f", poll > 0 ?
+		      xstrdup("-a"), xstrdup("-r"),
+		      xstrdup("-R"), string_newf("%.2f", poll > 0 ?
 						1.0 / (1 << poll) : 1 << -poll),
-		      strdup("-z"), strdup(uds_path),
-		      strdup("-n"), string_newf("%d", domain),
-		      strdup("-E"), strdup("ntpshm"),
-		      strdup("-M"), string_newf("%d", shm_segment), NULL);
+		      xstrdup("-z"), xstrdup(uds_path),
+		      xstrdup("-n"), string_newf("%d", domain),
+		      xstrdup("-E"), xstrdup("ntpshm"),
+		      xstrdup("-M"), string_newf("%d", shm_segment), NULL);
 
 	return command;
 }
@@ -666,7 +666,7 @@ static int add_ptp_source(struct ptp_domain *source,
 		return 0;
 
 	/* get PHCs used by specified interfaces */
-	phcs = malloc(num_interfaces * sizeof(int));
+	phcs = xmalloc(num_interfaces * sizeof(int));
 	for (i = 0; i < num_interfaces; i++) {
 		phcs[i] = -1;
 
@@ -719,7 +719,7 @@ static int add_ptp_source(struct ptp_domain *source,
 			}
 
 			/* don't use this PHC in other sources */
-			phc = malloc(sizeof(int));
+			phc = xmalloc(sizeof(int));
 			*phc = phcs[i];
 			parray_append((void ***)allocated_phcs, phc);
 		}
@@ -727,10 +727,10 @@ static int add_ptp_source(struct ptp_domain *source,
 		uds_path = string_newf("%s/ptp4l.%d.socket",
 				       config->rundir, *shm_segment);
 
-		config_file = malloc(sizeof(*config_file));
+		config_file = xmalloc(sizeof(*config_file));
 		config_file->path = string_newf("%s/ptp4l.%d.conf",
 						config->rundir, *shm_segment);
-		config_file->content = strdup("[global]\n");
+		config_file->content = xstrdup("[global]\n");
 		extend_config_string(&config_file->content,
 				     config->ptp4l.settings);
 		extend_config_string(&config_file->content,
@@ -785,10 +785,10 @@ static char **get_chronyd_command(struct program_config *config,
 {
 	char **command = (char **)parray_new();
 
-	parray_append((void ***)&command, strdup(config->path));
+	parray_append((void ***)&command, xstrdup(config->path));
 	extend_string_array(&command, config->options);
-	parray_extend((void ***)&command, strdup("-n"),
-		      strdup("-f"), strdup(file->path), NULL);
+	parray_extend((void ***)&command, xstrdup("-n"),
+		      xstrdup("-f"), xstrdup(file->path), NULL);
 
 	return command;
 }
@@ -798,10 +798,10 @@ static char **get_ntpd_command(struct program_config *config,
 {
 	char **command = (char **)parray_new();
 
-	parray_append((void ***)&command, strdup(config->path));
+	parray_append((void ***)&command, xstrdup(config->path));
 	extend_string_array(&command, config->options);
-	parray_extend((void ***)&command, strdup("-n"),
-		      strdup("-c"), strdup(file->path), NULL);
+	parray_extend((void ***)&command, xstrdup("-n"),
+		      xstrdup("-c"), xstrdup(file->path), NULL);
 
 	return command;
 }
@@ -809,10 +809,10 @@ static char **get_ntpd_command(struct program_config *config,
 static struct config_file *add_ntp_program(struct timemaster_config *config,
 					   struct script *script)
 {
-	struct config_file *ntp_config = malloc(sizeof(*ntp_config));
+	struct config_file *ntp_config = xmalloc(sizeof(*ntp_config));
 	char **command = NULL;
 
-	ntp_config->content = strdup("");
+	ntp_config->content = xstrdup("");
 
 	switch (config->ntp_program) {
 	case CHRONYD:
@@ -861,7 +861,7 @@ static void script_destroy(struct script *script)
 
 static struct script *script_create(struct timemaster_config *config)
 {
-	struct script *script = malloc(sizeof(*script));
+	struct script *script = xmalloc(sizeof(*script));
 	struct source *source, **sources;
 	struct config_file *ntp_config = NULL;
 	int **allocated_phcs = (int **)parray_new();
@@ -942,7 +942,7 @@ static pid_t start_program(char **command, sigset_t *mask)
 	}
 #endif
 
-	for (s = strdup(""), arg = command; *arg; arg++)
+	for (s = xstrdup(""), arg = command; *arg; arg++)
 		string_appendf(&s, "%s ", *arg);
 
 	pr_info("process %d started: %s", pid, s);
@@ -960,7 +960,7 @@ static int create_config_files(struct config_file **configs)
 	struct stat st;
 
 	for (; (config = *configs); configs++) {
-		tmp = strdup(config->path);
+		tmp = xstrdup(config->path);
 		dir = dirname(tmp);
 		if (stat(dir, &st) < 0 && errno == ENOENT &&
 		    mkdir(dir, 0755) < 0) {
@@ -1030,7 +1030,7 @@ static int script_run(struct script *script)
 	for (num_commands = 0; script->commands[num_commands]; num_commands++)
 		;
 
-	pids = calloc(num_commands, sizeof(*pids));
+	pids = xcalloc(num_commands, sizeof(*pids));
 
 	for (i = 0; i < num_commands; i++) {
 		pids[i] = start_program(script->commands[i], &old_mask);
