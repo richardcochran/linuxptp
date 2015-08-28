@@ -185,6 +185,15 @@ The default is 16 seconds.
 Select the delay mechanism. Possible values are E2E, P2P and Auto.
 The default is E2E.
 .TP
+.B hybrid_e2e
+Enables the "hybrid" delay mechanism from the draft Enterprise
+Profile. When enabled, ports in the slave state send their delay
+request messages to the unicast address taken from the master's
+announce message. Ports in the master state will reply to unicast
+delay requests using unicast delay responses. This option has no
+effect if the delay_mechanism is set to P2P.
+The default is 0 (disabled).
+.TP
 .B ptp_dst_mac
 The MAC address to which PTP messages should be sent.
 Relevant only with L2 transport. The default is 01:1B:19:00:00:00.

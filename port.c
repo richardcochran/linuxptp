@@ -111,6 +111,7 @@ struct port {
 	UInteger32          neighborPropDelayThresh;
 	int                 follow_up_info;
 	int                 freq_est_interval;
+	int                 hybrid_e2e;
 	int                 min_neighbor_prop_delay;
 	int                 path_trace_enabled;
 	int                 rx_timestamp_offset;
@@ -1223,6 +1224,12 @@ static int port_delay_request(struct port *p)
 	msg->header.control            = CTL_DELAY_REQ;
 	msg->header.logMessageInterval = 0x7f;
 
+	if (p->hybrid_e2e) {
+		struct ptp_message *dst = TAILQ_FIRST(&p->best->messages);
+		msg->address = dst->address;
+		msg->header.flagField[0] |= UNICAST;
+	}
+
 	if (port_prepare_and_send(p, msg, 1)) {
 		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
@@ -1630,6 +1637,12 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
+	if (p->hybrid_e2e && m->header.flagField[0] & UNICAST) {
+		msg->address = m->address;
+		msg->header.flagField[0] |= UNICAST;
+		msg->header.logMessageInterval = 0x7f;
+	}
+
 	err = port_prepare_and_send(p, msg, 0);
 	if (err)
 		pr_err("port %hu: send delay response failed", portnum(p));
@@ -1667,6 +1680,10 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	clock_path_delay(p->clock, t3, t4c);
 
 	if (p->logMinDelayReqInterval == rsp->hdr.logMessageInterval) {
+		return;
+	}
+	if (m->header.flagField[0] & UNICAST) {
+		/* Unicast responses have logMinDelayReqInterval set to 0x7F. */
 		return;
 	}
 	if (rsp->hdr.logMessageInterval < -10 ||
@@ -2319,7 +2336,11 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
 
 	if (msg_pre_send(msg))
 		return -1;
-	cnt = transport_send(p->trp, &p->fda, event, msg);
+	if (msg->header.flagField[0] & UNICAST) {
+		cnt = transport_sendto(p->trp, &p->fda, event, msg);
+	} else {
+		cnt = transport_send(p->trp, &p->fda, event, msg);
+	}
 	if (cnt <= 0) {
 		return -1;
 	}
@@ -2550,6 +2571,7 @@ struct port *port_open(int phc_index,
 	p->asymmetry <<= 16;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
+	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
@@ -2563,6 +2585,10 @@ struct port *port_open(int phc_index,
 	p->state = PS_INITIALIZING;
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_VERSION;
+
+	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
+		pr_warning("port %d: hybrid_e2e only works with E2E", number);
+	}
 
 	/* Set fault timeouts to a default value */
 	for (i = 0; i < FT_CNT; i++) {
