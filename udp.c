@@ -218,11 +218,11 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event,
 		addr_buf.sin.sin_family = AF_INET;
 		addr_buf.sin.sin_addr = peer ? mcast_addr[MC_PDELAY] :
 					       mcast_addr[MC_PRIMARY];
-		addr_buf.sin.sin_port = htons(event ? EVENT_PORT :
-						      GENERAL_PORT);
 		addr_buf.len = sizeof(addr_buf.sin);
 		addr = &addr_buf;
 	}
+
+	addr->sin.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
 
 	/*
 	 * Extend the payload by two, for UDP checksum correction.
