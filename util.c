@@ -134,14 +134,14 @@ int generate_clock_identity(struct ClockIdentity *ci, const char *name)
 
 	if (sk_interface_macaddr(name, &addr))
 		return -1;
-	ci->id[0] = addr.sa.sa_data[0];
-	ci->id[1] = addr.sa.sa_data[1];
-	ci->id[2] = addr.sa.sa_data[2];
+	ci->id[0] = addr.sll.sll_addr[0];
+	ci->id[1] = addr.sll.sll_addr[1];
+	ci->id[2] = addr.sll.sll_addr[2];
 	ci->id[3] = 0xFF;
 	ci->id[4] = 0xFE;
-	ci->id[5] = addr.sa.sa_data[3];
-	ci->id[6] = addr.sa.sa_data[4];
-	ci->id[7] = addr.sa.sa_data[5];
+	ci->id[5] = addr.sll.sll_addr[3];
+	ci->id[6] = addr.sll.sll_addr[4];
+	ci->id[7] = addr.sll.sll_addr[5];
 	return 0;
 }
 

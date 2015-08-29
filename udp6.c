@@ -258,7 +258,7 @@ static int udp6_physical_addr(struct transport *t, uint8_t *addr)
 
 	if (udp6->mac.len) {
 		len = MAC_LEN;
-		memcpy(addr, udp6->mac.sa.sa_data, len);
+		memcpy(addr, udp6->mac.sll.sll_addr, len);
 	}
 	return len;
 }

@@ -170,8 +170,10 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 		return -1;
 	}
 
-	memcpy(&mac->sa, &ifreq.ifr_hwaddr, sizeof(ifreq.ifr_hwaddr));
-	mac->len = sizeof(ifreq.ifr_hwaddr.sa_family) + MAC_LEN;
+	mac->sll.sll_family = AF_PACKET;
+	mac->sll.sll_halen = MAC_LEN;
+	memcpy(mac->sll.sll_addr, &ifreq.ifr_hwaddr.sa_data, MAC_LEN);
+	mac->len = sizeof(mac->sll);
 	close(fd);
 	return 0;
 }
