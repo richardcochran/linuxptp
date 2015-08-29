@@ -223,15 +223,14 @@ static int udp6_send(struct transport *t, struct fdarray *fda, int event,
 		addr_buf.sin6.sin6_family = AF_INET6;
 		addr_buf.sin6.sin6_addr =  peer ? mc6_addr[MC_PDELAY] :
 						  mc6_addr[MC_PRIMARY];
-		addr_buf.sin6.sin6_port = htons(event ? EVENT_PORT :
-							GENERAL_PORT);
-
 		if (is_link_local(&addr_buf.sin6.sin6_addr))
 			addr_buf.sin6.sin6_scope_id = udp6->index;
 
 		addr_buf.len = sizeof(addr_buf.sin6);
 		addr = &addr_buf;
 	}
+
+	addr->sin6.sin6_port = htons(event ? EVENT_PORT : GENERAL_PORT);
 
 	len += 2; /* Extend the payload by two, for UDP checksum corrections. */
 
