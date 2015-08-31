@@ -99,7 +99,7 @@ static int udp6_close(struct transport *t, struct fdarray *fda)
 }
 
 static int open_socket_ipv6(const char *name, struct in6_addr mc_addr[2], short port,
-			    int *interface_index)
+			    int *interface_index, int hop_limit)
 {
 	struct sockaddr_in6 addr;
 	int fd, index, on = 1;
@@ -132,6 +132,11 @@ static int open_socket_ipv6(const char *name, struct in6_addr mc_addr[2], short 
 		pr_err("setsockopt SO_BINDTODEVICE failed: %m");
 		goto no_option;
 	}
+	if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hop_limit,
+		       sizeof(hop_limit))) {
+		pr_err("setsockopt IPV6_MULTICAST_HOPS failed: %m");
+		goto no_option;
+	}
 	addr.sin6_addr = mc_addr[0];
 	if (mc_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
 		pr_err("mcast_join failed");
@@ -160,8 +165,9 @@ static int udp6_open(struct transport *t, const char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
-	int efd, gfd;
+	int efd, gfd, hop_limit;
 
+	hop_limit = config_get_int(t->cfg, name, "udp_ttl");
 	udp6->mac.len = 0;
 	sk_interface_macaddr(name, &udp6->mac);
 
@@ -176,11 +182,11 @@ static int udp6_open(struct transport *t, const char *name, struct fdarray *fda,
 	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR, &mc6_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket_ipv6(name, mc6_addr, EVENT_PORT, &udp6->index);
+	efd = open_socket_ipv6(name, mc6_addr, EVENT_PORT, &udp6->index, hop_limit);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket_ipv6(name, mc6_addr, GENERAL_PORT, &udp6->index);
+	gfd = open_socket_ipv6(name, mc6_addr, GENERAL_PORT, &udp6->index, hop_limit);
 	if (gfd < 0)
 		goto no_general;
 
