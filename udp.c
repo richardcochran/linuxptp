@@ -218,11 +218,11 @@ static int udp_send(struct transport *t, struct fdarray *fda, int event,
 		addr_buf.sin.sin_family = AF_INET;
 		addr_buf.sin.sin_addr = peer ? mcast_addr[MC_PDELAY] :
 					       mcast_addr[MC_PRIMARY];
-		addr_buf.sin.sin_port = htons(event ? EVENT_PORT :
-						      GENERAL_PORT);
 		addr_buf.len = sizeof(addr_buf.sin);
 		addr = &addr_buf;
 	}
+
+	addr->sin.sin_port = htons(event ? EVENT_PORT : GENERAL_PORT);
 
 	/*
 	 * Extend the payload by two, for UDP checksum correction.
@@ -256,7 +256,7 @@ static int udp_physical_addr(struct transport *t, uint8_t *addr)
 
 	if (udp->mac.len) {
 		len = MAC_LEN;
-		memcpy(addr, udp->mac.sa.sa_data, len);
+		memcpy(addr, udp->mac.sll.sll_addr, len);
 	}
 	return len;
 }

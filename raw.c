@@ -188,14 +188,15 @@ no_socket:
 
 static void mac_to_addr(struct address *addr, void *mac)
 {
-	addr->sa.sa_family = AF_UNSPEC;
-	memcpy(&addr->sa.sa_data, mac, MAC_LEN);
-	addr->len = sizeof(addr->sa.sa_family) + MAC_LEN;
+	addr->sll.sll_family = AF_PACKET;
+	addr->sll.sll_halen = MAC_LEN;
+	memcpy(addr->sll.sll_addr, mac, MAC_LEN);
+	addr->len = sizeof(addr->sll);
 }
 
 static void addr_to_mac(void *mac, struct address *addr)
 {
-	memcpy(mac, &addr->sa.sa_data, MAC_LEN);
+	memcpy(mac, &addr->sll.sll_addr, MAC_LEN);
 }
 
 static int raw_open(struct transport *t, const char *name,
