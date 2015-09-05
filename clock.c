@@ -823,6 +823,10 @@ struct clock *clock_create(struct config *config, int phc_index,
 	snprintf(udsif->name, sizeof(udsif->name), "%s",
 		 config_get_string(config, NULL, "uds_address"));
 	if (config_set_section_int(config, udsif->name,
+				    "delay_mechanism", DM_AUTO)) {
+		return NULL;
+	}
+	if (config_set_section_int(config, udsif->name,
 				    "network_transport", TRANS_UDS)) {
 		return NULL;
 	}
