@@ -1688,8 +1688,8 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	}
 	if (rsp->hdr.logMessageInterval < -10 ||
 	    rsp->hdr.logMessageInterval > 22) {
-		pr_debug("port %hu: ignore bogus delay request interval 2^%d",
-			 portnum(p), rsp->hdr.logMessageInterval);
+		pl_info(300, "port %hu: ignore bogus delay request interval 2^%d",
+			portnum(p), rsp->hdr.logMessageInterval);
 		return;
 	}
 	p->logMinDelayReqInterval = rsp->hdr.logMessageInterval;
