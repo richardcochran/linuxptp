@@ -354,4 +354,13 @@ void parray_append(void ***a, void *p);
  */
 void parray_extend(void ***a, ...);
 
+/**
+ * Check if enough time has passed to implement a simple rate limiting.
+ *
+ * @param interval  Minimum interval between two calls returning 0 (in seconds).
+ * @param last      Time of the last call that returned 0, input/output.
+ * @return          1 when rate limited, 0 otherwise.
+ */
+int rate_limited(int interval, time_t *last);
+
 #endif

@@ -512,3 +512,17 @@ void parray_extend(void ***a, ...)
 	va_end(ap);
 	(*a)[len - 1] = NULL;
 }
+
+int rate_limited(int interval, time_t *last)
+{
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &ts))
+		return 1;
+	if (*last + interval > ts.tv_sec)
+		return 1;
+
+	*last = ts.tv_sec;
+
+	return 0;
+}
