@@ -44,4 +44,21 @@ void print_set_verbose(int value);
 #define pr_info(x...)    print(LOG_INFO, x)
 #define pr_debug(x...)   print(LOG_DEBUG, x)
 
+#define PRINT_RL(l, i, x...) \
+	do { \
+		static time_t last = -i; \
+		if (!rate_limited(i, &last)) \
+			print(l, x); \
+	} while (0);
+
+/* Rate limited versions */
+#define pl_emerg(i, x...)   PRINT_RL(LOG_EMERG, i, x)
+#define pl_alert(i, x...)   PRINT_RL(LOG_ALERT, i, x)
+#define pl_crit(i, x...)    PRINT_RL(LOG_CRIT, i, x)
+#define pl_err(i, x...)     PRINT_RL(LOG_ERR, i, x)
+#define pl_warning(i, x...) PRINT_RL(LOG_WARNING, i, x)
+#define pl_notice(i, x...)  PRINT_RL(LOG_NOTICE, i, x)
+#define pl_info(i, x...)    PRINT_RL(LOG_INFO, i, x)
+#define pl_debug(i, x...)   PRINT_RL(LOG_DEBUG, i, x)
+
 #endif
