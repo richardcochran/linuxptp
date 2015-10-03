@@ -1628,9 +1628,12 @@ struct clock_description *clock_description(struct clock *c)
 	return &c->desc;
 }
 
-int clock_num_ports(struct clock *c)
+enum clock_type clock_type(struct clock *c)
 {
-	return c->nports;
+	if (c->nports > 1) {
+		return CLOCK_TYPE_BOUNDARY;
+	}
+	return CLOCK_TYPE_ORDINARY;
 }
 
 void clock_check_ts(struct clock *c, struct timespec ts)

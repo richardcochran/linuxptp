@@ -267,11 +267,11 @@ void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds);
 struct clock_description *clock_description(struct clock *c);
 
 /**
- * Obtain the number of ports a clock has, excluding the UDS port.
+ * Obtain the type of a clock.
  * @param c  The clock instance.
- * @return   The number of ports.
+ * @return   One of the @ref clock_type enumeration values.
  */
-int clock_num_ports(struct clock *c);
+enum clock_type clock_type(struct clock *c);
 
 /**
  * Perform a sanity check on a time stamp made by a clock.

@@ -706,12 +706,7 @@ static int port_management_fill_response(struct port *target,
 		buf = tlv->data;
 		cd->clockType = (UInteger16 *) buf;
 		buf += sizeof(*cd->clockType);
-		if (clock_num_ports(target->clock) > 1) {
-			*cd->clockType = CLOCK_TYPE_BOUNDARY;
-		} else {
-			*cd->clockType = CLOCK_TYPE_ORDINARY;
-		}
-
+		*cd->clockType = clock_type(target->clock);
 		cd->physicalLayerProtocol = (struct PTPText *) buf;
 		switch(transport_type(target->trp)) {
 		case TRANS_UDP_IPV4:
