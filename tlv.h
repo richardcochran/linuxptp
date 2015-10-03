@@ -213,14 +213,6 @@ struct port_properties_np {
 	struct PTPText interface;
 } PACKED;
 
-enum clock_type {
-	CLOCK_TYPE_ORDINARY   = 0x8000,
-	CLOCK_TYPE_BOUNDARY   = 0x4000,
-	CLOCK_TYPE_P2P        = 0x2000,
-	CLOCK_TYPE_E2E        = 0x1000,
-	CLOCK_TYPE_MANAGEMENT = 0x0800,
-};
-
 #define PROFILE_ID_LEN 6
 
 struct mgmt_clock_description {
