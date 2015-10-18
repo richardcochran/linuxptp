@@ -50,11 +50,6 @@ struct clock_description {
 	Octet manufacturerIdentity[OUI_LEN];
 };
 
-struct default_ds {
-	struct defaultDS dds;
-	struct clock_description clock_desc;
-};
-
 struct dataset {
 	UInteger8            priority1;
 	struct ClockIdentity identity;

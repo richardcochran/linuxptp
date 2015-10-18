@@ -799,8 +799,7 @@ static void clock_remove_port(struct clock *c, struct port *p)
 }
 
 struct clock *clock_create(struct config *config, int phc_index,
-			   struct interfaces_head *ifaces,
-			   struct default_ds *dds)
+			   struct interfaces_head *ifaces)
 {
 	enum timestamp_type timestamping =
 		config_get_int(config, NULL, "time_stamping");
@@ -808,9 +807,10 @@ struct clock *clock_create(struct config *config, int phc_index,
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
 	struct clock *c = &the_clock;
 	struct port *p;
-	char phc[32];
+	unsigned char oui[OUI_LEN];
+	char phc[32], *tmp;
 	struct interface *udsif = &c->uds_interface;
-	struct interface *iface;
+	struct interface *iface = STAILQ_FIRST(ifaces);
 	struct timespec ts;
 	int sfl;
 
@@ -820,6 +820,85 @@ struct clock *clock_create(struct config *config, int phc_index,
 	if (c->nports)
 		clock_destroy(c);
 
+	/* Initialize the defaultDS. */
+	c->dds.clockQuality.clockClass =
+		config_get_int(config, NULL, "clockClass");
+	c->dds.clockQuality.clockAccuracy =
+		config_get_int(config, NULL, "clockAccuracy");
+	c->dds.clockQuality.offsetScaledLogVariance =
+		config_get_int(config, NULL, "offsetScaledLogVariance");
+
+	c->desc.productDescription.max_symbols = 64;
+	c->desc.revisionData.max_symbols = 32;
+	c->desc.userDescription.max_symbols = 128;
+
+	tmp = config_get_string(config, NULL, "productDescription");
+	if (count_char(tmp, ';') != 2 ||
+	    static_ptp_text_set(&c->desc.productDescription, tmp)) {
+		pr_err("invalid productDescription '%s'", tmp);
+		return NULL;
+	}
+	tmp = config_get_string(config, NULL, "revisionData");
+	if (count_char(tmp, ';') != 2 ||
+	    static_ptp_text_set(&c->desc.revisionData, tmp)) {
+		pr_err("invalid revisionData '%s'", tmp);
+		return NULL;
+	}
+	tmp = config_get_string(config, NULL, "userDescription");
+	if (static_ptp_text_set(&c->desc.userDescription, tmp)) {
+		pr_err("invalid userDescription '%s'", tmp);
+		return NULL;
+	}
+	tmp = config_get_string(config, NULL, "manufacturerIdentity");
+	if (OUI_LEN != sscanf(tmp, "%hhx:%hhx:%hhx", &oui[0], &oui[1], &oui[2])) {
+		pr_err("invalid manufacturerIdentity '%s'", tmp);
+		return NULL;
+	}
+	memcpy(c->desc.manufacturerIdentity, oui, OUI_LEN);
+
+	c->dds.domainNumber = config_get_int(config, NULL, "domainNumber");
+
+	if (config_get_int(config, NULL, "slaveOnly")) {
+		c->dds.flags |= DDS_SLAVE_ONLY;
+	}
+	if (config_get_int(config, NULL, "twoStepFlag")) {
+		c->dds.flags |= DDS_TWO_STEP_FLAG;
+	}
+	c->dds.priority1 = config_get_int(config, NULL, "priority1");
+	c->dds.priority2 = config_get_int(config, NULL, "priority2");
+
+	if (!config_get_int(config, NULL, "gmCapable") &&
+	    c->dds.flags & DDS_SLAVE_ONLY) {
+		pr_err("Cannot mix 1588 slaveOnly with 802.1AS !gmCapable");
+		return NULL;
+	}
+	if (!config_get_int(config, NULL, "gmCapable") ||
+	    c->dds.flags & DDS_SLAVE_ONLY) {
+		c->dds.clockQuality.clockClass = 255;
+	}
+
+	if (!(c->dds.flags & DDS_TWO_STEP_FLAG)) {
+		switch (config_get_int(config, NULL, "time_stamping")) {
+		case TS_SOFTWARE:
+		case TS_LEGACY_HW:
+			pr_err("one step is only possible "
+			       "with hardware time stamping");
+			return NULL;
+		case TS_HARDWARE:
+			if (config_set_int(config, "time_stamping", TS_ONESTEP))
+				return NULL;
+			break;
+		case TS_ONESTEP:
+			break;
+		}
+	}
+
+	if (generate_clock_identity(&c->dds.clockIdentity, iface->name)) {
+		pr_err("failed to generate a clock identity");
+		return NULL;
+	}
+
+	/* Configure the UDS. */
 	snprintf(udsif->name, sizeof(udsif->name), "%s",
 		 config_get_string(config, NULL, "uds_address"));
 	if (config_set_section_int(config, udsif->name,
@@ -841,7 +920,6 @@ struct clock *clock_create(struct config *config, int phc_index,
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
 	c->utc_offset = CURRENT_UTC_OFFSET;
 	c->time_source = config_get_int(config, NULL, "timeSource");
-	c->desc = dds->clock_desc;
 
 	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
@@ -910,8 +988,6 @@ struct clock *clock_create(struct config *config, int phc_index,
 			return NULL;
 		}
 	}
-
-	c->dds = dds->dds;
 
 	/* Initialize the parentDS. */
 	clock_update_grandmaster(c);

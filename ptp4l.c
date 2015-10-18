@@ -39,8 +39,6 @@
 
 int assume_two_step = 0;
 
-static struct default_ds ptp4l_dds;
-
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -75,15 +73,12 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *config = NULL, *req_phc = NULL, *progname, *tmp;
+	char *config = NULL, *req_phc = NULL, *progname;
 	int c, err = -1;
 	struct interface *iface;
 	struct clock *clock = NULL;
 	struct config *cfg;
-	struct default_ds *dds = &ptp4l_dds;
-	struct defaultDS *ds = &ptp4l_dds.dds;
 	int phc_index = -1, print_level, required_modes = 0;
-	unsigned char oui[OUI_LEN];
 
 	if (handle_term_signals())
 		return -1;
@@ -192,61 +187,6 @@ int main(int argc, char *argv[])
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 
-	ds->clockQuality.clockClass = config_get_int(cfg, NULL, "clockClass");
-	ds->clockQuality.clockAccuracy = config_get_int(cfg, NULL, "clockAccuracy");
-	ds->clockQuality.offsetScaledLogVariance =
-		config_get_int(cfg, NULL, "offsetScaledLogVariance");
-
-	dds->clock_desc.productDescription.max_symbols = 64;
-	dds->clock_desc.revisionData.max_symbols = 32;
-	dds->clock_desc.userDescription.max_symbols = 128;
-
-	tmp = config_get_string(cfg, NULL, "productDescription");
-	if (count_char(tmp, ';') != 2 ||
-	    static_ptp_text_set(&dds->clock_desc.productDescription, tmp)) {
-		fprintf(stderr, "invalid productDescription '%s'.\n", tmp);
-		goto out;
-	}
-	tmp = config_get_string(cfg, NULL, "revisionData");
-	if (count_char(tmp, ';') != 2 ||
-	    static_ptp_text_set(&dds->clock_desc.revisionData, tmp)) {
-		fprintf(stderr, "invalid revisionData '%s'.\n", tmp);
-		goto out;
-	}
-	tmp = config_get_string(cfg, NULL, "userDescription");
-	if (static_ptp_text_set(&dds->clock_desc.userDescription, tmp)) {
-		fprintf(stderr, "invalid userDescription '%s'.\n", tmp);
-		goto out;
-	}
-	tmp = config_get_string(cfg, NULL, "manufacturerIdentity");
-	if (OUI_LEN != sscanf(tmp, "%hhx:%hhx:%hhx", &oui[0], &oui[1], &oui[2])) {
-		fprintf(stderr, "invalid manufacturerIdentity '%s'.\n", tmp);
-		goto out;
-	}
-	memcpy(dds->clock_desc.manufacturerIdentity, oui, OUI_LEN);
-
-	ds->domainNumber = config_get_int(cfg, NULL, "domainNumber");
-
-	if (config_get_int(cfg, NULL, "slaveOnly")) {
-	    ds->flags |= DDS_SLAVE_ONLY;
-	    ds->clockQuality.clockClass = 248;
-	}
-	if (config_get_int(cfg, NULL, "twoStepFlag")) {
-	    ds->flags |= DDS_TWO_STEP_FLAG;
-	}
-	ds->priority1 = config_get_int(cfg, NULL, "priority1");
-	ds->priority2 = config_get_int(cfg, NULL, "priority2");
-
-	if (!config_get_int(cfg, NULL, "gmCapable") &&
-	    ds->flags & DDS_SLAVE_ONLY) {
-		fprintf(stderr,
-			"Cannot mix 1588 slaveOnly with 802.1AS !gmCapable.\n");
-		goto out;
-	}
-	if (!config_get_int(cfg, NULL, "gmCapable") ||
-	    ds->flags & DDS_SLAVE_ONLY) {
-		ds->clockQuality.clockClass = 255;
-	}
 	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
@@ -256,22 +196,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		goto out;
-	}
-
-	if (!(ds->flags & DDS_TWO_STEP_FLAG)) {
-		switch (config_get_int(cfg, NULL, "time_stamping")) {
-		case TS_SOFTWARE:
-		case TS_LEGACY_HW:
-			fprintf(stderr, "one step is only possible "
-				"with hardware time stamping\n");
-			goto out;
-		case TS_HARDWARE:
-			if (config_set_int(cfg, "time_stamping", TS_ONESTEP))
-				goto out;
-			break;
-		case TS_ONESTEP:
-			break;
-		}
 	}
 
 	switch (config_get_int(cfg, NULL, "time_stamping")) {
@@ -330,12 +254,7 @@ int main(int argc, char *argv[])
 		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
 	}
 
-	if (generate_clock_identity(&ds->clockIdentity, iface->name)) {
-		fprintf(stderr, "failed to generate a clock identity\n");
-		goto out;
-	}
-
-	clock = clock_create(cfg, phc_index, &cfg->interfaces, &ptp4l_dds);
+	clock = clock_create(cfg, phc_index, &cfg->interfaces);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		goto out;
