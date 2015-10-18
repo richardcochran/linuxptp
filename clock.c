@@ -74,6 +74,7 @@ struct clock_subscriber {
 };
 
 struct clock {
+	enum clock_type type;
 	struct config *config;
 	clockid_t clkid;
 	struct servo *servo;
@@ -799,7 +800,8 @@ static void clock_remove_port(struct clock *c, struct port *p)
 	port_close(p);
 }
 
-struct clock *clock_create(struct config *config, int phc_index)
+struct clock *clock_create(enum clock_type type, struct config *config,
+			   int phc_index)
 {
 	enum timestamp_type timestamping =
 		config_get_int(config, NULL, "time_stamping");
@@ -820,6 +822,17 @@ struct clock *clock_create(struct config *config, int phc_index)
 
 	if (c->nports)
 		clock_destroy(c);
+
+	switch (type) {
+	case CLOCK_TYPE_ORDINARY:
+	case CLOCK_TYPE_BOUNDARY:
+		c->type = type;
+		break;
+	case CLOCK_TYPE_P2P:
+	case CLOCK_TYPE_E2E:
+	case CLOCK_TYPE_MANAGEMENT:
+		return NULL;
+	}
 
 	/* Initialize the defaultDS. */
 	c->dds.clockQuality.clockClass =
@@ -1666,10 +1679,7 @@ struct clock_description *clock_description(struct clock *c)
 
 enum clock_type clock_type(struct clock *c)
 {
-	if (c->nports > 1) {
-		return CLOCK_TYPE_BOUNDARY;
-	}
-	return CLOCK_TYPE_ORDINARY;
+	return c->type;
 }
 
 void clock_check_ts(struct clock *c, struct timespec ts)

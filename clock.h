@@ -76,12 +76,14 @@ struct config *clock_config(struct clock *c);
  * Create a clock instance. There can only be one clock in any system,
  * so subsequent calls will destroy the previous clock instance.
  *
+ * @param type         Specifies which type of clock to create.
  * @param config       Pointer to the configuration database.
  * @param phc_index    PTP hardware clock device to use.
  *                     Pass -1 to select CLOCK_REALTIME.
  * @return             A pointer to the single global clock instance.
  */
-struct clock *clock_create(struct config *config, int phc_index);
+struct clock *clock_create(enum clock_type type, struct config *config,
+			   int phc_index);
 
 /**
  * Obtains a clock's default data set.

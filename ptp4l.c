@@ -222,7 +222,8 @@ int main(int argc, char *argv[])
 		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
 	}
 
-	clock = clock_create(cfg, phc_index);
+	clock = clock_create(cfg->n_interfaces > 1 ? CLOCK_TYPE_BOUNDARY :
+			     CLOCK_TYPE_ORDINARY, cfg, phc_index);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		goto out;
