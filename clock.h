@@ -71,11 +71,9 @@ struct config *clock_config(struct clock *c);
  * @param config       Pointer to the configuration database.
  * @param phc_index    PTP hardware clock device to use.
  *                     Pass -1 to select CLOCK_REALTIME.
- * @param ifaces       A queue of network interfaces.
  * @return             A pointer to the single global clock instance.
  */
-struct clock *clock_create(struct config *config, int phc_index,
-			   struct interfaces_head *ifaces);
+struct clock *clock_create(struct config *config, int phc_index);
 
 /**
  * Obtains a clock's default data set.

@@ -798,8 +798,7 @@ static void clock_remove_port(struct clock *c, struct port *p)
 	port_close(p);
 }
 
-struct clock *clock_create(struct config *config, int phc_index,
-			   struct interfaces_head *ifaces)
+struct clock *clock_create(struct config *config, int phc_index)
 {
 	enum timestamp_type timestamping =
 		config_get_int(config, NULL, "time_stamping");
@@ -810,7 +809,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 	unsigned char oui[OUI_LEN];
 	char phc[32], *tmp;
 	struct interface *udsif = &c->uds_interface;
-	struct interface *iface = STAILQ_FIRST(ifaces);
+	struct interface *iface = STAILQ_FIRST(&config->interfaces);
 	struct timespec ts;
 	int sfl;
 
@@ -1017,7 +1016,7 @@ struct clock *clock_create(struct config *config, int phc_index,
 	clock_fda_changed(c);
 
 	/* Create the ports. */
-	STAILQ_FOREACH(iface, ifaces, list) {
+	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		if (clock_add_port(c, phc_index, timestamping, iface)) {
 			pr_err("failed to open port %s", iface->name);
 			return NULL;
