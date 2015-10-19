@@ -41,6 +41,7 @@ struct interface {
 struct config {
 	/* configured interfaces */
 	STAILQ_HEAD(interfaces_head, interface) interfaces;
+	int n_interfaces;
 
 	/* hash of all non-legacy items */
 	struct hash *htab;

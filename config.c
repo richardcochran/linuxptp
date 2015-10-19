@@ -607,6 +607,8 @@ struct interface *config_create_interface(char *name, struct config *cfg)
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
 	sk_get_ts_info(iface->name, &iface->ts_info);
 	STAILQ_INSERT_TAIL(&cfg->interfaces, iface, list);
+	cfg->n_interfaces++;
+
 	return iface;
 }
 
