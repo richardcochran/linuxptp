@@ -1,6 +1,6 @@
-.TH PTP4l 8 "Novemver 2017" "linuxptp"
+.TH PTP4l 8 "March 2018" "linuxptp"
 .SH NAME
-ptp4l - PTP Boundary/Ordinary Clock
+ptp4l - PTP Boundary/Ordinary/Transparent Clock
 
 .SH SYNOPSIS
 .B ptp4l
@@ -23,8 +23,8 @@ ptp4l - PTP Boundary/Ordinary Clock
 .SH DESCRIPTION
 .B ptp4l
 is an implementation of the Precision Time Protocol (PTP) according to IEEE
-standard 1588 for Linux. It implements Boundary Clock (BC) and Ordinary Clock
-(OC).
+standard 1588 for Linux. It implements Boundary Clock (BC), Ordinary Clock
+(OC), and Transparent Clock (TC).
 
 .SH OPTIONS
 .TP
@@ -424,6 +424,13 @@ allow another process to synchronize the local clock (the SHM segment
 number is set to the domain number), and "nullf" for a servo that
 always dials frequency offset zero (for use in SyncE nodes).
 The default is "pi."
+.TP
+.B clock_type
+Specifies the kind of PTP clock.  Valid values are "OC" for ordinary
+clock, "BC" for boundary clock, "P2P_TC" for peer to peer transparent
+clock, and "E2E_TC" for end to end transparent clock.  An multi-port
+ordinary clock will automatically be configured as a boundary clock.
+The default is "OC".
 .TP
 .B pi_proportional_const
 The proportional constant of the PI controller. When set to 0.0, the

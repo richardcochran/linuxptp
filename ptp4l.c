@@ -1,6 +1,6 @@
 /**
  * @file ptp4l.c
- * @brief PTP Boundary Clock main program
+ * @brief PTP Boundary Clock or Transparent Clock main program
  * @note Copyright (C) 2011 Richard Cochran <richardcochran@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -59,6 +59,7 @@ static void usage(char *progname)
 		" -p [dev]  PTP hardware clock device to use, default auto\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
 		" -s        slave only mode (overrides configuration file)\n"
+		" -t        transparent clock\n"
 		" -l [num]  set the logging level to 'num'\n"
 		" -m        print messages to stdout\n"
 		" -q        do not print messages to the syslog\n"
@@ -71,6 +72,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
+	enum clock_type type = CLOCK_TYPE_ORDINARY;
 	int c, err = -1, index, print_level;
 	struct clock *clock = NULL;
 	struct option *opts;
@@ -201,8 +203,44 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	clock = clock_create(cfg->n_interfaces > 1 ? CLOCK_TYPE_BOUNDARY :
-			     CLOCK_TYPE_ORDINARY, cfg, req_phc);
+	type = config_get_int(cfg, NULL, "clock_type");
+	switch (type) {
+	case CLOCK_TYPE_ORDINARY:
+		if (cfg->n_interfaces > 1) {
+			type = CLOCK_TYPE_BOUNDARY;
+		}
+		break;
+	case CLOCK_TYPE_BOUNDARY:
+		if (cfg->n_interfaces < 2) {
+			fprintf(stderr, "BC needs at least two interfaces\n");
+			goto out;
+		}
+		break;
+	case CLOCK_TYPE_P2P:
+		if (cfg->n_interfaces < 2) {
+			fprintf(stderr, "TC needs at least two interfaces\n");
+			goto out;
+		}
+		if (DM_P2P != config_get_int(cfg, NULL, "delay_mechanism")) {
+			fprintf(stderr, "P2P_TC needs P2P delay mechanism\n");
+			goto out;
+		}
+		break;
+	case CLOCK_TYPE_E2E:
+		if (cfg->n_interfaces < 2) {
+			fprintf(stderr, "TC needs at least two interfaces\n");
+			goto out;
+		}
+		if (DM_E2E != config_get_int(cfg, NULL, "delay_mechanism")) {
+			fprintf(stderr, "E2E_TC needs E2E delay mechanism\n");
+			goto out;
+		}
+		break;
+	case CLOCK_TYPE_MANAGEMENT:
+		goto out;
+	}
+
+	clock = clock_create(type, cfg, req_phc);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		goto out;
