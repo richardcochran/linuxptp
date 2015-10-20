@@ -82,6 +82,10 @@ struct port {
 	struct fdarray fda;
 	int fault_fd;
 	int phc_index;
+
+	void (*dispatch)(struct port *p, enum fsm_event event, int mdiff);
+	enum fsm_event (*event)(struct port *p, int fd_index);
+
 	int jbod;
 	struct foreign_clock *best;
 	enum syfu_state syfu;
@@ -2373,6 +2377,11 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 
 void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
+	p->dispatch(p, event, mdiff);
+}
+
+static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
+{
 	enum port_state next;
 
 	if (clock_slave_only(p->clock)) {
@@ -2488,6 +2497,11 @@ static void port_link_status(void *ctx, int linkup, int ts_index)
 }
 
 enum fsm_event port_event(struct port *p, int fd_index)
+{
+	return p->event(p, fd_index);
+}
+
+static enum fsm_event bc_event(struct port *p, int fd_index)
 {
 	enum fsm_event event = EV_NONE;
 	struct ptp_message *msg;
@@ -2850,6 +2864,7 @@ struct port *port_open(int phc_index,
 		       struct interface *interface,
 		       struct clock *clock)
 {
+	enum clock_type type = clock_type(clock);
 	struct config *cfg = clock_config(clock);
 	struct port *p = malloc(sizeof(*p));
 	enum transport_type transport;
@@ -2859,6 +2874,18 @@ struct port *port_open(int phc_index,
 		return NULL;
 
 	memset(p, 0, sizeof(*p));
+
+	switch (type) {
+	case CLOCK_TYPE_ORDINARY:
+	case CLOCK_TYPE_BOUNDARY:
+		p->dispatch = bc_dispatch;
+		p->event = bc_event;
+		break;
+	case CLOCK_TYPE_P2P:
+	case CLOCK_TYPE_E2E:
+	case CLOCK_TYPE_MANAGEMENT:
+		return NULL;
+	}
 
 	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
 	p->dscmp = dscmp;
