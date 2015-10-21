@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <linux/net_tstamp.h>
 
 #include "clock.h"
 #include "config.h"
@@ -78,7 +77,7 @@ int main(int argc, char *argv[])
 	struct interface *iface;
 	struct clock *clock = NULL;
 	struct config *cfg;
-	int phc_index = -1, print_level, required_modes = 0;
+	int phc_index = -1, print_level;
 
 	if (handle_term_signals())
 		return -1;
@@ -196,37 +195,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "no interface specified\n");
 		usage(progname);
 		goto out;
-	}
-
-	switch (config_get_int(cfg, NULL, "time_stamping")) {
-	case TS_SOFTWARE:
-		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
-			SOF_TIMESTAMPING_RX_SOFTWARE |
-			SOF_TIMESTAMPING_SOFTWARE;
-		break;
-	case TS_LEGACY_HW:
-		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_SYS_HARDWARE;
-		break;
-	case TS_HARDWARE:
-	case TS_ONESTEP:
-		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_RAW_HARDWARE;
-		break;
-	}
-
-	/* Init interface configs and check whether timestamping mode is
-	 * supported. */
-	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
-		if (iface->ts_info.valid &&
-		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
-			fprintf(stderr, "interface '%s' does not support "
-				        "requested timestamping mode.\n",
-				iface->name);
-			goto out;
-		}
 	}
 
 	/* determine PHC Clock index */

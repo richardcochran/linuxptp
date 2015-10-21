@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <errno.h>
+#include <linux/net_tstamp.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
@@ -805,6 +806,7 @@ struct clock *clock_create(struct config *config, int phc_index)
 	int fadj = 0, max_adj = 0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
 	struct clock *c = &the_clock;
+	int required_modes = 0;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
 	char phc[32], *tmp;
@@ -892,6 +894,35 @@ struct clock *clock_create(struct config *config, int phc_index)
 		}
 	}
 
+	/* Check the time stamping mode on each interface. */
+	switch (config_get_int(config, NULL, "time_stamping")) {
+	case TS_SOFTWARE:
+		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
+			SOF_TIMESTAMPING_RX_SOFTWARE |
+			SOF_TIMESTAMPING_SOFTWARE;
+		break;
+	case TS_LEGACY_HW:
+		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+			SOF_TIMESTAMPING_RX_HARDWARE |
+			SOF_TIMESTAMPING_SYS_HARDWARE;
+		break;
+	case TS_HARDWARE:
+	case TS_ONESTEP:
+		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+			SOF_TIMESTAMPING_RX_HARDWARE |
+			SOF_TIMESTAMPING_RAW_HARDWARE;
+		break;
+	}
+	STAILQ_FOREACH(iface, &config->interfaces, list) {
+		if (iface->ts_info.valid &&
+		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
+			pr_err("interface '%s' does not support "
+			       "requested timestamping mode", iface->name);
+			return NULL;
+		}
+	}
+
+	iface = STAILQ_FIRST(&config->interfaces);
 	if (generate_clock_identity(&c->dds.clockIdentity, iface->name)) {
 		pr_err("failed to generate a clock identity");
 		return NULL;
