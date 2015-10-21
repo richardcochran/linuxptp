@@ -296,7 +296,6 @@ int main(int argc, char *argv[])
 	/* Init interface configs and check whether timestamping mode is
 	 * supported. */
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
-		config_init_interface(iface, cfg);
 		if (iface->ts_info.valid &&
 		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
 			fprintf(stderr, "interface '%s' does not support "

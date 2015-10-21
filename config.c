@@ -534,7 +534,6 @@ int config_read(char *name, struct config *cfg)
 				current_port = config_create_interface(port, cfg);
 				if (!current_port)
 					goto parse_error;
-				config_init_interface(current_port, cfg);
 			}
 			continue;
 		}
@@ -606,13 +605,9 @@ struct interface *config_create_interface(char *name, struct config *cfg)
 	}
 
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	sk_get_ts_info(iface->name, &iface->ts_info);
 	STAILQ_INSERT_TAIL(&cfg->interfaces, iface, list);
 	return iface;
-}
-
-void config_init_interface(struct interface *iface, struct config *cfg)
-{
-	sk_get_ts_info(iface->name, &iface->ts_info);
 }
 
 struct config *config_create(void)

@@ -48,7 +48,6 @@ struct config {
 
 int config_read(char *name, struct config *cfg);
 struct interface *config_create_interface(char *name, struct config *cfg);
-void config_init_interface(struct interface *iface, struct config *cfg);
 void config_destroy(struct config *cfg);
 
 /* New, hash table based methods: */
