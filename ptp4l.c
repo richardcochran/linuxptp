@@ -73,11 +73,9 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	int c, err = -1;
-	struct interface *iface;
+	int c, err = -1, print_level;
 	struct clock *clock = NULL;
 	struct config *cfg;
-	int phc_index = -1, print_level;
 
 	if (handle_term_signals())
 		return -1;
@@ -197,33 +195,8 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	/* determine PHC Clock index */
-	iface = STAILQ_FIRST(&cfg->interfaces);
-	if (config_get_int(cfg, NULL, "free_running")) {
-		phc_index = -1;
-	} else if (config_get_int(cfg, NULL, "time_stamping") == TS_SOFTWARE ||
-		   config_get_int(cfg, NULL, "time_stamping") == TS_LEGACY_HW) {
-		phc_index = -1;
-	} else if (req_phc) {
-		if (1 != sscanf(req_phc, "/dev/ptp%d", &phc_index)) {
-			fprintf(stderr, "bad ptp device string\n");
-			goto out;
-		}
-	} else if (iface->ts_info.valid) {
-		phc_index = iface->ts_info.phc_index;
-	} else {
-		fprintf(stderr, "ptp device not specified and\n"
-			        "automatic determination is not\n"
-			        "supported. please specify ptp device\n");
-		goto out;
-	}
-
-	if (phc_index >= 0) {
-		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
-	}
-
 	clock = clock_create(cfg->n_interfaces > 1 ? CLOCK_TYPE_BOUNDARY :
-			     CLOCK_TYPE_ORDINARY, cfg, phc_index);
+			     CLOCK_TYPE_ORDINARY, cfg, req_phc);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
 		goto out;

@@ -801,19 +801,18 @@ static void clock_remove_port(struct clock *c, struct port *p)
 }
 
 struct clock *clock_create(enum clock_type type, struct config *config,
-			   int phc_index)
+			   const char *phc_device)
 {
 	enum timestamp_type timestamping =
 		config_get_int(config, NULL, "time_stamping");
 	int fadj = 0, max_adj = 0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
+	int phc_index, required_modes = 0;
 	struct clock *c = &the_clock;
-	int required_modes = 0;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
 	char phc[32], *tmp;
-	struct interface *udsif = &c->uds_interface;
-	struct interface *iface = STAILQ_FIRST(&config->interfaces);
+	struct interface *iface, *udsif = &c->uds_interface;
 	struct timespec ts;
 	int sfl;
 
@@ -936,6 +935,29 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	iface = STAILQ_FIRST(&config->interfaces);
+
+	/* determine PHC Clock index */
+	if (config_get_int(config, NULL, "free_running")) {
+		phc_index = -1;
+	} else if (config_get_int(config, NULL, "time_stamping") == TS_SOFTWARE ||
+		   config_get_int(config, NULL, "time_stamping") == TS_LEGACY_HW) {
+		phc_index = -1;
+	} else if (phc_device) {
+		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index)) {
+			pr_err("bad ptp device string");
+			return NULL;
+		}
+	} else if (iface->ts_info.valid) {
+		phc_index = iface->ts_info.phc_index;
+	} else {
+		pr_err("PTP device not specified and automatic determination"
+		       " is not supported. Please specify PTP device.");
+		return NULL;
+	}
+	if (phc_index >= 0) {
+		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
+	}
+
 	if (generate_clock_identity(&c->dds.clockIdentity, iface->name)) {
 		pr_err("failed to generate a clock identity");
 		return NULL;
