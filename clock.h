@@ -104,6 +104,13 @@ void clock_destroy(struct clock *c);
 UInteger8 clock_domain_number(struct clock *c);
 
 /**
+ * Obtains a reference to the first port in the clock's list.
+ * @param c  The clock instance.
+ * @return   A pointer to a port, or NULL if no ports are present.
+ */
+struct port *clock_first_port(struct clock *c);
+
+/**
  * Provide the follow_up info TLV from a slave port.
  * @param c  The clock instance.
  * @param f  Pointer to the TLV.

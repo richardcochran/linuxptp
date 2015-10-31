@@ -1066,6 +1066,11 @@ UInteger8 clock_domain_number(struct clock *c)
 	return c->dds.domainNumber;
 }
 
+struct port *clock_first_port(struct clock *c)
+{
+	return LIST_FIRST(&c->ports);
+}
+
 void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f)
 {
 	c->status.cumulativeScaledRateOffset = f->cumulativeScaledRateOffset;
