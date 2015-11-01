@@ -376,6 +376,7 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 			return 0;
 		}
 		memset(fc, 0, sizeof(*fc));
+		TAILQ_INIT(&fc->messages);
 		LIST_INSERT_HEAD(&p->foreign_masters, fc, list);
 		fc->port = p;
 		fc->dataset.sender = m->header.sourcePortIdentity;

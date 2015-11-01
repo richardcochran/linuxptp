@@ -42,7 +42,7 @@ struct message_storage {
 	struct ptp_message msg;
 } PACKED;
 
-static TAILQ_HEAD(msg_pool, ptp_message) msg_pool;
+static TAILQ_HEAD(msg_pool, ptp_message) msg_pool = TAILQ_HEAD_INITIALIZER(msg_pool);
 
 static struct {
 	int total;
