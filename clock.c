@@ -282,6 +282,7 @@ void clock_destroy(struct clock *c)
 	}
 	memset(c, 0, sizeof(*c));
 	msg_cleanup();
+	tc_cleanup();
 }
 
 static int clock_fault_timeout(struct port *port, int set)

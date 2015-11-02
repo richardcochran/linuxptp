@@ -36,6 +36,7 @@
 #include "print.h"
 #include "rtnl.h"
 #include "sk.h"
+#include "tc.h"
 #include "tlv.h"
 #include "tmv.h"
 #include "tsproc.h"
@@ -1534,6 +1535,7 @@ void port_disable(struct port *p)
 {
 	int i;
 
+	tc_flush(p);
 	flush_last_sync(p);
 	flush_delay_req(p);
 	flush_peer_delay(p);
@@ -2777,6 +2779,7 @@ struct port *port_open(int phc_index,
 	}
 
 	memset(p, 0, sizeof(*p));
+	TAILQ_INIT(&p->tc_transmitted);
 
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:

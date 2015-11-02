@@ -50,6 +50,13 @@ struct nrate_estimator {
 	int ratio_valid;
 };
 
+struct tc_txd {
+	TAILQ_ENTRY(tc_txd) list;
+	struct ptp_message *msg;
+	tmv_t residence;
+	int ingress_port;
+};
+
 struct port {
 	LIST_ENTRY(port) list;
 	char *name;
@@ -113,6 +120,7 @@ struct port {
 	int                 min_neighbor_prop_delay;
 	int                 net_sync_monitor;
 	int                 path_trace_enabled;
+	int                 tc_spanning_tree;
 	Integer64           rx_timestamp_offset;
 	Integer64           tx_timestamp_offset;
 	enum link_state     link_status;
@@ -121,6 +129,8 @@ struct port {
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
+	/* TC book keeping */
+	TAILQ_HEAD(tct, tc_txd) tc_transmitted;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)

@@ -322,4 +322,9 @@ enum fault_type last_fault_type(struct port *port);
 void fault_interval(struct port *port, enum fault_type ft,
 		    struct fault_interval *i);
 
+/**
+ * Release all of the memory in the TC transmit descriptor cache.
+ */
+void tc_cleanup(void);
+
 #endif
