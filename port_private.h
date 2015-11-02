@@ -22,6 +22,7 @@
 #include <sys/queue.h>
 
 #include "clock.h"
+#include "fsm.h"
 #include "msg.h"
 #include "tmv.h"
 
@@ -120,5 +121,29 @@ struct port {
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
 };
+
+#define portnum(p) (p->portIdentity.portNumber)
+
+int clear_fault_asap(struct fault_interval *faint);
+void fc_clear(struct foreign_clock *fc);
+int port_clr_tmo(int fd);
+int port_delay_request(struct port *p);
+void port_disable(struct port *p);
+int port_initialize(struct port *p);
+int port_is_enabled(struct port *p);
+void port_link_status(void *ctx, int index, int linkup);
+int port_set_announce_tmo(struct port *p);
+int port_set_delay_tmo(struct port *p);
+void port_show_transition(struct port *p, enum port_state next,
+			  enum fsm_event event);
+int process_announce(struct port *p, struct ptp_message *m);
+void process_follow_up(struct port *p, struct ptp_message *m);
+int process_pdelay_req(struct port *p, struct ptp_message *m);
+int process_pdelay_resp(struct port *p, struct ptp_message *m);
+void process_pdelay_resp_fup(struct port *p, struct ptp_message *m);
+void process_sync(struct port *p, struct ptp_message *m);
+int pid_eq(struct PortIdentity *a, struct PortIdentity *b);
+int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2);
+void ts_add(tmv_t *ts, Integer64 correction);
 
 #endif

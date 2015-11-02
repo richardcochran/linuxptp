@@ -51,8 +51,6 @@ enum syfu_event {
 	FUP_MATCH,
 };
 
-#define portnum(p) (p->portIdentity.portNumber)
-
 static void flush_delay_req(struct port *p);
 static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
@@ -84,7 +82,7 @@ static void announce_to_dataset(struct ptp_message *m, struct port *p,
 	out->receiver     = p->portIdentity;
 }
 
-static int clear_fault_asap(struct fault_interval *faint)
+int clear_fault_asap(struct fault_interval *faint)
 {
 	switch (faint->type) {
 	case FTMO_LINEAR_SECONDS:
@@ -148,12 +146,12 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 	return 0 == memcmp(id1, id2, sizeof(*id1));
 }
 
-static int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
+int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
 {
 	return 0 == memcmp(a, b, sizeof(*a));
 }
 
-static int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
+int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 {
 	return pid_eq(&m1->header.sourcePortIdentity,
 		      &m2->header.sourcePortIdentity);
@@ -252,7 +250,7 @@ int port_set_fault_timer_lin(struct port *port, int seconds)
 	return set_tmo_lin(port->fault_fd, seconds);
 }
 
-static void fc_clear(struct foreign_clock *fc)
+void fc_clear(struct foreign_clock *fc)
 {
 	struct ptp_message *m;
 
@@ -314,7 +312,7 @@ static void delay_req_prune(struct port *p)
 	}
 }
 
-static void ts_add(tmv_t *ts, Integer64 correction)
+void ts_add(tmv_t *ts, Integer64 correction)
 {
 	if (!correction) {
 		return;
@@ -645,7 +643,7 @@ not_capable:
 	return 0;
 }
 
-static int port_clr_tmo(int fd)
+int port_clr_tmo(int fd)
 {
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
@@ -1021,14 +1019,14 @@ static void port_nrate_initialize(struct port *p)
 	p->nrate.ratio_valid = 0;
 }
 
-static int port_set_announce_tmo(struct port *p)
+int port_set_announce_tmo(struct port *p)
 {
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
 			      p->announceReceiptTimeout,
 			      p->announce_span, p->logAnnounceInterval);
 }
 
-static int port_set_delay_tmo(struct port *p)
+int port_set_delay_tmo(struct port *p)
 {
 	if (p->delayMechanism == DM_P2P) {
 		return set_tmo_log(p->fda.fd[FD_DELAY_TIMER], 1,
@@ -1061,8 +1059,8 @@ static int port_set_sync_tx_tmo(struct port *p)
 	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
 }
 
-static void port_show_transition(struct port *p,
-				 enum port_state next, enum fsm_event event)
+void port_show_transition(struct port *p, enum port_state next,
+			  enum fsm_event event)
 {
 	if (event == EV_FAULT_DETECTED) {
 		pr_notice("port %hu: %s to %s on %s (%s)", portnum(p),
@@ -1251,7 +1249,7 @@ out:
 	return -1;
 }
 
-static int port_delay_request(struct port *p)
+int port_delay_request(struct port *p)
 {
 	struct ptp_message *msg;
 
@@ -1460,7 +1458,7 @@ out:
 /*
  * port initialize and disable
  */
-static int port_is_enabled(struct port *p)
+int port_is_enabled(struct port *p)
 {
 	switch (p->state) {
 	case PS_INITIALIZING:
@@ -1520,7 +1518,7 @@ static void port_clear_fda(struct port *p, int count)
 		p->fda.fd[i] = -1;
 }
 
-static void port_disable(struct port *p)
+void port_disable(struct port *p)
 {
 	int i;
 
@@ -1541,7 +1539,7 @@ static void port_disable(struct port *p)
 	clock_fda_changed(p->clock);
 }
 
-static int port_initialize(struct port *p)
+int port_initialize(struct port *p)
 {
 	struct config *cfg = clock_config(p->clock);
 	int fd[N_TIMER_FDS], i;
@@ -1670,7 +1668,7 @@ struct dataset *port_best_foreign(struct port *port)
 /*
  * Returns non-zero if the announce message is both qualified and different.
  */
-static int process_announce(struct port *p, struct ptp_message *m)
+int process_announce(struct port *p, struct ptp_message *m)
 {
 	int result = 0;
 
@@ -1817,7 +1815,7 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	port_set_delay_tmo(p);
 }
 
-static void process_follow_up(struct port *p, struct ptp_message *m)
+void process_follow_up(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
 	struct PortIdentity master;
@@ -1855,7 +1853,7 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 	port_syfufsm(p, event, m);
 }
 
-static int process_pdelay_req(struct port *p, struct ptp_message *m)
+int process_pdelay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *rsp, *fup;
 	int err, event;
@@ -2046,7 +2044,7 @@ calc:
 	p->peer_delay_req = NULL;
 }
 
-static int process_pdelay_resp(struct port *p, struct ptp_message *m)
+int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
 	if (p->peer_delay_resp) {
 		if (!source_pid_eq(p->peer_delay_resp, m)) {
@@ -2090,7 +2088,7 @@ static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
-static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
+void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 {
 	if (!p->peer_delay_req)
 		return;
@@ -2103,7 +2101,7 @@ static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 	port_peer_delay(p);
 }
 
-static void process_sync(struct port *p, struct ptp_message *m)
+void process_sync(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
 	struct PortIdentity master;
@@ -2313,7 +2311,7 @@ static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 }
 
-static void port_link_status(void *ctx, int linkup, int ts_index)
+void port_link_status(void *ctx, int linkup, int ts_index)
 {
 	struct port *p = ctx;
 	int link_state;
