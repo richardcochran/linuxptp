@@ -16,6 +16,9 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#ifndef HAVE_FAULT_H
+#define HAVE_FAULT_H
+
 #include <stdint.h>
 
 enum fault_type {
@@ -37,3 +40,5 @@ struct fault_interval {
 };
 
 const char *ft_str(enum fault_type ft);
+
+#endif
