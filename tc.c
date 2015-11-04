@@ -64,6 +64,10 @@ static int tc_blocked(struct port *q, struct port *p, struct ptp_message *m)
 	if (!q->tc_spanning_tree) {
 		return 0;
 	}
+	/* Forward frames in the wrong domain unconditionally. */
+	if (m->header.domainNumber != clock_domain_number(p->clock)) {
+		return 0;
+	}
 	/* Ingress state */
 	s = port_state(q);
 	switch (s) {

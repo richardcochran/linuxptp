@@ -135,6 +135,9 @@ struct port {
 
 #define portnum(p) (p->portIdentity.portNumber)
 
+void p2p_dispatch(struct port *p, enum fsm_event event, int mdiff);
+enum fsm_event p2p_event(struct port *p, int fd_index);
+
 int clear_fault_asap(struct fault_interval *faint);
 void delay_req_prune(struct port *p);
 void fc_clear(struct foreign_clock *fc);

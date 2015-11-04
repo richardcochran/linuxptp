@@ -2788,6 +2788,9 @@ struct port *port_open(int phc_index,
 		p->event = bc_event;
 		break;
 	case CLOCK_TYPE_P2P:
+		p->dispatch = p2p_dispatch;
+		p->event = p2p_event;
+		break;
 	case CLOCK_TYPE_E2E:
 	case CLOCK_TYPE_MANAGEMENT:
 		return NULL;
@@ -2841,6 +2844,10 @@ struct port *port_open(int phc_index,
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_VERSION;
 
+	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P) {
+		pr_err("port %d: P2P TC needs P2P ports", number);
+		goto err_port;
+	}
 	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
 		pr_warning("port %d: hybrid_e2e only works with E2E", number);
 	}
