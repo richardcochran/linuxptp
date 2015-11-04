@@ -22,6 +22,8 @@
 
 #include <syslog.h>
 
+#include "util.h"
+
 #define PRINT_LEVEL_MIN LOG_EMERG
 #define PRINT_LEVEL_MAX LOG_DEBUG
 
