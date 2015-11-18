@@ -144,8 +144,7 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 {
 	tmv_t raw_delay;
 
-	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2) ||
-	    tmv_is_zero(tsp->t3) || tmv_is_zero(tsp->t4))
+	if (tmv_is_zero(tsp->t2) || tmv_is_zero(tsp->t3))
 		return -1;
 
 	raw_delay = get_raw_delay(tsp);
