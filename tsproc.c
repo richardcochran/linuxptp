@@ -164,7 +164,7 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	tmv_t delay, raw_delay = 0;
 
 	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2) ||
-	    tmv_is_zero(tsp->t3) || tmv_is_zero(tsp->t4))
+	    tmv_is_zero(tsp->t3))
 		return -1;
 
 	if (tsp->raw_mode || tsp->weighting)
