@@ -1,4 +1,4 @@
-.TH PTP4l 8 "December 2014" "linuxptp"
+.TH PTP4l 8 "July 2016" "linuxptp"
 .SH NAME
 ptp4l - PTP Boundary/Ordinary Clock
 
@@ -70,8 +70,10 @@ Specify a PTP port, it may be used multiple times. At least one port must be
 specified by this option or in the configuration file.
 .TP
 .BI \-p " phc-device"
-With hardware time stamping, force which PHC device (e.g. /dev/ptp0) should be
-used.
+(This option is deprecated.)
+Before Linux kernel v3.5 there was no way to discover the PHC device
+associated with a network interface.  This option specifies the PHC
+device (e.g. /dev/ptp0) to be used when running on legacy kernels.
 .TP
 .B \-s
 Enable the slaveOnly mode.
