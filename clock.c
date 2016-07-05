@@ -967,6 +967,10 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	snprintf(udsif->name, sizeof(udsif->name), "%s",
 		 config_get_string(config, NULL, "uds_address"));
 	if (config_set_section_int(config, udsif->name,
+				   "announceReceiptTimeout", 0)) {
+		return NULL;
+	}
+	if (config_set_section_int(config, udsif->name,
 				    "delay_mechanism", DM_AUTO)) {
 		return NULL;
 	}

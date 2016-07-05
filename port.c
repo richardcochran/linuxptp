@@ -103,6 +103,7 @@ struct port {
 	TimeInterval        peerMeanPathDelay;
 	Integer8            logAnnounceInterval;
 	UInteger8           announceReceiptTimeout;
+	int                 announce_span;
 	UInteger8           syncReceiptTimeout;
 	UInteger8           transportSpecific;
 	Integer8            logSyncInterval;
@@ -958,7 +959,7 @@ static int port_set_announce_tmo(struct port *p)
 {
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
 			      p->announceReceiptTimeout,
-			      ANNOUNCE_SPAN, p->logAnnounceInterval);
+			      p->announce_span, p->logAnnounceInterval);
 }
 
 static int port_set_delay_tmo(struct port *p)
@@ -2565,6 +2566,7 @@ struct port *port_open(int phc_index,
 	p->name = interface->name;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
+	p->announce_span = transport == TRANS_UDS ? 0 : ANNOUNCE_SPAN;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
