@@ -448,7 +448,8 @@ void string_append(char **s, const char *str)
 void string_appendf(char **s, const char *format, ...)
 {
 	va_list ap;
-	size_t len1, len2;
+	size_t len1;
+	int len2;
 	char *s2;
 
 	len1 = strlen(*s);
