@@ -298,6 +298,29 @@ int sk_receive(int fd, void *buf, int buflen,
 	return cnt;
 }
 
+int sk_set_priority(int fd, uint8_t dscp)
+{
+	int tos;
+	socklen_t tos_len;
+
+	tos_len = sizeof(tos);
+	if (getsockopt(fd, SOL_IP, IP_TOS, &tos, &tos_len) < 0) {
+		tos = 0;
+	}
+
+	/* clear old DSCP value */
+	tos &= ~0xFC;
+
+	/* set new DSCP value */
+	tos |= dscp<<2;
+	tos_len = sizeof(tos);
+	if (setsockopt(fd, SOL_IP, IP_TOS, &tos, tos_len) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 			 enum transport_type transport)
 {

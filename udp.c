@@ -157,6 +157,7 @@ static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
 		    enum timestamp_type ts_type)
 {
 	struct udp *udp = container_of(t, struct udp, t);
+	uint8_t event_dscp, general_dscp;
 	int efd, gfd, ttl;
 
 	ttl = config_get_int(t->cfg, name, "udp_ttl");
@@ -185,6 +186,16 @@ static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
 
 	if (sk_general_init(gfd))
 		goto no_timestamping;
+
+	event_dscp = config_get_int(t->cfg, NULL, "dscp_event");
+	general_dscp = config_get_int(t->cfg, NULL, "dscp_general");
+
+	if (event_dscp && sk_set_priority(efd, event_dscp)) {
+		pr_warning("Failed to set event DSCP priority.");
+	}
+	if (general_dscp && sk_set_priority(gfd, general_dscp)) {
+		pr_warning("Failed to set general DSCP priority.");
+	}
 
 	fda->fd[FD_EVENT] = efd;
 	fda->fd[FD_GENERAL] = gfd;

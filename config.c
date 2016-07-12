@@ -180,6 +180,8 @@ struct config_item config_tab[] = {
 	PORT_ITEM_ENU("delay_filter", FILTER_MOVING_MEDIAN, delay_filter_enu),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
 	PORT_ITEM_ENU("delay_mechanism", DM_E2E, delay_mech_enu),
+	GLOB_ITEM_INT("dscp_event", 0, 0, 63),
+	GLOB_ITEM_INT("dscp_general", 0, 0, 63),
 	GLOB_ITEM_INT("domainNumber", 0, 0, 127),
 	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("fault_badpeernet_interval", 16, INT32_MIN, INT32_MAX),

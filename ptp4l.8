@@ -448,6 +448,20 @@ is only relevant with IPv6 transport.  See RFC 4291.  The default is
 Specifies the address of the UNIX domain socket for receiving local
 management messages. The default is /var/run/ptp4l.
 .TP
+.B dscp_event
+Defines the Differentiated Services Codepoint (DSCP) to be used for PTP
+event messages. Must be a value between 0 and 63. There are several media
+streaming standards out there that require specific values for this option.
+For example 46 (EF PHB) in AES67 or 48 (CS6 PHB) in RAVENNA. The default
+is 0.
+.TP
+.B dscp_general
+Defines the Differentiated Services Codepoint (DSCP) to be used for PTP
+general messages. Must be a value between 0 and 63. There are several media
+streaming standards out there that recommend specific values for this option.
+For example 34 (AF41 PHB) in AES67 or 46 (EF PHB) in RAVENNA. The default
+is 0.
+.TP
 .B logging_level
 The maximum logging level of messages which should be printed.
 The default is 6 (LOG_INFO).

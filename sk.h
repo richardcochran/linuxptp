@@ -94,6 +94,14 @@ int sk_receive(int fd, void *buf, int buflen,
 	       struct address *addr, struct hw_timestamp *hwts, int flags);
 
 /**
+ * Set DSCP value for socket.
+ * @param fd    An open socket.
+ * @param dscp  The desired DSCP code.
+ * @return Zero on success, negative on failure
+ */
+int sk_set_priority(int fd, uint8_t dscp);
+
+/**
  * Enable time stamping on a given network interface.
  * @param fd          An open socket.
  * @param device      The name of the network interface to configure.
