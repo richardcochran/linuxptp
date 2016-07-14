@@ -72,6 +72,7 @@ struct ntp_server {
 	int minpoll;
 	int maxpoll;
 	int iburst;
+	char *ntp_options;
 };
 
 struct ptp_domain {
@@ -81,6 +82,7 @@ struct ptp_domain {
 	double delay;
 	char **interfaces;
 	char **ptp4l_settings;
+	char *ntp_options;
 };
 
 struct source {
@@ -223,10 +225,12 @@ static void source_destroy(struct source *source)
 	switch (source->type) {
 	case NTP_SERVER:
 		free(source->ntp.address);
+		free(source->ntp.ntp_options);
 		break;
 	case PTP_DOMAIN:
 		free_parray((void **)source->ptp.interfaces);
 		free_parray((void **)source->ptp.ptp4l_settings);
+		free(source->ptp.ntp_options);
 		break;
 	}
 	free(source);
@@ -235,7 +239,6 @@ static void source_destroy(struct source *source)
 static struct source *source_ntp_parse(char *parameter, char **settings)
 {
 	char *name, *value;
-	struct ntp_server ntp_server;
 	struct source *source;
 	int r = 0;
 
@@ -244,35 +247,38 @@ static struct source *source_ntp_parse(char *parameter, char **settings)
 		return NULL;
 	}
 
-	ntp_server.address = parameter;
-	ntp_server.minpoll = DEFAULT_NTP_MINPOLL;
-	ntp_server.maxpoll = DEFAULT_NTP_MAXPOLL;
-	ntp_server.iburst = 0;
+	source = xmalloc(sizeof(*source));
+	source->type = NTP_SERVER;
+	source->ntp.address = xstrdup(parameter);
+	source->ntp.minpoll = DEFAULT_NTP_MINPOLL;
+	source->ntp.maxpoll = DEFAULT_NTP_MAXPOLL;
+	source->ntp.iburst = 0;
+	source->ntp.ntp_options = xstrdup("");
 
 	for (; *settings; settings++) {
 		parse_setting(*settings, &name, &value);
 		if (!strcasecmp(name, "minpoll")) {
-			r = parse_int(value, &ntp_server.minpoll);
+			r = parse_int(value, &source->ntp.minpoll);
 		} else if (!strcasecmp(name, "maxpoll")) {
-			r = parse_int(value, &ntp_server.maxpoll);
+			r = parse_int(value, &source->ntp.maxpoll);
 		} else if (!strcasecmp(name, "iburst")) {
-			r = parse_bool(value, &ntp_server.iburst);
+			r = parse_bool(value, &source->ntp.iburst);
+		} else if (!strcasecmp(name, "ntp_options")) {
+			replace_string(value, &source->ntp.ntp_options);
 		} else {
 			pr_err("unknown ntp_server setting %s", name);
-			return NULL;
+			goto failed;
 		}
 		if (r) {
 			pr_err("invalid value %s for %s", value, name);
-			return NULL;
+			goto failed;
 		}
 	}
 
-	source = xmalloc(sizeof(*source));
-	source->type = NTP_SERVER;
-	source->ntp = ntp_server;
-	source->ntp.address = xstrdup(source->ntp.address);
-
 	return source;
+failed:
+	source_destroy(source);
+	return NULL;
 }
 
 static struct source *source_ptp_parse(char *parameter, char **settings)
@@ -288,6 +294,7 @@ static struct source *source_ptp_parse(char *parameter, char **settings)
 	source->ptp.phc2sys_poll = DEFAULT_PTP_PHC2SYS_POLL;
 	source->ptp.interfaces = (char **)parray_new();
 	source->ptp.ptp4l_settings = (char **)parray_new();
+	source->ptp.ntp_options = xstrdup("");
 
 	if (parse_int(parameter, &source->ptp.domain)) {
 		pr_err("invalid ptp_domain number %s", parameter);
@@ -305,6 +312,8 @@ static struct source *source_ptp_parse(char *parameter, char **settings)
 		} else if (!strcasecmp(name, "ptp4l_option")) {
 			parray_append((void ***)&source->ptp.ptp4l_settings,
 				      xstrdup(value));
+		} else if (!strcasecmp(name, "ntp_options")) {
+			replace_string(value, &source->ptp.ntp_options);
 		} else if (!strcasecmp(name, "interfaces")) {
 			parse_words(value, &source->ptp.interfaces);
 		} else {
@@ -609,8 +618,8 @@ static char *get_refid(char *prefix, unsigned int number)
 };
 
 static void add_shm_source(int shm_segment, int poll, int dpoll, double delay,
-			   char *prefix, struct timemaster_config *config,
-			   char **ntp_config)
+			   char *ntp_options, char *prefix,
+			   struct timemaster_config *config, char **ntp_config)
 {
 	char *refid = get_refid(prefix, shm_segment);
 
@@ -618,15 +627,17 @@ static void add_shm_source(int shm_segment, int poll, int dpoll, double delay,
 	case CHRONYD:
 		string_appendf(ntp_config,
 			       "refclock SHM %d poll %d dpoll %d "
-			       "refid %s precision 1.0e-9 delay %.1e\n",
-			       shm_segment, poll, dpoll, refid, delay);
+			       "refid %s precision 1.0e-9 delay %.1e %s\n",
+			       shm_segment, poll, dpoll, refid, delay,
+			       ntp_options);
 		break;
 	case NTPD:
 		string_appendf(ntp_config,
 			       "server 127.127.28.%d minpoll %d maxpoll %d "
-			       "mode 1\n"
+			       "mode 1 %s\n"
 			       "fudge 127.127.28.%d refid %s\n",
-			       shm_segment, poll, poll, shm_segment, refid);
+			       shm_segment, poll, poll, ntp_options,
+			       shm_segment, refid);
 		break;
 	}
 
@@ -637,9 +648,9 @@ static int add_ntp_source(struct ntp_server *source, char **ntp_config)
 {
 	pr_debug("adding NTP server %s", source->address);
 
-	string_appendf(ntp_config, "server %s minpoll %d maxpoll %d%s\n",
+	string_appendf(ntp_config, "server %s minpoll %d maxpoll %d %s %s\n",
 		       source->address, source->minpoll, source->maxpoll,
-		       source->iburst ? " iburst" : "");
+		       source->iburst ? "iburst" : "", source->ntp_options);
 	return 0;
 }
 
@@ -766,8 +777,8 @@ static int add_ptp_source(struct ptp_domain *source,
 		parray_append((void ***)&script->configs, config_file);
 
 		add_shm_source(*shm_segment, source->ntp_poll,
-			       source->phc2sys_poll, source->delay, "PTP",
-			       config, ntp_config);
+			       source->phc2sys_poll, source->delay,
+			       source->ntp_options, "PTP", config, ntp_config);
 
 		(*shm_segment)++;
 

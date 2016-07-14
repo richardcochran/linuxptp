@@ -103,6 +103,12 @@ Enable or disable sending a burst of NTP packets on start to speed up the
 initial synchronization. Possible values are 1 and 0. The default value is 0
 (disabled).
 
+.TP
+.B ntp_options
+Specify extra options that should be added for this source to the \fBserver\fR
+directive in the configuration file of the selected NTP implementation. No
+extra options are added by default.
+
 .SS [ptp_domain number]
 
 The \fBptp_domain\fR section specifies a PTP domain that should be used as a
@@ -141,6 +147,12 @@ in this PTP domain. This value is included in the distance used by
 assign weights for source combining. The default value is 1e\-4 (100
 microseconds). With \fBntpd\fR, the \fBtos mindist\fR command can be used to
 set a limit with similar purpose globally for all time sources.
+
+.TP
+.B ntp_options
+Specify extra options that should be added for this source to the
+\fBrefclock\fR or \fBserver\fR directives in the configuration file of the
+selected NTP implementation. No extra options are added by default.
 
 .TP
 .B ptp4l_option
@@ -284,12 +296,14 @@ A more complex example using all \fBtimemaster\fR options would be:
 minpoll 3
 maxpoll 4
 iburst 1
+ntp_options key 12
 
 [ptp_domain 0]
 interfaces eth0 eth1
 ntp_poll 0
 phc2sys_poll \-2
 delay 10e\-6
+ntp_options prefer
 ptp4l_option clock_servo linreg
 ptp4l_option delay_mechanism P2P
 
