@@ -1035,6 +1035,14 @@ static int script_run(struct script *script)
 	pid_t pid, *pids;
 	int i, num_commands, status, ret = 0;
 
+	for (num_commands = 0; script->commands[num_commands]; num_commands++)
+		;
+
+	if (!num_commands) {
+		/* nothing to do */
+		return 0;
+	}
+
 	if (create_config_files(script->configs))
 		return 1;
 
@@ -1050,9 +1058,6 @@ static int script_run(struct script *script)
 		return 1;
 	}
 
-	for (num_commands = 0; script->commands[num_commands]; num_commands++)
-		;
-
 	pids = xcalloc(num_commands, sizeof(*pids));
 
 	for (i = 0; i < num_commands; i++) {
@@ -1065,15 +1070,25 @@ static int script_run(struct script *script)
 
 	/* wait for one of the blocked signals */
 	while (1) {
-		if (sigwaitinfo(&mask, &info) > 0)
-			break;
-		if (errno != EINTR) {
+		if (sigwaitinfo(&mask, &info) < 0) {
+			if (errno == EINTR)
+				continue;
 			pr_err("sigwaitinfo() failed: %m");
 			break;
 		}
-	}
 
-	pr_info("received signal %d", info.si_signo);
+		/*
+		 * assume only the first process (i.e. chronyd or ntpd) is
+		 * essential and continue if other processes terminate
+		 */
+		if (info.si_signo == SIGCHLD && info.si_pid != pids[0]) {
+			pr_info("process %d terminated (ignored)", info.si_pid);
+			continue;
+		}
+
+		pr_info("received signal %d", info.si_signo);
+		break;
+	}
 
 	/* kill all started processes */
 	for (i = 0; i < num_commands; i++) {
