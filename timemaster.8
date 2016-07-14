@@ -80,6 +80,13 @@ Specify the directory where should be generated \fBchronyd\fR, \fBntpd\fR and
 \fBptp4l\fR configuration files and sockets. The directory will be created if
 it doesn't exist. The default value is \fB/var/run/timemaster\fR.
 
+.TP
+.B first_shm_segment
+Specify the first number in a sequence of SHM segments that will be used by
+\fBptp4l\fR and \fBphc2sys\fR. The default value is 0. Increasing the number
+can be useful to avoid conflicts with time sources that are not started by
+\fBtimemaster\fR, e.g. \fBgpsd\fR using segments number 0 and 1.
+
 .SS [ntp_server address]
 
 The \fBntp_server\fR section specifies an NTP server that should be used as a
@@ -310,6 +317,7 @@ ptp4l_option delay_mechanism P2P
 [timemaster]
 ntp_program chronyd
 rundir /var/run/timemaster
+first_shm_segment 1
 
 [chronyd]
 path /usr/sbin/chronyd

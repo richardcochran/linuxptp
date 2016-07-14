@@ -41,6 +41,8 @@
 
 #define DEFAULT_RUNDIR "/var/run/timemaster"
 
+#define DEFAULT_FIRST_SHM_SEGMENT 0
+
 #define DEFAULT_NTP_PROGRAM CHRONYD
 #define DEFAULT_NTP_MINPOLL 6
 #define DEFAULT_NTP_MAXPOLL 10
@@ -103,6 +105,7 @@ struct timemaster_config {
 	struct source **sources;
 	enum ntp_program ntp_program;
 	char *rundir;
+	int first_shm_segment;
 	struct program_config chronyd;
 	struct program_config ntpd;
 	struct program_config phc2sys;
@@ -363,6 +366,7 @@ static int parse_timemaster_settings(char **settings,
 				     struct timemaster_config *config)
 {
 	char *name, *value;
+	int r = 0;
 
 	for (; *settings; settings++) {
 		parse_setting(*settings, &name, &value);
@@ -377,8 +381,14 @@ static int parse_timemaster_settings(char **settings,
 			}
 		} else if (!strcasecmp(name, "rundir")) {
 			replace_string(value, &config->rundir);
+		} else if (!strcasecmp(name, "first_shm_segment")) {
+			r = parse_int(value, &config->first_shm_segment);
 		} else {
 			pr_err("unknown timemaster setting %s", name);
+			return 1;
+		}
+		if (r) {
+			pr_err("invalid value %s for %s", value, name);
 			return 1;
 		}
 	}
@@ -495,6 +505,7 @@ static struct timemaster_config *config_parse(char *path)
 	config->sources = (struct source **)parray_new();
 	config->ntp_program = DEFAULT_NTP_PROGRAM;
 	config->rundir = xstrdup(DEFAULT_RUNDIR);
+	config->first_shm_segment = DEFAULT_FIRST_SHM_SEGMENT;
 
 	init_program_config(&config->chronyd, "chronyd",
 			    NULL, DEFAULT_CHRONYD_SETTINGS, NULL);
@@ -876,12 +887,13 @@ static struct script *script_create(struct timemaster_config *config)
 	struct source *source, **sources;
 	struct config_file *ntp_config = NULL;
 	int **allocated_phcs = (int **)parray_new();
-	int ret = 0, shm_segment = 0;
+	int ret = 0, shm_segment;
 
 	script->configs = (struct config_file **)parray_new();
 	script->commands = (char ***)parray_new();
 
 	ntp_config = add_ntp_program(config, script);
+	shm_segment = config->first_shm_segment;
 
 	for (sources = config->sources; (source = *sources); sources++) {
 		switch (source->type) {
