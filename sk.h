@@ -40,6 +40,12 @@ struct sk_ts_info {
 };
 
 /**
+ * Obtains a socket suitable for use with sk_interface_index().
+ * @return  An open socket on success, -1 otherwise.
+ */
+int sk_interface_fd(void);
+
+/**
  * Obtain the numerical index from a network interface by name.
  * @param fd      An open socket.
  * @param device  The name of the network interface of interest.

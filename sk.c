@@ -80,6 +80,16 @@ static int hwts_init(int fd, const char *device, int rx_filter, int one_step)
 
 /* public methods */
 
+int sk_interface_fd(void)
+{
+	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (fd < 0) {
+		pr_err("socket failed: %m");
+		return -1;
+	}
+	return fd;
+}
+
 int sk_interface_index(int fd, const char *name)
 {
 	struct ifreq ifreq;
