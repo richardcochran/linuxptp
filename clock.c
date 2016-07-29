@@ -31,6 +31,7 @@
 #include "clockcheck.h"
 #include "foreign.h"
 #include "filter.h"
+#include "hash.h"
 #include "missing.h"
 #include "msg.h"
 #include "phc.h"
@@ -38,6 +39,7 @@
 #include "servo.h"
 #include "stats.h"
 #include "print.h"
+#include "sk.h"
 #include "tlv.h"
 #include "tsproc.h"
 #include "uds.h"
@@ -93,6 +95,7 @@ struct clock {
 	int pollfd_valid;
 	int nports; /* does not include the UDS port */
 	int last_port_number;
+	struct hash *index2port;
 	int free_running;
 	int freq_est_interval;
 	int grand_master_capable; /* for 802.1AS only */
@@ -270,6 +273,7 @@ void clock_destroy(struct clock *c)
 	}
 	port_close(c->uds_port);
 	free(c->pollfd);
+	hash_destroy(c->index2port, NULL);
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
 	}
@@ -767,6 +771,8 @@ static int clock_add_port(struct clock *c, int phc_index,
 			  struct interface *iface)
 {
 	struct port *p, *piter, *lastp = NULL;
+	int fd, index;
+	char key[16];
 
 	if (clock_resize_pollfd(c, c->nports + 1)) {
 		return -1;
@@ -786,6 +792,23 @@ static int clock_add_port(struct clock *c, int phc_index,
 	}
 	c->nports++;
 	clock_fda_changed(c);
+
+	/* Remember the index to port mapping, for link status tracking. */
+	fd = sk_interface_fd();
+	if (fd < 0) {
+		return -1;
+	}
+	index = sk_interface_index(fd, iface->name);
+	if (index < 0) {
+		return -1;
+	}
+	snprintf(key, sizeof(key), "%d", index);
+	if (hash_insert(c->index2port, key, p)) {
+		pr_err("failed to add port with index %d twice!", index);
+		return -1;
+	}
+	close(fd);
+
 	return 0;
 }
 
@@ -1087,6 +1110,11 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 	clock_fda_changed(c);
 
+	c->index2port = hash_create();
+	if (!c->index2port) {
+		pr_err("failed create index-to-port hash table");
+		return NULL;
+	}
 	/* Create the ports. */
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		if (clock_add_port(c, phc_index, timestamping, iface)) {
