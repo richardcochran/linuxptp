@@ -768,20 +768,22 @@ static int clock_add_port(struct clock *c, int phc_index,
 {
 	struct port *p, *piter, *lastp = NULL;
 
-	if (clock_resize_pollfd(c, c->nports + 1))
+	if (clock_resize_pollfd(c, c->nports + 1)) {
 		return -1;
-	p = port_open(phc_index, timestamping, ++c->last_port_number,
-		      iface, c);
+	}
+	p = port_open(phc_index, timestamping, ++c->last_port_number, iface, c);
 	if (!p) {
 		/* No need to shrink pollfd */
 		return -1;
 	}
-	LIST_FOREACH(piter, &c->ports, list)
+	LIST_FOREACH(piter, &c->ports, list) {
 		lastp = piter;
-	if (lastp)
+	}
+	if (lastp) {
 		LIST_INSERT_AFTER(lastp, p, list);
-	else
+	} else {
 		LIST_INSERT_HEAD(&c->ports, p, list);
+	}
 	c->nports++;
 	clock_fda_changed(c);
 	return 0;
