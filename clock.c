@@ -314,7 +314,7 @@ static void clock_freq_est_reset(struct clock *c)
 	c->fest.origin1 = tmv_zero();
 	c->fest.ingress1 = tmv_zero();
 	c->fest.count = 0;
-};
+}
 
 static void clock_management_send_error(struct port *p,
 					struct ptp_message *msg, int error_id)
