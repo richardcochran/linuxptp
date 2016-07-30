@@ -117,6 +117,7 @@ struct port {
 	int                 path_trace_enabled;
 	int                 rx_timestamp_offset;
 	int                 tx_timestamp_offset;
+	int                 link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
@@ -2357,6 +2358,17 @@ int port_number(struct port *p)
 	return portnum(p);
 }
 
+int port_link_status_get(struct port *p)
+{
+	return p->link_status;
+}
+
+void port_link_status_set(struct port *p, int up)
+{
+	p->link_status = up ? 1 : 0;
+	pr_notice("port %hu: link %s", portnum(p), up ? "up" : "down");
+}
+
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 {
 	struct management_tlv *mgt;
@@ -2573,6 +2585,7 @@ struct port *port_open(int phc_index,
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
+	p->link_status = 1;
 	p->clock = clock;
 	p->trp = transport_create(cfg, transport);
 	if (!p->trp)
