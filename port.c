@@ -145,7 +145,7 @@ static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
 	return memcmp(&a->grandmasterPriority1, &b->grandmasterPriority1, len);
 }
 
-static void announce_to_dataset(struct ptp_message *m, struct clock *c,
+static void announce_to_dataset(struct ptp_message *m, struct port *p,
 				struct dataset *out)
 {
 	struct announce_msg *a = &m->announce;
@@ -155,7 +155,7 @@ static void announce_to_dataset(struct ptp_message *m, struct clock *c,
 	out->priority2    = a->grandmasterPriority2;
 	out->stepsRemoved = a->stepsRemoved;
 	out->sender       = m->header.sourcePortIdentity;
-	out->receiver     = clock_parent_identity(c);
+	out->receiver     = p->portIdentity;
 }
 
 static int msg_current(struct ptp_message *m, struct timespec now)
@@ -2032,7 +2032,7 @@ struct foreign_clock *port_compute_best(struct port *p)
 		if (!tmp)
 			continue;
 
-		announce_to_dataset(tmp, p->clock, &fc->dataset);
+		announce_to_dataset(tmp, p, &fc->dataset);
 
 		fc_prune(fc);
 
