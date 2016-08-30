@@ -39,6 +39,7 @@
 #include "servo.h"
 #include "stats.h"
 #include "print.h"
+#include "rtnl.h"
 #include "sk.h"
 #include "tlv.h"
 #include "tsproc.h"
@@ -271,6 +272,9 @@ void clock_destroy(struct clock *c)
 	LIST_FOREACH_SAFE(p, &c->ports, list, tmp) {
 		clock_remove_port(c, p);
 	}
+	if (c->pollfd[0].fd >= 0) {
+		rtnl_close(c->pollfd[0].fd);
+	}
 	port_close(c->uds_port);
 	free(c->pollfd);
 	hash_destroy(c->index2port, NULL);
@@ -318,6 +322,25 @@ static void clock_freq_est_reset(struct clock *c)
 	c->fest.origin1 = tmv_zero();
 	c->fest.ingress1 = tmv_zero();
 	c->fest.count = 0;
+}
+
+static void clock_link_status(void *ctx, int index, int linkup)
+{
+	struct clock *c = ctx;
+	struct port *p;
+	char key[16];
+
+	snprintf(key, sizeof(key), "%d", index);
+	p = hash_lookup(c->index2port, key);
+	if (!p) {
+		return;
+	}
+	port_link_status_set(p, linkup);
+	if (linkup) {
+		port_dispatch(p, EV_FAULT_CLEARED, 0);
+	} else {
+		port_dispatch(p, EV_FAULT_DETECTED, 0);
+	}
 }
 
 static void clock_management_send_error(struct port *p,
@@ -1096,13 +1119,16 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	LIST_INIT(&c->ports);
 	c->last_port_number = 0;
 
-	/*
-	 * Create the UDS interface.
-	 */
 	if (clock_resize_pollfd(c, 0)) {
 		pr_err("failed to allocate pollfd");
 		return NULL;
 	}
+
+	/* Open a RT netlink socket. */
+	c->pollfd[0].fd = rtnl_open();
+	c->pollfd[0].events = POLLIN|POLLPRI;
+
+	/* Create the UDS interface. */
 	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
 	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
@@ -1129,7 +1155,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		port_dispatch(p, EV_INITIALIZE, 0);
 	}
 	port_dispatch(c->uds_port, EV_INITIALIZE, 0);
-
+	if (c->pollfd[0].fd >= 0) {
+		rtnl_link_query(c->pollfd[0].fd);
+	}
 	return c;
 }
 
@@ -1194,9 +1222,12 @@ static int clock_resize_pollfd(struct clock *c, int new_nports)
 {
 	struct pollfd *new_pollfd;
 
-	/* Need to allocate one extra block of fds for uds */
+	/*
+	 * Need to allocate one descriptor for RT netlink and one
+	 * whole extra block of fds for UDS.
+	 */
 	new_pollfd = realloc(c->pollfd,
-			     (new_nports + 1) * N_CLOCK_PFD *
+			     (1 + (new_nports + 1) * N_CLOCK_PFD) *
 			     sizeof(struct pollfd));
 	if (!new_pollfd)
 		return -1;
@@ -1221,7 +1252,7 @@ static void clock_fill_pollfd(struct pollfd *dest, struct port *p)
 static void clock_check_pollfd(struct clock *c)
 {
 	struct port *p;
-	struct pollfd *dest = c->pollfd;
+	struct pollfd *dest = c->pollfd + 1;
 
 	if (c->pollfd_valid)
 		return;
@@ -1437,7 +1468,7 @@ int clock_poll(struct clock *c)
 	struct port *p;
 
 	clock_check_pollfd(c);
-	cnt = poll(c->pollfd, (c->nports + 1) * N_CLOCK_PFD, -1);
+	cnt = poll(c->pollfd, 1 + (c->nports + 1) * N_CLOCK_PFD, -1);
 	if (cnt < 0) {
 		if (EINTR == errno) {
 			return 0;
@@ -1449,7 +1480,13 @@ int clock_poll(struct clock *c)
 		return 0;
 	}
 
+	/* Check the RT netlink. */
 	cur = c->pollfd;
+	if (cur->revents & (POLLIN|POLLPRI)) {
+		rtnl_link_status(cur->fd, clock_link_status, c);
+	}
+
+	cur++;
 	LIST_FOREACH(p, &c->ports, list) {
 		/* Let the ports handle their events. */
 		for (i = err = 0; i < N_POLLFD && !err; i++) {
@@ -1468,10 +1505,15 @@ int clock_poll(struct clock *c)
 			}
 		}
 
-		/* Check the fault timer. */
+		/*
+		 * When the fault timer expires we clear the fault,
+		 * but only if the link is up.
+		 */
 		if (cur[N_POLLFD].revents & (POLLIN|POLLPRI)) {
 			clock_fault_timeout(p, 0);
-			port_dispatch(p, EV_FAULT_CLEARED, 0);
+			if (port_link_status_get(p)) {
+				port_dispatch(p, EV_FAULT_CLEARED, 0);
+			}
 		}
 
 		cur += N_CLOCK_PFD;
