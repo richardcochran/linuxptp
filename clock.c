@@ -891,7 +891,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	if (!(c->dds.flags & DDS_TWO_STEP_FLAG)) {
-		switch (config_get_int(config, NULL, "time_stamping")) {
+		switch (timestamping) {
 		case TS_SOFTWARE:
 		case TS_LEGACY_HW:
 			pr_err("one step is only possible "
@@ -908,7 +908,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	/* Check the time stamping mode on each interface. */
-	switch (config_get_int(config, NULL, "time_stamping")) {
+	switch (timestamping) {
 	case TS_SOFTWARE:
 		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
 			SOF_TIMESTAMPING_RX_SOFTWARE |
@@ -940,8 +940,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	/* determine PHC Clock index */
 	if (config_get_int(config, NULL, "free_running")) {
 		phc_index = -1;
-	} else if (config_get_int(config, NULL, "time_stamping") == TS_SOFTWARE ||
-		   config_get_int(config, NULL, "time_stamping") == TS_LEGACY_HW) {
+	} else if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
 		phc_index = -1;
 	} else if (phc_device) {
 		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index)) {
