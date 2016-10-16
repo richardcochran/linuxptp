@@ -898,6 +898,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 			       "with hardware time stamping");
 			return NULL;
 		case TS_HARDWARE:
+			timestamping = TS_ONESTEP;
 			if (config_set_int(config, "time_stamping", TS_ONESTEP))
 				return NULL;
 			break;
