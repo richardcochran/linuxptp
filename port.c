@@ -2120,6 +2120,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 		break;
 	case PS_LISTENING:
 		port_set_announce_tmo(p);
+		port_set_delay_tmo(p);
 		break;
 	case PS_PRE_MASTER:
 		port_set_qualification_tmo(p);
@@ -2158,7 +2159,7 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		fault_interval(p, last_fault_type(p), &i);
 		if (clear_fault_asap(&i)) {
 			pr_notice("port %hu: clearing fault immediately", portnum(p));
-			next = PS_INITIALIZING;
+			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
 		}
 	}
 	if (PS_INITIALIZING == next) {
@@ -2170,14 +2171,12 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		if (port_is_enabled(p)) {
 			port_disable(p);
 		}
-		next = port_initialize(p) ? PS_FAULTY : PS_LISTENING;
-		port_show_transition(p, next, event);
-		p->state = next;
-		if (next == PS_LISTENING && p->delayMechanism == DM_P2P) {
-			port_set_delay_tmo(p);
+		if (port_initialize(p)) {
+			event = EV_FAULT_DETECTED;
+		} else {
+			event = EV_INIT_COMPLETE;
 		}
-		port_notify_event(p, NOTIFY_PORT_STATE);
-		return 1;
+		next = p->state_machine(next, event, 0);
 	}
 
 	if (next == p->state)

@@ -27,7 +27,16 @@ enum port_state ptp_fsm(enum port_state state, enum fsm_event event, int mdiff)
 
 	switch (state) {
 	case PS_INITIALIZING:
-		next = PS_LISTENING;
+		switch (event) {
+		case EV_FAULT_DETECTED:
+			next = PS_FAULTY;
+			break;
+		case EV_INIT_COMPLETE:
+			next = PS_LISTENING;
+			break;
+		default:
+			break;
+		}
 		break;
 
 	case PS_FAULTY:
@@ -220,7 +229,16 @@ enum port_state ptp_slave_fsm(enum port_state state, enum fsm_event event,
 
 	switch (state) {
 	case PS_INITIALIZING:
-		next = PS_LISTENING;
+		switch (event) {
+		case EV_FAULT_DETECTED:
+			next = PS_FAULTY;
+			break;
+		case EV_INIT_COMPLETE:
+			next = PS_LISTENING;
+			break;
+		default:
+			break;
+		}
 		break;
 
 	case PS_FAULTY:
