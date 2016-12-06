@@ -74,10 +74,9 @@ install: $(PRG)
 	install -p -m 644 -t $(DESTDIR)$(man8dir) $(PRG:%=%.8)
 
 clean:
-	rm -f $(OBJECTS) $(DEPEND)
+	rm -f $(OBJECTS) $(DEPEND) $(PRG)
 
 distclean: clean
-	rm -f $(PRG)
 	rm -f .version
 
 # Implicit rule to generate a C source file's dependencies.
