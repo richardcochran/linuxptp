@@ -20,6 +20,7 @@
 #ifndef HAVE_CONFIG_H
 #define HAVE_CONFIG_H
 
+#include <getopt.h>
 #include <sys/queue.h>
 
 #include "ds.h"
@@ -43,6 +44,9 @@ struct config {
 	STAILQ_HEAD(interfaces_head, interface) interfaces;
 	int n_interfaces;
 
+	/* for parsing command line options */
+	struct option *opts;
+
 	/* hash of all non-legacy items */
 	struct hash *htab;
 };
@@ -63,6 +67,13 @@ int config_get_int(struct config *cfg, const char *section,
 
 char *config_get_string(struct config *cfg, const char *section,
 			const char *option);
+
+static inline struct option *config_long_options(struct config *cfg)
+{
+	return cfg->opts;
+}
+
+int config_parse_option(struct config *cfg, const char *opt, const char *val);
 
 int config_set_double(struct config *cfg, const char *option, double val);
 

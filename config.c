@@ -329,6 +329,7 @@ static enum parser_result parse_section_line(char *s, enum config_section *secti
 }
 
 static enum parser_result parse_item(struct config *cfg,
+				     int commandline,
 				     const char *section,
 				     const char *option,
 				     const char *value)
@@ -387,7 +388,7 @@ static enum parser_result parse_item(struct config *cfg,
 				return NOT_PARSED;
 			}
 		}
-	} else if (cgi->flags & CFG_ITEM_LOCKED) {
+	} else if (!commandline && cgi->flags & CFG_ITEM_LOCKED) {
 		/* This global option was set on the command line. */
 		return PARSED_OK;
 	} else {
@@ -414,6 +415,10 @@ static enum parser_result parse_item(struct config *cfg,
 		}
 		dst->flags |= CFG_ITEM_DYNSTR;
 		break;
+	}
+
+	if (commandline) {
+		dst->flags &= CFG_ITEM_LOCKED;
 	}
 	return PARSED_OK;
 }
@@ -490,6 +495,25 @@ static void check_deprecated_options(const char **option)
 	}
 }
 
+static struct option *config_alloc_longopts(struct config *cfg)
+{
+	struct config_item *ci;
+	struct option *opts;
+	int i;
+
+	opts = calloc(1, (1 + N_CONFIG_ITEMS) * sizeof(*opts));
+	if (!opts) {
+		return NULL;
+	}
+	for (i = 0; i < N_CONFIG_ITEMS; i++) {
+		ci = &config_tab[i];
+		opts[i].name = ci->label;
+		opts[i].has_arg = required_argument;
+	}
+
+	return opts;
+}
+
 int config_read(char *name, struct config *cfg)
 {
 	enum config_section current_section = UNKNOWN_SECTION;
@@ -554,7 +578,7 @@ int config_read(char *name, struct config *cfg)
 
 		check_deprecated_options(&option);
 
-		parser_res = parse_item(cfg, current_section == GLOBAL_SECTION ?
+		parser_res = parse_item(cfg, 0, current_section == GLOBAL_SECTION ?
 					NULL : current_port->name, option, value);
 
 		switch (parser_res) {
@@ -627,8 +651,15 @@ struct config *config_create(void)
 	}
 	STAILQ_INIT(&cfg->interfaces);
 
+	cfg->opts = config_alloc_longopts(cfg);
+	if (!cfg->opts) {
+		free(cfg);
+		return NULL;
+	}
+
 	cfg->htab = hash_create();
 	if (!cfg->htab) {
+		free(cfg->opts);
 		free(cfg);
 		return NULL;
 	}
@@ -657,6 +688,7 @@ struct config *config_create(void)
 	return cfg;
 fail:
 	hash_destroy(cfg->htab, NULL);
+	free(cfg->opts);
 	free(cfg);
 	return NULL;
 }
@@ -670,6 +702,7 @@ void config_destroy(struct config *cfg)
 		free(iface);
 	}
 	hash_destroy(cfg->htab, config_item_free);
+	free(cfg->opts);
 	free(cfg);
 }
 
@@ -718,6 +751,33 @@ char *config_get_string(struct config *cfg, const char *section,
 	}
 	pr_debug("config item %s.%s is '%s'", section, option, ci->val.s);
 	return ci->val.s;
+}
+
+int config_parse_option(struct config *cfg, const char *opt, const char *val)
+{
+	enum parser_result result;
+
+	result = parse_item(cfg, 1, NULL, opt, val);
+
+	switch (result) {
+	case PARSED_OK:
+		return 0;
+	case NOT_PARSED:
+		fprintf(stderr, "unknown option %s\n", opt);
+		break;
+	case BAD_VALUE:
+		fprintf(stderr, "%s is a bad value for option %s\n", val, opt);
+		break;
+	case MALFORMED:
+		fprintf(stderr, "%s is a malformed value for option %s\n",
+			val, opt);
+		break;
+	case OUT_OF_RANGE:
+		fprintf(stderr, "%s is an out of range value for option %s\n",
+			val, opt);
+		break;
+	}
+	return -1;
 }
 
 int config_set_double(struct config *cfg, const char *option, double val)

@@ -73,8 +73,9 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *req_phc = NULL, *progname;
-	int c, err = -1, print_level;
+	int c, err = -1, index, print_level;
 	struct clock *clock = NULL;
+	struct option *opts;
 	struct config *cfg;
 
 	if (handle_term_signals())
@@ -84,12 +85,18 @@ int main(int argc, char *argv[])
 	if (!cfg) {
 		return -1;
 	}
+	opts = config_long_options(cfg);
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "AEP246HSLf:i:p:sl:mqvh"))) {
+	while (EOF != (c = getopt_long(argc, argv, "AEP246HSLf:i:p:sl:mqvh",
+				       opts, &index))) {
 		switch (c) {
+		case 0:
+			if (config_parse_option(cfg, opts[index].name, optarg))
+				goto out;
+			break;
 		case 'A':
 			if (config_set_int(cfg, "delay_mechanism", DM_AUTO))
 				goto out;
