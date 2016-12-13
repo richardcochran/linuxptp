@@ -1,4 +1,4 @@
-.TH PTP4l 8 "July 2016" "linuxptp"
+.TH PTP4l 8 "December 2016" "linuxptp"
 .SH NAME
 ptp4l - PTP Boundary/Ordinary Clock
 
@@ -15,6 +15,8 @@ ptp4l - PTP Boundary/Ordinary Clock
 ]
 [
 .BI \-i " interface"
+] [
+.I long-options
 ]
 .I .\|.\|.
 
@@ -93,6 +95,19 @@ Prints the software version and exits.
 .TP
 .BI \-h
 Display a help message.
+
+.SH LONG OPTIONS
+
+Each and every configuration file option (see below) may also appear
+as a "long" style command line argument.  For example, the slaveOnly
+option may be set using either of these two forms.
+
+.RS
+\f(CW\-\-slaveOnly 1   \-\-slaveOnly=1\fP
+.RE
+
+Option values given on the command line override values in the global
+section of the configuration file.
 
 .SH CONFIGURATION FILE
 
