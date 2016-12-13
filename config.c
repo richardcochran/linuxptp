@@ -418,7 +418,7 @@ static enum parser_result parse_item(struct config *cfg,
 	}
 
 	if (commandline) {
-		dst->flags &= CFG_ITEM_LOCKED;
+		dst->flags |= CFG_ITEM_LOCKED;
 	}
 	return PARSED_OK;
 }
