@@ -94,6 +94,8 @@ struct port {
 	unsigned int pdr_missing;
 	unsigned int multiple_seq_pdr_count;
 	unsigned int multiple_pdr_detected;
+	enum port_state (*state_machine)(enum port_state state,
+					 enum fsm_event event, int mdiff);
 	/* portDS */
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
@@ -2142,10 +2144,8 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER) {
 			port_slave_priority_warning(p);
 		}
-		next = ptp_slave_fsm(p->state, event, mdiff);
-	} else {
-		next = ptp_fsm(p->state, event, mdiff);
 	}
+	next = p->state_machine(p->state, event, mdiff);
 
 	if (!fault_interval(p, last_fault_type(p), &i) &&
 	    ((i.val == FRI_ASAP && i.type == FTMO_LOG2_SECONDS) ||
@@ -2555,6 +2555,7 @@ struct port *port_open(int phc_index,
 
 	memset(p, 0, sizeof(*p));
 
+	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
