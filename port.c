@@ -161,6 +161,19 @@ static void announce_to_dataset(struct ptp_message *m, struct port *p,
 	out->receiver     = p->portIdentity;
 }
 
+static int clear_fault_asap(struct fault_interval *faint)
+{
+	switch (faint->type) {
+	case FTMO_LINEAR_SECONDS:
+		return faint->val == 0 ? 1 : 0;
+	case FTMO_LOG2_SECONDS:
+		return faint->val == FRI_ASAP ? 1 : 0;
+	case FTMO_CNT:
+		return 0;
+	}
+	return 0;
+}
+
 static int msg_current(struct ptp_message *m, struct timespec now)
 {
 	int64_t t1, t2, tmo;
@@ -2143,9 +2156,9 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	next = p->state_machine(p->state, event, mdiff);
 
 	fault_interval(p, last_fault_type(p), &i);
-	if ((i.val == FRI_ASAP && i.type == FTMO_LOG2_SECONDS) ||
-	     (i.val == 0 && i.type == FTMO_LINEAR_SECONDS))
+	if (clear_fault_asap(&i)) {
 		fri_asap = 1;
+	}
 	if (PS_INITIALIZING == next || (PS_FAULTY == next && fri_asap)) {
 		/*
 		 * This is a special case. Since we initialize the
