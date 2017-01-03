@@ -318,9 +318,8 @@ enum fault_type last_fault_type(struct port *port);
  * @param port        A port instance.
  * @param ft          Fault type.
  * @param i           Pointer to the struct which will be filled in.
- * @return Zero on success, non-zero otherwise.
  */
-int fault_interval(struct port *port, enum fault_type ft,
-	struct fault_interval *i);
+void fault_interval(struct port *port, enum fault_type ft,
+		    struct fault_interval *i);
 
 #endif

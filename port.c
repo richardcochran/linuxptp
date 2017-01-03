@@ -205,16 +205,11 @@ enum fault_type last_fault_type(struct port *port)
 	return port->last_fault_type;
 }
 
-int fault_interval(struct port *port, enum fault_type ft,
-	struct fault_interval *i)
+void fault_interval(struct port *port, enum fault_type ft,
+		    struct fault_interval *i)
 {
-	if (!port || !i)
-		return -EINVAL;
-	if (ft < 0 || ft >= FT_CNT)
-		return -EINVAL;
 	i->type = port->flt_interval_pertype[ft].type;
 	i->val = port->flt_interval_pertype[ft].val;
-	return 0;
 }
 
 int port_fault_fd(struct port *port)
@@ -2147,9 +2142,9 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 	next = p->state_machine(p->state, event, mdiff);
 
-	if (!fault_interval(p, last_fault_type(p), &i) &&
-	    ((i.val == FRI_ASAP && i.type == FTMO_LOG2_SECONDS) ||
-	     (i.val == 0 && i.type == FTMO_LINEAR_SECONDS)))
+	fault_interval(p, last_fault_type(p), &i);
+	if ((i.val == FRI_ASAP && i.type == FTMO_LOG2_SECONDS) ||
+	     (i.val == 0 && i.type == FTMO_LINEAR_SECONDS))
 		fri_asap = 1;
 	if (PS_INITIALIZING == next || (PS_FAULTY == next && fri_asap)) {
 		/*
