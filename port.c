@@ -2145,8 +2145,6 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next;
-	struct fault_interval i;
-	int fri_asap = 0;
 
 	if (clock_slave_only(p->clock)) {
 		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER) {
@@ -2155,11 +2153,15 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 	next = p->state_machine(p->state, event, mdiff);
 
-	fault_interval(p, last_fault_type(p), &i);
-	if (clear_fault_asap(&i)) {
-		fri_asap = 1;
+	if (PS_FAULTY == next) {
+		struct fault_interval i;
+		fault_interval(p, last_fault_type(p), &i);
+		if (clear_fault_asap(&i)) {
+			pr_notice("port %hu: clearing fault immediately", portnum(p));
+			next = PS_INITIALIZING;
+		}
 	}
-	if (PS_INITIALIZING == next || (PS_FAULTY == next && fri_asap)) {
+	if (PS_INITIALIZING == next) {
 		/*
 		 * This is a special case. Since we initialize the
 		 * port immediately, we can skip right to listening
