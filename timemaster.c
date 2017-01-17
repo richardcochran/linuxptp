@@ -674,13 +674,15 @@ static int add_ptp_source(struct ptp_domain *source,
 {
 	struct config_file *config_file;
 	char **command, *uds_path, **interfaces, *message_tag;
-	int i, j, num_interfaces, *phc, *phcs, hw_ts;
+	int i, j, num_interfaces, *phc, *phcs, hw_ts, sw_ts;
 	struct sk_ts_info ts_info;
 
 	pr_debug("adding PTP domain %d", source->domain);
 
 	hw_ts = SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_RX_HARDWARE |
 		SOF_TIMESTAMPING_RAW_HARDWARE;
+	sw_ts = SOF_TIMESTAMPING_TX_SOFTWARE | SOF_TIMESTAMPING_RX_SOFTWARE |
+		SOF_TIMESTAMPING_SOFTWARE;
 
 	for (num_interfaces = 0;
 	     source->interfaces[num_interfaces]; num_interfaces++)
@@ -702,9 +704,14 @@ static int add_ptp_source(struct ptp_domain *source,
 			return 1;
 		}
 
-		if (!ts_info.valid ||
-		    ((ts_info.so_timestamping & hw_ts) != hw_ts)) {
+		if (((ts_info.so_timestamping & hw_ts) != hw_ts)) {
 			pr_debug("interface %s: no PHC", source->interfaces[i]);
+			if ((ts_info.so_timestamping & sw_ts) != sw_ts) {
+				pr_err("time stamping not supported on %s",
+				       source->interfaces[i]);
+				free(phcs);
+				return 1;
+			}
 			continue;
 		}
 
