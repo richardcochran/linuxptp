@@ -28,10 +28,16 @@ static int verbose = 0;
 static int print_level = LOG_INFO;
 static int use_syslog = 1;
 static const char *progname;
+static const char *message_tag;
 
 void print_set_progname(const char *name)
 {
 	progname = name;
+}
+
+void print_set_tag(const char *tag)
+{
+	message_tag = tag;
 }
 
 void print_set_syslog(int value)
@@ -67,13 +73,17 @@ void print(int level, char const *format, ...)
 
 	if (verbose) {
 		f = level >= LOG_NOTICE ? stdout : stderr;
-		fprintf(f, "%s[%ld.%03ld]: %s\n",
+		fprintf(f, "%s[%ld.%03ld]: %s%s%s\n",
 			progname ? progname : "",
-			ts.tv_sec, ts.tv_nsec / 1000000, buf);
+			ts.tv_sec, ts.tv_nsec / 1000000,
+			message_tag ? message_tag : "", message_tag ? " " : "",
+			buf);
 		fflush(f);
 	}
 	if (use_syslog) {
-		syslog(level, "[%ld.%03ld] %s",
-		       ts.tv_sec, ts.tv_nsec / 1000000, buf);
+		syslog(level, "[%ld.%03ld] %s%s%s",
+		       ts.tv_sec, ts.tv_nsec / 1000000,
+		       message_tag ? message_tag : "", message_tag ? " " : "",
+		       buf);
 	}
 }

@@ -1209,6 +1209,7 @@ static void usage(char *progname)
 		" -x             apply leap seconds by servo instead of kernel\n"
 		" -z [path]      server address for UDS (/var/run/ptp4l)\n"
 		" -l [num]       set the logging level to 'num' (6)\n"
+		" -t [tag]       add tag to log messages\n"
 		" -m             print messages to stdout\n"
 		" -q             do not print messages to the syslog\n"
 		" -v             prints the software version and exits\n"
@@ -1219,7 +1220,7 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *progname;
+	char *progname, *message_tag = NULL;
 	char *src_name = NULL, *dst_name = NULL;
 	struct clock *src, *dst;
 	struct config *cfg;
@@ -1251,7 +1252,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "arc:d:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:mqvh"))) {
+				  "arc:d:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh"))) {
 		switch (c) {
 		case 'a':
 			autocfg = 1;
@@ -1363,6 +1364,9 @@ int main(int argc, char *argv[])
 					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
 				goto end;
 			break;
+		case 't':
+			message_tag = optarg;
+			break;
 		case 'm':
 			verbose = 1;
 			break;
@@ -1405,6 +1409,7 @@ int main(int argc, char *argv[])
 	}
 
 	print_set_progname(progname);
+	print_set_tag(message_tag);
 	print_set_verbose(verbose);
 	print_set_syslog(use_syslog);
 	print_set_level(print_level);
