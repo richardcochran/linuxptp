@@ -599,7 +599,8 @@ static char **get_ptp4l_command(struct program_config *config,
 }
 
 static char **get_phc2sys_command(struct program_config *config, int domain,
-				  int poll, int shm_segment, char *uds_path)
+				  int poll, int shm_segment, char *uds_path,
+				  char *message_tag)
 {
 	char **command = (char **)parray_new();
 
@@ -610,6 +611,7 @@ static char **get_phc2sys_command(struct program_config *config, int domain,
 		      xstrdup("-R"), string_newf("%.2f", poll > 0 ?
 						1.0 / (1 << poll) : 1 << -poll),
 		      xstrdup("-z"), xstrdup(uds_path),
+		      xstrdup("-t"), xstrdup(message_tag),
 		      xstrdup("-n"), string_newf("%d", domain),
 		      xstrdup("-E"), xstrdup("ntpshm"),
 		      xstrdup("-M"), string_newf("%d", shm_segment), NULL);
@@ -671,7 +673,7 @@ static int add_ptp_source(struct ptp_domain *source,
 			  struct script *script)
 {
 	struct config_file *config_file;
-	char **command, *uds_path, **interfaces;
+	char **command, *uds_path, **interfaces, *message_tag;
 	int i, j, num_interfaces, *phc, *phcs, hw_ts;
 	struct sk_ts_info ts_info;
 
@@ -749,6 +751,12 @@ static int add_ptp_source(struct ptp_domain *source,
 		uds_path = string_newf("%s/ptp4l.%d.socket",
 				       config->rundir, *shm_segment);
 
+		message_tag = string_newf("[%d", source->domain);
+		for (j = 0; interfaces[j]; j++)
+			string_appendf(&message_tag, "%s%s", j ? "+" : ":",
+				       interfaces[j]);
+		string_appendf(&message_tag, "]");
+
 		config_file = xmalloc(sizeof(*config_file));
 		config_file->path = string_newf("%s/ptp4l.%d.conf",
 						config->rundir, *shm_segment);
@@ -760,8 +768,9 @@ static int add_ptp_source(struct ptp_domain *source,
 		string_appendf(&config_file->content,
 			       "slaveOnly 1\n"
 			       "domainNumber %d\n"
-			       "uds_address %s\n",
-			       source->domain, uds_path);
+			       "uds_address %s\n"
+			       "message_tag %s\n",
+			       source->domain, uds_path, message_tag);
 
 		if (phcs[i] >= 0) {
 			/* HW time stamping */
@@ -772,7 +781,8 @@ static int add_ptp_source(struct ptp_domain *source,
 			command = get_phc2sys_command(&config->phc2sys,
 						      source->domain,
 						      source->phc2sys_poll,
-						      *shm_segment, uds_path);
+						      *shm_segment, uds_path,
+						      message_tag);
 			parray_append((void ***)&script->commands, command);
 		} else {
 			/* SW time stamping */
@@ -793,6 +803,7 @@ static int add_ptp_source(struct ptp_domain *source,
 
 		(*shm_segment)++;
 
+		free(message_tag);
 		free(uds_path);
 		free(interfaces);
 	}
