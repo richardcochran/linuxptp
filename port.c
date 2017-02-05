@@ -2143,7 +2143,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 	};
 }
 
-int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
+void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next;
 
@@ -2180,7 +2180,7 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 
 	if (next == p->state)
-		return 0;
+		return;
 
 	port_show_transition(p, next, event);
 
@@ -2196,12 +2196,11 @@ int port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	if (p->jbod && next == PS_UNCALIBRATED) {
 		if (clock_switch_phc(p->clock, p->phc_index)) {
 			p->last_fault_type = FT_SWITCH_PHC;
-			return port_dispatch(p, EV_FAULT_DETECTED, 0);
+			port_dispatch(p, EV_FAULT_DETECTED, 0);
+			return;
 		}
 		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
-
-	return 0;
 }
 
 enum fsm_event port_event(struct port *p, int fd_index)

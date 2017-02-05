@@ -1463,7 +1463,7 @@ struct PortIdentity clock_parent_identity(struct clock *c)
 
 int clock_poll(struct clock *c)
 {
-	int cnt, err, i, sde = 0;
+	int cnt, i, sde = 0;
 	enum fsm_event event;
 	struct pollfd *cur;
 	struct port *p;
@@ -1490,14 +1490,14 @@ int clock_poll(struct clock *c)
 	cur++;
 	LIST_FOREACH(p, &c->ports, list) {
 		/* Let the ports handle their events. */
-		for (i = err = 0; i < N_POLLFD && !err; i++) {
+		for (i = 0; i < N_POLLFD; i++) {
 			if (cur[i].revents & (POLLIN|POLLPRI)) {
 				event = port_event(p, i);
 				if (EV_STATE_DECISION_EVENT == event)
 					sde = 1;
 				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event)
 					sde = 1;
-				err = port_dispatch(p, event, 0);
+				port_dispatch(p, event, 0);
 				/* Clear any fault after a little while. */
 				if (PS_FAULTY == port_state(p)) {
 					clock_fault_timeout(p, 1);

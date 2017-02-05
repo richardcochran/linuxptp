@@ -69,10 +69,8 @@ struct foreign_clock *port_compute_best(struct port *port);
  * @param port A pointer previously obtained via port_open().
  * @param event One of the @a fsm_event codes.
  * @param mdiff Whether a new master has been selected.
- * @return Zero if the port's file descriptor array is still valid,
- *         and non-zero if it has become invalid.
  */
-int port_dispatch(struct port *p, enum fsm_event event, int mdiff);
+void port_dispatch(struct port *p, enum fsm_event event, int mdiff);
 
 /**
  * Generates state machine events based on activity on a port's file
