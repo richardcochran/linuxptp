@@ -160,6 +160,7 @@ int rtnl_open(void)
 	}
 	if (bind(fd, (struct sockaddr *) &sa, sizeof(sa))) {
 		pr_err("failed to bind netlink socket: %m");
+		close(fd);
 		return -1;
 	}
 	return fd;

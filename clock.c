@@ -830,11 +830,13 @@ static int clock_add_port(struct clock *c, int phc_index,
 	}
 	index = sk_interface_index(fd, iface->name);
 	if (index < 0) {
+		close(fd);
 		return -1;
 	}
 	snprintf(key, sizeof(key), "%d", index);
 	if (hash_insert(c->index2port, key, p)) {
 		pr_err("failed to add port with index %d twice!", index);
+		close(fd);
 		return -1;
 	}
 	close(fd);
