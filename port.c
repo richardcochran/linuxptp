@@ -106,6 +106,7 @@ struct port {
 	unsigned int multiple_pdr_detected;
 	enum port_state (*state_machine)(enum port_state state,
 					 enum fsm_event event, int mdiff);
+	int (*dscmp)(struct dataset *a, struct dataset *b);
 	/* portDS */
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
@@ -2279,7 +2280,7 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 		if (!p->best)
 			p->best = fc;
-		else if (dscmp(&fc->dataset, &p->best->dataset) > 0)
+		else if (p->dscmp(&fc->dataset, &p->best->dataset) > 0)
 			p->best = fc;
 		else
 			fc_clear(fc);
@@ -2860,6 +2861,7 @@ struct port *port_open(int phc_index,
 	memset(p, 0, sizeof(*p));
 
 	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
+	p->dscmp = dscmp;
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
