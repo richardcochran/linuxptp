@@ -931,7 +931,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	    c->dds.flags & DDS_SLAVE_ONLY) {
 		c->dds.clockQuality.clockClass = 255;
 	}
-	c->default_dataset.localPriority = 128;
+	c->default_dataset.localPriority =
+		config_get_int(config, NULL, "G.8275.defaultDS.localPriority");
 
 	/* Harmonize the twoStepFlag with the time_stamping option. */
 	if (config_harmonize_onestep(config)) {
