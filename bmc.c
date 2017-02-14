@@ -21,12 +21,7 @@
 #include "bmc.h"
 #include "ds.h"
 
-#define A_BETTER_TOPO  2
-#define A_BETTER       1
-#define B_BETTER      -1
-#define B_BETTER_TOPO -2
-
-static int dscmp2(struct dataset *a, struct dataset *b)
+int dscmp2(struct dataset *a, struct dataset *b)
 {
 	int diff;
 	unsigned int A = a->stepsRemoved, B = b->stepsRemoved;

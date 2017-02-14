@@ -24,6 +24,11 @@
 #include "port.h"
 #include "fsm.h"
 
+#define A_BETTER_TOPO  2
+#define A_BETTER       1
+#define B_BETTER      -1
+#define B_BETTER_TOPO -2
+
 /**
  * BMC state decision algorithm.
  * @param c  The local clock.
@@ -43,5 +48,11 @@ enum port_state bmc_state_decision(struct clock *c, struct port *r,
  *         less than, to match, or be greater than @a b.
  */
 int dscmp(struct dataset *a, struct dataset *b);
+
+/**
+ * Second part of the data set comparison algorithm, not for general
+ * public use.
+ */
+int dscmp2(struct dataset *a, struct dataset *b);
 
 #endif
