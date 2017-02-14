@@ -28,12 +28,14 @@
  * BMC state decision algorithm.
  * @param c  The local clock.
  * @param r  The port in question.
+ * @param compare  The data set comparison algorithm.
  * @return   A @ref port_state value as the recommended state.
  */
-enum port_state bmc_state_decision(struct clock *c, struct port *r);
+enum port_state bmc_state_decision(struct clock *c, struct port *r,
+				   int (*comapre)(struct dataset *a, struct dataset *b));
 
 /**
- * Compare two data sets.
+ * Compare two data sets using the algorithm defined in IEEE 1588.
  * @param a A dataset to compare.
  * @param b A dataset to compare.
  * @return An integer less than, equal to, or greater than zero

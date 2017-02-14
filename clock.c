@@ -1723,7 +1723,7 @@ static void handle_state_decision_event(struct clock *c)
 	LIST_FOREACH(piter, &c->ports, list) {
 		enum port_state ps;
 		enum fsm_event event;
-		ps = bmc_state_decision(c, piter);
+		ps = bmc_state_decision(c, piter, c->dscmp);
 		switch (ps) {
 		case PS_LISTENING:
 			event = EV_NONE;
