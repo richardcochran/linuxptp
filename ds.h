@@ -55,6 +55,7 @@ struct dataset {
 	struct ClockIdentity identity;
 	struct ClockQuality  quality;
 	UInteger8            priority2;
+	UInteger8            localPriority; /* Telecom Profile only */
 	UInteger16           stepsRemoved;
 	struct PortIdentity  sender;
 	struct PortIdentity  receiver;

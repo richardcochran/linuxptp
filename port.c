@@ -77,6 +77,7 @@ static void announce_to_dataset(struct ptp_message *m, struct port *p,
 	out->identity     = a->grandmasterIdentity;
 	out->quality      = a->grandmasterClockQuality;
 	out->priority2    = a->grandmasterPriority2;
+	out->localPriority = 128;
 	out->stepsRemoved = a->stepsRemoved;
 	out->sender       = m->header.sourcePortIdentity;
 	out->receiver     = p->portIdentity;

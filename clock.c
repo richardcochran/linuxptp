@@ -931,6 +931,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	    c->dds.flags & DDS_SLAVE_ONLY) {
 		c->dds.clockQuality.clockClass = 255;
 	}
+	c->default_dataset.localPriority = 128;
 
 	/* Harmonize the twoStepFlag with the time_stamping option. */
 	if (config_harmonize_onestep(config)) {
