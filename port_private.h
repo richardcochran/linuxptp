@@ -100,6 +100,7 @@ struct port {
 	int                 announce_span;
 	UInteger8           syncReceiptTimeout;
 	UInteger8           transportSpecific;
+	UInteger8           localPriority;
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;

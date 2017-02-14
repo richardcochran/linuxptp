@@ -77,7 +77,7 @@ static void announce_to_dataset(struct ptp_message *m, struct port *p,
 	out->identity     = a->grandmasterIdentity;
 	out->quality      = a->grandmasterClockQuality;
 	out->priority2    = a->grandmasterPriority2;
-	out->localPriority = 128;
+	out->localPriority = p->localPriority;
 	out->stepsRemoved = a->stepsRemoved;
 	out->sender       = m->header.sourcePortIdentity;
 	out->receiver     = p->portIdentity;
@@ -1568,6 +1568,7 @@ int port_initialize(struct port *p)
 	p->transportSpecific       = config_get_int(cfg, p->name, "transportSpecific");
 	p->transportSpecific     <<= 4;
 	p->match_transport_specific = !config_get_int(cfg, p->name, "ignore_transport_specific");
+	p->localPriority           = config_get_int(cfg, p->name, "G.8275.portDS.localPriority");
 	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");

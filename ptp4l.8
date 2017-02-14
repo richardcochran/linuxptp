@@ -245,6 +245,21 @@ The default is UDPv4.
 Upper limit for peer delay in nanoseconds. If the estimated peer delay is
 greater than this value the port is marked as not 802.1AS capable.
 .TP
+.B G.8275.portDS.localPriority
+The Telecom Profiles (ITU-T G.8275.1 and G.8275.2) specify an
+alternate Best Master Clock Algorithm (BMCA) with a unique data set
+comparison algorithm.  The value of this option is associated with
+Announce messages arriving on a particular port and is used as a tie
+breaker whenever clockClass, clockAccuracy, offsetScaledLogVariance,
+and priority2 are equal. This option is only used when
+"dataset_comparison" is set to "telecom".
+The default value is 128.
+
+Warning: the BMCA is guaranteed to produce a spanning tree (that is, a
+timing network without loops) only when using the default values of
+G.8275.defaultDS.localPriority and G.8275.portDS.localPriority.
+Careful network engineering is needed when using non-default values.
+.TP
 .B min_neighbor_prop_delay
 Lower limit for peer delay in nanoseconds. If the estimated peer delay is
 smaller than this value the port is marked as not 802.1AS capable.
