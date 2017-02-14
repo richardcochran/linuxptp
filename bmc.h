@@ -55,4 +55,16 @@ int dscmp(struct dataset *a, struct dataset *b);
  */
 int dscmp2(struct dataset *a, struct dataset *b);
 
+/**
+ * Compare two data sets using the algorithm defined in the Telecom
+ * Profiles according to ITU-T G.8275.1 and G.8275.2.
+ *
+ * @param a A dataset to compare.
+ * @param b A dataset to compare.
+ * @return An integer less than, equal to, or greater than zero
+ *         if the dataset @a a is found, respectively, to be
+ *         less than, to match, or be greater than @a b.
+ */
+int telecom_dscmp(struct dataset *a, struct dataset *b);
+
 #endif
