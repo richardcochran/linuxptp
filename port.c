@@ -1568,6 +1568,7 @@ int port_initialize(struct port *p)
 	p->transportSpecific       = config_get_int(cfg, p->name, "transportSpecific");
 	p->transportSpecific     <<= 4;
 	p->match_transport_specific = !config_get_int(cfg, p->name, "ignore_transport_specific");
+	p->master_only             = config_get_int(cfg, p->name, "masterOnly");
 	p->localPriority           = config_get_int(cfg, p->name, "G.8275.portDS.localPriority");
 	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
@@ -2199,6 +2200,9 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 	dscmp = clock_dscmp(p->clock);
 	p->best = NULL;
+
+	if (p->master_only)
+		return p->best;
 
 	LIST_FOREACH(fc, &p->foreign_masters, list) {
 		tmp = TAILQ_FIRST(&fc->messages);

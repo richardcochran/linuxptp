@@ -108,6 +108,7 @@ struct port {
 	int                 follow_up_info;
 	int                 freq_est_interval;
 	int                 hybrid_e2e;
+	int                 master_only;
 	int                 match_transport_specific;
 	int                 min_neighbor_prop_delay;
 	int                 net_sync_monitor;
