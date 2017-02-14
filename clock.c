@@ -80,6 +80,7 @@ struct clock {
 	clockid_t clkid;
 	struct servo *servo;
 	enum servo_type servo_type;
+	int (*dscmp)(struct dataset *a, struct dataset *b);
 	struct defaultDS dds;
 	struct dataset default_dataset;
 	struct currentDS cur;
@@ -1051,6 +1052,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 	c->servo_state = SERVO_UNLOCKED;
 	c->servo_type = servo;
+	c->dscmp = dscmp;
 	c->tsproc = tsproc_create(config_get_int(config, NULL, "tsproc_mode"),
 				  config_get_int(config, NULL, "delay_filter"),
 				  config_get_int(config, NULL, "delay_filter_length"));
@@ -1686,7 +1688,7 @@ static void handle_state_decision_event(struct clock *c)
 		fc = port_compute_best(piter);
 		if (!fc)
 			continue;
-		if (!best || dscmp(&fc->dataset, &best->dataset) > 0)
+		if (!best || c->dscmp(&fc->dataset, &best->dataset) > 0)
 			best = fc;
 	}
 
