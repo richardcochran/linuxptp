@@ -534,6 +534,11 @@ streaming standards out there that recommend specific values for this option.
 For example 34 (AF41 PHB) in AES67 or 46 (EF PHB) in RAVENNA. The default
 is 0.
 .TP
+.B dataset_comparison
+Specifies the method to be used when comparing data sets during the
+Best Master Clock Algorithm.  The possible values are "ieee1588" and
+"G.8275.x".  The default is "ieee1588".
+.TP
 .B logging_level
 The maximum logging level of messages which should be printed.
 The default is 6 (LOG_INFO).

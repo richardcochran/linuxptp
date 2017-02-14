@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "bmc.h"
 #include "config.h"
 #include "ether.h"
 #include "hash.h"
@@ -133,6 +135,12 @@ static struct config_enum clock_servo_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum dataset_comp_enu[] = {
+	{ "ieee1588", DS_CMP_IEEE1588 },
+	{ "G.8275.x", DS_CMP_G8275    },
+	{ NULL, 0 },
+};
+
 static struct config_enum delay_filter_enu[] = {
 	{ "moving_average", FILTER_MOVING_AVERAGE },
 	{ "moving_median",  FILTER_MOVING_MEDIAN  },
@@ -178,6 +186,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("clockAccuracy", 0xfe, 0, UINT8_MAX),
 	GLOB_ITEM_INT("clockClass", 248, 0, UINT8_MAX),
 	GLOB_ITEM_ENU("clock_servo", CLOCK_SERVO_PI, clock_servo_enu),
+	GLOB_ITEM_ENU("dataset_comparison", DS_CMP_IEEE1588, dataset_comp_enu),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_ENU("delay_filter", FILTER_MOVING_MEDIAN, delay_filter_enu),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),

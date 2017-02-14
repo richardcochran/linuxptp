@@ -29,6 +29,11 @@
 #define B_BETTER      -1
 #define B_BETTER_TOPO -2
 
+enum {
+	DS_CMP_IEEE1588,
+	DS_CMP_G8275,
+};
+
 /**
  * BMC state decision algorithm.
  * @param c  The local clock.
