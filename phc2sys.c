@@ -72,6 +72,7 @@
 struct clock {
 	LIST_ENTRY(clock) list;
 	clockid_t clkid;
+	int phc_index;
 	int sysoff_supported;
 	int is_utc;
 	int dest_only;
@@ -127,7 +128,7 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 static int run_pmc_get_utc_offset(struct node *node, int timeout);
 static void run_pmc_events(struct node *node);
 
-static clockid_t clock_open(char *device)
+static clockid_t clock_open(char *device, int *phc_index)
 {
 	struct sk_ts_info ts_info;
 	char phc_device[16];
@@ -157,6 +158,7 @@ static clockid_t clock_open(char *device)
 	clkid = phc_open(phc_device);
 	if (clkid == CLOCK_INVALID)
 		fprintf(stderr, "cannot open %s: %m\n", device);
+	*phc_index = ts_info.phc_index;
 	return clkid;
 }
 
@@ -164,11 +166,11 @@ static struct clock *clock_add(struct node *node, char *device)
 {
 	struct clock *c;
 	clockid_t clkid = CLOCK_INVALID;
-	int max_ppb;
+	int max_ppb, phc_index = -1;
 	double ppb;
 
 	if (device) {
-		clkid = clock_open(device);
+		clkid = clock_open(device, &phc_index);
 		if (clkid == CLOCK_INVALID)
 			return NULL;
 	}
@@ -179,6 +181,7 @@ static struct clock *clock_add(struct node *node, char *device)
 		return NULL;
 	}
 	c->clkid = clkid;
+	c->phc_index = phc_index;
 	c->servo_state = SERVO_UNLOCKED;
 	c->device = strdup(device);
 
@@ -636,6 +639,13 @@ static int do_loop(struct node *node, int subscriptions)
 
 		LIST_FOREACH(clock, &node->clocks, list) {
 			if (!update_needed(clock))
+				continue;
+
+			/* don't try to synchronize the clock to itself */
+			if (clock->clkid == node->master->clkid ||
+			    (clock->phc_index >= 0 &&
+			     clock->phc_index == node->master->phc_index) ||
+			    !strcmp(clock->device, node->master->device))
 				continue;
 
 			if (clock->clkid == CLOCK_REALTIME &&
