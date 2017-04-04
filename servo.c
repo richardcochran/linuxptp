@@ -52,6 +52,9 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 		return NULL;
 	}
 
+	if (!servo)
+		return NULL;
+
 	servo_step_threshold = config_get_double(cfg, NULL, "step_threshold");
 	if (servo_step_threshold > 0.0) {
 		servo->step_threshold = servo_step_threshold * NSEC_PER_SEC;
