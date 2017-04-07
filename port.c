@@ -1892,6 +1892,10 @@ static void port_peer_delay(struct port *p)
 	c2 = correction_to_tmv(fup->header.correction);
 calc:
 	t3c = tmv_add(t3, tmv_add(c1, c2));
+
+	if (p->follow_up_info)
+		port_nrate_calculate(p, t3c, t4);
+
 	tsproc_set_clock_rate_ratio(p->tsproc, p->nrate.ratio *
 				    clock_rate_ratio(p->clock));
 	tsproc_up_ts(p->tsproc, t1, t2);
@@ -1900,9 +1904,6 @@ calc:
 		return;
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
-
-	if (p->follow_up_info)
-		port_nrate_calculate(p, t3c, t4);
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, t1, t2,
