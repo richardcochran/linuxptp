@@ -42,6 +42,7 @@ struct tsproc {
 
 	/* Current filtered delay */
 	tmv_t filtered_delay;
+	int filtered_delay_valid;
 
 	/* Delay filter */
 	struct filter *delay_filter;
@@ -115,6 +116,7 @@ void tsproc_set_clock_rate_ratio(struct tsproc *tsp, double clock_rate_ratio)
 void tsproc_set_delay(struct tsproc *tsp, tmv_t delay)
 {
 	tsp->filtered_delay = delay;
+	tsp->filtered_delay_valid = 1;
 }
 
 tmv_t get_raw_delay(struct tsproc *tsp)
@@ -149,6 +151,7 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 
 	raw_delay = get_raw_delay(tsp);
 	tsp->filtered_delay = filter_sample(tsp->delay_filter, raw_delay);
+	tsp->filtered_delay_valid = 1;
 
 	pr_debug("delay   filtered %10" PRId64 "   raw %10" PRId64,
 		 tsp->filtered_delay, raw_delay);
@@ -199,5 +202,6 @@ void tsproc_reset(struct tsproc *tsp, int full)
 	if (full) {
 		tsp->clock_rate_ratio = 1.0;
 		filter_reset(tsp->delay_filter);
+		tsp->filtered_delay_valid = 0;
 	}
 }
