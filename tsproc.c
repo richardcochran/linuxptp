@@ -180,20 +180,28 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 {
 	tmv_t delay = 0, raw_delay = 0;
 
-	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2) ||
-	    tmv_is_zero(tsp->t3))
+	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2))
 		return -1;
 
 	switch (tsp->mode) {
 	case TSPROC_FILTER:
+		if (!tsp->filtered_delay_valid) {
+			return -1;
+		}
 		delay = tsp->filtered_delay;
 		break;
 	case TSPROC_RAW:
 	case TSPROC_RAW_WEIGHT:
+		if (tmv_is_zero(tsp->t3)) {
+			return -1;
+		}
 		raw_delay = get_raw_delay(tsp);
 		delay = raw_delay;
 		break;
 	case TSPROC_FILTER_WEIGHT:
+		if (tmv_is_zero(tsp->t3) || !tsp->filtered_delay_valid) {
+			return -1;
+		}
 		raw_delay = get_raw_delay(tsp);
 		delay = tsp->filtered_delay;
 		break;
