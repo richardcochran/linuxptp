@@ -20,6 +20,8 @@
 #ifndef HAVE_UTIL_H
 #define HAVE_UTIL_H
 
+#include <time.h>
+
 #include "ddt.h"
 #include "ether.h"
 
