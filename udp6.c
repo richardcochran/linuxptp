@@ -20,7 +20,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <net/if.h>
-#include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
