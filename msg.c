@@ -140,7 +140,7 @@ static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
 		}
 		len -= tlv->length;
 		ptr += tlv->length;
-		err = tlv_post_recv(tlv, len ? NULL : last);
+		err = tlv_post_recv(tlv, len > sizeof(struct TLV) ? NULL : last);
 		if (err)
 			return err;
 	}
