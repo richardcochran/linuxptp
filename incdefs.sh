@@ -31,7 +31,7 @@ user_flags()
 
 	# Look for clock_adjtime().
 	for d in $dirs; do
-		files=$(find $d -type f -name time.h)
+		files=$(find $d -type f -name time.h -o -name timex.h)
 		for f in $files; do
 			if grep -q clock_adjtime $f; then
 				printf " -DHAVE_CLOCK_ADJTIME"
