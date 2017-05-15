@@ -20,7 +20,6 @@
 #include <fcntl.h>
 #include <linux/filter.h>
 #include <linux/if_ether.h>
-#include <net/ethernet.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
