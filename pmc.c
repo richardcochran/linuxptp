@@ -515,14 +515,6 @@ static void do_set_action(int action, int index, char *str)
 	}
 	switch (code) {
 	case TLV_PRIORITY1:
-		cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
-		if (cnt != 1) {
-			fprintf(stderr, "%s SET needs 1 value\n",
-				idtab[index].name);
-			break;
-		}
-		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
-		break;
 	case TLV_PRIORITY2:
 		cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
 		if (cnt != 1) {
