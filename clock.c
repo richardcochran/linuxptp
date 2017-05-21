@@ -1053,7 +1053,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 			c->utc_timescale = 1;
 		}
 	} else if (phc_index >= 0) {
-		snprintf(phc, 31, "/dev/ptp%d", phc_index);
+		snprintf(phc, sizeof(phc), "/dev/ptp%d", phc_index);
 		c->clkid = phc_open(phc);
 		if (c->clkid == CLOCK_INVALID) {
 			pr_err("Failed to open %s: %m", phc);
@@ -1589,7 +1589,7 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	clockid_t clkid;
 	char phc[32];
 
-	snprintf(phc, 31, "/dev/ptp%d", phc_index);
+	snprintf(phc, sizeof(phc), "/dev/ptp%d", phc_index);
 	clkid = phc_open(phc);
 	if (clkid == CLOCK_INVALID) {
 		pr_err("Switching PHC, failed to open %s: %m", phc);
