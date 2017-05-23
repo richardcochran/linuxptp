@@ -217,6 +217,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		goto out;
 	} else {
 		fprintf(fp, "unknown-tlv ");
+		goto out;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 	if (mgt->length == 2 && mgt->id != TLV_NULL_MANAGEMENT) {
