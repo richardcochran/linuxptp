@@ -69,7 +69,10 @@ static inline int clock_adjtime(clockid_t id, struct timex *tx)
 }
 #endif
 
-#ifndef __uClinux__
+#ifdef __UCLIBC__
+
+#if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && \
+	defined __UCLIBC_HAS_THREADS_NATIVE__
 
 #include <sys/timerfd.h>
 
@@ -93,6 +96,11 @@ static inline int timerfd_settime(int fd, int flags,
 {
 	return syscall(__NR_timerfd_settime, fd, flags, new_value, old_value);
 }
+#endif
+
+#else /*__UCLIBC__*/
+
+#include <sys/timerfd.h>
 
 #endif
 
