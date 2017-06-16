@@ -443,15 +443,19 @@ static void update_clock_stats(struct clock *clock, unsigned int max_count,
 	stats_get_result(clock->freq_stats, &freq_stats);
 
 	if (!stats_get_result(clock->delay_stats, &delay_stats)) {
-		pr_info("rms %4.0f max %4.0f "
+		pr_info("%s "
+			"rms %4.0f max %4.0f "
 			"freq %+6.0f +/- %3.0f "
 			"delay %5.0f +/- %3.0f",
+			clock->device,
 			offset_stats.rms, offset_stats.max_abs,
 			freq_stats.mean, freq_stats.stddev,
 			delay_stats.mean, delay_stats.stddev);
 	} else {
-		pr_info("rms %4.0f max %4.0f "
+		pr_info("%s "
+			"rms %4.0f max %4.0f "
 			"freq %+6.0f +/- %3.0f",
+			clock->device,
 			offset_stats.rms, offset_stats.max_abs,
 			freq_stats.mean, freq_stats.stddev);
 	}
@@ -499,12 +503,14 @@ static void update_clock(struct node *node, struct clock *clock,
 		update_clock_stats(clock, node->stats_max_count, offset, ppb, delay);
 	} else {
 		if (delay >= 0) {
-			pr_info("%s offset %9" PRId64 " s%d freq %+7.0f "
+			pr_info("%s %s offset %9" PRId64 " s%d freq %+7.0f "
 				"delay %6" PRId64,
-				node->master->source_label, offset, state, ppb, delay);
+				clock->device, node->master->source_label,
+				offset, state, ppb, delay);
 		} else {
-			pr_info("%s offset %9" PRId64 " s%d freq %+7.0f",
-				node->master->source_label, offset, state, ppb);
+			pr_info("%s %s offset %9" PRId64 " s%d freq %+7.0f",
+				clock->device, node->master->source_label,
+				offset, state, ppb);
 		}
 	}
 }
