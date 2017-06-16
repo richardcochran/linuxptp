@@ -73,7 +73,7 @@ double clockadj_get_freq(clockid_t clkid)
 		pr_err("failed to read out the clock frequency adjustment: %m");
 	} else {
 		f = tx.freq / 65.536;
-		if (clkid == CLOCK_REALTIME && realtime_nominal_tick)
+		if (clkid == CLOCK_REALTIME && realtime_nominal_tick && tx.tick)
 			f += 1e3 * realtime_hz * (tx.tick - realtime_nominal_tick);
 	}
 	return f;
