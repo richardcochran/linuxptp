@@ -240,6 +240,16 @@ static struct clock *clock_add(struct node *node, char *device)
 	return c;
 }
 
+static void clock_cleanup(struct node *node)
+{
+	struct clock *c;
+
+	LIST_FOREACH(c, &node->clocks, list) {
+		if (c->device)
+			free(c->device);
+	}
+}
+
 static struct port *port_get(struct node *node, unsigned int number)
 {
 	struct port *p;
@@ -1506,6 +1516,7 @@ int main(int argc, char *argv[])
 end:
 	if (node.pmc)
 		close_pmc(&node);
+	clock_cleanup(&node);
 	config_destroy(cfg);
 	return r;
 bad_usage:
