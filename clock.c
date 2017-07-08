@@ -101,8 +101,7 @@ struct clock {
 	int utc_offset_set;
 	int leap_set;
 	int kernel_leap;
-	int utc_offset;  /* grand master role */
-	int current_utc_offset;  /* UTC offset fallback */
+	int utc_offset;
 	int time_flags;  /* grand master role */
 	int time_source; /* grand master role */
 	enum servo_state servo_state;
@@ -656,7 +655,7 @@ static void clock_update_slave(struct clock *c)
 	if (!(c->tds.flags & PTP_TIMESCALE)) {
 		pr_warning("foreign master not using PTP timescale");
 	}
-	if (c->tds.currentUtcOffset < c->current_utc_offset) {
+	if (c->tds.currentUtcOffset < c->utc_offset) {
 		pr_warning("running in a temporal vortex");
 	}
 }
@@ -672,10 +671,10 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 
 	if (c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) {
 		utc_offset = c->tds.currentUtcOffset;
-	} else if (c->tds.currentUtcOffset > c->current_utc_offset) {
+	} else if (c->tds.currentUtcOffset > c->utc_offset) {
 		utc_offset = c->tds.currentUtcOffset;
 	} else {
-		utc_offset = c->current_utc_offset;
+		utc_offset = c->utc_offset;
 	}
 
 	if (c->tds.flags & LEAP_61) {
@@ -992,7 +991,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->freq_est_interval = config_get_int(config, NULL, "freq_est_interval");
 	c->grand_master_capable = config_get_int(config, NULL, "gmCapable");
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
-	c->utc_offset = c->current_utc_offset = config_get_int(config, NULL, "utc_offset");
+	c->utc_offset = config_get_int(config, NULL, "utc_offset");
 	c->time_source = config_get_int(config, NULL, "timeSource");
 
 	if (c->free_running) {
