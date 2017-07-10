@@ -2411,12 +2411,6 @@ int port_link_status_get(struct port *p)
 	return p->link_status;
 }
 
-void port_link_status_set(struct port *p, int up)
-{
-	p->link_status = up ? 1 : 0;
-	pr_notice("port %hu: link %s", portnum(p), up ? "up" : "down");
-}
-
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 {
 	struct management_tlv *mgt;

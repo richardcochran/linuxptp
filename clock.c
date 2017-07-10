@@ -39,7 +39,6 @@
 #include "servo.h"
 #include "stats.h"
 #include "print.h"
-#include "rtnl.h"
 #include "sk.h"
 #include "tlv.h"
 #include "tsproc.h"
@@ -274,9 +273,6 @@ void clock_destroy(struct clock *c)
 	LIST_FOREACH_SAFE(p, &c->ports, list, tmp) {
 		clock_remove_port(c, p);
 	}
-	if (c->pollfd[0].fd >= 0) {
-		rtnl_close(c->pollfd[0].fd);
-	}
 	port_close(c->uds_port);
 	free(c->pollfd);
 	hash_destroy(c->index2port, NULL);
@@ -324,30 +320,6 @@ static void clock_freq_est_reset(struct clock *c)
 	c->fest.origin1 = tmv_zero();
 	c->fest.ingress1 = tmv_zero();
 	c->fest.count = 0;
-}
-
-static void clock_link_status(void *ctx, int index, int linkup)
-{
-	struct clock *c = ctx;
-	struct port *p;
-	char key[16];
-
-	snprintf(key, sizeof(key), "%d", index);
-	p = hash_lookup(c->index2port, key);
-	if (!p) {
-		return;
-	}
-	port_link_status_set(p, linkup);
-	if (linkup) {
-		port_dispatch(p, EV_FAULT_CLEARED, 0);
-	} else {
-		port_dispatch(p, EV_FAULT_DETECTED, 0);
-		/*
-		 * A port going down can affect the BMCA result.
-		 * Force a state decision event.
-		 */
-		c->sde = 1;
-	}
 }
 
 static void clock_management_send_error(struct port *p,
@@ -1133,10 +1105,6 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 
-	/* Open a RT netlink socket. */
-	c->pollfd[0].fd = rtnl_open();
-	c->pollfd[0].events = POLLIN|POLLPRI;
-
 	/* Create the UDS interface. */
 	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
 	if (!c->uds_port) {
@@ -1164,9 +1132,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		port_dispatch(p, EV_INITIALIZE, 0);
 	}
 	port_dispatch(c->uds_port, EV_INITIALIZE, 0);
-	if (c->pollfd[0].fd >= 0) {
-		rtnl_link_query(c->pollfd[0].fd);
-	}
+
 	return c;
 }
 
@@ -1231,12 +1197,9 @@ static int clock_resize_pollfd(struct clock *c, int new_nports)
 {
 	struct pollfd *new_pollfd;
 
-	/*
-	 * Need to allocate one descriptor for RT netlink and one
-	 * whole extra block of fds for UDS.
-	 */
+	/* Need to allocate one whole extra block of fds for UDS. */
 	new_pollfd = realloc(c->pollfd,
-			     (1 + (new_nports + 1) * N_CLOCK_PFD) *
+			     (new_nports + 1) * N_CLOCK_PFD *
 			     sizeof(struct pollfd));
 	if (!new_pollfd)
 		return -1;
@@ -1261,7 +1224,7 @@ static void clock_fill_pollfd(struct pollfd *dest, struct port *p)
 static void clock_check_pollfd(struct clock *c)
 {
 	struct port *p;
-	struct pollfd *dest = c->pollfd + 1;
+	struct pollfd *dest = c->pollfd;
 
 	if (c->pollfd_valid)
 		return;
@@ -1482,7 +1445,7 @@ int clock_poll(struct clock *c)
 	struct port *p;
 
 	clock_check_pollfd(c);
-	cnt = poll(c->pollfd, 1 + (c->nports + 1) * N_CLOCK_PFD, -1);
+	cnt = poll(c->pollfd, (c->nports + 1) * N_CLOCK_PFD, -1);
 	if (cnt < 0) {
 		if (EINTR == errno) {
 			return 0;
@@ -1494,13 +1457,8 @@ int clock_poll(struct clock *c)
 		return 0;
 	}
 
-	/* Check the RT netlink. */
 	cur = c->pollfd;
-	if (cur->revents & (POLLIN|POLLPRI)) {
-		rtnl_link_status(cur->fd, clock_link_status, c);
-	}
 
-	cur++;
 	LIST_FOREACH(p, &c->ports, list) {
 		/* Let the ports handle their events. */
 		for (i = 0; i < N_POLLFD; i++) {

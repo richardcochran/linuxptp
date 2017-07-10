@@ -132,13 +132,6 @@ int port_number(struct port *p);
 int port_link_status_get(struct port *p);
 
 /**
- * Sets the link status for a port.
- * @param p        A port instance.
- * @param up       Pass one (1) if the link is up and zero if down.
- */
-void port_link_status_set(struct port *p, int up);
-
-/**
  * Manage a port according to a given message.
  * @param p        A pointer previously obtained via port_open().
  * @param ingress  The port on which 'msg' was received.
