@@ -151,7 +151,7 @@ int rtnl_open(void)
 
 	memset(&sa, 0, sizeof(sa));
 	sa.nl_family = AF_NETLINK;
-	sa.nl_groups = RTMGRP_LINK;
+	sa.nl_groups = RTNLGRP_LINK;
 
 	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (fd < 0) {
