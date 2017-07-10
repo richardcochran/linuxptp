@@ -1469,6 +1469,11 @@ struct PortIdentity clock_parent_identity(struct clock *c)
 	return c->dad.pds.parentPortIdentity;
 }
 
+void clock_set_sde(struct clock *c, int sde)
+{
+	c->sde = sde;
+}
+
 int clock_poll(struct clock *c)
 {
 	int cnt, i;

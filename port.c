@@ -23,6 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/queue.h>
+#include <net/if.h>
 
 #include "bmc.h"
 #include "clock.h"
@@ -32,6 +33,7 @@
 #include "phc.h"
 #include "port.h"
 #include "print.h"
+#include "rtnl.h"
 #include "sk.h"
 #include "tlv.h"
 #include "tmv.h"
@@ -1458,7 +1460,9 @@ static void port_disable(struct port *p)
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
 	}
-	port_clear_fda(p, N_POLLFD);
+
+	/* Keep rtnl socket to get link status info. */
+	port_clear_fda(p, FD_RTNL);
 	clock_fda_changed(p->clock);
 }
 
@@ -1501,6 +1505,14 @@ static int port_initialize(struct port *p)
 
 	if (port_set_announce_tmo(p))
 		goto no_tmo;
+
+	/* No need to open rtnl socket on UDS port. */
+	if (transport_type(p->trp) != TRANS_UDS) {
+		if (p->fda.fd[FD_RTNL] == -1)
+			p->fda.fd[FD_RTNL] = rtnl_open();
+		if (p->fda.fd[FD_RTNL] >= 0)
+			rtnl_link_query(p->fda.fd[FD_RTNL]);
+	}
 
 	port_nrate_initialize(p);
 
@@ -2025,6 +2037,10 @@ void port_close(struct port *p)
 	if (port_is_enabled(p)) {
 		port_disable(p);
 	}
+
+	if (p->fda.fd[FD_RTNL] >= 0)
+		rtnl_close(p->fda.fd[FD_RTNL]);
+
 	transport_destroy(p->trp);
 	tsproc_destroy(p->tsproc);
 	if (p->fault_fd >= 0)
@@ -2204,6 +2220,24 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 }
 
+static void port_link_status(void *ctx, int index, int linkup)
+{
+	struct port *p = ctx;
+
+	if (index != if_nametoindex(p->name) || p->link_status == linkup)
+		return;
+
+	p->link_status = linkup;
+	pr_notice("port %hu: link %s", portnum(p), linkup ? "up" : "down");
+
+	/*
+	 * A port going down can affect the BMCA result.
+	 * Force a state decision event.
+	 */
+	if (!p->link_status)
+		clock_set_sde(p->clock, 1);
+}
+
 enum fsm_event port_event(struct port *p, int fd_index)
 {
 	enum fsm_event event = EV_NONE;
@@ -2242,6 +2276,11 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		pr_debug("port %hu: master sync timeout", portnum(p));
 		port_set_sync_tx_tmo(p);
 		return port_tx_sync(p) ? EV_FAULT_DETECTED : EV_NONE;
+
+	case FD_RTNL:
+		pr_debug("port %hu: received link status notification", portnum(p));
+		rtnl_link_status(fd, port_link_status, p);
+		return port_link_status_get(p) ? EV_FAULT_CLEARED : EV_FAULT_DETECTED;
 	}
 
 	msg = msg_allocate();

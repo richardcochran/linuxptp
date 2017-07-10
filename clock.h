@@ -205,6 +205,13 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 		      double nrr);
 
 /**
+ * Set clock sde
+ * @param c     A pointer to a clock instance obtained with clock_create().
+ * @param sde   Pass one (1) if need a decision event and zero if not.
+ */
+void clock_set_sde(struct clock *c, int sde);
+
+/**
  * Poll for events and dispatch them.
  * @param c A pointer to a clock instance obtained with clock_create().
  * @return  Zero on success, non-zero otherwise.
