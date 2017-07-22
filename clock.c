@@ -658,6 +658,11 @@ static void clock_update_slave(struct clock *c)
 	if (c->tds.currentUtcOffset < c->utc_offset) {
 		pr_warning("running in a temporal vortex");
 	}
+	if ((c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) ||
+	    (c->tds.currentUtcOffset > c->utc_offset)) {
+		pr_info("updating UTC offset to %d", c->tds.currentUtcOffset);
+		c->utc_offset = c->tds.currentUtcOffset;
+	}
 }
 
 static int clock_utc_correct(struct clock *c, tmv_t ingress)
