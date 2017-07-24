@@ -674,13 +674,7 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 	if (!c->utc_timescale)
 		return 0;
 
-	if (c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) {
-		utc_offset = c->tds.currentUtcOffset;
-	} else if (c->tds.currentUtcOffset > c->utc_offset) {
-		utc_offset = c->tds.currentUtcOffset;
-	} else {
-		utc_offset = c->utc_offset;
-	}
+	utc_offset = c->utc_offset;
 
 	if (c->tds.flags & LEAP_61) {
 		leap = 1;
