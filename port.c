@@ -2382,55 +2382,23 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 
 static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
-	enum port_state next;
-
 	if (clock_slave_only(p->clock)) {
 		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER) {
 			port_slave_priority_warning(p);
 		}
 	}
-	next = p->state_machine(p->state, event, mdiff);
 
-	if (PS_FAULTY == next) {
-		struct fault_interval i;
-		fault_interval(p, last_fault_type(p), &i);
-		if (clear_fault_asap(&i)) {
-			pr_notice("port %hu: clearing fault immediately", portnum(p));
-			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
-		}
-	}
-	if (PS_INITIALIZING == next) {
-		/*
-		 * This is a special case. Since we initialize the
-		 * port immediately, we can skip right to listening
-		 * state if all goes well.
-		 */
-		if (port_is_enabled(p)) {
-			port_disable(p);
-		}
-		if (port_initialize(p)) {
-			event = EV_FAULT_DETECTED;
-		} else {
-			event = EV_INIT_COMPLETE;
-		}
-		next = p->state_machine(next, event, 0);
-	}
-
-	if (next == p->state)
+	if (!port_state_update(p, event, mdiff)) {
 		return;
-
-	port_show_transition(p, next, event);
+	}
 
 	if (p->delayMechanism == DM_P2P) {
-		port_p2p_transition(p, next);
+		port_p2p_transition(p, p->state);
 	} else {
-		port_e2e_transition(p, next);
+		port_e2e_transition(p, p->state);
 	}
 
-	p->state = next;
-	port_notify_event(p, NOTIFY_PORT_STATE);
-
-	if (p->jbod && next == PS_UNCALIBRATED) {
+	if (p->jbod && p->state == PS_UNCALIBRATED) {
 		if (clock_switch_phc(p->clock, p->phc_index)) {
 			p->last_fault_type = FT_SWITCH_PHC;
 			port_dispatch(p, EV_FAULT_DETECTED, 0);
@@ -2986,4 +2954,44 @@ err_port:
 enum port_state port_state(struct port *port)
 {
 	return port->state;
+}
+
+int port_state_update(struct port *p, enum fsm_event event, int mdiff)
+{
+	enum port_state next = p->state_machine(p->state, event, mdiff);
+
+	if (PS_FAULTY == next) {
+		struct fault_interval i;
+		fault_interval(p, last_fault_type(p), &i);
+		if (clear_fault_asap(&i)) {
+			pr_notice("port %hu: clearing fault immediately", portnum(p));
+			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
+		}
+	}
+
+	if (PS_INITIALIZING == next) {
+		/*
+		 * This is a special case. Since we initialize the
+		 * port immediately, we can skip right to listening
+		 * state if all goes well.
+		 */
+		if (port_is_enabled(p)) {
+			port_disable(p);
+		}
+		if (port_initialize(p)) {
+			event = EV_FAULT_DETECTED;
+		} else {
+			event = EV_INIT_COMPLETE;
+		}
+		next = p->state_machine(next, event, 0);
+	}
+
+	if (next != p->state) {
+		port_show_transition(p, next, event);
+		p->state = next;
+		port_notify_event(p, NOTIFY_PORT_STATE);
+		return 1;
+	}
+
+	return 0;
 }
