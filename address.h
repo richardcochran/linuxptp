@@ -24,6 +24,7 @@
 #include <netpacket/packet.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <net/if_arp.h>
 
 struct address {
 	socklen_t len;

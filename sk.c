@@ -159,10 +159,55 @@ failed:
 	return -1;
 }
 
+static int sk_interface_guidaddr(const char *name, unsigned char *guid)
+{
+	char file_name[64], buf[64], addr[8];
+	FILE *f;
+	char *err;
+	int res;
+
+	snprintf(file_name, sizeof buf, "/sys/class/net/%s/address", name);
+	f = fopen(file_name, "r");
+	if (!f) {
+		pr_err("failed to open %s: %m", buf);
+		return -1;
+	}
+
+	/* Set the file position to the beginning of the GUID */
+	res = fseek(f, GUID_OFFSET, SEEK_SET);
+	if (res) {
+		pr_err("fseek failed: %m");
+		goto error;
+	}
+
+	err = fgets(buf, sizeof buf, f);
+	if (err == NULL) {
+		pr_err("fseek failed: %m");
+		goto error;
+	}
+
+	res = sscanf(buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+			   &addr[0], &addr[1], &addr[2], &addr[3],
+			   &addr[4], &addr[5], &addr[6], &addr[7]);
+	if (res != GUID_LEN) {
+		pr_err("sscanf failed: %m");
+		goto error;
+	}
+
+	memcpy(guid, addr, GUID_LEN);
+	fclose(f);
+
+	return 0;
+
+error:
+	fclose(f);
+	return -1;
+}
+
 int sk_interface_macaddr(const char *name, struct address *mac)
 {
 	struct ifreq ifreq;
-	int err, fd;
+	int err, fd, type;
 
 	memset(&ifreq, 0, sizeof(ifreq));
 	strncpy(ifreq.ifr_name, name, sizeof(ifreq.ifr_name) - 1);
@@ -180,9 +225,23 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 		return -1;
 	}
 
+	/* Get interface type */
+	type = ifreq.ifr_hwaddr.sa_family;
+	switch (type) {
+		case ARPHRD_INFINIBAND:
+			err = sk_interface_guidaddr(name, mac->sll.sll_addr);
+			if (err) {
+				pr_err("fail to get address using sysfs: %m");
+				return -1;
+			}
+			mac->sll.sll_halen = EUI64;
+			break;
+		default:
+			memcpy(mac->sll.sll_addr, &ifreq.ifr_hwaddr.sa_data, MAC_LEN);
+			mac->sll.sll_halen = EUI48;
+	}
+
 	mac->sll.sll_family = AF_PACKET;
-	mac->sll.sll_halen = MAC_LEN;
-	memcpy(mac->sll.sll_addr, &ifreq.ifr_hwaddr.sa_data, MAC_LEN);
 	mac->len = sizeof(mac->sll);
 	close(fd);
 	return 0;

@@ -135,14 +135,32 @@ int generate_clock_identity(struct ClockIdentity *ci, const char *name)
 
 	if (sk_interface_macaddr(name, &addr))
 		return -1;
-	ci->id[0] = addr.sll.sll_addr[0];
-	ci->id[1] = addr.sll.sll_addr[1];
-	ci->id[2] = addr.sll.sll_addr[2];
-	ci->id[3] = 0xFF;
-	ci->id[4] = 0xFE;
-	ci->id[5] = addr.sll.sll_addr[3];
-	ci->id[6] = addr.sll.sll_addr[4];
-	ci->id[7] = addr.sll.sll_addr[5];
+
+	switch (addr.sll.sll_halen) {
+		case EUI48:
+			ci->id[0] = addr.sll.sll_addr[0];
+			ci->id[1] = addr.sll.sll_addr[1];
+			ci->id[2] = addr.sll.sll_addr[2];
+			ci->id[3] = 0xFF;
+			ci->id[4] = 0xFE;
+			ci->id[5] = addr.sll.sll_addr[3];
+			ci->id[6] = addr.sll.sll_addr[4];
+			ci->id[7] = addr.sll.sll_addr[5];
+			break;
+		case EUI64:
+			ci->id[0] = addr.sll.sll_addr[0];
+			ci->id[1] = addr.sll.sll_addr[1];
+			ci->id[2] = addr.sll.sll_addr[2];
+			ci->id[3] = addr.sll.sll_addr[3];
+			ci->id[4] = addr.sll.sll_addr[4];
+			ci->id[5] = addr.sll.sll_addr[5];
+			ci->id[6] = addr.sll.sll_addr[6];
+			ci->id[7] = addr.sll.sll_addr[7];
+			break;
+		default:
+			return -1;
+	}
+
 	return 0;
 }
 
