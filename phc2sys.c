@@ -786,7 +786,7 @@ static int recv_subscribed(struct node *node, struct ptp_message *msg,
 			port->state = state;
 			clock = port->clock;
 			state = clock_compute_state(node, clock);
-			if (clock->state != state) {
+			if (clock->state != state || clock->new_state) {
 				clock->new_state = state;
 				node->state_changed = 1;
 			}
