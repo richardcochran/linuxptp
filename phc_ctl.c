@@ -268,7 +268,7 @@ static int do_adj(clockid_t clkid, int cmdc, char *cmdv[])
 	}
 
 	/* parse the double time offset argument */
-	r = get_ranged_double(cmdv[0], &time_arg, DBL_MIN, DBL_MAX);
+	r = get_ranged_double(cmdv[0], &time_arg, -DBL_MAX, DBL_MAX);
 	switch (r) {
 	case PARSED_OK:
 		break;
