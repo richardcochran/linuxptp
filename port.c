@@ -56,6 +56,12 @@ enum syfu_event {
 	FUP_MATCH,
 };
 
+enum link_state {
+	LINK_DOWN  = (1<<0),
+	LINK_UP  = (1<<1),
+	LINK_STATE_CHANGED = (1<<3),
+};
+
 struct nrate_estimator {
 	double ratio;
 	tmv_t origin1;
@@ -122,7 +128,7 @@ struct port {
 	int                 path_trace_enabled;
 	int                 rx_timestamp_offset;
 	int                 tx_timestamp_offset;
-	int                 link_status;
+	enum link_state     link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
 	unsigned int        versionNumber; /*UInteger4*/
@@ -2224,18 +2230,21 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 static void port_link_status(void *ctx, int linkup, int ts_index)
 {
 	struct port *p = ctx;
+	int link_state;
 
-	if (p->link_status == linkup)
-		return;
-
-	p->link_status = linkup;
-	pr_notice("port %hu: link %s", portnum(p), linkup ? "up" : "down");
+	link_state = linkup ? LINK_UP : LINK_DOWN;
+	if (p->link_status & link_state) {
+		p->link_status = link_state;
+	} else {
+		p->link_status = link_state | LINK_STATE_CHANGED;
+		pr_notice("port %hu: link %s", portnum(p), linkup ? "up" : "down");
+	}
 
 	/*
 	 * A port going down can affect the BMCA result.
 	 * Force a state decision event.
 	 */
-	if (!p->link_status)
+	if (p->link_status & LINK_DOWN)
 		clock_set_sde(p->clock, 1);
 }
 
@@ -2281,7 +2290,12 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_RTNL:
 		pr_debug("port %hu: received link status notification", portnum(p));
 		rtnl_link_status(fd, p->name, port_link_status, p);
-		return port_link_status_get(p) ? EV_FAULT_CLEARED : EV_FAULT_DETECTED;
+		if (p->link_status == (LINK_UP | LINK_STATE_CHANGED))
+			return EV_FAULT_CLEARED;
+		else if (p->link_status == (LINK_DOWN | LINK_STATE_CHANGED))
+			return EV_FAULT_DETECTED;
+		else
+			return EV_NONE;
 	}
 
 	msg = msg_allocate();
@@ -2409,7 +2423,7 @@ int port_number(struct port *p)
 
 int port_link_status_get(struct port *p)
 {
-	return p->link_status;
+	return !!(p->link_status & LINK_UP);
 }
 
 int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
@@ -2630,7 +2644,7 @@ struct port *port_open(int phc_index,
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
-	p->link_status = 1;
+	p->link_status = LINK_UP;
 	p->clock = clock;
 	p->trp = transport_create(cfg, transport);
 	if (!p->trp)
