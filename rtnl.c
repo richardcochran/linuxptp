@@ -42,7 +42,7 @@ int rtnl_close(int fd)
 	return close(fd);
 }
 
-int rtnl_link_query(int fd)
+int rtnl_link_query(int fd, char *device)
 {
 	struct sockaddr_nl sa;
 	struct msghdr msg;
@@ -51,19 +51,21 @@ int rtnl_link_query(int fd)
 
 	struct {
 		struct nlmsghdr hdr;
-		struct rtgenmsg gen;
+		struct ifinfomsg ifm;
 	} __attribute__((packed)) request;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.nl_family = AF_NETLINK;
 
 	memset(&request, 0, sizeof(request));
-	request.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(request.gen));
+	request.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(request.ifm));
 	request.hdr.nlmsg_type = RTM_GETLINK;
-	request.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	request.hdr.nlmsg_flags = NLM_F_REQUEST;
 	request.hdr.nlmsg_seq = 1;
 	request.hdr.nlmsg_pid = 0;
-	request.gen.rtgen_family = AF_UNSPEC;
+	request.ifm.ifi_family = AF_UNSPEC;
+	request.ifm.ifi_index = if_nametoindex(device ? device : "");
+	request.ifm.ifi_change = 0xffffffff;
 
 	iov.iov_base = &request;
 	iov.iov_len = sizeof(request);

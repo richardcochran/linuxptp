@@ -1512,7 +1512,7 @@ static int port_initialize(struct port *p)
 		if (p->fda.fd[FD_RTNL] == -1)
 			p->fda.fd[FD_RTNL] = rtnl_open();
 		if (p->fda.fd[FD_RTNL] >= 0)
-			rtnl_link_query(p->fda.fd[FD_RTNL]);
+			rtnl_link_query(p->fda.fd[FD_RTNL], p->iface->name);
 	}
 
 	port_nrate_initialize(p);

@@ -31,10 +31,11 @@ int rtnl_close(int fd);
 
 /**
  * Request the link status from the kernel.
- * @param fd  A socket obtained via rtnl_open().
- * @return    Zero on success, non-zero otherwise.
+ * @param fd     A socket obtained via rtnl_open().
+ * @param device Interface name. Request all iface's status if set NULL.
+ * @return       Zero on success, non-zero otherwise.
  */
-int rtnl_link_query(int fd);
+int rtnl_link_query(int fd, char *device);
 
 /**
  * Read kernel messages looking for a link up/down events.
