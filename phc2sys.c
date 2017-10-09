@@ -128,6 +128,11 @@ static int clock_handle_leap(struct node *node, struct clock *clock,
 static int run_pmc_get_utc_offset(struct node *node, int timeout);
 static void run_pmc_events(struct node *node);
 
+static int normalize_state(int state);
+static int run_pmc_port_properties(struct node *node, int timeout,
+				   unsigned int port,
+				   int *state, int *tstamping, char *iface);
+
 static clockid_t clock_open(char *device, int *phc_index)
 {
 	struct sk_ts_info ts_info;
@@ -309,15 +314,62 @@ static struct port *port_add(struct node *node, unsigned int number,
 	return p;
 }
 
-static void clock_reinit(struct clock *clock)
+static void clock_reinit(struct node *node, struct clock *clock, int new_state)
 {
-	servo_reset(clock->servo);
-	clock->servo_state = SERVO_UNLOCKED;
+	int phc_index = -1, phc_switched = 0;
+	int state, timestamping, ret = -1;
+	struct port *p;
+	struct servo *servo;
+	struct sk_ts_info ts_info;
+	char iface[IFNAMSIZ];
+	clockid_t clkid = CLOCK_INVALID;
 
-	if (clock->offset_stats) {
-		stats_reset(clock->offset_stats);
-		stats_reset(clock->freq_stats);
-		stats_reset(clock->delay_stats);
+	LIST_FOREACH(p, &node->ports, list) {
+		if (p->clock == clock) {
+			ret = run_pmc_port_properties(node, 1000, p->number,
+					              &state, &timestamping,
+						      iface);
+			if (ret > 0)
+				p->state = normalize_state(state);
+		}
+	}
+
+	if (ret > 0 && timestamping != TS_SOFTWARE) {
+		/* Check if device changed */
+		if (strcmp(clock->device, iface)) {
+			free(clock->device);
+			clock->device = strdup(iface);
+		}
+		/* Check if phc index changed */
+		if (!sk_get_ts_info(clock->device, &ts_info) &&
+		    clock->phc_index != ts_info.phc_index) {
+			clkid = clock_open(clock->device, &phc_index);
+			if (clkid == CLOCK_INVALID)
+				return;
+
+			phc_close(clock->clkid);
+			clock->clkid = clkid;
+			clock->phc_index = phc_index;
+
+			servo = servo_add(node, clock);
+			if (servo) {
+				servo_destroy(clock->servo);
+				clock->servo = servo;
+			}
+
+			phc_switched = 1;
+		}
+	}
+
+	if (new_state == PS_MASTER || phc_switched) {
+		servo_reset(clock->servo);
+		clock->servo_state = SERVO_UNLOCKED;
+
+		if (clock->offset_stats) {
+			stats_reset(clock->offset_stats);
+			stats_reset(clock->freq_stats);
+			stats_reset(clock->delay_stats);
+		}
 	}
 }
 
@@ -336,9 +388,7 @@ static void reconfigure(struct node *node)
 		}
 
 		if (c->new_state) {
-			if (c->new_state == PS_MASTER)
-				clock_reinit(c);
-
+			clock_reinit(node, c, c->new_state);
 			c->state = c->new_state;
 			c->new_state = 0;
 		}
@@ -403,7 +453,7 @@ static void reconfigure(struct node *node)
 	} else if (rt) {
 		if (rt->state != PS_MASTER) {
 			rt->state = PS_MASTER;
-			clock_reinit(rt);
+			clock_reinit(node, rt, rt->state);
 		}
 		pr_info("selecting %s for synchronization", rt->device);
 	}
