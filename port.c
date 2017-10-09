@@ -68,6 +68,7 @@ struct nrate_estimator {
 struct port {
 	LIST_ENTRY(port) list;
 	char *name;
+	struct interface *iface;
 	struct clock *clock;
 	struct transport *trp;
 	enum timestamp_type timestamping;
@@ -2619,6 +2620,7 @@ struct port *port_open(int phc_index,
 	}
 
 	p->name = interface->name;
+	p->iface = interface;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
 	p->announce_span = transport == TRANS_UDS ? 0 : ANNOUNCE_SPAN;
