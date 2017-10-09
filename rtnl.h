@@ -20,6 +20,8 @@
 #ifndef HAVE_RTNL_H
 #define HAVE_RTNL_H
 
+#include "config.h"
+
 typedef void (*rtnl_callback)(void *ctx, int linkup, int ts_index);
 
 /**
@@ -28,6 +30,13 @@ typedef void (*rtnl_callback)(void *ctx, int linkup, int ts_index);
  * @return    Zero on success, non-zero otherwise.
  */
 int rtnl_close(int fd);
+
+/**
+ * Get interface ts_label information
+ * @param iface  struct interface.
+ * @return       Zero on success, or -1 on error.
+ */
+int rtnl_get_ts_label(struct interface *iface);
 
 /**
  * Request the link status from the kernel.

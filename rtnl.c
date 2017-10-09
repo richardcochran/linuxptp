@@ -43,6 +43,37 @@ int rtnl_close(int fd)
 	return close(fd);
 }
 
+static void rtnl_get_ts_label_callback(void *ctx, int linkup, int ts_index)
+{
+	int *dst = ctx;
+	*dst = ts_index;
+}
+
+int rtnl_get_ts_label(struct interface *iface)
+{
+	int err, fd;
+	int ts_index = -1;
+
+	fd = rtnl_open();
+	if (fd < 0)
+		return fd;
+
+	err = rtnl_link_query(fd, iface->name);
+	if (err) {
+		goto no_info;
+	}
+
+	rtnl_link_status(fd, iface->name, rtnl_get_ts_label_callback, &ts_index);
+	if (ts_index > 0 && if_indextoname(ts_index, iface->ts_label))
+		err = 0;
+	else
+		err = -1;
+
+no_info:
+	rtnl_close(fd);
+	return err;
+}
+
 int rtnl_link_query(int fd, char *device)
 {
 	struct sockaddr_nl sa;
