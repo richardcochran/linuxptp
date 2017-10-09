@@ -861,7 +861,7 @@ static int port_management_fill_response(struct port *target,
 		else
 			ppn->port_state = target->state;
 		ppn->timestamping = target->timestamping;
-		ptp_text_set(&ppn->interface, target->name);
+		ptp_text_set(&ppn->interface, target->iface->ts_label);
 		datalen = sizeof(*ppn) + ppn->interface.length;
 		respond = 1;
 		break;
