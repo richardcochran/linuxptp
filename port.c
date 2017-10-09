@@ -60,6 +60,7 @@ enum link_state {
 	LINK_DOWN  = (1<<0),
 	LINK_UP  = (1<<1),
 	LINK_STATE_CHANGED = (1<<3),
+	TS_LABEL_CHANGED  = (1<<4),
 };
 
 struct nrate_estimator {
@@ -2231,6 +2232,8 @@ static void port_link_status(void *ctx, int linkup, int ts_index)
 {
 	struct port *p = ctx;
 	int link_state;
+	char ts_label[MAX_IFNAME_SIZE + 1] = {0};
+	int required_modes;
 
 	link_state = linkup ? LINK_UP : LINK_DOWN;
 	if (p->link_status & link_state) {
@@ -2238,6 +2241,39 @@ static void port_link_status(void *ctx, int linkup, int ts_index)
 	} else {
 		p->link_status = link_state | LINK_STATE_CHANGED;
 		pr_notice("port %hu: link %s", portnum(p), linkup ? "up" : "down");
+	}
+
+	/* ts_label changed */
+	if (if_indextoname(ts_index, ts_label) && strcmp(p->iface->ts_label, ts_label)) {
+		strncpy(p->iface->ts_label, ts_label, MAX_IFNAME_SIZE);
+		p->link_status |= TS_LABEL_CHANGED;
+		pr_notice("port %hu: ts label changed to %s", portnum(p), ts_label);
+	}
+
+	/* Both link down/up and change ts_label may change phc index. */
+	if (p->link_status & LINK_UP &&
+	    (p->link_status & LINK_STATE_CHANGED || p->link_status & TS_LABEL_CHANGED)) {
+		sk_get_ts_info(p->iface->ts_label, &p->iface->ts_info);
+
+		/* Only switch phc with HW time stamping mode */
+		if (p->phc_index >= 0 && p->iface->ts_info.valid) {
+			required_modes = clock_required_modes(p->clock);
+			if ((p->iface->ts_info.so_timestamping & required_modes) != required_modes) {
+				pr_err("interface '%s' does not support requested "
+				       "timestamping mode, set link status down by force.",
+				       p->iface->ts_label);
+				p->link_status = LINK_DOWN | LINK_STATE_CHANGED;
+			} else if (p->phc_index != p->iface->ts_info.phc_index) {
+				p->phc_index = p->iface->ts_info.phc_index;
+
+				if (clock_switch_phc(p->clock, p->phc_index)) {
+					p->last_fault_type = FT_SWITCH_PHC;
+					port_dispatch(p, EV_FAULT_DETECTED, 0);
+					return;
+				}
+				clock_sync_interval(p->clock, p->log_sync_interval);
+			}
+		}
 	}
 
 	/*
@@ -2292,7 +2328,8 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		rtnl_link_status(fd, p->name, port_link_status, p);
 		if (p->link_status == (LINK_UP | LINK_STATE_CHANGED))
 			return EV_FAULT_CLEARED;
-		else if (p->link_status == (LINK_DOWN | LINK_STATE_CHANGED))
+		else if ((p->link_status == (LINK_DOWN | LINK_STATE_CHANGED)) ||
+			 (p->link_status & TS_LABEL_CHANGED))
 			return EV_FAULT_DETECTED;
 		else
 			return EV_NONE;

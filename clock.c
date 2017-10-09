@@ -38,6 +38,7 @@
 #include "servo.h"
 #include "stats.h"
 #include "print.h"
+#include "rtnl.h"
 #include "tlv.h"
 #include "tsproc.h"
 #include "uds.h"
@@ -832,6 +833,16 @@ int clock_required_modes(struct clock *c)
 	return required_modes;
 }
 
+/*
+ * If we do not have a slave or the rtnl query failed, then use our
+ * own interface name as the time stamping interface name.
+ */
+static void ensure_ts_label(struct interface *iface)
+{
+	if (iface->ts_label[0] == '\0')
+		strncpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
+}
+
 struct clock *clock_create(enum clock_type type, struct config *config,
 			   const char *phc_device)
 {
@@ -943,6 +954,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->timestamping = timestamping;
 	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
+		rtnl_get_ts_label(iface);
+		ensure_ts_label(iface);
+		sk_get_ts_info(iface->ts_label, &iface->ts_info);
 		if (iface->ts_info.valid &&
 		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
 			pr_err("interface '%s' does not support "
