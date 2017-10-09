@@ -20,7 +20,7 @@
 #ifndef HAVE_RTNL_H
 #define HAVE_RTNL_H
 
-typedef void (*rtnl_callback)(void *ctx, int index, int linkup);
+typedef void (*rtnl_callback)(void *ctx, int linkup, int ts_index);
 
 /**
  * Close a RT netlink socket.
@@ -39,12 +39,13 @@ int rtnl_link_query(int fd, char *device);
 
 /**
  * Read kernel messages looking for a link up/down events.
- * @param fd   Readable socket obtained via rtnl_open().
- * @param cb   Callback function to be invoked on each event.
- * @param ctx  Private context passed to the callback.
- * @return     Zero on success, non-zero otherwise.
+ * @param fd     Readable socket obtained via rtnl_open().
+ * @param device The device which we need to get link info.
+ * @param cb     Callback function to be invoked on each event.
+ * @param ctx    Private context passed to the callback.
+ * @return       Zero on success, non-zero otherwise.
  */
-int rtnl_link_status(int fd, rtnl_callback cb, void *ctx);
+int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx);
 
 /**
  * Open a RT netlink socket for monitoring link state.

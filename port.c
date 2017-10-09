@@ -2221,11 +2221,11 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 }
 
-static void port_link_status(void *ctx, int index, int linkup)
+static void port_link_status(void *ctx, int linkup, int ts_index)
 {
 	struct port *p = ctx;
 
-	if (index != if_nametoindex(p->name) || p->link_status == linkup)
+	if (p->link_status == linkup)
 		return;
 
 	p->link_status = linkup;
@@ -2280,7 +2280,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 
 	case FD_RTNL:
 		pr_debug("port %hu: received link status notification", portnum(p));
-		rtnl_link_status(fd, port_link_status, p);
+		rtnl_link_status(fd, p->name, port_link_status, p);
 		return port_link_status_get(p) ? EV_FAULT_CLEARED : EV_FAULT_DETECTED;
 	}
 
