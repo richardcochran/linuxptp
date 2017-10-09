@@ -162,12 +162,45 @@ static clockid_t clock_open(char *device, int *phc_index)
 	return clkid;
 }
 
+static struct servo *servo_add(struct node *node, struct clock *clock)
+{
+	double ppb;
+	int max_ppb;
+	struct servo *servo;
+
+	clockadj_init(clock->clkid);
+	ppb = clockadj_get_freq(clock->clkid);
+	/* The reading may silently fail and return 0, reset the frequency to
+	   make sure ppb is the actual frequency of the clock. */
+	clockadj_set_freq(clock->clkid, ppb);
+	if (clock->clkid == CLOCK_REALTIME) {
+		sysclk_set_leap(0);
+		max_ppb = sysclk_max_freq();
+	} else {
+		max_ppb = phc_max_adj(clock->clkid);
+		if (!max_ppb) {
+			pr_err("clock is not adjustable");
+			return NULL;
+		}
+	}
+
+	servo = servo_create(phc2sys_config, node->servo_type,
+			     -ppb, max_ppb, 0);
+	if (!servo) {
+		pr_err("Failed to create servo");
+		return NULL;
+	}
+
+	servo_sync_interval(servo, node->phc_interval);
+
+	return servo;
+}
+
 static struct clock *clock_add(struct node *node, char *device)
 {
 	struct clock *c;
 	clockid_t clkid = CLOCK_INVALID;
-	int max_ppb, phc_index = -1;
-	double ppb;
+	int phc_index = -1;
 
 	if (device) {
 		clkid = clock_open(device, &phc_index);
@@ -211,25 +244,7 @@ static struct clock *clock_add(struct node *node, char *device)
 		}
 	}
 
-	clockadj_init(c->clkid);
-	ppb = clockadj_get_freq(c->clkid);
-	/* The reading may silently fail and return 0, reset the frequency to
-	   make sure ppb is the actual frequency of the clock. */
-	clockadj_set_freq(c->clkid, ppb);
-	if (c->clkid == CLOCK_REALTIME) {
-		sysclk_set_leap(0);
-		max_ppb = sysclk_max_freq();
-	} else {
-		max_ppb = phc_max_adj(c->clkid);
-		if (!max_ppb) {
-			pr_err("clock is not adjustable");
-			return NULL;
-		}
-	}
-
-	c->servo = servo_create(phc2sys_config, node->servo_type,
-				-ppb, max_ppb, 0);
-	servo_sync_interval(c->servo, node->phc_interval);
+	c->servo = servo_add(node, c);
 
 	if (clkid != CLOCK_REALTIME)
 		c->sysoff_supported = (SYSOFF_SUPPORTED ==
