@@ -105,6 +105,7 @@ struct clock {
 	int time_flags;  /* grand master role */
 	int time_source; /* grand master role */
 	enum servo_state servo_state;
+	enum timestamp_type timestamping;
 	tmv_t master_offset;
 	tmv_t path_delay;
 	tmv_t ingress_ts;
@@ -803,6 +804,34 @@ static void clock_remove_port(struct clock *c, struct port *p)
 	port_close(p);
 }
 
+int clock_required_modes(struct clock *c)
+{
+	int required_modes = 0;
+
+	switch (c->timestamping) {
+	case TS_SOFTWARE:
+		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
+			SOF_TIMESTAMPING_RX_SOFTWARE |
+			SOF_TIMESTAMPING_SOFTWARE;
+		break;
+	case TS_LEGACY_HW:
+		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+			SOF_TIMESTAMPING_RX_HARDWARE |
+			SOF_TIMESTAMPING_SYS_HARDWARE;
+		break;
+	case TS_HARDWARE:
+	case TS_ONESTEP:
+		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
+			SOF_TIMESTAMPING_RX_HARDWARE |
+			SOF_TIMESTAMPING_RAW_HARDWARE;
+		break;
+	default:
+		break;
+	}
+
+	return required_modes;
+}
+
 struct clock *clock_create(enum clock_type type, struct config *config,
 			   const char *phc_device)
 {
@@ -911,24 +940,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	/* Check the time stamping mode on each interface. */
-	switch (timestamping) {
-	case TS_SOFTWARE:
-		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
-			SOF_TIMESTAMPING_RX_SOFTWARE |
-			SOF_TIMESTAMPING_SOFTWARE;
-		break;
-	case TS_LEGACY_HW:
-		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_SYS_HARDWARE;
-		break;
-	case TS_HARDWARE:
-	case TS_ONESTEP:
-		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
-			SOF_TIMESTAMPING_RX_HARDWARE |
-			SOF_TIMESTAMPING_RAW_HARDWARE;
-		break;
-	}
+	c->timestamping = timestamping;
+	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		if (iface->ts_info.valid &&
 		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {

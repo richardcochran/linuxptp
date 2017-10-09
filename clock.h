@@ -73,6 +73,14 @@ UInteger8 clock_class(struct clock *c);
 struct config *clock_config(struct clock *c);
 
 /**
+ * Obtains the required time stamping mode.
+ * @param c  The clock instance.
+ * @return   The value of required time stamping mode, which is a bit mask
+ *           of SOF_TIMESTAMPING_ flags.
+ */
+int clock_required_modes(struct clock *c);
+
+/**
  * Create a clock instance. There can only be one clock in any system,
  * so subsequent calls will destroy the previous clock instance.
  *
