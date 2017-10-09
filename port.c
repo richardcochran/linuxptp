@@ -1504,7 +1504,7 @@ static int port_initialize(struct port *p)
 			goto no_timers;
 		}
 	}
-	if (transport_open(p->trp, p->name, &p->fda, p->timestamping))
+	if (transport_open(p->trp, p->iface, &p->fda, p->timestamping))
 		goto no_tropen;
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
@@ -1547,7 +1547,7 @@ static int port_renew_transport(struct port *p)
 	}
 	transport_close(p->trp, &p->fda);
 	port_clear_fda(p, FD_ANNOUNCE_TIMER);
-	res = transport_open(p->trp, p->name, &p->fda, p->timestamping);
+	res = transport_open(p->trp, p->iface, &p->fda, p->timestamping);
 	/* Need to call clock_fda_changed even if transport_open failed in
 	 * order to update clock to the now closed descriptors. */
 	clock_fda_changed(p->clock);

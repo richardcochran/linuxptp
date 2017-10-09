@@ -198,15 +198,16 @@ static void addr_to_mac(void *mac, struct address *addr)
 	memcpy(mac, &addr->sll.sll_addr, MAC_LEN);
 }
 
-static int raw_open(struct transport *t, const char *name,
+static int raw_open(struct transport *t, struct interface *iface,
 		    struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct raw *raw = container_of(t, struct raw, t);
 	unsigned char ptp_dst_mac[MAC_LEN];
 	unsigned char p2p_dst_mac[MAC_LEN];
 	int efd, gfd;
-	char *str;
+	char *str, *name;
 
+	name = iface->ts_label;
 	str = config_get_string(t->cfg, name, "ptp_dst_mac");
 	if (str2mac(str, ptp_dst_mac)) {
 		pr_err("invalid ptp_dst_mac %s", str);

@@ -160,12 +160,13 @@ enum { MC_PRIMARY, MC_PDELAY };
 
 static struct in6_addr mc6_addr[2];
 
-static int udp6_open(struct transport *t, const char *name, struct fdarray *fda,
-		    enum timestamp_type ts_type)
+static int udp6_open(struct transport *t, struct interface *iface,
+		     struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
 	uint8_t event_dscp, general_dscp;
 	int efd, gfd, hop_limit;
+	char *name = iface->name;
 
 	hop_limit = config_get_int(t->cfg, name, "udp_ttl");
 	udp6->mac.len = 0;
@@ -190,7 +191,7 @@ static int udp6_open(struct transport *t, const char *name, struct fdarray *fda,
 	if (gfd < 0)
 		goto no_general;
 
-	if (sk_timestamping_init(efd, name, ts_type, TRANS_UDP_IPV6))
+	if (sk_timestamping_init(efd, iface->ts_label, ts_type, TRANS_UDP_IPV6))
 		goto no_timestamping;
 
 	if (sk_general_init(gfd))

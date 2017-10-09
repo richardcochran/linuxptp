@@ -27,6 +27,7 @@
 #include "msg.h"
 
 struct config;
+struct interface;
 
 /* Values from networkProtocol enumeration 7.4.1 Table 3 */
 enum transport_type {
@@ -54,7 +55,7 @@ struct transport;
 
 int transport_close(struct transport *t, struct fdarray *fda);
 
-int transport_open(struct transport *t, const char *name,
+int transport_open(struct transport *t, struct interface *iface,
 		   struct fdarray *fda, enum timestamp_type tt);
 
 int transport_recv(struct transport *t, int fd, struct ptp_message *msg);

@@ -32,8 +32,8 @@ struct transport {
 
 	int (*close)(struct transport *t, struct fdarray *fda);
 
-	int (*open)(struct transport *t, const char *name, struct fdarray *fda,
-		    enum timestamp_type tt);
+	int (*open)(struct transport *t, struct interface *iface,
+		    struct fdarray *fda, enum timestamp_type tt);
 
 	int (*recv)(struct transport *t, int fd, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts);

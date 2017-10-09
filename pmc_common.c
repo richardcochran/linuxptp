@@ -67,6 +67,7 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       int zero_datalen)
 {
 	struct pmc *pmc;
+	struct interface iface;
 
 	pmc = calloc(1, sizeof *pmc);
 	if (!pmc)
@@ -90,7 +91,9 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		pr_err("failed to create transport");
 		goto failed;
 	}
-	if (transport_open(pmc->transport, iface_name,
+
+	strncpy(iface.name, iface_name, MAX_IFNAME_SIZE);
+	if (transport_open(pmc->transport, &iface,
 			   &pmc->fdarray, TS_SOFTWARE)) {
 		pr_err("failed to open transport");
 		goto failed;

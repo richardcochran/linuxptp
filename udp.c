@@ -152,12 +152,13 @@ enum { MC_PRIMARY, MC_PDELAY };
 
 static struct in_addr mcast_addr[2];
 
-static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
-		    enum timestamp_type ts_type)
+static int udp_open(struct transport *t, struct interface *iface,
+		    struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct udp *udp = container_of(t, struct udp, t);
 	uint8_t event_dscp, general_dscp;
 	int efd, gfd, ttl;
+	char *name = iface->name;
 
 	ttl = config_get_int(t->cfg, name, "udp_ttl");
 	udp->mac.len = 0;
@@ -180,7 +181,7 @@ static int udp_open(struct transport *t, const char *name, struct fdarray *fda,
 	if (gfd < 0)
 		goto no_general;
 
-	if (sk_timestamping_init(efd, name, ts_type, TRANS_UDP_IPV4))
+	if (sk_timestamping_init(efd, iface->ts_label, ts_type, TRANS_UDP_IPV4))
 		goto no_timestamping;
 
 	if (sk_general_init(gfd))

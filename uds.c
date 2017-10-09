@@ -52,13 +52,14 @@ static int uds_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int uds_open(struct transport *t, const char *name, struct fdarray *fda,
+static int uds_open(struct transport *t, struct interface *iface, struct fdarray *fda,
 		    enum timestamp_type tt)
 {
 	int fd, err;
 	struct sockaddr_un sa;
 	struct uds *uds = container_of(t, struct uds, t);
 	char *uds_path = config_get_string(t->cfg, NULL, "uds_address");
+	char *name = iface->name;
 
 	fd = socket(AF_LOCAL, SOCK_DGRAM, 0);
 	if (fd < 0) {

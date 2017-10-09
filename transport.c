@@ -31,10 +31,10 @@ int transport_close(struct transport *t, struct fdarray *fda)
 	return t->close(t, fda);
 }
 
-int transport_open(struct transport *t, const char *name,
+int transport_open(struct transport *t, struct interface *iface,
 		   struct fdarray *fda, enum timestamp_type tt)
 {
-	return t->open(t, name, fda, tt);
+	return t->open(t, iface, fda, tt);
 }
 
 int transport_recv(struct transport *t, int fd, struct ptp_message *msg)
