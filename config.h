@@ -32,6 +32,10 @@
 
 #define MAX_IFNAME_SIZE 108 /* = UNIX_PATH_MAX */
 
+#if (IF_NAMESIZE > MAX_IFNAME_SIZE)
+#error if_namesize larger than expected.
+#endif
+
 /** Defines a network interface, with PTP options. */
 struct interface {
 	STAILQ_ENTRY(interface) list;
