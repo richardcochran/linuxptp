@@ -225,6 +225,8 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 		return -1;
 	}
 
+	close(fd);
+
 	/* Get interface type */
 	type = ifreq.ifr_hwaddr.sa_family;
 	switch (type) {
@@ -243,7 +245,6 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 
 	mac->sll.sll_family = AF_PACKET;
 	mac->len = sizeof(mac->sll);
-	close(fd);
 	return 0;
 }
 
