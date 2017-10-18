@@ -94,7 +94,11 @@ together with the
 option, the master clock is used only to correct the offset by whole number of
 seconds, which cannot be fixed with PPS alone. Not compatible with the
 .B \-a
-option.
+option. This option does not support bonded interface (e.g. bond0). If
+.B ptp4l
+has a port on an active-backup bond interface, the
+.B \-a
+option can be used to track the active interface.
 .TP
 .BI \-i " interface"
 Performs the exact same function as
