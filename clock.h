@@ -73,6 +73,13 @@ UInteger8 clock_class(struct clock *c);
 struct config *clock_config(struct clock *c);
 
 /**
+ * Obtains a reference to the current dataset.
+ * @param c  The clock instance.
+ * @return   A pointer to the current dataset, without fail.
+ */
+struct currentDS *clock_current_dataset(struct clock *c);
+
+/**
  * Obtains the required time stamping mode.
  * @param c  The clock instance.
  * @return   The value of required time stamping mode, which is a bit mask

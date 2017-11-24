@@ -760,6 +760,11 @@ struct config *clock_config(struct clock *c)
 	return c->config;
 }
 
+struct currentDS *clock_current_dataset(struct clock *c)
+{
+	return &c->cur;
+}
+
 static int clock_add_port(struct clock *c, int phc_index,
 			  enum timestamp_type timestamping,
 			  struct interface *iface)
