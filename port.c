@@ -1333,7 +1333,7 @@ static int port_tx_announce(struct port *p)
 	return err;
 }
 
-static int port_tx_sync(struct port *p)
+static int port_tx_sync(struct port *p, struct address *dst)
 {
 	struct ptp_message *msg, *fup;
 	int err, event;
@@ -1369,6 +1369,10 @@ static int port_tx_sync(struct port *p)
 	if (p->timestamping != TS_ONESTEP)
 		msg->header.flagField[0] |= TWO_STEP;
 
+	if (dst) {
+		msg->address = *dst;
+		msg->header.flagField[0] |= UNICAST;
+	}
 	err = port_prepare_and_send(p, msg, event);
 	if (err) {
 		pr_err("port %hu: send sync failed", portnum(p));
@@ -1398,6 +1402,10 @@ static int port_tx_sync(struct port *p)
 
 	ts_to_timestamp(&msg->hwts.ts, &fup->follow_up.preciseOriginTimestamp);
 
+	if (dst) {
+		fup->address = *dst;
+		fup->header.flagField[0] |= UNICAST;
+	}
 	if (p->follow_up_info && follow_up_info_append(p, fup)) {
 		pr_err("port %hu: append fup info failed", portnum(p));
 		err = -1;
@@ -2345,7 +2353,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_SYNC_TX_TIMER:
 		pr_debug("port %hu: master sync timeout", portnum(p));
 		port_set_sync_tx_tmo(p);
-		return port_tx_sync(p) ? EV_FAULT_DETECTED : EV_NONE;
+		return port_tx_sync(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_RTNL:
 		pr_debug("port %hu: received link status notification", portnum(p));
