@@ -2429,8 +2429,9 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
 {
 	int cnt;
 
-	if (msg_pre_send(msg))
+	if (msg_pre_send(msg)) {
 		return -1;
+	}
 	if (msg->header.flagField[0] & UNICAST) {
 		cnt = transport_sendto(p->trp, &p->fda, event, msg);
 	} else {
