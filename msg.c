@@ -190,7 +190,7 @@ static int suffix_post_recv(struct ptp_message *msg, uint8_t *ptr, int len)
 	if (!ptr)
 		return 0;
 
-	while (len > sizeof(struct TLV)) {
+	while (len >= sizeof(struct TLV)) {
 		extra = tlv_extra_alloc();
 		if (!extra) {
 			pr_err("failed to allocate TLV descriptor");
