@@ -116,7 +116,7 @@ static uint8_t *msg_suffix(struct ptp_message *m)
 	case SYNC:
 		return NULL;
 	case DELAY_REQ:
-		return NULL;
+		return m->delay_req.suffix;
 	case PDELAY_REQ:
 		return NULL;
 	case PDELAY_RESP:
@@ -354,6 +354,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		timestamp_post_recv(m, &m->sync.originTimestamp);
 		break;
 	case DELAY_REQ:
+		suffix = m->delay_req.suffix;
 		break;
 	case PDELAY_REQ:
 		break;
