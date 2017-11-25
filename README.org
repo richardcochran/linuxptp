@@ -295,6 +295,10 @@
   - http://www.intel.com
   - http://e1000.sourceforge.net
 
+  Thanks to Meinberg Funkuhren for donating a LANTIME M1000.
+
+  - https://www.meinbergglobal.com
+
   For testing I use an OTMC 100 grandmaster clock donated by OMICRON Lab.
 
   - http://www.omicron-lab.com/ptp
