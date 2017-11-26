@@ -127,6 +127,7 @@ struct port {
 	int                 hybrid_e2e;
 	int                 match_transport_specific;
 	int                 min_neighbor_prop_delay;
+	int                 net_sync_monitor;
 	int                 path_trace_enabled;
 	int                 rx_timestamp_offset;
 	int                 tx_timestamp_offset;
@@ -183,6 +184,29 @@ static int clear_fault_asap(struct fault_interval *faint)
 		return 0;
 	}
 	return 0;
+}
+
+static void extract_address(struct ptp_message *m, struct PortAddress *paddr)
+{
+	int len = 0;
+
+	switch (paddr->networkProtocol) {
+	case TRANS_UDP_IPV4:
+		len = sizeof(m->address.sin.sin_addr.s_addr);
+		memcpy(paddr->address, &m->address.sin.sin_addr.s_addr, len);
+		break;
+	case TRANS_UDP_IPV6:
+		len = sizeof(m->address.sin6.sin6_addr.s6_addr);
+		memcpy(paddr->address, &m->address.sin6.sin6_addr.s6_addr, len);
+		break;
+	case TRANS_IEEE_802_3:
+		len = MAC_LEN;
+		memcpy(paddr->address, &m->address.sll.sll_addr, len);
+		break;
+	default:
+		return;
+	}
+	paddr->addressLength = len;
 }
 
 static int msg_current(struct ptp_message *m, struct timespec now)
@@ -450,6 +474,67 @@ static int follow_up_info_append(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+static int net_sync_resp_append(struct port *p, struct ptp_message *m)
+{
+	struct timePropertiesDS *tp = clock_time_properties(p->clock);
+	struct ClockIdentity cid = clock_identity(p->clock), pid;
+	struct currentDS *cds = clock_current_dataset(p->clock);
+	struct parent_ds *dad = clock_parent_ds(p->clock);
+	struct port *best = clock_best_port(p->clock);
+	struct nsm_resp_tlv_head *head;
+	struct Timestamp last_sync;
+	struct PortAddress paddr;
+	struct ptp_message *tmp;
+	struct tlv_extra *extra;
+	unsigned char *ptr;
+	int tlv_len;
+
+	last_sync = tmv_to_Timestamp(clock_ingress_time(p->clock));
+	pid = dad->pds.parentPortIdentity.clockIdentity;
+
+	if (best && memcmp(&cid, &pid, sizeof(cid))) {
+		/* Extract the parent's protocol address. */
+		paddr.networkProtocol = transport_type(best->trp);
+		paddr.addressLength =
+			transport_protocol_addr(best->trp, paddr.address);
+		if (best->best) {
+			tmp = TAILQ_FIRST(&best->best->messages);
+			extract_address(tmp, &paddr);
+		}
+	} else {
+		/* We are our own parent. */
+		paddr.networkProtocol = transport_type(p->trp);
+		paddr.addressLength =
+			transport_protocol_addr(p->trp, paddr.address);
+	}
+
+	tlv_len = sizeof(*head) + sizeof(*extra->foot) + paddr.addressLength;
+
+	extra = msg_tlv_append(m, tlv_len);
+	if (!extra) {
+		return -1;
+	}
+
+	head = (struct nsm_resp_tlv_head *) extra->tlv;
+	head->type = TLV_PTPMON_RESP;
+	head->length = tlv_len - sizeof(head->type) - sizeof(head->length);
+	head->port_state = p->state == PS_GRAND_MASTER ? PS_MASTER : p->state;
+	head->parent_addr.networkProtocol = paddr.networkProtocol;
+	head->parent_addr.addressLength = paddr.addressLength;
+	memcpy(head->parent_addr.address, paddr.address, paddr.addressLength);
+
+	ptr = (unsigned char *) head;
+	ptr += sizeof(*head) + paddr.addressLength;
+	extra->foot = (struct nsm_resp_tlv_foot *) ptr;
+
+	memcpy(&extra->foot->parent, &dad->pds, sizeof(extra->foot->parent));
+	memcpy(&extra->foot->current, cds, sizeof(extra->foot->current));
+	memcpy(&extra->foot->timeprop, tp, sizeof(extra->foot->timeprop));
+	memcpy(&extra->foot->lastsync, &last_sync, sizeof(extra->foot->lastsync));
+
+	return 0;
+}
+
 static struct follow_up_info_tlv *follow_up_info_extract(struct ptp_message *m)
 {
 	struct follow_up_info_tlv *f;
@@ -675,6 +760,27 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 
 	if (0 == memcmp(&c1, &c2, sizeof(c1))) {
 		return 1;
+	}
+	return 0;
+}
+
+static int port_nsm_reply(struct port *p, struct ptp_message *m)
+{
+	struct tlv_extra *extra;
+
+	if (!p->net_sync_monitor) {
+		return 0;
+	}
+	if (!p->hybrid_e2e) {
+		return 0;
+	}
+	if (!(m->header.flagField[0] & UNICAST)) {
+		return 0;
+	}
+	TAILQ_FOREACH(extra, &m->tlv_list, list) {
+		if (extra->tlv->type == TLV_PTPMON_REQ) {
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -1665,10 +1771,12 @@ static int process_announce(struct port *p, struct ptp_message *m)
 
 static int process_delay_req(struct port *p, struct ptp_message *m)
 {
+	int err, nsm, saved_seqnum_sync;
 	struct ptp_message *msg;
-	int err;
 
-	if (p->state != PS_MASTER && p->state != PS_GRAND_MASTER)
+	nsm = port_nsm_reply(p, m);
+
+	if (!nsm && p->state != PS_MASTER && p->state != PS_GRAND_MASTER)
 		return 0;
 
 	if (p->delayMechanism == DM_P2P) {
@@ -1701,10 +1809,23 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		msg->header.flagField[0] |= UNICAST;
 		msg->header.logMessageInterval = 0x7f;
 	}
-
+	if (nsm && net_sync_resp_append(p, msg)) {
+		pr_err("port %hu: append NSM failed", portnum(p));
+		err = -1;
+		goto out;
+	}
 	err = port_prepare_and_send(p, msg, 0);
-	if (err)
+	if (err) {
 		pr_err("port %hu: send delay response failed", portnum(p));
+		goto out;
+	}
+	if (nsm) {
+		saved_seqnum_sync = p->seqnum.sync;
+		p->seqnum.sync = m->header.sequenceId;
+		err = port_tx_sync(p, &m->address);
+		p->seqnum.sync = saved_seqnum_sync;
+	}
+out:
 	msg_put(msg);
 	return err;
 }
@@ -2730,6 +2851,9 @@ struct port *port_open(int phc_index,
 
 	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
 		pr_warning("port %d: hybrid_e2e only works with E2E", number);
+	}
+	if (p->net_sync_monitor && !p->hybrid_e2e) {
+		pr_warning("port %d: net_sync_monitor needs hybrid_e2e", number);
 	}
 
 	/* Set fault timeouts to a default value */
