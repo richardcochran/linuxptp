@@ -2834,6 +2834,7 @@ struct port *port_open(int phc_index,
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
+	p->net_sync_monitor = config_get_int(cfg, p->name, "net_sync_monitor");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");

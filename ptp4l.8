@@ -1,4 +1,4 @@
-.TH PTP4l 8 "December 2016" "linuxptp"
+.TH PTP4l 8 "Novemver 2017" "linuxptp"
 .SH NAME
 ptp4l - PTP Boundary/Ordinary Clock
 
@@ -217,6 +217,16 @@ request messages to the unicast address taken from the master's
 announce message. Ports in the master state will reply to unicast
 delay requests using unicast delay responses. This option has no
 effect if the delay_mechanism is set to P2P.
+The default is 0 (disabled).
+.TP
+.B net_sync_monitor
+Enables the NetSync Monitor (NSM) protocol. The NSM protocol allows a
+station to measure how well another node is synchronized. The monitor
+sends a unicast delay request to the node, which replies
+unconditionally with unicast delay response, sync, and follow up
+messages. If the monitor is synchronized to the GM, it can use the
+time stamps in the message to estimate the node's offset.  This option
+requires that the 'hybrid_e2e' option be enabled as well.
 The default is 0 (disabled).
 .TP
 .B ptp_dst_mac
