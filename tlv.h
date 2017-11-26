@@ -39,6 +39,8 @@
 #define TLV_AUTHENTICATION_CHALLENGE			0x2001
 #define TLV_SECURITY_ASSOCIATION_UPDATE			0x2002
 #define TLV_CUM_FREQ_SCALE_FACTOR_OFFSET		0x2003
+#define TLV_PTPMON_REQ					0x21FE
+#define TLV_PTPMON_RESP					0x21FF
 
 enum management_action {
 	GET,
@@ -132,6 +134,21 @@ struct management_error_status {
 	Enumeration16 id;
 	Octet         reserved[4];
 	Octet         data[0];
+} PACKED;
+
+struct nsm_resp_tlv_head {
+	Enumeration16           type;
+	UInteger16              length;
+	uint8_t                 port_state;
+	uint8_t                 reserved;
+	struct PortAddress      parent_addr;
+} PACKED;
+
+struct nsm_resp_tlv_foot {
+	struct parentDS         parent;
+	struct currentDS        current;
+	struct timePropertiesDS timeprop;
+	struct Timestamp        lastsync;
 } PACKED;
 
 /* Organizationally Unique Identifiers */
@@ -234,6 +251,7 @@ struct tlv_extra {
 	struct TLV *tlv;
 	union {
 		struct mgmt_clock_description cd;
+		struct nsm_resp_tlv_foot *foot;
 	};
 };
 
