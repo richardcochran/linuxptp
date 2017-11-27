@@ -127,58 +127,10 @@ static char *text2str(struct PTPText *text)
 	return (char*)(s.text);
 }
 
-#define MAX_PRINT_BYTES 16
-#define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
-
-static char *bin2str_impl(Octet *data, int len, char *buf, int buf_len)
-{
-	int i, offset = 0;
-	if (len > MAX_PRINT_BYTES)
-		len = MAX_PRINT_BYTES;
-	buf[0] = '\0';
-	if (!data)
-		return buf;
-	if (len)
-		offset += snprintf(buf, buf_len, "%02hhx", data[0]);
-	for (i = 1; i < len; i++) {
-		if (offset >= buf_len)
-			/* truncated output */
-			break;
-		offset += snprintf(buf + offset, buf_len - offset, ":%02hhx", data[i]);
-	}
-	return buf;
-}
-
 static char *bin2str(Octet *data, int len)
 {
 	static char buf[BIN_BUF_SIZE];
 	return bin2str_impl(data, len, buf, sizeof(buf));
-}
-
-static uint16_t align16(uint16_t *p)
-{
-	uint16_t v;
-	memcpy(&v, p, sizeof(v));
-	return v;
-}
-
-static char *portaddr2str(struct PortAddress *addr)
-{
-	static char buf[BIN_BUF_SIZE];
-	switch(align16(&addr->networkProtocol)) {
-	case TRANS_UDP_IPV4:
-		if (align16(&addr->addressLength) == 4
-			&& inet_ntop(AF_INET, addr->address, buf, sizeof(buf)))
-			return buf;
-		break;
-	case TRANS_UDP_IPV6:
-		if (align16(&addr->addressLength) == 16
-			&& inet_ntop(AF_INET6, addr->address, buf, sizeof(buf)))
-			return buf;
-		break;
-	}
-	bin2str_impl(addr->address, align16(&addr->addressLength), buf, sizeof(buf));
-	return buf;
 }
 
 static void pmc_show(struct ptp_message *msg, FILE *fp)

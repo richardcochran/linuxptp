@@ -20,10 +20,14 @@
 #ifndef HAVE_UTIL_H
 #define HAVE_UTIL_H
 
+#include <string.h>
 #include <time.h>
 
 #include "ddt.h"
 #include "ether.h"
+
+#define MAX_PRINT_BYTES 16
+#define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
 
 /**
  * Table of human readable strings, one for each port state.
@@ -34,6 +38,15 @@ extern const char *ps_str[];
  * Table of human readable strings, one for each port event.
  */
 extern const char *ev_str[];
+
+static inline uint16_t align16(uint16_t *p)
+{
+	uint16_t v;
+	memcpy(&v, p, sizeof(v));
+	return v;
+}
+
+char *bin2str_impl(Octet *data, int len, char *buf, int buf_len);
 
 /**
  * Convert a clock identity into a human readable string.
@@ -64,6 +77,8 @@ int count_char(const char *str, char c);
  * @return    Pointer to a static global buffer holding the result.
  */
 char *pid2str(struct PortIdentity *id);
+
+char *portaddr2str(struct PortAddress *addr);
 
 /**
  * Scan a string containing a MAC address and convert it into binary form.
