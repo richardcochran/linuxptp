@@ -114,6 +114,21 @@ static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
 	return x.ns << 16;
 }
 
+static inline struct Timestamp tmv_to_Timestamp(tmv_t x)
+{
+	struct Timestamp result;
+	uint64_t sec, nsec;
+
+	sec  = x.ns / 1000000000ULL;
+	nsec = x.ns % 1000000000ULL;
+
+	result.seconds_lsb = sec & 0xFFFFFFFF;
+	result.seconds_msb = (sec >> 32) & 0xFFFF;
+	result.nanoseconds = nsec;
+
+	return result;
+}
+
 static inline tmv_t timespec_to_tmv(struct timespec ts)
 {
 	tmv_t t;
