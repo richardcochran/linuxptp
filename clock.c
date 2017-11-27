@@ -1287,6 +1287,11 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 	}
 }
 
+tmv_t clock_ingress_time(struct clock *c)
+{
+	return c->ingress_ts;
+}
+
 int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 {
 	int changed = 0, res, answers;

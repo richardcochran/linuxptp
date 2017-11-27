@@ -157,6 +157,13 @@ struct ClockIdentity clock_identity(struct clock *c);
 void clock_fda_changed(struct clock *c);
 
 /**
+ * Obtains the time of the latest synchronization.
+ * @param c    The clock instance.
+ * @return     The local time stamp of the last received Sync message.
+ */
+tmv_t clock_ingress_time(struct clock *c);
+
+/**
  * Manage the clock according to a given message.
  * @param c    The clock instance.
  * @param p    The port on which the message arrived.
