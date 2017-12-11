@@ -1243,6 +1243,17 @@ static int clock_do_forward_mgmt(struct clock *c,
 {
 	if (in == out || !forwarding(c, out))
 		return 0;
+
+	/* Don't forward any requests to the UDS port. */
+	if (out == c->uds_port) {
+		switch (management_action(msg)) {
+		case GET:
+		case SET:
+		case COMMAND:
+			return 0;
+		}
+	}
+
 	if (!*pre_sent) {
 		/* delay calling msg_pre_send until
 		 * actually forwarding */
