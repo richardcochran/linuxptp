@@ -213,6 +213,9 @@ void msg_cleanup(void)
 {
 	struct message_storage *s;
 	struct ptp_message *m;
+
+	tlv_extra_cleanup();
+
 	while ((m = TAILQ_FIRST(&msg_pool)) != NULL) {
 		TAILQ_REMOVE(&msg_pool, m, list);
 		s = container_of(m, struct message_storage, msg);

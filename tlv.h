@@ -20,6 +20,8 @@
 #ifndef HAVE_TLV_H
 #define HAVE_TLV_H
 
+#include <sys/queue.h>
+
 #include "ddt.h"
 #include "ds.h"
 
@@ -228,10 +230,29 @@ struct mgmt_clock_description {
 };
 
 struct tlv_extra {
+	TAILQ_ENTRY(tlv_extra) list;
+	struct TLV *tlv;
 	union {
 		struct mgmt_clock_description cd;
 	};
 };
+
+/**
+ * Allocates a new tlv_extra structure.
+ * @return  Pointer to a new structure on success or NULL otherwise.
+ */
+struct tlv_extra *tlv_extra_alloc(void);
+
+/**
+ * Release all of the memory in the tlv_extra cache.
+ */
+void tlv_extra_cleanup(void);
+
+/**
+ * Frees a tlv_extra structure.
+ * @param extra  Pointer to the structure to free.
+ */
+void tlv_extra_recycle(struct tlv_extra *extra);
 
 /**
  * Converts recognized value sub-fields into host byte order.

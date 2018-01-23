@@ -18,6 +18,7 @@
  */
 #include <arpa/inet.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "port.h"
@@ -28,6 +29,9 @@
 	(tlv->length < sizeof(struct type) - sizeof(struct TLV))
 
 uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };
+
+static TAILQ_HEAD(tlv_pool, tlv_extra) tlv_pool =
+	TAILQ_HEAD_INITIALIZER(tlv_pool);
 
 static void scaled_ns_n2h(ScaledNs *sns)
 {
@@ -410,6 +414,34 @@ static void org_pre_send(struct organization_tlv *org)
 			break;
 		}
 	}
+}
+
+struct tlv_extra *tlv_extra_alloc(void)
+{
+	struct tlv_extra *extra = TAILQ_FIRST(&tlv_pool);
+
+	if (extra) {
+		TAILQ_REMOVE(&tlv_pool, extra, list);
+	} else {
+		extra = calloc(1, sizeof(*extra));
+	}
+	return extra;
+}
+
+void tlv_extra_cleanup(void)
+{
+	struct tlv_extra *extra;
+
+	while ((extra = TAILQ_FIRST(&tlv_pool)) != NULL) {
+		TAILQ_REMOVE(&tlv_pool, extra, list);
+		free(extra);
+	}
+}
+
+void tlv_extra_recycle(struct tlv_extra *extra)
+{
+	memset(extra, 0, sizeof(*extra));
+	TAILQ_INSERT_HEAD(&tlv_pool, extra, list);
 }
 
 int tlv_post_recv(struct TLV *tlv, struct tlv_extra *extra)
