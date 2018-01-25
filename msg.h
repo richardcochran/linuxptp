@@ -220,6 +220,11 @@ struct ptp_message {
 	 */
 	struct address address;
 	/**
+	 * List of TLV descriptors.  Each item in the list contains
+	 * pointers to the appended TLVs.
+	 */
+	TAILQ_HEAD(tlv_list, tlv_extra) tlv_list;
+	/**
 	 * Contains the number of TLVs in the suffix.
 	 */
 	int tlv_count;

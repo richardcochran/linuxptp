@@ -204,6 +204,7 @@ struct ptp_message *msg_allocate(void)
 	if (m) {
 		memset(m, 0, sizeof(*m));
 		m->refcnt = 1;
+		TAILQ_INIT(&m->tlv_list);
 	}
 
 	return m;
@@ -447,12 +448,19 @@ void msg_print(struct ptp_message *m, FILE *fp)
 
 void msg_put(struct ptp_message *m)
 {
+	struct tlv_extra *extra;
+
 	m->refcnt--;
-	if (!m->refcnt) {
-		pool_stats.count++;
-		pool_debug("recycle", m);
-		TAILQ_INSERT_HEAD(&msg_pool, m, list);
+	if (m->refcnt) {
+		return;
 	}
+	pool_stats.count++;
+	pool_debug("recycle", m);
+	while ((extra = TAILQ_FIRST(&m->tlv_list)) != NULL) {
+		TAILQ_REMOVE(&m->tlv_list, extra, list);
+		tlv_extra_recycle(extra);
+	}
+	TAILQ_INSERT_HEAD(&msg_pool, m, list);
 }
 
 int msg_sots_missing(struct ptp_message *m)
