@@ -706,13 +706,13 @@ static int port_management_fill_response(struct port *target,
 					 struct ptp_message *rsp, int id)
 {
 	int datalen = 0, respond = 0;
-	struct management_tlv *tlv;
-	struct management_tlv_datum *mtd;
-	struct portDS *pds;
-	struct port_ds_np *pdsnp;
-	struct port_properties_np *ppn;
-	struct clock_description *desc;
 	struct mgmt_clock_description *cd;
+	struct management_tlv_datum *mtd;
+	struct clock_description *desc;
+	struct port_properties_np *ppn;
+	struct management_tlv *tlv;
+	struct port_ds_np *pdsnp;
+	struct portDS *pds;
 	uint8_t *buf;
 	uint16_t u16;
 
