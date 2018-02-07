@@ -233,7 +233,7 @@ struct ptp_message {
 	 * the layout of the TLV makes it difficult to access the data
 	 * directly from the message's buffer.
 	 */
-	struct tlv_extra last_tlv;
+	struct tlv_extra *last_tlv;
 };
 
 /**
@@ -257,6 +257,14 @@ static inline Boolean field_is_set(struct ptp_message *m, int index, Octet bit)
 {
 	return m->header.flagField[index] & bit ? TRUE : FALSE;
 }
+
+/**
+ * Place a TLV descriptor into a message's list of TLVs.
+ *
+ * @param msg     A message obtained using msg_allocate().
+ * @param extra   The TLV to be added to the list.
+ */
+void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra);
 
 /**
  * Obtain the transportSpecific field from a message.

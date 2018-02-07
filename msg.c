@@ -120,33 +120,43 @@ static void port_id_pre_send(struct PortIdentity *pid)
 	pid->portNumber = htons(pid->portNumber);
 }
 
-static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
+static int suffix_post_recv(struct ptp_message *msg, uint8_t *ptr, int len)
 {
-	int cnt, err;
-	struct TLV *tlv;
+	struct tlv_extra *extra;
+	int err;
 
 	if (!ptr)
 		return 0;
 
-	for (cnt = 0; len > sizeof(struct TLV); cnt++) {
-		tlv = (struct TLV *) ptr;
-		tlv->type = ntohs(tlv->type);
-		tlv->length = ntohs(tlv->length);
-		if (tlv->length % 2) {
+	while (len > sizeof(struct TLV)) {
+		extra = tlv_extra_alloc();
+		if (!extra) {
+			pr_err("failed to allocate TLV descriptor");
+			return -ENOMEM;
+		}
+		extra->tlv = (struct TLV *) ptr;
+		extra->tlv->type = ntohs(extra->tlv->type);
+		extra->tlv->length = ntohs(extra->tlv->length);
+		if (extra->tlv->length % 2) {
+			tlv_extra_recycle(extra);
 			return -EBADMSG;
 		}
 		len -= sizeof(struct TLV);
 		ptr += sizeof(struct TLV);
-		if (tlv->length > len) {
+		if (extra->tlv->length > len) {
+			tlv_extra_recycle(extra);
 			return -EBADMSG;
 		}
-		len -= tlv->length;
-		ptr += tlv->length;
-		err = tlv_post_recv(tlv, len > sizeof(struct TLV) ? NULL : last);
-		if (err)
+		len -= extra->tlv->length;
+		ptr += extra->tlv->length;
+		err = tlv_post_recv(extra);
+		if (err) {
+			tlv_extra_recycle(extra);
 			return err;
+		}
+		msg_tlv_attach(msg, extra);
 	}
-	return cnt;
+	return 0;
 }
 
 static void suffix_pre_send(uint8_t *ptr, int cnt, struct tlv_extra *last)
@@ -324,9 +334,9 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	if (msg_sots_missing(m))
 		return -ETIME;
 
-	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen, &m->last_tlv);
-	if (m->tlv_count < 0)
-		return m->tlv_count;
+	err = suffix_post_recv(m, suffix, cnt - pdulen);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -381,8 +391,15 @@ int msg_pre_send(struct ptp_message *m)
 	default:
 		return -1;
 	}
-	suffix_pre_send(suffix, m->tlv_count, &m->last_tlv);
+	suffix_pre_send(suffix, m->tlv_count, m->last_tlv);
 	return 0;
+}
+
+void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra)
+{
+	TAILQ_INSERT_TAIL(&msg->tlv_list, extra, list);
+	msg->tlv_count++;
+	msg->last_tlv = extra;
 }
 
 const char *msg_type_string(int type)

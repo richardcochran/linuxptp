@@ -711,10 +711,18 @@ static int port_management_fill_response(struct port *target,
 	struct port_properties_np *ppn;
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
+	struct tlv_extra *extra;
 	struct portDS *pds;
 	uint16_t u16;
 	uint8_t *buf;
 	int datalen;
+
+	extra = tlv_extra_alloc();
+	if (!extra) {
+		pr_err("failed to allocate TLV descriptor");
+		return 0;
+	}
+	extra->tlv = (struct TLV *) rsp->management.suffix;
 
 	tlv = (struct management_tlv *) rsp->management.suffix;
 	tlv->type = TLV_MANAGEMENT;
@@ -725,7 +733,7 @@ static int port_management_fill_response(struct port *target,
 		datalen = 0;
 		break;
 	case TLV_CLOCK_DESCRIPTION:
-		cd = &rsp->last_tlv.cd;
+		cd = &extra->cd;
 		buf = tlv->data;
 		cd->clockType = (UInteger16 *) buf;
 		buf += sizeof(*cd->clockType);
@@ -867,7 +875,7 @@ static int port_management_fill_response(struct port *target,
 	}
 	tlv->length = sizeof(tlv->id) + datalen;
 	rsp->header.messageLength += sizeof(*tlv) + datalen;
-	rsp->tlv_count = 1;
+	msg_tlv_attach(rsp, extra);
 
 	/* The caller can respond to this message. */
 	return 1;

@@ -256,12 +256,10 @@ void tlv_extra_recycle(struct tlv_extra *extra);
 
 /**
  * Converts recognized value sub-fields into host byte order.
- * @param tlv Pointer to a Type Length Value field.
- * @param extra Additional struct where data from tlv will be saved,
- * can be NULL.
+ * @param extra  TLV descriptor pointing to the protocol data.
  * @return Zero if successful, otherwise non-zero
  */
-int tlv_post_recv(struct TLV *tlv, struct tlv_extra *extra);
+int tlv_post_recv(struct tlv_extra *extra);
 
 /**
  * Converts recognized value sub-fields into network byte order.

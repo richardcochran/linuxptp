@@ -194,8 +194,10 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
 	struct mgmt_clock_description *cd;
+	struct tlv_extra *extra;
 	struct portDS *p;
 	struct port_ds_np *pnp;
+
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
 	}
@@ -209,6 +211,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	if (msg->tlv_count != 1) {
 		goto out;
 	}
+	extra = TAILQ_FIRST(&msg->tlv_list);
 	tlv = (struct TLV *) msg->management.suffix;
 	if (tlv->type == TLV_MANAGEMENT) {
 		fprintf(fp, "MANAGEMENT ");
@@ -226,7 +229,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	}
 	switch (mgt->id) {
 	case TLV_CLOCK_DESCRIPTION:
-		cd = &msg->last_tlv.cd;
+		cd = &extra->cd;
 		fprintf(fp, "CLOCK_DESCRIPTION "
 			IFMT "clockType             0x%hx"
 			IFMT "physicalLayerProtocol %s"
@@ -252,7 +255,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case TLV_USER_DESCRIPTION:
 		fprintf(fp, "USER_DESCRIPTION "
 			IFMT "userDescription  %s",
-			text2str(msg->last_tlv.cd.userDescription));
+			text2str(extra->cd.userDescription));
 		break;
 	case TLV_DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) mgt->data;

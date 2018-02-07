@@ -340,8 +340,16 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	struct subscribe_events_np *sen;
 	struct management_tlv *tlv;
 	struct time_status_np *tsn;
+	struct tlv_extra *extra;
 	struct PTPText *text;
 	int datalen = 0;
+
+	extra = tlv_extra_alloc();
+	if (!extra) {
+		pr_err("failed to allocate TLV descriptor");
+		return 0;
+	}
+	extra->tlv = (struct TLV *) rsp->management.suffix;
 
 	tlv = (struct management_tlv *) rsp->management.suffix;
 	tlv->type = TLV_MANAGEMENT;
@@ -448,7 +456,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	}
 	tlv->length = sizeof(tlv->id) + datalen;
 	rsp->header.messageLength += sizeof(*tlv) + datalen;
-	rsp->tlv_count = 1;
+	msg_tlv_attach(rsp, extra);
 
 	/* The caller can respond to this message. */
 	return 1;

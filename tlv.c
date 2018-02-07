@@ -444,15 +444,13 @@ void tlv_extra_recycle(struct tlv_extra *extra)
 	TAILQ_INSERT_HEAD(&tlv_pool, extra, list);
 }
 
-int tlv_post_recv(struct TLV *tlv, struct tlv_extra *extra)
+int tlv_post_recv(struct tlv_extra *extra)
 {
 	int result = 0;
 	struct management_tlv *mgt;
 	struct management_error_status *mes;
+	struct TLV *tlv = extra->tlv;
 	struct path_trace_tlv *ptt;
-	struct tlv_extra dummy_extra;
-	if (!extra)
-		extra = &dummy_extra;
 
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
