@@ -176,6 +176,14 @@ The default is 0 or disabled.
 The transport specific field. Must be in the range 0 to 255.
 The default is 0.
 .TP
+.B ignore_transport_specific
+By default, incoming messages are dropped if their transportSpecific
+field does not match the configured value.  However, many of
+transports specified in the 1588 standard mandate ignoring this field.
+Moreover, some equipment is known to set the reserved bits.
+Configuring this option as 1 causes this field to be ignored
+completely on receive.  The default is 0.
+.TP
 .B path_trace_enabled
 Enable the mechanism used to trace the route of the Announce messages.
 The default is 0 (disabled).

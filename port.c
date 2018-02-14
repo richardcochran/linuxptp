@@ -125,6 +125,7 @@ struct port {
 	int                 follow_up_info;
 	int                 freq_est_interval;
 	int                 hybrid_e2e;
+	int                 match_transport_specific;
 	int                 min_neighbor_prop_delay;
 	int                 path_trace_enabled;
 	int                 rx_timestamp_offset;
@@ -641,7 +642,8 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 	if (path_trace_ignore(p, m)) {
 		return 1;
 	}
-	if (msg_transport_specific(m) != p->transportSpecific) {
+	if (p->match_transport_specific &&
+	    msg_transport_specific(m) != p->transportSpecific) {
 		return 1;
 	}
 	if (pid_eq(&m->header.sourcePortIdentity, &p->portIdentity)) {
@@ -1489,6 +1491,7 @@ static int port_initialize(struct port *p)
 	p->syncReceiptTimeout      = config_get_int(cfg, p->name, "syncReceiptTimeout");
 	p->transportSpecific       = config_get_int(cfg, p->name, "transportSpecific");
 	p->transportSpecific     <<= 4;
+	p->match_transport_specific = !config_get_int(cfg, p->name, "ignore_transport_specific");
 	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
