@@ -64,9 +64,9 @@ static int hwts_init(int fd, const char *device, int rx_filter, int one_step)
 
 	if (memcmp(&cfg, &req, sizeof(cfg))) {
 
-		pr_warning("driver changed our HWTSTAMP options");
-		pr_warning("tx_type   %d not %d", cfg.tx_type, req.tx_type);
-		pr_warning("rx_filter %d not %d", cfg.rx_filter, req.rx_filter);
+		pr_debug("driver changed our HWTSTAMP options");
+		pr_debug("tx_type   %d not %d", cfg.tx_type, req.tx_type);
+		pr_debug("rx_filter %d not %d", cfg.rx_filter, req.rx_filter);
 
 		if (cfg.tx_type != req.tx_type ||
 		    (cfg.rx_filter != HWTSTAMP_FILTER_ALL &&
