@@ -453,6 +453,12 @@ the synchronized clock. When a larger offset is measured, a warning message
 will be printed and the servo will be reset. When set to 0, the sanity check is
 disabled. The default is 200000000 (20%).
 .TP
+.B initial_delay
+The initial path delay of the clock in nanoseconds used for synchronization of
+the clock before the delay is measured using the E2E or P2P delay mechanism. If
+set to 0, the clock will not be updated until the delay is measured.
+The default is 0.
+.TP
 .B ntpshm_segment
 The number of the SHM segment used by ntpshm servo.
 The default is 0.
