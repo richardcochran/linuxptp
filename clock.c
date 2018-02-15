@@ -110,6 +110,7 @@ struct clock {
 	tmv_t master_offset;
 	tmv_t path_delay;
 	tmv_t ingress_ts;
+	tmv_t initial_delay;
 	struct tsproc *tsproc;
 	struct freq_estimator fest;
 	struct time_status_np status;
@@ -1070,6 +1071,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		pr_err("Failed to create time stamp processor");
 		return NULL;
 	}
+	c->initial_delay = dbl_tmv(config_get_int(config, NULL, "initial_delay"));
 	c->nrr = 1.0;
 	c->stats_interval = config_get_int(config, NULL, "summary_interval");
 	c->stats.offset = stats_create();
@@ -1710,8 +1712,10 @@ static void handle_state_decision_event(struct clock *c)
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
 		tsproc_reset(c->tsproc, 1);
+		if (c->initial_delay)
+			tsproc_set_delay(c->tsproc, c->initial_delay);
 		c->ingress_ts = tmv_zero();
-		c->path_delay = 0;
+		c->path_delay = c->initial_delay;
 		c->nrr = 1.0;
 		fresh_best = 1;
 	}
