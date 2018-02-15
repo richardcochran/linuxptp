@@ -823,6 +823,7 @@ int clock_required_modes(struct clock *c)
 		break;
 	case TS_HARDWARE:
 	case TS_ONESTEP:
+	case TS_P2P1STEP:
 		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
 			SOF_TIMESTAMPING_RX_HARDWARE |
 			SOF_TIMESTAMPING_RAW_HARDWARE;
@@ -947,6 +948,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 				return NULL;
 			break;
 		case TS_ONESTEP:
+		case TS_P2P1STEP:
 			break;
 		}
 	}

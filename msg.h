@@ -61,6 +61,7 @@ enum timestamp_type {
 	TS_HARDWARE,
 	TS_LEGACY_HW,
 	TS_ONESTEP,
+	TS_P2P1STEP,
 };
 
 struct hw_timestamp {

@@ -54,6 +54,12 @@ enum _missing_hwtstamp_tx_types {
 };
 #endif
 
+#ifndef HAVE_ONESTEP_P2P
+enum {
+	HWTSTAMP_TX_ONESTEP_P2P = 3,
+};
+#endif
+
 #ifndef SIOCGHWTSTAMP
 #define SIOCGHWTSTAMP 0x89b1
 #endif
