@@ -335,13 +335,13 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 					  struct ptp_message *req,
 					  struct ptp_message *rsp, int id)
 {
-	int datalen = 0, respond = 0;
 	struct management_tlv *tlv;
 	struct management_tlv_datum *mtd;
 	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
 	struct subscribe_events_np *sen;
 	struct PTPText *text;
+	int datalen = 0;
 
 	tlv = (struct management_tlv *) rsp->management.suffix;
 	tlv->type = TLV_MANAGEMENT;
@@ -353,69 +353,57 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		text->length = c->desc.userDescription.length;
 		memcpy(text->text, c->desc.userDescription.text, text->length);
 		datalen = 1 + text->length;
-		respond = 1;
 		break;
 	case TLV_DEFAULT_DATA_SET:
 		memcpy(tlv->data, &c->dds, sizeof(c->dds));
 		datalen = sizeof(c->dds);
-		respond = 1;
 		break;
 	case TLV_CURRENT_DATA_SET:
 		memcpy(tlv->data, &c->cur, sizeof(c->cur));
 		datalen = sizeof(c->cur);
-		respond = 1;
 		break;
 	case TLV_PARENT_DATA_SET:
 		memcpy(tlv->data, &c->dad.pds, sizeof(c->dad.pds));
 		datalen = sizeof(c->dad.pds);
-		respond = 1;
 		break;
 	case TLV_TIME_PROPERTIES_DATA_SET:
 		memcpy(tlv->data, &c->tds, sizeof(c->tds));
 		datalen = sizeof(c->tds);
-		respond = 1;
 		break;
 	case TLV_PRIORITY1:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.priority1;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_PRIORITY2:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.priority2;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_DOMAIN:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.domainNumber;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_SLAVE_ONLY:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.flags & DDS_SLAVE_ONLY;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_CLOCK_ACCURACY:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.clockQuality.clockAccuracy;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_TRACEABILITY_PROPERTIES:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & (TIME_TRACEABLE|FREQ_TRACEABLE);
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_TIMESCALE_PROPERTIES:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & PTP_TIMESCALE;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
@@ -433,7 +421,6 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 			tsn->gmPresent = 1;
 		tsn->gmIdentity = c->dad.pds.grandmasterIdentity;
 		datalen = sizeof(*tsn);
-		respond = 1;
 		break;
 	case TLV_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) tlv->data;
@@ -442,7 +429,6 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		gsn->time_flags = c->time_flags;
 		gsn->time_source = c->time_source;
 		datalen = sizeof(*gsn);
-		respond = 1;
 		break;
 	case TLV_SUBSCRIBE_EVENTS_NP:
 		if (p != c->uds_port) {
@@ -451,19 +437,21 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		}
 		sen = (struct subscribe_events_np *)tlv->data;
 		clock_get_subscription(c, req, sen->bitmask, &sen->duration);
-		respond = 1;
 		break;
+	default:
+		/* The caller should *not* respond to this message. */
+		return 0;
 	}
-	if (respond) {
-		if (datalen % 2) {
-			tlv->data[datalen] = 0;
-			datalen++;
-		}
-		tlv->length = sizeof(tlv->id) + datalen;
-		rsp->header.messageLength += sizeof(*tlv) + datalen;
-		rsp->tlv_count = 1;
+	if (datalen % 2) {
+		tlv->data[datalen] = 0;
+		datalen++;
 	}
-	return respond;
+	tlv->length = sizeof(tlv->id) + datalen;
+	rsp->header.messageLength += sizeof(*tlv) + datalen;
+	rsp->tlv_count = 1;
+
+	/* The caller can respond to this message. */
+	return 1;
 }
 
 static int clock_management_get_response(struct clock *c, struct port *p,
