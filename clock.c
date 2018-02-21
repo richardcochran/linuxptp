@@ -335,11 +335,11 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 					  struct ptp_message *req,
 					  struct ptp_message *rsp, int id)
 {
-	struct management_tlv *tlv;
-	struct management_tlv_datum *mtd;
-	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
+	struct management_tlv_datum *mtd;
 	struct subscribe_events_np *sen;
+	struct management_tlv *tlv;
+	struct time_status_np *tsn;
 	struct PTPText *text;
 	int datalen = 0;
 
