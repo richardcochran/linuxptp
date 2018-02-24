@@ -435,13 +435,19 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 static int follow_up_info_append(struct port *p, struct ptp_message *m)
 {
 	struct follow_up_info_tlv *fui;
-	fui = (struct follow_up_info_tlv *) m->follow_up.suffix;
+	struct tlv_extra *extra;
+
+	extra = msg_tlv_append(m, sizeof(*fui));
+	if (!extra) {
+		return -1;
+	}
+	fui = (struct follow_up_info_tlv *) extra->tlv;
 	fui->type = TLV_ORGANIZATION_EXTENSION;
 	fui->length = sizeof(*fui) - sizeof(fui->type) - sizeof(fui->length);
 	memcpy(fui->id, ieee8021_id, sizeof(ieee8021_id));
 	fui->subtype[2] = 1;
-	m->tlv_count = 1;
-	return sizeof(*fui);
+
+	return 0;
 }
 
 static struct follow_up_info_tlv *follow_up_info_extract(struct ptp_message *m)
@@ -498,19 +504,28 @@ static int incapable_ignore(struct port *p, struct ptp_message *m)
 static int path_trace_append(struct port *p, struct ptp_message *m,
 			     struct parent_ds *dad)
 {
+	int length = 1 + dad->path_length, ptt_len, tlv_len;
 	struct path_trace_tlv *ptt;
-	int length = 1 + dad->path_length;
+	struct tlv_extra *extra;
 
 	if (length > PATH_TRACE_MAX) {
-		return 0;
+		return -1;
 	}
-	ptt = (struct path_trace_tlv *) m->announce.suffix;
+
+	ptt_len = length * sizeof(struct ClockIdentity);
+	tlv_len = ptt_len + sizeof(ptt->type) + sizeof(ptt->length);
+
+	extra = msg_tlv_append(m, tlv_len);
+	if (!extra) {
+		return -1;
+	}
+	ptt = (struct path_trace_tlv *) extra->tlv;
 	ptt->type = TLV_PATH_TRACE;
-	ptt->length = length * sizeof(struct ClockIdentity);
+	ptt->length = ptt_len;
 	memcpy(ptt->cid, dad->ptl, ptt->length);
 	ptt->cid[length - 1] = clock_identity(p->clock);
-	m->tlv_count = 1;
-	return ptt->length + sizeof(ptt->type) + sizeof(ptt->length);
+
+	return 0;
 }
 
 static int path_trace_ignore(struct port *p, struct ptp_message *m)
@@ -1272,10 +1287,10 @@ out:
 
 static int port_tx_announce(struct port *p)
 {
-	struct parent_ds *dad = clock_parent_ds(p->clock);
 	struct timePropertiesDS *tp = clock_time_properties(p->clock);
+	struct parent_ds *dad = clock_parent_ds(p->clock);
 	struct ptp_message *msg;
-	int err, pdulen;
+	int err;
 
 	if (!port_capable(p)) {
 		return 0;
@@ -1284,15 +1299,11 @@ static int port_tx_announce(struct port *p)
 	if (!msg)
 		return -1;
 
-	pdulen = sizeof(struct announce_msg);
 	msg->hwts.type = p->timestamping;
-
-	if (p->path_trace_enabled)
-		pdulen += path_trace_append(p, msg, dad);
 
 	msg->header.tsmt               = ANNOUNCE | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
-	msg->header.messageLength      = pdulen;
+	msg->header.messageLength      = sizeof(struct announce_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.announce++;
@@ -1309,6 +1320,10 @@ static int port_tx_announce(struct port *p)
 	msg->announce.stepsRemoved            = clock_steps_removed(p->clock);
 	msg->announce.timeSource              = tp->timeSource;
 
+	if (p->path_trace_enabled && path_trace_append(p, msg, dad)) {
+		pr_err("port %hu: append path trace failed", portnum(p));
+	}
+
 	err = port_prepare_and_send(p, msg, 0);
 	if (err)
 		pr_err("port %hu: send announce failed", portnum(p));
@@ -1319,8 +1334,9 @@ static int port_tx_announce(struct port *p)
 static int port_tx_sync(struct port *p)
 {
 	struct ptp_message *msg, *fup;
-	int err, pdulen;
-	int event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
+	int err, event;
+
+	event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
 
 	if (!port_capable(p)) {
 		return 0;
@@ -1337,12 +1353,11 @@ static int port_tx_sync(struct port *p)
 		return -1;
 	}
 
-	pdulen = sizeof(struct sync_msg);
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = SYNC | p->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
-	msg->header.messageLength      = pdulen;
+	msg->header.messageLength      = sizeof(struct sync_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.sync++;
@@ -1368,15 +1383,11 @@ static int port_tx_sync(struct port *p)
 	/*
 	 * Send the follow up message right away.
 	 */
-	pdulen = sizeof(struct follow_up_msg);
 	fup->hwts.type = p->timestamping;
-
-	if (p->follow_up_info)
-		pdulen += follow_up_info_append(p, fup);
 
 	fup->header.tsmt               = FOLLOW_UP | p->transportSpecific;
 	fup->header.ver                = PTP_VERSION;
-	fup->header.messageLength      = pdulen;
+	fup->header.messageLength      = sizeof(struct follow_up_msg);
 	fup->header.domainNumber       = clock_domain_number(p->clock);
 	fup->header.sourcePortIdentity = p->portIdentity;
 	fup->header.sequenceId         = p->seqnum.sync - 1;
@@ -1384,6 +1395,12 @@ static int port_tx_sync(struct port *p)
 	fup->header.logMessageInterval = p->logSyncInterval;
 
 	ts_to_timestamp(&msg->hwts.ts, &fup->follow_up.preciseOriginTimestamp);
+
+	if (p->follow_up_info && follow_up_info_append(p, fup)) {
+		pr_err("port %hu: append fup info failed", portnum(p));
+		err = -1;
+		goto out;
+	}
 
 	err = port_prepare_and_send(p, fup, 0);
 	if (err)
@@ -2524,24 +2541,28 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 int port_management_error(struct PortIdentity pid, struct port *ingress,
 			  struct ptp_message *req, Enumeration16 error_id)
 {
-	struct ptp_message *msg;
-	struct management_tlv *mgt;
 	struct management_error_status *mes;
-	int err = 0, pdulen;
+	struct management_tlv *mgt;
+	struct ptp_message *msg;
+	struct tlv_extra *extra;
+	int err = 0;
 
+	mgt = (struct management_tlv *) req->management.suffix;
 	msg = port_management_reply(pid, ingress, req);
 	if (!msg) {
 		return -1;
 	}
-	mgt = (struct management_tlv *) req->management.suffix;
-	mes = (struct management_error_status *) msg->management.suffix;
+
+	extra = msg_tlv_append(msg, sizeof(*mes));
+	if (!extra) {
+		msg_put(msg);
+		return -ENOMEM;
+	}
+	mes = (struct management_error_status *) extra->tlv;
 	mes->type = TLV_MANAGEMENT_ERROR_STATUS;
 	mes->length = 8;
 	mes->error = error_id;
 	mes->id = mgt->id;
-	pdulen = msg->header.messageLength + sizeof(*mes);
-	msg->header.messageLength = pdulen;
-	msg->tlv_count = 1;
 
 	err = port_prepare_and_send(ingress, msg, 0);
 	msg_put(msg);
@@ -2555,18 +2576,16 @@ port_management_construct(struct PortIdentity pid, struct port *ingress,
 			  UInteger8 boundaryHops, uint8_t action)
 {
 	struct ptp_message *msg;
-	int pdulen;
 
 	msg = msg_allocate();
 	if (!msg)
 		return NULL;
 
-	pdulen = sizeof(struct management_msg);
 	msg->hwts.type = ingress->timestamping;
 
 	msg->header.tsmt               = MANAGEMENT | ingress->transportSpecific;
 	msg->header.ver                = PTP_VERSION;
-	msg->header.messageLength      = pdulen;
+	msg->header.messageLength      = sizeof(struct management_msg);
 	msg->header.domainNumber       = clock_domain_number(ingress->clock);
 	msg->header.sourcePortIdentity = pid;
 	msg->header.sequenceId         = sequenceId;
