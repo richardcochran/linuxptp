@@ -228,12 +228,6 @@ struct ptp_message {
 	 * Contains the number of TLVs in the suffix.
 	 */
 	int tlv_count;
-	/**
-	 * Used to hold the data of the last TLV in the message when
-	 * the layout of the TLV makes it difficult to access the data
-	 * directly from the message's buffer.
-	 */
-	struct tlv_extra *last_tlv;
 };
 
 /**

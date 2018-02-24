@@ -462,7 +462,6 @@ void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra)
 {
 	TAILQ_INSERT_TAIL(&msg->tlv_list, extra, list);
 	msg->tlv_count++;
-	msg->last_tlv = extra;
 }
 
 const char *msg_type_string(int type)
