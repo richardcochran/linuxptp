@@ -274,21 +274,25 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 
 int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 {
-	int pdulen;
-	struct ptp_message *msg;
 	struct management_tlv *mgt;
+	struct ptp_message *msg;
+	struct tlv_extra *extra;
+	int pdulen;
+
 	msg = pmc_message(pmc, SET);
 	if (!msg) {
 		return -1;
 	}
-	mgt = (struct management_tlv *) msg->management.suffix;
+	extra = msg_tlv_append(msg, sizeof(*mgt) + datasize);
+	if (!extra) {
+		return -ENOMEM;
+	}
+	mgt = (struct management_tlv *) extra->tlv;
 	mgt->type = TLV_MANAGEMENT;
 	mgt->length = 2 + datasize;
 	mgt->id = id;
 	memcpy(mgt->data, data, datasize);
 	pdulen = msg->header.messageLength + sizeof(*mgt) + datasize;
-	msg->header.messageLength = pdulen;
-	msg->tlv_count = 1;
 	pmc_send(pmc, msg, pdulen);
 	msg_put(msg);
 
