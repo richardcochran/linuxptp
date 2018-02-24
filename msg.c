@@ -110,6 +110,68 @@ static int hdr_pre_send(struct ptp_header *m)
 	return 0;
 }
 
+static uint8_t *msg_suffix(struct ptp_message *m)
+{
+	switch (msg_type(m)) {
+	case SYNC:
+		return NULL;
+	case DELAY_REQ:
+		return NULL;
+	case PDELAY_REQ:
+		return NULL;
+	case PDELAY_RESP:
+		return NULL;
+	case FOLLOW_UP:
+		return m->follow_up.suffix;
+	case DELAY_RESP:
+		return m->delay_resp.suffix;
+	case PDELAY_RESP_FOLLOW_UP:
+		return m->pdelay_resp_fup.suffix;
+	case ANNOUNCE:
+		return m->announce.suffix;
+	case SIGNALING:
+		return m->signaling.suffix;
+	case MANAGEMENT:
+		return m->management.suffix;
+	}
+	return NULL;
+}
+
+static struct tlv_extra *msg_tlv_prepare(struct ptp_message *msg, int length)
+{
+	struct tlv_extra *extra, *tmp;
+	uint8_t *ptr;
+
+	/* Make sure this message type admits appended TLVs. */
+	ptr = msg_suffix(msg);
+	if (!ptr) {
+		pr_err("TLV on %s not allowed", msg_type_string(msg_type(msg)));
+		return NULL;
+	}
+	tmp = TAILQ_LAST(&msg->tlv_list, tlv_list);
+	if (tmp) {
+		ptr = (uint8_t *) tmp->tlv;
+		ptr += tmp->tlv->length;
+	}
+
+	/* Check that the message buffer has enough room for the new TLV. */
+	if ((unsigned long)(ptr + length) >
+	    (unsigned long)(&msg->tail_room)) {
+		pr_debug("cannot fit TLV of length %d into message", length);
+		return NULL;
+	}
+
+	/* Allocate a TLV descriptor and setup the pointer. */
+	extra = tlv_extra_alloc();
+	if (!extra) {
+		pr_err("failed to allocate TLV descriptor");
+		return NULL;
+	}
+	extra->tlv = (struct TLV *) ptr;
+
+	return extra;
+}
+
 static void port_id_post_recv(struct PortIdentity *pid)
 {
 	pid->portNumber = ntohs(pid->portNumber);
@@ -393,6 +455,18 @@ int msg_pre_send(struct ptp_message *m)
 	}
 	suffix_pre_send(suffix, m->tlv_count, m->last_tlv);
 	return 0;
+}
+
+struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length)
+{
+	struct tlv_extra *extra;
+
+	extra = msg_tlv_prepare(msg, length);
+	if (extra) {
+		msg->header.messageLength += length;
+		msg_tlv_attach(msg, extra);
+	}
+	return extra;
 }
 
 void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra)

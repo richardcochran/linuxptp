@@ -259,6 +259,22 @@ static inline Boolean field_is_set(struct ptp_message *m, int index, Octet bit)
 }
 
 /**
+ * Append a new TLV onto a message for transmission.
+ *
+ * This is a high level API designed for the transmit path.  The
+ * function allocates a new descriptor, initializes its .tlv field,
+ * and ensures that the TLV will fit into the message buffer.  This
+ * function increments the message length field by 'length' before
+ * returning.
+ *
+ * @param msg     A message obtained using msg_allocate().  At a mininum,
+ *                the message type and length fields must set by the caller.
+ * @param length  The length of the TLV to append.
+ * @return        A pointer to a TLV descriptor on success or NULL otherwise.
+ */
+struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length);
+
+/**
  * Place a TLV descriptor into a message's list of TLVs.
  *
  * @param msg     A message obtained using msg_allocate().
