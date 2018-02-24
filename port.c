@@ -453,16 +453,18 @@ static int follow_up_info_append(struct port *p, struct ptp_message *m)
 static struct follow_up_info_tlv *follow_up_info_extract(struct ptp_message *m)
 {
 	struct follow_up_info_tlv *f;
-	f = (struct follow_up_info_tlv *) m->follow_up.suffix;
+	struct tlv_extra *extra;
 
-	if (m->tlv_count != 1 ||
-	    f->type != TLV_ORGANIZATION_EXTENSION ||
-	    f->length != sizeof(*f) - sizeof(f->type) - sizeof(f->length) ||
-//	    memcmp(f->id, ieee8021_id, sizeof(ieee8021_id)) ||
-	    f->subtype[0] || f->subtype[1] || f->subtype[2] != 1) {
-		return NULL;
+	TAILQ_FOREACH(extra, &m->tlv_list, list) {
+		f = (struct follow_up_info_tlv *) extra->tlv;
+		if (f->type == TLV_ORGANIZATION_EXTENSION &&
+		    f->length == sizeof(*f) - sizeof(f->type) - sizeof(f->length) &&
+//		    memcmp(f->id, ieee8021_id, sizeof(ieee8021_id)) &&
+		    !f->subtype[0] && !f->subtype[1] && f->subtype[2] == 1) {
+			return f;
+		}
 	}
-	return f;
+	return NULL;
 }
 
 static void free_foreign_masters(struct port *p)
@@ -530,8 +532,9 @@ static int path_trace_append(struct port *p, struct ptp_message *m,
 
 static int path_trace_ignore(struct port *p, struct ptp_message *m)
 {
-	struct ClockIdentity cid;
 	struct path_trace_tlv *ptt;
+	struct ClockIdentity cid;
+	struct tlv_extra *extra;
 	int i, cnt;
 
 	if (!p->path_trace_enabled) {
@@ -540,18 +543,17 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 	if (msg_type(m) != ANNOUNCE) {
 		return 0;
 	}
-	if (m->tlv_count != 1) {
-		return 1;
-	}
-	ptt = (struct path_trace_tlv *) m->announce.suffix;
-	if (ptt->type != TLV_PATH_TRACE) {
-		return 1;
-	}
-	cnt = path_length(ptt);
-	cid = clock_identity(p->clock);
-	for (i = 0; i < cnt; i++) {
-		if (0 == memcmp(&ptt->cid[i], &cid, sizeof(cid)))
-			return 1;
+	TAILQ_FOREACH(extra, &m->tlv_list, list) {
+		ptt = (struct path_trace_tlv *) extra->tlv;
+		if (ptt->type != TLV_PATH_TRACE) {
+			continue;
+		}
+		cnt = path_length(ptt);
+		cid = clock_identity(p->clock);
+		for (i = 0; i < cnt; i++) {
+			if (0 == memcmp(&ptt->cid[i], &cid, sizeof(cid)))
+				return 1;
+		}
 	}
 	return 0;
 }
