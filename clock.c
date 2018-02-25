@@ -1599,7 +1599,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	if (c->free_running)
 		return clock_no_adjust(c, ingress, origin);
 
-	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
+	adj = servo_sample(c->servo, tmv_dbl(c->master_offset),
 			   tmv_to_nanoseconds(ingress), weight, &state);
 	c->servo_state = state;
 

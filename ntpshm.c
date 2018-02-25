@@ -74,12 +74,13 @@ static void ntpshm_destroy(struct servo *servo)
 }
 
 static double ntpshm_sample(struct servo *servo,
-			    int64_t offset,
+			    double xoffset,
 			    uint64_t local_ts,
 			    double weight,
 			    enum servo_state *state)
 {
 	struct ntpshm_servo *s = container_of(servo, struct ntpshm_servo, servo);
+	int64_t offset = (int64_t) xoffset;
 	uint64_t clock_ts = local_ts - offset;
 
 	s->shm->mode = 1;
