@@ -2,6 +2,7 @@
 /*.o
 /.version
 /hwstamp_ctl
+/nsm
 /phc2sys
 /pmc
 /ptp4l
