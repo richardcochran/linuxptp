@@ -86,7 +86,7 @@ struct port {
 	struct foreign_clock *best;
 	enum syfu_state syfu;
 	struct ptp_message *last_syncfup;
-	struct ptp_message *delay_req;
+	TAILQ_HEAD(delay_req, ptp_message) delay_req;
 	struct ptp_message *peer_delay_req;
 	struct ptp_message *peer_delay_resp;
 	struct ptp_message *peer_delay_fup;
@@ -143,6 +143,7 @@ struct port {
 
 #define NSEC2SEC 1000000000LL
 
+static void flush_delay_req(struct port *p);
 static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
 static void port_nrate_initialize(struct port *p);
@@ -1185,10 +1186,7 @@ static void port_synchronize(struct port *p,
 		break;
 	case SERVO_JUMP:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
-		if (p->delay_req) {
-			msg_put(p->delay_req);
-			p->delay_req = NULL;
-		}
+		flush_delay_req(p);
 		if (p->peer_delay_req) {
 			msg_put(p->peer_delay_req);
 			p->peer_delay_req = NULL;
@@ -1349,12 +1347,14 @@ static int port_delay_request(struct port *p)
 		p->peer_delay_fup = NULL;
 	}
 
-	if (p->delayMechanism == DM_P2P)
+	if (p->delayMechanism == DM_P2P) {
 		return port_pdelay_request(p);
+	}
 
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1383,10 +1383,8 @@ static int port_delay_request(struct port *p)
 		goto out;
 	}
 
-	if (p->delay_req)
-		msg_put(p->delay_req);
+	TAILQ_INSERT_HEAD(&p->delay_req, msg, list);
 
-	p->delay_req = msg;
 	return 0;
 out:
 	msg_put(msg);
@@ -1559,9 +1557,10 @@ static void flush_last_sync(struct port *p)
 
 static void flush_delay_req(struct port *p)
 {
-	if (p->delay_req) {
-		msg_put(p->delay_req);
-		p->delay_req = NULL;
+	struct ptp_message *m;
+	while ((m = TAILQ_FIRST(&p->delay_req)) != NULL) {
+		TAILQ_REMOVE(&p->delay_req, m, list);
+		msg_put(m);
 	}
 }
 
@@ -1832,32 +1831,44 @@ out:
 
 static void process_delay_resp(struct port *p, struct ptp_message *m)
 {
-	struct delay_req_msg *req;
 	struct delay_resp_msg *rsp = &m->delay_resp;
+	struct ptp_message *req, *obs;
 	struct PortIdentity master;
 	tmv_t c3, t3, t4, t4c;
 
-	if (!p->delay_req)
-		return;
-
 	master = clock_parent_identity(p->clock);
-	req = &p->delay_req->delay_req;
 
-	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE)
+	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE) {
 		return;
-	if (!pid_eq(&rsp->requestingPortIdentity, &req->hdr.sourcePortIdentity))
+	}
+	if (!pid_eq(&rsp->requestingPortIdentity, &p->portIdentity)) {
 		return;
-	if (rsp->hdr.sequenceId != ntohs(req->hdr.sequenceId))
+	}
+	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
 		return;
-	if (!pid_eq(&master, &m->header.sourcePortIdentity))
+	}
+	TAILQ_FOREACH(req, &p->delay_req, list) {
+		if (rsp->hdr.sequenceId == ntohs(req->delay_req.hdr.sequenceId)) {
+			break;
+		}
+	}
+	if (!req) {
 		return;
+	}
 
 	c3 = correction_to_tmv(m->header.correction);
-	t3 = timespec_to_tmv(p->delay_req->hwts.ts);
+	t3 = timespec_to_tmv(req->hwts.ts);
 	t4 = timestamp_to_tmv(m->ts.pdu);
 	t4c = tmv_sub(t4, c3);
 
 	clock_path_delay(p->clock, t3, t4c);
+
+	while ((obs = TAILQ_NEXT(req, list)) != NULL) {
+		TAILQ_REMOVE(&p->delay_req, obs, list);
+		msg_put(obs);
+	}
+	TAILQ_REMOVE(&p->delay_req, req, list);
+	msg_put(req);
 
 	if (p->logMinDelayReqInterval == rsp->hdr.logMessageInterval) {
 		return;
