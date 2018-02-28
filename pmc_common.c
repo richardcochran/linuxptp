@@ -145,7 +145,7 @@ static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
 	return msg;
 }
 
-static int pmc_send(struct pmc *pmc, struct ptp_message *msg, int pdulen)
+static int pmc_send(struct pmc *pmc, struct ptp_message *msg)
 {
 	int err;
 
@@ -266,7 +266,7 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 		cd->protocolAddress = (struct PortAddress *) buf;
 	}
 
-	pmc_send(pmc, msg, pdulen);
+	pmc_send(pmc, msg);
 	msg_put(msg);
 
 	return 0;
@@ -277,7 +277,6 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 	struct management_tlv *mgt;
 	struct ptp_message *msg;
 	struct tlv_extra *extra;
-	int pdulen;
 
 	msg = pmc_message(pmc, SET);
 	if (!msg) {
@@ -292,8 +291,7 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 	mgt->length = 2 + datasize;
 	mgt->id = id;
 	memcpy(mgt->data, data, datasize);
-	pdulen = msg->header.messageLength + sizeof(*mgt) + datasize;
-	pmc_send(pmc, msg, pdulen);
+	pmc_send(pmc, msg);
 	msg_put(msg);
 
 	return 0;
