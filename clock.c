@@ -518,7 +518,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 }
 
 static void clock_stats_update(struct clock_stats *s,
-			       int64_t offset, double freq)
+			       double offset, double freq)
 {
 	struct stats_result offset_stats, freq_stats, delay_stats;
 
@@ -588,8 +588,7 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	freq = (1.0 - ratio) * 1e9;
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats,
-				   tmv_to_nanoseconds(c->master_offset), freq);
+		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), freq);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
@@ -1515,8 +1514,7 @@ void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay,
-				tmv_to_nanoseconds(c->path_delay));
+		stats_add_value(c->stats.delay, tmv_dbl(c->path_delay));
 }
 
 void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
@@ -1529,7 +1527,7 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 	tsproc_up_ts(c->tsproc, req, rx);
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay, tmv_to_nanoseconds(ppd));
+		stats_add_value(c->stats.delay, tmv_dbl(ppd));
 }
 
 int clock_slave_only(struct clock *c)
@@ -1602,8 +1600,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->servo_state = state;
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats,
-				   tmv_to_nanoseconds(c->master_offset), adj);
+		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), adj);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
