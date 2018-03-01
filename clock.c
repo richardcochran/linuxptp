@@ -569,7 +569,7 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	 * By leaving out the path delay altogther, we can avoid the
 	 * error caused by our imperfect path delay measurement.
 	 */
-	if (!f->ingress1) {
+	if (tmv_is_zero(f->ingress1)) {
 		f->ingress1 = ingress;
 		f->origin1 = origin;
 		return state;
@@ -1697,7 +1697,7 @@ static void handle_state_decision_event(struct clock *c)
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
 		tsproc_reset(c->tsproc, 1);
-		if (c->initial_delay)
+		if (!tmv_is_zero(c->initial_delay))
 			tsproc_set_delay(c->tsproc, c->initial_delay);
 		c->ingress_ts = tmv_zero();
 		c->path_delay = c->initial_delay;

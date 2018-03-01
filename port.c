@@ -924,7 +924,7 @@ static void port_nrate_calculate(struct port *p, tmv_t origin, tmv_t ingress)
 	 */
 	p->pdr_missing = 0;
 
-	if (!n->ingress1) {
+	if (tmv_is_zero(n->ingress1)) {
 		n->ingress1 = ingress;
 		n->origin1 = origin;
 		return;
