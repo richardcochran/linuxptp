@@ -578,7 +578,7 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	if (f->count < f->max_count) {
 		return state;
 	}
-	if (tmv_eq(ingress, f->ingress1)) {
+	if (tmv_cmp(ingress, f->ingress1) == 0) {
 		pr_warning("bad timestamps in rate ratio calculation");
 		return state;
 	}

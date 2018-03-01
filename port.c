@@ -933,7 +933,7 @@ static void port_nrate_calculate(struct port *p, tmv_t origin, tmv_t ingress)
 	if (n->count < n->max_count) {
 		return;
 	}
-	if (tmv_eq(ingress, n->ingress1)) {
+	if (tmv_cmp(ingress, n->ingress1) == 0) {
 		pr_warning("bad timestamps in nrate calculation");
 		return;
 	}

@@ -60,7 +60,8 @@ static tmv_t mmedian_sample(struct filter *filter, tmv_t sample)
 
 	/* Insert index of the new value to order. */
 	for (i = m->cnt - 1; i > 0; i--) {
-		if (m->samples[m->order[i - 1]] <= m->samples[m->index])
+		if (tmv_cmp(m->samples[m->order[i - 1]],
+			    m->samples[m->index]) <= 0)
 			break;
 		m->order[i] = m->order[i - 1];
 	}
