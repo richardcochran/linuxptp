@@ -214,7 +214,7 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 		return 0;
 
 	if (weighting(tsp) && tsp->filtered_delay > 0 && raw_delay > 0) {
-		*weight = (double)tsp->filtered_delay / raw_delay;
+		*weight = tmv_dbl(tsp->filtered_delay) / tmv_dbl(raw_delay);
 		if (*weight > 1.0)
 			*weight = 1.0;
 	} else {
