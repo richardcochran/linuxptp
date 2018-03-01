@@ -103,6 +103,7 @@ static int raw_configure(int fd, int event, int index,
 
 	option = enable ? PACKET_ADD_MEMBERSHIP : PACKET_DROP_MEMBERSHIP;
 
+	memset(&mreq, 0, sizeof(mreq));
 	mreq.mr_ifindex = index;
 	mreq.mr_type = PACKET_MR_MULTICAST;
 	mreq.mr_alen = MAC_LEN;
