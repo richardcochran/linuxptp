@@ -178,7 +178,7 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 
 int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 {
-	tmv_t delay = 0, raw_delay = 0;
+	tmv_t delay = tmv_zero(), raw_delay = tmv_zero();
 
 	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2))
 		return -1;
