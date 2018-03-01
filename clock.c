@@ -407,7 +407,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		break;
 	case TLV_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
-		tsn->master_offset = c->master_offset;
+		tsn->master_offset = tmv_to_nanoseconds(c->master_offset);
 		tsn->ingress_time = tmv_to_nanoseconds(c->ingress_ts);
 		tsn->cumulativeScaledRateOffset =
 			(Integer32) (c->status.cumulativeScaledRateOffset +
