@@ -51,9 +51,9 @@ static inline tmv_t tmv_div(tmv_t a, int divisor)
 	return a / divisor;
 }
 
-static inline int tmv_eq(tmv_t a, tmv_t b)
+static inline int tmv_cmp(tmv_t a, tmv_t b)
 {
-	return a == b ? 1 : 0;
+	return a == b ? 0 : a > b ? +1 : -1;
 }
 
 static inline int tmv_is_zero(tmv_t x)
