@@ -133,7 +133,7 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 	t41 = tmv_sub(tsp->t4, tsp->t1);
 	delay = tmv_div(tmv_add(t23, t41), 2);
 
-	if (delay < 0) {
+	if (tmv_sign(delay) < 0) {
 		pr_debug("negative delay %10" PRId64,
 			 tmv_to_nanoseconds(delay));
 		pr_debug("delay = (t2 - t3) * rr + (t4 - t1)");
@@ -215,7 +215,8 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	if (!weight)
 		return 0;
 
-	if (weighting(tsp) && tsp->filtered_delay > 0 && raw_delay > 0) {
+	if (weighting(tsp) && tmv_sign(tsp->filtered_delay) > 0 &&
+	    tmv_sign(raw_delay) > 0) {
 		*weight = tmv_dbl(tsp->filtered_delay) / tmv_dbl(raw_delay);
 		if (*weight > 1.0)
 			*weight = 1.0;

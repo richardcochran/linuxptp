@@ -56,6 +56,11 @@ static inline int tmv_cmp(tmv_t a, tmv_t b)
 	return a == b ? 0 : a > b ? +1 : -1;
 }
 
+static inline int tmv_sign(tmv_t x)
+{
+	return x == 0 ? 0 : x > 0 ? +1 : -1;
+}
+
 static inline int tmv_is_zero(tmv_t x)
 {
 	return x == ((tmv_t) 0) ? 1 : 0;
