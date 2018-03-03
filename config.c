@@ -157,6 +157,8 @@ static struct config_enum timestamping_enu[] = {
 	{ "hardware", TS_HARDWARE  },
 	{ "software", TS_SOFTWARE  },
 	{ "legacy",   TS_LEGACY_HW },
+	{ "onestep",  TS_ONESTEP   },
+	{ "p2p1step", TS_P2P1STEP  },
 	{ NULL, 0 },
 };
 
@@ -755,6 +757,44 @@ char *config_get_string(struct config *cfg, const char *section,
 	}
 	pr_debug("config item %s.%s is '%s'", section, option, ci->val.s);
 	return ci->val.s;
+}
+
+int config_harmonize_onestep(struct config *cfg)
+{
+	enum timestamp_type tstype = config_get_int(cfg, NULL, "time_stamping");
+	int two_step_flag = config_get_int(cfg, NULL, "twoStepFlag");
+
+	switch (tstype) {
+	case TS_SOFTWARE:
+	case TS_LEGACY_HW:
+		if (!two_step_flag) {
+			pr_err("one step is only possible "
+			       "with hardware time stamping");
+			return -1;
+		}
+		break;
+	case TS_HARDWARE:
+		if (!two_step_flag) {
+			pr_debug("upgrading to one step time stamping "
+				 "in order to match the twoStepFlag");
+			if (config_set_int(cfg, "time_stamping", TS_ONESTEP)) {
+				return -1;
+			}
+		}
+		break;
+	case TS_ONESTEP:
+	case TS_P2P1STEP:
+		if (two_step_flag) {
+			pr_debug("one step mode implies twoStepFlag=0, "
+				 "clearing twoStepFlag to match");
+			if (config_set_int(cfg, "twoStepFlag", 0)) {
+				return -1;
+			}
+		}
+		break;
+	}
+
+	return 0;
 }
 
 int config_parse_option(struct config *cfg, const char *opt, const char *val)

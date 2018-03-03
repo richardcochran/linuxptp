@@ -73,6 +73,8 @@ int config_get_int(struct config *cfg, const char *section,
 char *config_get_string(struct config *cfg, const char *section,
 			const char *option);
 
+int config_harmonize_onestep(struct config *cfg);
+
 static inline struct option *config_long_options(struct config *cfg)
 {
 	return cfg->opts;
