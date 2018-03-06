@@ -2523,14 +2523,16 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		case -EBADMSG:
 			pr_err("port %hu: bad message", portnum(p));
 			break;
-		case -ETIME:
-			pr_err("port %hu: received %s without timestamp",
-				portnum(p), msg_type_string(msg_type(msg)));
-			break;
 		case -EPROTO:
 			pr_debug("port %hu: ignoring message", portnum(p));
 			break;
 		}
+		msg_put(msg);
+		return EV_NONE;
+	}
+	if (msg_sots_missing(msg)) {
+		pr_err("port %hu: received %s without timestamp",
+		       portnum(p), msg_type_string(msg_type(msg)));
 		msg_put(msg);
 		return EV_NONE;
 	}
