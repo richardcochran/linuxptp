@@ -133,11 +133,12 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 	t41 = tmv_sub(tsp->t4, tsp->t1);
 	delay = tmv_div(tmv_add(t23, t41), 2);
 
-	if (delay < 0) {
-		pr_debug("negative delay %10" PRId64, delay);
+	if (tmv_sign(delay) < 0) {
+		pr_debug("negative delay %10" PRId64,
+			 tmv_to_nanoseconds(delay));
 		pr_debug("delay = (t2 - t3) * rr + (t4 - t1)");
-		pr_debug("t2 - t3 = %+10" PRId64, t23);
-		pr_debug("t4 - t1 = %+10" PRId64, t41);
+		pr_debug("t2 - t3 = %+10" PRId64, tmv_to_nanoseconds(t23));
+		pr_debug("t4 - t1 = %+10" PRId64, tmv_to_nanoseconds(t41));
 		pr_debug("rr = %.9f", tsp->clock_rate_ratio);
 	}
 
@@ -156,7 +157,8 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 	tsp->filtered_delay_valid = 1;
 
 	pr_debug("delay   filtered %10" PRId64 "   raw %10" PRId64,
-		 tsp->filtered_delay, raw_delay);
+		 tmv_to_nanoseconds(tsp->filtered_delay),
+		 tmv_to_nanoseconds(raw_delay));
 
 	if (!delay) {
 		return 0;
@@ -178,7 +180,7 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 
 int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 {
-	tmv_t delay = 0, raw_delay = 0;
+	tmv_t delay = tmv_zero(), raw_delay = tmv_zero();
 
 	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2))
 		return -1;
@@ -213,8 +215,9 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	if (!weight)
 		return 0;
 
-	if (weighting(tsp) && tsp->filtered_delay > 0 && raw_delay > 0) {
-		*weight = (double)tsp->filtered_delay / raw_delay;
+	if (weighting(tsp) && tmv_sign(tsp->filtered_delay) > 0 &&
+	    tmv_sign(raw_delay) > 0) {
+		*weight = tmv_dbl(tsp->filtered_delay) / tmv_dbl(raw_delay);
 		if (*weight > 1.0)
 			*weight = 1.0;
 	} else {

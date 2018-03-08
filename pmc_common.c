@@ -314,6 +314,7 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 			break;
 		case -EPROTO:
 			pr_debug("ignoring message");
+			break;
 		}
 		goto failed;
 	}

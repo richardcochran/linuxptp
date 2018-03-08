@@ -58,7 +58,7 @@ static void mave_reset(struct filter *filter)
 
 	m->cnt = 0;
 	m->index = 0;
-	m->sum = 0;
+	m->sum = tmv_zero();
 	memset(m->val, 0, m->len * sizeof(*m->val));
 }
 

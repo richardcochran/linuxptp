@@ -233,19 +233,19 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "physicalAddress       %s"
 			IFMT "protocolAddress       %hu %s",
 			align16(cd->clockType),
-                        text2str(cd->physicalLayerProtocol),
+			text2str(cd->physicalLayerProtocol),
 			bin2str(cd->physicalAddress->address,
-                                align16(&cd->physicalAddress->length)),
+				align16(&cd->physicalAddress->length)),
 			align16(&cd->protocolAddress->networkProtocol),
 			portaddr2str(cd->protocolAddress));
 		fprintf(fp, IFMT "manufacturerId        %s"
-                        IFMT "productDescription    %s",
+			IFMT "productDescription    %s",
 			bin2str(cd->manufacturerIdentity, OUI_LEN),
 			text2str(cd->productDescription));
 		fprintf(fp, IFMT "revisionData          %s",
-                        text2str(cd->revisionData));
+			text2str(cd->revisionData));
 		fprintf(fp, IFMT "userDescription       %s"
-                        IFMT "profileId             %s",
+			IFMT "profileId             %s",
 			text2str(cd->userDescription),
 			bin2str(cd->profileIdentity, PROFILE_ID_LEN));
 		break;

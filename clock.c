@@ -335,13 +335,13 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 					  struct ptp_message *req,
 					  struct ptp_message *rsp, int id)
 {
-	int datalen = 0, respond = 0;
-	struct management_tlv *tlv;
-	struct management_tlv_datum *mtd;
-	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
+	struct management_tlv_datum *mtd;
 	struct subscribe_events_np *sen;
+	struct management_tlv *tlv;
+	struct time_status_np *tsn;
 	struct PTPText *text;
+	int datalen = 0;
 
 	tlv = (struct management_tlv *) rsp->management.suffix;
 	tlv->type = TLV_MANAGEMENT;
@@ -353,73 +353,61 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		text->length = c->desc.userDescription.length;
 		memcpy(text->text, c->desc.userDescription.text, text->length);
 		datalen = 1 + text->length;
-		respond = 1;
 		break;
 	case TLV_DEFAULT_DATA_SET:
 		memcpy(tlv->data, &c->dds, sizeof(c->dds));
 		datalen = sizeof(c->dds);
-		respond = 1;
 		break;
 	case TLV_CURRENT_DATA_SET:
 		memcpy(tlv->data, &c->cur, sizeof(c->cur));
 		datalen = sizeof(c->cur);
-		respond = 1;
 		break;
 	case TLV_PARENT_DATA_SET:
 		memcpy(tlv->data, &c->dad.pds, sizeof(c->dad.pds));
 		datalen = sizeof(c->dad.pds);
-		respond = 1;
 		break;
 	case TLV_TIME_PROPERTIES_DATA_SET:
 		memcpy(tlv->data, &c->tds, sizeof(c->tds));
 		datalen = sizeof(c->tds);
-		respond = 1;
 		break;
 	case TLV_PRIORITY1:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.priority1;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_PRIORITY2:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.priority2;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_DOMAIN:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.domainNumber;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_SLAVE_ONLY:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.flags & DDS_SLAVE_ONLY;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_CLOCK_ACCURACY:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->dds.clockQuality.clockAccuracy;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_TRACEABILITY_PROPERTIES:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & (TIME_TRACEABLE|FREQ_TRACEABLE);
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_TIMESCALE_PROPERTIES:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & PTP_TIMESCALE;
 		datalen = sizeof(*mtd);
-		respond = 1;
 		break;
 	case TLV_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
-		tsn->master_offset = c->master_offset;
+		tsn->master_offset = tmv_to_nanoseconds(c->master_offset);
 		tsn->ingress_time = tmv_to_nanoseconds(c->ingress_ts);
 		tsn->cumulativeScaledRateOffset =
 			(Integer32) (c->status.cumulativeScaledRateOffset +
@@ -433,7 +421,6 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 			tsn->gmPresent = 1;
 		tsn->gmIdentity = c->dad.pds.grandmasterIdentity;
 		datalen = sizeof(*tsn);
-		respond = 1;
 		break;
 	case TLV_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) tlv->data;
@@ -442,7 +429,6 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		gsn->time_flags = c->time_flags;
 		gsn->time_source = c->time_source;
 		datalen = sizeof(*gsn);
-		respond = 1;
 		break;
 	case TLV_SUBSCRIBE_EVENTS_NP:
 		if (p != c->uds_port) {
@@ -451,19 +437,21 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		}
 		sen = (struct subscribe_events_np *)tlv->data;
 		clock_get_subscription(c, req, sen->bitmask, &sen->duration);
-		respond = 1;
 		break;
+	default:
+		/* The caller should *not* respond to this message. */
+		return 0;
 	}
-	if (respond) {
-		if (datalen % 2) {
-			tlv->data[datalen] = 0;
-			datalen++;
-		}
-		tlv->length = sizeof(tlv->id) + datalen;
-		rsp->header.messageLength += sizeof(*tlv) + datalen;
-		rsp->tlv_count = 1;
+	if (datalen % 2) {
+		tlv->data[datalen] = 0;
+		datalen++;
 	}
-	return respond;
+	tlv->length = sizeof(tlv->id) + datalen;
+	rsp->header.messageLength += sizeof(*tlv) + datalen;
+	rsp->tlv_count = 1;
+
+	/* The caller can respond to this message. */
+	return 1;
 }
 
 static int clock_management_get_response(struct clock *c, struct port *p,
@@ -530,7 +518,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 }
 
 static void clock_stats_update(struct clock_stats *s,
-			       int64_t offset, double freq)
+			       double offset, double freq)
 {
 	struct stats_result offset_stats, freq_stats, delay_stats;
 
@@ -581,7 +569,7 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	 * By leaving out the path delay altogther, we can avoid the
 	 * error caused by our imperfect path delay measurement.
 	 */
-	if (!f->ingress1) {
+	if (tmv_is_zero(f->ingress1)) {
 		f->ingress1 = ingress;
 		f->origin1 = origin;
 		return state;
@@ -590,7 +578,7 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	if (f->count < f->max_count) {
 		return state;
 	}
-	if (tmv_eq(ingress, f->ingress1)) {
+	if (tmv_cmp(ingress, f->ingress1) == 0) {
 		pr_warning("bad timestamps in rate ratio calculation");
 		return state;
 	}
@@ -600,8 +588,7 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	freq = (1.0 - ratio) * 1e9;
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats,
-				   tmv_to_nanoseconds(c->master_offset), freq);
+		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), freq);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
@@ -1527,8 +1514,7 @@ void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay,
-				tmv_to_nanoseconds(c->path_delay));
+		stats_add_value(c->stats.delay, tmv_dbl(c->path_delay));
 }
 
 void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
@@ -1541,7 +1527,7 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 	tsproc_up_ts(c->tsproc, req, rx);
 
 	if (c->stats.delay)
-		stats_add_value(c->stats.delay, tmv_to_nanoseconds(ppd));
+		stats_add_value(c->stats.delay, tmv_dbl(ppd));
 }
 
 int clock_slave_only(struct clock *c)
@@ -1614,8 +1600,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->servo_state = state;
 
 	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats,
-				   tmv_to_nanoseconds(c->master_offset), adj);
+		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), adj);
 	} else {
 		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
 			"path delay %9" PRId64,
@@ -1712,7 +1697,7 @@ static void handle_state_decision_event(struct clock *c)
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
 		tsproc_reset(c->tsproc, 1);
-		if (c->initial_delay)
+		if (!tmv_is_zero(c->initial_delay))
 			tsproc_set_delay(c->tsproc, c->initial_delay);
 		c->ingress_ts = tmv_zero();
 		c->path_delay = c->initial_delay;
