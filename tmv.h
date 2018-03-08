@@ -39,71 +39,93 @@
  * the fractional nanosecond parts of the correction fields, if and
  * when people start asking for them.
  */
-typedef int64_t tmv_t;
+typedef struct {
+	int64_t ns;
+} tmv_t;
 
 static inline tmv_t tmv_add(tmv_t a, tmv_t b)
 {
-	return a + b;
+	tmv_t t;
+	t.ns = a.ns + b.ns;
+	return t;
 }
 
 static inline tmv_t tmv_div(tmv_t a, int divisor)
 {
-	return a / divisor;
+	tmv_t t;
+	t.ns = a.ns / divisor;
+	return t;
 }
 
-static inline int tmv_eq(tmv_t a, tmv_t b)
+static inline int tmv_cmp(tmv_t a, tmv_t b)
 {
-	return a == b ? 1 : 0;
+	return a.ns == b.ns ? 0 : a.ns > b.ns ? +1 : -1;
+}
+
+static inline int tmv_sign(tmv_t x)
+{
+	return x.ns == 0 ? 0 : x.ns > 0 ? +1 : -1;
 }
 
 static inline int tmv_is_zero(tmv_t x)
 {
-	return x == ((tmv_t) 0) ? 1 : 0;
+	return x.ns == 0 ? 1 : 0;
 }
 
 static inline tmv_t tmv_sub(tmv_t a, tmv_t b)
 {
-	return a - b;
+	tmv_t t;
+	t.ns = a.ns - b.ns;
+	return t;
 }
 
 static inline tmv_t tmv_zero(void)
 {
-	return (tmv_t) 0;
+	tmv_t t = { 0 };
+	return t;
 }
 
 static inline tmv_t correction_to_tmv(Integer64 c)
 {
-	return c >> 16;
+	tmv_t t;
+	t.ns = (c >> 16);
+	return t;
 }
 
 static inline double tmv_dbl(tmv_t x)
 {
-	return (double) x;
+	return (double) x.ns;
 }
 
 static inline tmv_t dbl_tmv(double x)
 {
-	return (tmv_t) x;
+	tmv_t t;
+	t.ns = x;
+	return t;
 }
 
 static inline int64_t tmv_to_nanoseconds(tmv_t x)
 {
-	return x;
+	return x.ns;
 }
 
 static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
 {
-	return x << 16;
+	return x.ns << 16;
 }
 
 static inline tmv_t timespec_to_tmv(struct timespec ts)
 {
-	return ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+	tmv_t t;
+	t.ns = ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+	return t;
 }
 
 static inline tmv_t timestamp_to_tmv(struct timestamp ts)
 {
-	return ts.sec * NS_PER_SEC + ts.nsec;
+	tmv_t t;
+	t.ns = ts.sec * NS_PER_SEC + ts.nsec;
+	return t;
 }
 
 #endif

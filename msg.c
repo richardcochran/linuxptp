@@ -32,6 +32,8 @@
 #define VERSION_MASK 0x0f
 #define VERSION      0x02
 
+int assume_two_step = 0;
+
 /*
  * Head room fits a VLAN Ethernet header, and 'msg' is 64 bit aligned.
  */

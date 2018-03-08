@@ -36,8 +36,6 @@
 #include "util.h"
 #include "version.h"
 
-int assume_two_step = 0;
-
 static void usage(char *progname)
 {
 	fprintf(stderr,

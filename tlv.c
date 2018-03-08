@@ -43,7 +43,8 @@ static void scaled_ns_h2n(ScaledNs *sns)
 	sns->fractional_nanoseconds = htons(sns->fractional_nanoseconds);
 }
 
-static uint16_t flip16(uint16_t *p) {
+static uint16_t flip16(uint16_t *p)
+{
 	uint16_t v;
 	memcpy(&v, p, sizeof(v));
 	v = htons(v);
