@@ -145,7 +145,7 @@ static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
 	return msg;
 }
 
-static int pmc_send(struct pmc *pmc, struct ptp_message *msg, int pdulen)
+static int pmc_send(struct pmc *pmc, struct ptp_message *msg)
 {
 	int err;
 
@@ -228,6 +228,8 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 	int datalen, pdulen;
 	struct ptp_message *msg;
 	struct management_tlv *mgt;
+	struct tlv_extra *extra;
+
 	msg = pmc_message(pmc, GET);
 	if (!msg) {
 		return -1;
@@ -239,14 +241,21 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 	mgt->id = id;
 	pdulen = msg->header.messageLength + sizeof(*mgt) + datalen;
 	msg->header.messageLength = pdulen;
-	msg->tlv_count = 1;
+
+	extra = tlv_extra_alloc();
+	if (!extra) {
+		pr_err("failed to allocate TLV descriptor");
+		return -ENOMEM;
+	}
+	extra->tlv = (struct TLV *) msg->management.suffix;
+	msg_tlv_attach(msg, extra);
 
 	if (id == TLV_CLOCK_DESCRIPTION && !pmc->zero_length_gets) {
 		/*
 		 * Make sure the tlv_extra pointers dereferenced in
 		 * mgt_pre_send() do point to something.
 		 */
-		struct mgmt_clock_description *cd = &msg->last_tlv.cd;
+		struct mgmt_clock_description *cd = &extra->cd;
 		uint8_t *buf = mgt->data;
 		cd->clockType = (UInteger16 *) buf;
 		buf += sizeof(*cd->clockType);
@@ -257,7 +266,7 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 		cd->protocolAddress = (struct PortAddress *) buf;
 	}
 
-	pmc_send(pmc, msg, pdulen);
+	pmc_send(pmc, msg);
 	msg_put(msg);
 
 	return 0;
@@ -265,22 +274,24 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 
 int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 {
-	int pdulen;
-	struct ptp_message *msg;
 	struct management_tlv *mgt;
+	struct ptp_message *msg;
+	struct tlv_extra *extra;
+
 	msg = pmc_message(pmc, SET);
 	if (!msg) {
 		return -1;
 	}
-	mgt = (struct management_tlv *) msg->management.suffix;
+	extra = msg_tlv_append(msg, sizeof(*mgt) + datasize);
+	if (!extra) {
+		return -ENOMEM;
+	}
+	mgt = (struct management_tlv *) extra->tlv;
 	mgt->type = TLV_MANAGEMENT;
 	mgt->length = 2 + datasize;
 	mgt->id = id;
 	memcpy(mgt->data, data, datasize);
-	pdulen = msg->header.messageLength + sizeof(*mgt) + datasize;
-	msg->header.messageLength = pdulen;
-	msg->tlv_count = 1;
-	pmc_send(pmc, msg, pdulen);
+	pmc_send(pmc, msg);
 	msg_put(msg);
 
 	return 0;
