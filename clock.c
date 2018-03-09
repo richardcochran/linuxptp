@@ -340,8 +340,16 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	struct subscribe_events_np *sen;
 	struct management_tlv *tlv;
 	struct time_status_np *tsn;
+	struct tlv_extra *extra;
 	struct PTPText *text;
 	int datalen = 0;
+
+	extra = tlv_extra_alloc();
+	if (!extra) {
+		pr_err("failed to allocate TLV descriptor");
+		return 0;
+	}
+	extra->tlv = (struct TLV *) rsp->management.suffix;
 
 	tlv = (struct management_tlv *) rsp->management.suffix;
 	tlv->type = TLV_MANAGEMENT;
@@ -448,7 +456,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	}
 	tlv->length = sizeof(tlv->id) + datalen;
 	rsp->header.messageLength += sizeof(*tlv) + datalen;
-	rsp->tlv_count = 1;
+	msg_tlv_attach(rsp, extra);
 
 	/* The caller can respond to this message. */
 	return 1;
@@ -750,6 +758,11 @@ UInteger8 clock_class(struct clock *c)
 struct config *clock_config(struct clock *c)
 {
 	return c->config;
+}
+
+struct currentDS *clock_current_dataset(struct clock *c)
+{
+	return &c->cur;
 }
 
 static int clock_add_port(struct clock *c, int phc_index,
@@ -1272,6 +1285,11 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 			msg->management.boundaryHops++;
 		}
 	}
+}
+
+tmv_t clock_ingress_time(struct clock *c)
+{
+	return c->ingress_ts;
 }
 
 int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)

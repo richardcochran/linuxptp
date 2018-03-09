@@ -110,6 +110,68 @@ static int hdr_pre_send(struct ptp_header *m)
 	return 0;
 }
 
+static uint8_t *msg_suffix(struct ptp_message *m)
+{
+	switch (msg_type(m)) {
+	case SYNC:
+		return NULL;
+	case DELAY_REQ:
+		return m->delay_req.suffix;
+	case PDELAY_REQ:
+		return NULL;
+	case PDELAY_RESP:
+		return NULL;
+	case FOLLOW_UP:
+		return m->follow_up.suffix;
+	case DELAY_RESP:
+		return m->delay_resp.suffix;
+	case PDELAY_RESP_FOLLOW_UP:
+		return m->pdelay_resp_fup.suffix;
+	case ANNOUNCE:
+		return m->announce.suffix;
+	case SIGNALING:
+		return m->signaling.suffix;
+	case MANAGEMENT:
+		return m->management.suffix;
+	}
+	return NULL;
+}
+
+static struct tlv_extra *msg_tlv_prepare(struct ptp_message *msg, int length)
+{
+	struct tlv_extra *extra, *tmp;
+	uint8_t *ptr;
+
+	/* Make sure this message type admits appended TLVs. */
+	ptr = msg_suffix(msg);
+	if (!ptr) {
+		pr_err("TLV on %s not allowed", msg_type_string(msg_type(msg)));
+		return NULL;
+	}
+	tmp = TAILQ_LAST(&msg->tlv_list, tlv_list);
+	if (tmp) {
+		ptr = (uint8_t *) tmp->tlv;
+		ptr += tmp->tlv->length;
+	}
+
+	/* Check that the message buffer has enough room for the new TLV. */
+	if ((unsigned long)(ptr + length) >
+	    (unsigned long)(&msg->tail_room)) {
+		pr_debug("cannot fit TLV of length %d into message", length);
+		return NULL;
+	}
+
+	/* Allocate a TLV descriptor and setup the pointer. */
+	extra = tlv_extra_alloc();
+	if (!extra) {
+		pr_err("failed to allocate TLV descriptor");
+		return NULL;
+	}
+	extra->tlv = (struct TLV *) ptr;
+
+	return extra;
+}
+
 static void port_id_post_recv(struct PortIdentity *pid)
 {
 	pid->portNumber = ntohs(pid->portNumber);
@@ -120,47 +182,53 @@ static void port_id_pre_send(struct PortIdentity *pid)
 	pid->portNumber = htons(pid->portNumber);
 }
 
-static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
+static int suffix_post_recv(struct ptp_message *msg, uint8_t *ptr, int len)
 {
-	int cnt, err;
-	struct TLV *tlv;
+	struct tlv_extra *extra;
+	int err;
 
 	if (!ptr)
 		return 0;
 
-	for (cnt = 0; len > sizeof(struct TLV); cnt++) {
-		tlv = (struct TLV *) ptr;
-		tlv->type = ntohs(tlv->type);
-		tlv->length = ntohs(tlv->length);
-		if (tlv->length % 2) {
+	while (len >= sizeof(struct TLV)) {
+		extra = tlv_extra_alloc();
+		if (!extra) {
+			pr_err("failed to allocate TLV descriptor");
+			return -ENOMEM;
+		}
+		extra->tlv = (struct TLV *) ptr;
+		extra->tlv->type = ntohs(extra->tlv->type);
+		extra->tlv->length = ntohs(extra->tlv->length);
+		if (extra->tlv->length % 2) {
+			tlv_extra_recycle(extra);
 			return -EBADMSG;
 		}
 		len -= sizeof(struct TLV);
 		ptr += sizeof(struct TLV);
-		if (tlv->length > len) {
+		if (extra->tlv->length > len) {
+			tlv_extra_recycle(extra);
 			return -EBADMSG;
 		}
-		len -= tlv->length;
-		ptr += tlv->length;
-		err = tlv_post_recv(tlv, len > sizeof(struct TLV) ? NULL : last);
-		if (err)
+		len -= extra->tlv->length;
+		ptr += extra->tlv->length;
+		err = tlv_post_recv(extra);
+		if (err) {
+			tlv_extra_recycle(extra);
 			return err;
+		}
+		msg_tlv_attach(msg, extra);
 	}
-	return cnt;
+	return 0;
 }
 
-static void suffix_pre_send(uint8_t *ptr, int cnt, struct tlv_extra *last)
+static void suffix_pre_send(struct ptp_message *msg)
 {
-	int i;
+	struct tlv_extra *extra;
 	struct TLV *tlv;
 
-	if (!ptr)
-		return;
-
-	for (i = 0; i < cnt; i++) {
-		tlv = (struct TLV *) ptr;
-		tlv_pre_send(tlv, i == cnt - 1 ? last : NULL);
-		ptr += sizeof(struct TLV) + tlv->length;
+	TAILQ_FOREACH(extra, &msg->tlv_list, list) {
+		tlv = extra->tlv;
+		tlv_pre_send(tlv, extra);
 		tlv->type = htons(tlv->type);
 		tlv->length = htons(tlv->length);
 	}
@@ -204,6 +272,7 @@ struct ptp_message *msg_allocate(void)
 	if (m) {
 		memset(m, 0, sizeof(*m));
 		m->refcnt = 1;
+		TAILQ_INIT(&m->tlv_list);
 	}
 
 	return m;
@@ -213,6 +282,9 @@ void msg_cleanup(void)
 {
 	struct message_storage *s;
 	struct ptp_message *m;
+
+	tlv_extra_cleanup();
+
 	while ((m = TAILQ_FIRST(&msg_pool)) != NULL) {
 		TAILQ_REMOVE(&msg_pool, m, list);
 		s = container_of(m, struct message_storage, msg);
@@ -282,6 +354,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		timestamp_post_recv(m, &m->sync.originTimestamp);
 		break;
 	case DELAY_REQ:
+		suffix = m->delay_req.suffix;
 		break;
 	case PDELAY_REQ:
 		break;
@@ -320,9 +393,9 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	if (msg_sots_missing(m))
 		return -ETIME;
 
-	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen, &m->last_tlv);
-	if (m->tlv_count < 0)
-		return m->tlv_count;
+	err = suffix_post_recv(m, suffix, cnt - pdulen);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -330,7 +403,6 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 int msg_pre_send(struct ptp_message *m)
 {
 	int type;
-	uint8_t *suffix = NULL;
 
 	if (hdr_pre_send(&m->header))
 		return -1;
@@ -350,35 +422,47 @@ int msg_pre_send(struct ptp_message *m)
 		break;
 	case FOLLOW_UP:
 		timestamp_pre_send(&m->follow_up.preciseOriginTimestamp);
-		suffix = m->follow_up.suffix;
 		break;
 	case DELAY_RESP:
 		timestamp_pre_send(&m->delay_resp.receiveTimestamp);
 		m->delay_resp.requestingPortIdentity.portNumber =
 			htons(m->delay_resp.requestingPortIdentity.portNumber);
-		suffix = m->delay_resp.suffix;
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
 		timestamp_pre_send(&m->pdelay_resp_fup.responseOriginTimestamp);
 		port_id_pre_send(&m->pdelay_resp_fup.requestingPortIdentity);
-		suffix = m->pdelay_resp_fup.suffix;
 		break;
 	case ANNOUNCE:
 		announce_pre_send(&m->announce);
-		suffix = m->announce.suffix;
 		break;
 	case SIGNALING:
-		suffix = m->signaling.suffix;
 		break;
 	case MANAGEMENT:
 		port_id_pre_send(&m->management.targetPortIdentity);
-		suffix = m->management.suffix;
 		break;
 	default:
 		return -1;
 	}
-	suffix_pre_send(suffix, m->tlv_count, &m->last_tlv);
+	suffix_pre_send(m);
 	return 0;
+}
+
+struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length)
+{
+	struct tlv_extra *extra;
+
+	extra = msg_tlv_prepare(msg, length);
+	if (extra) {
+		msg->header.messageLength += length;
+		msg_tlv_attach(msg, extra);
+	}
+	return extra;
+}
+
+void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra)
+{
+	TAILQ_INSERT_TAIL(&msg->tlv_list, extra, list);
+	msg->tlv_count++;
 }
 
 const char *msg_type_string(int type)
@@ -444,12 +528,19 @@ void msg_print(struct ptp_message *m, FILE *fp)
 
 void msg_put(struct ptp_message *m)
 {
+	struct tlv_extra *extra;
+
 	m->refcnt--;
-	if (!m->refcnt) {
-		pool_stats.count++;
-		pool_debug("recycle", m);
-		TAILQ_INSERT_HEAD(&msg_pool, m, list);
+	if (m->refcnt) {
+		return;
 	}
+	pool_stats.count++;
+	pool_debug("recycle", m);
+	while ((extra = TAILQ_FIRST(&m->tlv_list)) != NULL) {
+		TAILQ_REMOVE(&m->tlv_list, extra, list);
+		tlv_extra_recycle(extra);
+	}
+	TAILQ_INSERT_HEAD(&msg_pool, m, list);
 }
 
 int msg_sots_missing(struct ptp_message *m)

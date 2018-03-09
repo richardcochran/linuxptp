@@ -114,6 +114,7 @@ struct sync_msg {
 struct delay_req_msg {
 	struct ptp_header   hdr;
 	struct Timestamp    originTimestamp;
+	uint8_t             suffix[0];
 } PACKED;
 
 struct follow_up_msg {
@@ -220,15 +221,14 @@ struct ptp_message {
 	 */
 	struct address address;
 	/**
+	 * List of TLV descriptors.  Each item in the list contains
+	 * pointers to the appended TLVs.
+	 */
+	TAILQ_HEAD(tlv_list, tlv_extra) tlv_list;
+	/**
 	 * Contains the number of TLVs in the suffix.
 	 */
 	int tlv_count;
-	/**
-	 * Used to hold the data of the last TLV in the message when
-	 * the layout of the TLV makes it difficult to access the data
-	 * directly from the message's buffer.
-	 */
-	struct tlv_extra last_tlv;
 };
 
 /**
@@ -252,6 +252,30 @@ static inline Boolean field_is_set(struct ptp_message *m, int index, Octet bit)
 {
 	return m->header.flagField[index] & bit ? TRUE : FALSE;
 }
+
+/**
+ * Append a new TLV onto a message for transmission.
+ *
+ * This is a high level API designed for the transmit path.  The
+ * function allocates a new descriptor, initializes its .tlv field,
+ * and ensures that the TLV will fit into the message buffer.  This
+ * function increments the message length field by 'length' before
+ * returning.
+ *
+ * @param msg     A message obtained using msg_allocate().  At a mininum,
+ *                the message type and length fields must set by the caller.
+ * @param length  The length of the TLV to append.
+ * @return        A pointer to a TLV descriptor on success or NULL otherwise.
+ */
+struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length);
+
+/**
+ * Place a TLV descriptor into a message's list of TLVs.
+ *
+ * @param msg     A message obtained using msg_allocate().
+ * @param extra   The TLV to be added to the list.
+ */
+void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra);
 
 /**
  * Obtain the transportSpecific field from a message.

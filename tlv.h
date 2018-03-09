@@ -20,6 +20,8 @@
 #ifndef HAVE_TLV_H
 #define HAVE_TLV_H
 
+#include <sys/queue.h>
+
 #include "ddt.h"
 #include "ds.h"
 
@@ -37,6 +39,8 @@
 #define TLV_AUTHENTICATION_CHALLENGE			0x2001
 #define TLV_SECURITY_ASSOCIATION_UPDATE			0x2002
 #define TLV_CUM_FREQ_SCALE_FACTOR_OFFSET		0x2003
+#define TLV_PTPMON_REQ					0x21FE
+#define TLV_PTPMON_RESP					0x21FF
 
 enum management_action {
 	GET,
@@ -130,6 +134,21 @@ struct management_error_status {
 	Enumeration16 id;
 	Octet         reserved[4];
 	Octet         data[0];
+} PACKED;
+
+struct nsm_resp_tlv_head {
+	Enumeration16           type;
+	UInteger16              length;
+	uint8_t                 port_state;
+	uint8_t                 reserved;
+	struct PortAddress      parent_addr;
+} PACKED;
+
+struct nsm_resp_tlv_foot {
+	struct parentDS         parent;
+	struct currentDS        current;
+	struct timePropertiesDS timeprop;
+	struct Timestamp        lastsync;
 } PACKED;
 
 /* Organizationally Unique Identifiers */
@@ -228,19 +247,37 @@ struct mgmt_clock_description {
 };
 
 struct tlv_extra {
+	TAILQ_ENTRY(tlv_extra) list;
+	struct TLV *tlv;
 	union {
 		struct mgmt_clock_description cd;
+		struct nsm_resp_tlv_foot *foot;
 	};
 };
 
 /**
+ * Allocates a new tlv_extra structure.
+ * @return  Pointer to a new structure on success or NULL otherwise.
+ */
+struct tlv_extra *tlv_extra_alloc(void);
+
+/**
+ * Release all of the memory in the tlv_extra cache.
+ */
+void tlv_extra_cleanup(void);
+
+/**
+ * Frees a tlv_extra structure.
+ * @param extra  Pointer to the structure to free.
+ */
+void tlv_extra_recycle(struct tlv_extra *extra);
+
+/**
  * Converts recognized value sub-fields into host byte order.
- * @param tlv Pointer to a Type Length Value field.
- * @param extra Additional struct where data from tlv will be saved,
- * can be NULL.
+ * @param extra  TLV descriptor pointing to the protocol data.
  * @return Zero if successful, otherwise non-zero
  */
-int tlv_post_recv(struct TLV *tlv, struct tlv_extra *extra);
+int tlv_post_recv(struct tlv_extra *extra);
 
 /**
  * Converts recognized value sub-fields into network byte order.
