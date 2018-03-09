@@ -33,6 +33,7 @@
 
 enum config_section {
 	GLOBAL_SECTION,
+	UC_MTAB_SECTION,
 	PORT_SECTION,
 	UNKNOWN_SECTION,
 };
@@ -264,11 +265,15 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
 	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
+	PORT_ITEM_INT("unicast_master_table", 0, 0, INT_MAX),
+	PORT_ITEM_INT("unicast_req_duration", 3600, 10, INT_MAX),
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
 	GLOB_ITEM_STR("userDescription", ""),
 	GLOB_ITEM_INT("utc_offset", CURRENT_UTC_OFFSET, 0, INT_MAX),
 	GLOB_ITEM_INT("verbose", 0, 0, 1),
 };
+
+static struct unicast_master_table *current_uc_mtab;
 
 static enum parser_result
 parse_fault_interval(struct config *cfg, const char *section,
@@ -340,10 +345,103 @@ static void config_item_free(void *ptr)
 	free(ci);
 }
 
+static int config_switch_unicast_mtab(struct config *cfg, int idx, int line_num)
+{
+	struct unicast_master_table *table;
+
+	if (idx < 1) {
+		fprintf(stderr, "line %d: table_id %d is out of range. "
+			"Must be in the range %d to %d\n",
+			line_num, idx, 1, INT_MAX);
+		return -1;
+	}
+	STAILQ_FOREACH(table, &cfg->unicast_master_tables, list) {
+		if (table->table_index == idx) {
+			fprintf(stderr, "line %d: table_id %d already taken\n",
+				line_num, idx);
+			return -1;
+		}
+	}
+	table = calloc(1, sizeof(*table));
+	if (!table) {
+		fprintf(stderr, "low memory\n");
+		return -1;
+	}
+	STAILQ_INIT(&table->addrs);
+	table->table_index = idx;
+	memset(&table->peer_addr.portIdentity, 0xff,
+	       sizeof(table->peer_addr.portIdentity));
+	STAILQ_INSERT_TAIL(&cfg->unicast_master_tables, table, list);
+	current_uc_mtab = table;
+	return 0;
+}
+
+static int config_unicast_mtab_address(enum transport_type type, char *address,
+				       int line_num)
+{
+	struct unicast_master_address *item;
+
+	if (!current_uc_mtab) {
+		fprintf(stderr, "line %d: missing table_id\n", line_num);
+		return -1;
+	}
+	item = calloc(1, sizeof(*item));
+	if (!item) {
+		fprintf(stderr, "low memory\n");
+		return -1;
+	}
+	if (str2addr(type, address, &item->address)) {
+		fprintf(stderr, "line %d: bad address\n", line_num);
+		free(item);
+		return -1;
+	}
+	memset(&item->portIdentity, 0xff, sizeof(item->portIdentity));
+	item->type = type;
+	STAILQ_INSERT_TAIL(&current_uc_mtab->addrs, item, list);
+	current_uc_mtab->count++;
+
+	return 0;
+}
+
+static int config_unicast_mtab_peer(char *address, int line_num)
+{
+	if (!current_uc_mtab) {
+		fprintf(stderr, "line %d: missing table_id\n", line_num);
+		return -1;
+	}
+	if (current_uc_mtab->peer_name) {
+		free(current_uc_mtab->peer_name);
+	}
+	current_uc_mtab->peer_name = strdup(address);
+	if (!current_uc_mtab->peer_name) {
+		fprintf(stderr, "low memory\n");
+		return -1;
+	}
+	return 0;
+}
+
+static int config_unicast_mtab_query_interval(int lqi, int line_num)
+{
+	if (!current_uc_mtab) {
+		fprintf(stderr, "line %d: missing table_id\n", line_num);
+		return -1;
+	}
+	if (lqi < INT8_MIN || lqi > INT8_MAX) {
+		fprintf(stderr, "line %d: logQueryInterval %d out of range\n",
+			line_num, lqi);
+		return -1;
+	}
+	current_uc_mtab->logQueryInterval = lqi;
+	return 0;
+}
+
 static enum parser_result parse_section_line(char *s, enum config_section *section)
 {
 	if (!strcasecmp(s, "[global]")) {
 		*section = GLOBAL_SECTION;
+	} else if (!strcasecmp(s, "[unicast_master_table]")) {
+		*section = UC_MTAB_SECTION;
+		current_uc_mtab = NULL;
 	} else if (s[0] == '[') {
 		char c;
 		*section = PORT_SECTION;
@@ -484,6 +582,39 @@ static enum parser_result parse_fault_interval(struct config *cfg,
 	return NOT_PARSED;
 }
 
+static int parse_unicast_mtab_line(struct config *cfg, char *line, int line_num)
+{
+	char address[64 + 1] = {0}, transport[16 + 1] = {0};
+	enum transport_type type = TRANS_UDS;
+	struct config_enum *cte;
+	int cnt, lqi, table_id;
+
+	cnt = sscanf(line, " table_id %d", &table_id);
+	if (cnt == 1) {
+		return config_switch_unicast_mtab(cfg, table_id, line_num);
+	}
+	cnt = sscanf(line, " logQueryInterval %d", &lqi);
+	if (cnt == 1) {
+		return config_unicast_mtab_query_interval(lqi, line_num);
+	}
+	cnt = sscanf(line, " peer_address %64s", address);
+	if (cnt == 1) {
+		return config_unicast_mtab_peer(address, line_num);
+	}
+	cnt = sscanf(line, " %16s %64s", transport, address);
+	if (cnt != 2) {
+		fprintf(stderr, "bad master table at line %d\n", line_num);
+		return -1;
+	}
+	for (cte = nw_trans_enu; cte->label; cte++) {
+		if (!strcasecmp(cte->label, transport)) {
+			type = cte->value;
+			break;
+		}
+	}
+	return config_unicast_mtab_address(type, address, line_num);
+}
+
 static enum parser_result parse_setting_line(char *line,
 					     const char **option,
 					     const char **value)
@@ -594,6 +725,13 @@ int config_read(char *name, struct config *cfg)
 			continue;
 		}
 
+		if (current_section == UC_MTAB_SECTION) {
+			if (parse_unicast_mtab_line(cfg, line, line_num)) {
+				goto parse_error;
+			}
+			continue;
+		}
+
 		if (current_section == UNKNOWN_SECTION) {
 			fprintf(stderr, "line %d is not in a section\n", line_num);
 			goto parse_error;
@@ -679,6 +817,7 @@ struct config *config_create(void)
 		return NULL;
 	}
 	STAILQ_INIT(&cfg->interfaces);
+	STAILQ_INIT(&cfg->unicast_master_tables);
 
 	cfg->opts = config_alloc_longopts();
 	if (!cfg->opts) {
@@ -724,11 +863,24 @@ fail:
 
 void config_destroy(struct config *cfg)
 {
+	struct unicast_master_address *address;
+	struct unicast_master_table *table;
 	struct interface *iface;
 
 	while ((iface = STAILQ_FIRST(&cfg->interfaces))) {
 		STAILQ_REMOVE_HEAD(&cfg->interfaces, list);
 		free(iface);
+	}
+	while ((table = STAILQ_FIRST(&cfg->unicast_master_tables))) {
+		while ((address = STAILQ_FIRST(&table->addrs))) {
+			STAILQ_REMOVE_HEAD(&table->addrs, list);
+			free(address);
+		}
+		if (table->peer_name) {
+			free(table->peer_name);
+		}
+		STAILQ_REMOVE_HEAD(&cfg->unicast_master_tables, list);
+		free(table);
 	}
 	hash_destroy(cfg->htab, config_item_free);
 	free(cfg->opts);

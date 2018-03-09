@@ -26,6 +26,7 @@
 #include "ds.h"
 #include "dm.h"
 #include "filter.h"
+#include "mtab.h"
 #include "transport.h"
 #include "servo.h"
 #include "sk.h"
@@ -54,6 +55,9 @@ struct config {
 
 	/* hash of all non-legacy items */
 	struct hash *htab;
+
+	/* unicast master tables */
+	STAILQ_HEAD(ucmtab_head, unicast_master_table) unicast_master_tables;
 };
 
 int config_read(char *name, struct config *cfg);

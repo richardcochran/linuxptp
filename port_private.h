@@ -123,6 +123,7 @@ struct port {
 	int                 tc_spanning_tree;
 	Integer64           rx_timestamp_offset;
 	Integer64           tx_timestamp_offset;
+	int                 unicast_req_duration;
 	enum link_state     link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
@@ -131,6 +132,8 @@ struct port {
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
 	/* TC book keeping */
 	TAILQ_HEAD(tct, tc_txd) tc_transmitted;
+	/* unicast client mode */
+	struct unicast_master_table *unicast_master_table;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
