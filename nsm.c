@@ -359,43 +359,14 @@ static int nsm_request(struct nsm *nsm, char *target)
 {
 	enum transport_type type = transport_type(nsm->trp);
 	UInteger8 transportSpecific;
-	unsigned char mac[MAC_LEN];
-	struct in_addr ipv4_addr;
 	struct ptp_message *msg;
 	struct tlv_extra *extra;
 	Integer64 asymmetry;
 	struct address dst;
 	int cnt, err;
 
-	memset(&dst, 0, sizeof(dst));
-
-	switch (type) {
-	case TRANS_UDS:
-	case TRANS_UDP_IPV6:
-	case TRANS_DEVICENET:
-	case TRANS_CONTROLNET:
-	case TRANS_PROFINET:
-		pr_err("sorry, NSM not support with this transport");
+	if (str2addr(type, target, &dst)) {
 		return -1;
-	case TRANS_UDP_IPV4:
-		if (!inet_aton(target, &ipv4_addr)) {
-			pr_err("bad IPv4 address");
-			return -1;
-		}
-		dst.sin.sin_family = AF_INET;
-		dst.sin.sin_addr = ipv4_addr;
-		dst.len = sizeof(dst.sin);
-		break;
-	case TRANS_IEEE_802_3:
-		if (str2mac(target, mac)) {
-			pr_err("bad Layer-2 address");
-			return -1;
-		}
-		dst.sll.sll_family = AF_PACKET;
-		dst.sll.sll_halen = MAC_LEN;
-		memcpy(&dst.sll.sll_addr, mac, MAC_LEN);
-		dst.len = sizeof(dst.sll);
-		break;
 	}
 
 	msg = msg_allocate();

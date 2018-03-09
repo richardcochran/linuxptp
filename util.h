@@ -23,8 +23,10 @@
 #include <string.h>
 #include <time.h>
 
+#include "address.h"
 #include "ddt.h"
 #include "ether.h"
+#include "transport.h"
 
 #define MAX_PRINT_BYTES 16
 #define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
@@ -103,6 +105,15 @@ static inline int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
 {
 	return memcmp(a, b, sizeof(*a)) == 0;
 }
+
+/**
+ * Convert a string containing a network address into binary form.
+ * @param type  The network transport type of the address.
+ * @param s     String in human readable form.
+ * @param addr  Pointer to a buffer to hold the result.
+ * @return Zero on success, or -1 if the string is incorrectly formatted.
+ */
+int str2addr(enum transport_type type, const char *s, struct address *addr);
 
 /**
  * Scan a string containing a MAC address and convert it into binary form.

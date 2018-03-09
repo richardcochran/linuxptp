@@ -139,6 +139,44 @@ char *portaddr2str(struct PortAddress *addr)
 	return buf;
 }
 
+int str2addr(enum transport_type type, const char *s, struct address *addr)
+{
+	unsigned char mac[MAC_LEN];
+	struct in_addr ipv4_addr;
+
+	memset(addr, 0, sizeof(*addr));
+
+	switch (type) {
+	case TRANS_UDS:
+	case TRANS_UDP_IPV6:
+	case TRANS_DEVICENET:
+	case TRANS_CONTROLNET:
+	case TRANS_PROFINET:
+		pr_err("sorry, cannot convert addresses for this transport");
+		return -1;
+	case TRANS_UDP_IPV4:
+		if (!inet_aton(s, &ipv4_addr)) {
+			pr_err("bad IPv4 address");
+			return -1;
+		}
+		addr->sin.sin_family = AF_INET;
+		addr->sin.sin_addr = ipv4_addr;
+		addr->len = sizeof(addr->sin);
+		break;
+	case TRANS_IEEE_802_3:
+		if (str2mac(s, mac)) {
+			pr_err("bad Layer-2 address");
+			return -1;
+		}
+		addr->sll.sll_family = AF_PACKET;
+		addr->sll.sll_halen = MAC_LEN;
+		memcpy(&addr->sll.sll_addr, mac, MAC_LEN);
+		addr->len = sizeof(addr->sll);
+		break;
+	}
+	return 0;
+}
+
 int str2mac(const char *s, unsigned char mac[MAC_LEN])
 {
 	unsigned char buf[MAC_LEN];
