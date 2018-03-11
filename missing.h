@@ -26,6 +26,7 @@
 #include <time.h>
 #include <sys/syscall.h>
 #include <sys/timex.h>
+#include <net/if_arp.h>
 #include <unistd.h>
 
 #ifndef ADJ_TAI
@@ -117,6 +118,10 @@ enum {
 
 #define IFLA_BOND_MAX   (__IFLA_BOND_MAX - 1)
 #endif	/*IFLA_BOND_MAX*/
+
+#ifndef ARPHRD_6LOWPAN
+#define ARPHRD_6LOWPAN 825
+#endif
 
 #ifdef __UCLIBC__
 

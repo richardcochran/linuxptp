@@ -238,6 +238,11 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 			}
 			mac->sll.sll_halen = EUI64;
 			break;
+		case ARPHRD_6LOWPAN:
+			memcpy(mac->sll.sll_addr, &ifreq.ifr_hwaddr.sa_data,
+			       GUID_LEN);
+			mac->sll.sll_halen = EUI64;
+			break;
 		default:
 			memcpy(mac->sll.sll_addr, &ifreq.ifr_hwaddr.sa_data, MAC_LEN);
 			mac->sll.sll_halen = EUI48;
