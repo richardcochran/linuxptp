@@ -2519,7 +2519,8 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	}
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
-		clock_check_ts(p->clock, msg->hwts.ts);
+		clock_check_ts(p->clock,
+			       tmv_to_nanoseconds(timespec_to_tmv(msg->hwts.ts)));
 	}
 	if (port_ignore(p, msg)) {
 		msg_put(msg);
