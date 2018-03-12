@@ -393,11 +393,13 @@ static void ts_add(struct timespec *ts, Integer64 correction)
 	}
 }
 
-static void ts_to_timestamp(struct timespec *src, struct Timestamp *dst)
+static struct Timestamp ts_to_Timestamp(struct timespec src)
 {
-	dst->seconds_lsb = src->tv_sec;
-	dst->seconds_msb = 0;
-	dst->nanoseconds = src->tv_nsec;
+	struct Timestamp dst;
+	dst.seconds_lsb = src.tv_sec;
+	dst.seconds_msb = 0;
+	dst.nanoseconds = src.tv_nsec;
+	return dst;
 }
 
 /*
@@ -1506,7 +1508,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	fup->header.control            = CTL_FOLLOW_UP;
 	fup->header.logMessageInterval = p->logSyncInterval;
 
-	ts_to_timestamp(&msg->hwts.ts, &fup->follow_up.preciseOriginTimestamp);
+	fup->follow_up.preciseOriginTimestamp = ts_to_Timestamp(msg->hwts.ts);
 
 	if (dst) {
 		fup->address = *dst;
@@ -1800,7 +1802,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.control            = CTL_DELAY_RESP;
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
-	ts_to_timestamp(&m->hwts.ts, &msg->delay_resp.receiveTimestamp);
+	msg->delay_resp.receiveTimestamp = ts_to_Timestamp(m->hwts.ts);
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
@@ -1975,7 +1977,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	 * NB - We do not have any fraction nanoseconds for the correction
 	 * fields, neither in the response or the follow up.
 	 */
-	ts_to_timestamp(&m->hwts.ts, &rsp->pdelay_resp.requestReceiptTimestamp);
+	rsp->pdelay_resp.requestReceiptTimestamp = ts_to_Timestamp(m->hwts.ts);
 	rsp->pdelay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
 	fup->hwts.type = p->timestamping;
@@ -2002,8 +2004,8 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		goto out;
 	}
 
-	ts_to_timestamp(&rsp->hwts.ts,
-			&fup->pdelay_resp_fup.responseOriginTimestamp);
+	fup->pdelay_resp_fup.responseOriginTimestamp =
+		ts_to_Timestamp(rsp->hwts.ts);
 
 	err = peer_prepare_and_send(p, fup, 0);
 	if (err)
