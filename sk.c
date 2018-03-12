@@ -341,7 +341,7 @@ int sk_receive(int fd, void *buf, int buflen,
 				return -1;
 			}
 			sw = (struct timespec *) CMSG_DATA(cm);
-			hwts->sw = *sw;
+			hwts->sw = timespec_to_tmv(*sw);
 		}
 	}
 

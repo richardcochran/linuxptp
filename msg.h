@@ -27,6 +27,7 @@
 #include "address.h"
 #include "ddt.h"
 #include "tlv.h"
+#include "tmv.h"
 
 #define PTP_VERSION 2
 
@@ -65,7 +66,7 @@ enum timestamp_type {
 struct hw_timestamp {
 	enum timestamp_type type;
 	tmv_t ts;
-	struct timespec sw;
+	tmv_t sw;
 };
 
 enum controlField {
