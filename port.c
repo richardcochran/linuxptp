@@ -549,14 +549,11 @@ static void free_foreign_masters(struct port *p)
 
 static int fup_sync_ok(struct ptp_message *fup, struct ptp_message *sync)
 {
-	int64_t tfup, tsync;
-	tfup = tmv_to_nanoseconds(fup->hwts.sw);
-	tsync = tmv_to_nanoseconds(sync->hwts.sw);
 	/*
 	 * NB - If the sk_check_fupsync option is not enabled, then
 	 * both of these time stamps will be zero.
 	 */
-	if (tfup < tsync) {
+	if (tmv_cmp(fup->hwts.sw, sync->hwts.sw) < 0) {
 		return 0;
 	}
 	return 1;
