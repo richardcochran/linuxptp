@@ -385,11 +385,6 @@ static void ts_add(tmv_t *ts, Integer64 correction)
 	*ts = tmv_add(*ts, correction_to_tmv(correction));
 }
 
-static struct Timestamp ts_to_Timestamp(tmv_t src)
-{
-	return tmv_to_Timestamp(src);
-}
-
 /*
  * Returns non-zero if the announce message is different than last.
  */
@@ -1496,7 +1491,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	fup->header.control            = CTL_FOLLOW_UP;
 	fup->header.logMessageInterval = p->logSyncInterval;
 
-	fup->follow_up.preciseOriginTimestamp = ts_to_Timestamp(msg->hwts.ts);
+	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
 
 	if (dst) {
 		fup->address = *dst;
@@ -1790,7 +1785,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.control            = CTL_DELAY_RESP;
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
-	msg->delay_resp.receiveTimestamp = ts_to_Timestamp(m->hwts.ts);
+	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
@@ -1965,7 +1960,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	 * NB - We do not have any fraction nanoseconds for the correction
 	 * fields, neither in the response or the follow up.
 	 */
-	rsp->pdelay_resp.requestReceiptTimestamp = ts_to_Timestamp(m->hwts.ts);
+	rsp->pdelay_resp.requestReceiptTimestamp = tmv_to_Timestamp(m->hwts.ts);
 	rsp->pdelay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
 	fup->hwts.type = p->timestamping;
@@ -1993,7 +1988,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	}
 
 	fup->pdelay_resp_fup.responseOriginTimestamp =
-		ts_to_Timestamp(rsp->hwts.ts);
+		tmv_to_Timestamp(rsp->hwts.ts);
 
 	err = peer_prepare_and_send(p, fup, 0);
 	if (err)
