@@ -377,29 +377,17 @@ static void fc_prune(struct foreign_clock *fc)
 	}
 }
 
-static void ts_add(struct timespec *ts, Integer64 correction)
+static void ts_add(tmv_t *ts, Integer64 correction)
 {
 	if (!correction) {
 		return;
 	}
-	ts->tv_nsec += tmv_to_nanoseconds(correction_to_tmv(correction));
-	while (ts->tv_nsec < 0) {
-		ts->tv_nsec += (long) NS_PER_SEC;
-		ts->tv_sec--;
-	}
-	while (ts->tv_nsec >= (long) NS_PER_SEC) {
-		ts->tv_nsec -= (long) NS_PER_SEC;
-		ts->tv_sec++;
-	}
+	*ts = tmv_add(*ts, correction_to_tmv(correction));
 }
 
-static struct Timestamp ts_to_Timestamp(struct timespec src)
+static struct Timestamp ts_to_Timestamp(tmv_t src)
 {
-	struct Timestamp dst;
-	dst.seconds_lsb = src.tv_sec;
-	dst.seconds_msb = 0;
-	dst.nanoseconds = src.tv_nsec;
-	return dst;
+	return tmv_to_Timestamp(src);
 }
 
 /*
@@ -1165,7 +1153,7 @@ static void port_slave_priority_warning(struct port *p)
 }
 
 static void port_synchronize(struct port *p,
-			     struct timespec ingress_ts,
+			     tmv_t ingress_ts,
 			     struct timestamp origin_ts,
 			     Integer64 correction1, Integer64 correction2)
 {
@@ -1175,7 +1163,7 @@ static void port_synchronize(struct port *p,
 	port_set_sync_rx_tmo(p);
 
 	t1 = timestamp_to_tmv(origin_ts);
-	t2 = timespec_to_tmv(ingress_ts);
+	t2 = ingress_ts;
 	c1 = correction_to_tmv(correction1);
 	c2 = correction_to_tmv(correction2);
 	t1c = tmv_add(t1, tmv_add(c1, c2));
@@ -1855,7 +1843,7 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 		return;
 
 	c3 = correction_to_tmv(m->header.correction);
-	t3 = timespec_to_tmv(p->delay_req->hwts.ts);
+	t3 = p->delay_req->hwts.ts;
 	t4 = timestamp_to_tmv(m->ts.pdu);
 	t4c = tmv_sub(t4, c3);
 
@@ -2035,8 +2023,8 @@ static void port_peer_delay(struct port *p)
 	if (rsp->header.sequenceId != ntohs(req->header.sequenceId))
 		return;
 
-	t1 = timespec_to_tmv(req->hwts.ts);
-	t4 = timespec_to_tmv(rsp->hwts.ts);
+	t1 = req->hwts.ts;
+	t4 = rsp->hwts.ts;
 	c1 = correction_to_tmv(rsp->header.correction + p->asymmetry);
 
 	/* Process one-step response immediately. */
@@ -2521,8 +2509,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	}
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
-		clock_check_ts(p->clock,
-			       tmv_to_nanoseconds(timespec_to_tmv(msg->hwts.ts)));
+		clock_check_ts(p->clock, tmv_to_nanoseconds(msg->hwts.ts));
 	}
 	if (port_ignore(p, msg)) {
 		msg_put(msg);

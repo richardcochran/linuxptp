@@ -355,14 +355,14 @@ int sk_receive(int fd, void *buf, int buflen,
 
 	switch (hwts->type) {
 	case TS_SOFTWARE:
-		hwts->ts = ts[0];
+		hwts->ts = timespec_to_tmv(ts[0]);
 		break;
 	case TS_HARDWARE:
 	case TS_ONESTEP:
-		hwts->ts = ts[2];
+		hwts->ts = timespec_to_tmv(ts[2]);
 		break;
 	case TS_LEGACY_HW:
-		hwts->ts = ts[1];
+		hwts->ts = timespec_to_tmv(ts[1]);
 		break;
 	}
 	return cnt;
