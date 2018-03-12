@@ -129,8 +129,8 @@ struct port {
 	int                 min_neighbor_prop_delay;
 	int                 net_sync_monitor;
 	int                 path_trace_enabled;
-	int                 rx_timestamp_offset;
-	int                 tx_timestamp_offset;
+	Integer64           rx_timestamp_offset;
+	Integer64           tx_timestamp_offset;
 	enum link_state     link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
@@ -377,12 +377,12 @@ static void fc_prune(struct foreign_clock *fc)
 	}
 }
 
-static void ts_add(struct timespec *ts, int ns)
+static void ts_add(struct timespec *ts, Integer64 correction)
 {
-	if (!ns) {
+	if (!correction) {
 		return;
 	}
-	ts->tv_nsec += ns;
+	ts->tv_nsec += tmv_to_nanoseconds(correction_to_tmv(correction));
 	while (ts->tv_nsec < 0) {
 		ts->tv_nsec += (long) NS_PER_SEC;
 		ts->tv_sec--;
@@ -2838,7 +2838,9 @@ struct port *port_open(int phc_index,
 	p->net_sync_monitor = config_get_int(cfg, p->name, "net_sync_monitor");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
+	p->rx_timestamp_offset <<= 16;
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
+	p->tx_timestamp_offset <<= 16;
 	p->link_status = LINK_UP;
 	p->clock = clock;
 	p->trp = transport_create(cfg, transport);
