@@ -50,6 +50,7 @@ enum transport_event {
 	TRANS_EVENT,
 	TRANS_ONESTEP,
 	TRANS_P2P1STEP,
+	TRANS_DEFER_EVENT,
 };
 
 struct transport;

@@ -296,9 +296,21 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 {
 	struct raw *raw = container_of(t, struct raw, t);
 	ssize_t cnt;
-	int fd = event ? fda->fd[FD_EVENT] : fda->fd[FD_GENERAL];
 	unsigned char pkt[1600], *ptr = buf;
 	struct eth_hdr *hdr;
+	int fd = -1;
+
+	switch (event) {
+	case TRANS_GENERAL:
+		fd = fda->fd[FD_GENERAL];
+		break;
+	case TRANS_EVENT:
+	case TRANS_ONESTEP:
+	case TRANS_P2P1STEP:
+	case TRANS_DEFER_EVENT:
+		fd = fda->fd[FD_EVENT];
+		break;
+	}
 
 	ptr -= sizeof(*hdr);
 	len += sizeof(*hdr);

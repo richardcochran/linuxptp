@@ -230,10 +230,22 @@ static int udp6_send(struct transport *t, struct fdarray *fda,
 		     struct address *addr, struct hw_timestamp *hwts)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
-	ssize_t cnt;
-	int fd = event ? fda->fd[FD_EVENT] : fda->fd[FD_GENERAL];
 	struct address addr_buf;
 	unsigned char junk[1600];
+	ssize_t cnt;
+	int fd = -1;
+
+	switch (event) {
+	case TRANS_GENERAL:
+		fd = fda->fd[FD_GENERAL];
+		break;
+	case TRANS_EVENT:
+	case TRANS_ONESTEP:
+	case TRANS_P2P1STEP:
+	case TRANS_DEFER_EVENT:
+		fd = fda->fd[FD_EVENT];
+		break;
+	}
 
 	if (!addr) {
 		memset(&addr_buf, 0, sizeof(addr_buf));
