@@ -66,6 +66,17 @@ int transport_sendto(struct transport *t, struct fdarray *fda,
 	return t->send(t, fda, event, 0, msg, len, &msg->address, &msg->hwts);
 }
 
+int transport_txts(struct transport *t, struct fdarray *fda,
+		   struct ptp_message *msg)
+{
+	int cnt, len = ntohs(msg->header.messageLength);
+	struct hw_timestamp *hwts = &msg->hwts;
+	unsigned char pkt[1600];
+
+	cnt = sk_receive(fda->fd[FD_EVENT], pkt, len, NULL, hwts, MSG_ERRQUEUE);
+	return cnt > 0 ? 0 : cnt;
+}
+
 int transport_physical_addr(struct transport *t, uint8_t *addr)
 {
 	if (t->physical_addr) {
