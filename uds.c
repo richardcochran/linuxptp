@@ -108,9 +108,9 @@ static int uds_recv(struct transport *t, int fd, void *buf, int buflen,
 	return cnt;
 }
 
-static int uds_send(struct transport *t, struct fdarray *fda, int event,
-		    int peer, void *buf, int buflen, struct address *addr,
-		    struct hw_timestamp *hwts)
+static int uds_send(struct transport *t, struct fdarray *fda,
+		    enum transport_event event, int peer, void *buf, int buflen,
+		    struct address *addr, struct hw_timestamp *hwts)
 {
 	int cnt, fd = fda->fd[FD_GENERAL];
 	struct uds *uds = container_of(t, struct uds, t);

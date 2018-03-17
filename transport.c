@@ -42,24 +42,24 @@ int transport_recv(struct transport *t, int fd, struct ptp_message *msg)
 	return t->recv(t, fd, msg, sizeof(msg->data), &msg->address, &msg->hwts);
 }
 
-int transport_send(struct transport *t, struct fdarray *fda, int event,
-		   struct ptp_message *msg)
+int transport_send(struct transport *t, struct fdarray *fda,
+		   enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
 
 	return t->send(t, fda, event, 0, msg, len, NULL, &msg->hwts);
 }
 
-int transport_peer(struct transport *t, struct fdarray *fda, int event,
-		   struct ptp_message *msg)
+int transport_peer(struct transport *t, struct fdarray *fda,
+		   enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
 
 	return t->send(t, fda, event, 1, msg, len, NULL, &msg->hwts);
 }
 
-int transport_sendto(struct transport *t, struct fdarray *fda, int event,
-		     struct ptp_message *msg)
+int transport_sendto(struct transport *t, struct fdarray *fda,
+		     enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
 

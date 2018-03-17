@@ -67,12 +67,12 @@ int transport_recv(struct transport *t, int fd, struct ptp_message *msg);
  * ptp_message itself is ignored.
  * @param t	The transport.
  * @param fda	The array of descriptors filled in by transport_open.
- * @param event	1 for event message, 0 for general message.
+ * @param event	One of the @ref transport_event enumeration values.
  * @param msg	The message to send.
  * @return	Number of bytes send, or negative value in case of an error.
  */
-int transport_send(struct transport *t, struct fdarray *fda, int event,
-		   struct ptp_message *msg);
+int transport_send(struct transport *t, struct fdarray *fda,
+		   enum transport_event event, struct ptp_message *msg);
 
 /**
  * Sends the PTP message using the given transport. The message is sent to
@@ -80,25 +80,25 @@ int transport_send(struct transport *t, struct fdarray *fda, int event,
  * address), any address field in the ptp_message itself is ignored.
  * @param t	The transport.
  * @param fda	The array of descriptors filled in by transport_open.
- * @param event	1 for event message, 0 for general message.
+ * @param event	One of the @ref transport_event enumeration values.
  * @param msg	The message to send.
  * @return	Number of bytes send, or negative value in case of an error.
  */
-int transport_peer(struct transport *t, struct fdarray *fda, int event,
-		   struct ptp_message *msg);
+int transport_peer(struct transport *t, struct fdarray *fda,
+		   enum transport_event event, struct ptp_message *msg);
 
 /**
  * Sends the PTP message using the given transport. The address has to be
  * provided in the address field of the message.
  * @param t	The transport.
  * @param fda	The array of descriptors filled in by transport_open.
- * @param event	1 for event message, 0 for general message.
+ * @param event	One of the @ref transport_event enumeration values.
  * @param msg	The message to send. The address of the destination has to
  *		be set in the address field.
  * @return	Number of bytes send, or negative value in case of an error.
  */
-int transport_sendto(struct transport *t, struct fdarray *fda, int event,
-		     struct ptp_message *msg);
+int transport_sendto(struct transport *t, struct fdarray *fda,
+		     enum transport_event event, struct ptp_message *msg);
 
 /**
  * Returns the transport's type.
