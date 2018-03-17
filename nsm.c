@@ -436,7 +436,7 @@ static int nsm_request(struct nsm *nsm, char *target)
 		pr_err("msg_pre_send failed");
 		goto out;
 	}
-	cnt = transport_sendto(nsm->trp, &nsm->fda, 1, msg);
+	cnt = transport_sendto(nsm->trp, &nsm->fda, TRANS_EVENT, msg);
 	if (cnt <= 0) {
 		pr_err("transport_sendto failed");
 		err = -1;

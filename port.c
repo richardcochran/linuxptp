@@ -940,7 +940,7 @@ static int port_management_get_response(struct port *target,
 	}
 	respond = port_management_fill_response(target, rsp, id);
 	if (respond)
-		port_prepare_and_send(ingress, rsp, 0);
+		port_prepare_and_send(ingress, rsp, TRANS_GENERAL);
 	msg_put(rsp);
 	return respond;
 }
@@ -1297,7 +1297,7 @@ int port_delay_request(struct port *p)
 		msg->header.flagField[0] |= UNICAST;
 	}
 
-	if (port_prepare_and_send(p, msg, 1)) {
+	if (port_prepare_and_send(p, msg, TRANS_EVENT)) {
 		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
 	}
@@ -1354,7 +1354,7 @@ static int port_tx_announce(struct port *p)
 		pr_err("port %hu: append path trace failed", portnum(p));
 	}
 
-	err = port_prepare_and_send(p, msg, 0);
+	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
 		pr_err("port %hu: send announce failed", portnum(p));
 	}
@@ -1457,7 +1457,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 		goto out;
 	}
 
-	err = port_prepare_and_send(p, fup, 0);
+	err = port_prepare_and_send(p, fup, TRANS_GENERAL);
 	if (err) {
 		pr_err("port %hu: send follow up failed", portnum(p));
 	}
@@ -1758,7 +1758,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		err = -1;
 		goto out;
 	}
-	err = port_prepare_and_send(p, msg, 0);
+	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
 		pr_err("port %hu: send delay response failed", portnum(p));
 		goto out;
@@ -2533,18 +2533,19 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 int port_forward(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
-	cnt = transport_send(p->trp, &p->fda, 0, msg);
+	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, msg);
 	return cnt <= 0 ? -1 : 0;
 }
 
 int port_forward_to(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
-	cnt = transport_sendto(p->trp, &p->fda, 0, msg);
+	cnt = transport_sendto(p->trp, &p->fda, TRANS_GENERAL, msg);
 	return cnt <= 0 ? -1 : 0;
 }
 
-int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event)
+int port_prepare_and_send(struct port *p, struct ptp_message *msg,
+			  enum transport_event event)
 {
 	int cnt;
 
@@ -2658,7 +2659,7 @@ int port_management_error(struct PortIdentity pid, struct port *ingress,
 	mes->error = error_id;
 	mes->id = mgt->id;
 
-	err = port_prepare_and_send(ingress, msg, 0);
+	err = port_prepare_and_send(ingress, msg, TRANS_GENERAL);
 	msg_put(msg);
 	return err;
 }

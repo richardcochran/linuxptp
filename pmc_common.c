@@ -160,7 +160,8 @@ static int pmc_send(struct pmc *pmc, struct ptp_message *msg)
 		pr_err("msg_pre_send failed");
 		return -1;
 	}
-	return transport_send(pmc->transport, &pmc->fdarray, 0, msg);
+	return transport_send(pmc->transport, &pmc->fdarray,
+			      TRANS_GENERAL, msg);
 }
 
 static int pmc_tlv_datalen(struct pmc *pmc, int id)
