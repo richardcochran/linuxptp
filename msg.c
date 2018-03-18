@@ -295,6 +295,40 @@ void msg_cleanup(void)
 	}
 }
 
+struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
+{
+	struct ptp_message *dup;
+	int err;
+
+	dup = msg_allocate();
+	if (!dup) {
+		return NULL;
+	}
+	memcpy(dup, msg, sizeof(*dup));
+	dup->refcnt = 1;
+	TAILQ_INIT(&dup->tlv_list);
+	dup->tlv_count = 0;
+
+	err = msg_post_recv(dup, cnt);
+	if (err) {
+		switch (err) {
+		case -EBADMSG:
+			pr_err("msg_duplicate: bad message");
+			break;
+		case -ETIME:
+			pr_err("msg_duplicate: received %s without timestamp",
+				msg_type_string(msg_type(msg)));
+			break;
+		case -EPROTO:
+			pr_debug("msg_duplicate: ignoring message");
+			break;
+		}
+		msg_put(dup);
+		return NULL;
+	}
+	return dup;
+}
+
 void msg_get(struct ptp_message *m)
 {
 	m->refcnt++;
