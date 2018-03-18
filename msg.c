@@ -184,8 +184,9 @@ static void port_id_pre_send(struct PortIdentity *pid)
 	pid->portNumber = htons(pid->portNumber);
 }
 
-static int suffix_post_recv(struct ptp_message *msg, uint8_t *ptr, int len)
+static int suffix_post_recv(struct ptp_message *msg, int len)
 {
+	uint8_t *ptr = msg_suffix(msg);
 	struct tlv_extra *extra;
 	int err;
 
@@ -302,7 +303,6 @@ void msg_get(struct ptp_message *m)
 int msg_post_recv(struct ptp_message *m, int cnt)
 {
 	int pdulen, type, err;
-	uint8_t *suffix = NULL;
 
 	if (cnt < sizeof(struct ptp_header))
 		return -EBADMSG;
@@ -356,7 +356,6 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		timestamp_post_recv(m, &m->sync.originTimestamp);
 		break;
 	case DELAY_REQ:
-		suffix = m->delay_req.suffix;
 		break;
 	case PDELAY_REQ:
 		break;
@@ -366,34 +365,28 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	case FOLLOW_UP:
 		timestamp_post_recv(m, &m->follow_up.preciseOriginTimestamp);
-		suffix = m->follow_up.suffix;
 		break;
 	case DELAY_RESP:
 		timestamp_post_recv(m, &m->delay_resp.receiveTimestamp);
 		port_id_post_recv(&m->delay_resp.requestingPortIdentity);
-		suffix = m->delay_resp.suffix;
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
 		timestamp_post_recv(m, &m->pdelay_resp_fup.responseOriginTimestamp);
 		port_id_post_recv(&m->pdelay_resp_fup.requestingPortIdentity);
-		suffix = m->pdelay_resp_fup.suffix;
 		break;
 	case ANNOUNCE:
 		clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
 		timestamp_post_recv(m, &m->announce.originTimestamp);
 		announce_post_recv(&m->announce);
-		suffix = m->announce.suffix;
 		break;
 	case SIGNALING:
-		suffix = m->signaling.suffix;
 		break;
 	case MANAGEMENT:
 		port_id_post_recv(&m->management.targetPortIdentity);
-		suffix = m->management.suffix;
 		break;
 	}
 
-	err = suffix_post_recv(m, suffix, cnt - pdulen);
+	err = suffix_post_recv(m, cnt - pdulen);
 	if (err)
 		return err;
 
