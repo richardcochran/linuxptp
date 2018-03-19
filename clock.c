@@ -115,6 +115,7 @@ struct clock {
 	struct tsproc *tsproc;
 	struct freq_estimator fest;
 	struct time_status_np status;
+	double master_local_rr; /* maintained when free_running */
 	double nrr;
 	struct clock_description desc;
 	struct clock_stats stats;
@@ -612,6 +613,8 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	f->origin1 = origin;
 	f->count = 0;
 
+	c->master_local_rr = ratio;
+
 	return state;
 }
 
@@ -1063,6 +1066,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 	c->initial_delay = dbl_tmv(config_get_int(config, NULL, "initial_delay"));
+	c->master_local_rr = 1.0;
 	c->nrr = 1.0;
 	c->stats_interval = config_get_int(config, NULL, "summary_interval");
 	c->stats.offset = stats_create();
@@ -1786,5 +1790,8 @@ void clock_check_ts(struct clock *c, uint64_t ts)
 
 double clock_rate_ratio(struct clock *c)
 {
+	if (c->free_running) {
+		return c->master_local_rr;
+	}
 	return servo_rate_ratio(c->servo);
 }
