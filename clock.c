@@ -875,9 +875,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	case CLOCK_TYPE_ORDINARY:
 	case CLOCK_TYPE_BOUNDARY:
 	case CLOCK_TYPE_P2P:
+	case CLOCK_TYPE_E2E:
 		c->type = type;
 		break;
-	case CLOCK_TYPE_E2E:
 	case CLOCK_TYPE_MANAGEMENT:
 		return NULL;
 	}

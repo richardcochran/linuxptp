@@ -23,7 +23,7 @@ VER     = -DVER=$(version)
 CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l hwstamp_ctl nsm phc2sys phc_ctl pmc timemaster
-OBJ     = bmc.o clock.o clockadj.o clockcheck.o config.o fault.o \
+OBJ     = bmc.o clock.o clockadj.o clockcheck.o config.o e2e_tc.o fault.o \
  filter.o fsm.o hash.o linreg.o mave.o mmedian.o msg.o ntpshm.o nullf.o phc.o \
  pi.o port.o print.o ptp4l.o p2p_tc.o raw.o rtnl.o servo.o sk.o stats.o tc.o \
  telecom.o tlv.o transport.o tsproc.o udp.o udp6.o uds.o util.o version.o

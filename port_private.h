@@ -135,6 +135,9 @@ struct port {
 
 #define portnum(p) (p->portIdentity.portNumber)
 
+void e2e_dispatch(struct port *p, enum fsm_event event, int mdiff);
+enum fsm_event e2e_event(struct port *p, int fd_index);
+
 void p2p_dispatch(struct port *p, enum fsm_event event, int mdiff);
 enum fsm_event p2p_event(struct port *p, int fd_index);
 

@@ -2792,6 +2792,9 @@ struct port *port_open(int phc_index,
 		p->event = p2p_event;
 		break;
 	case CLOCK_TYPE_E2E:
+		p->dispatch = e2e_dispatch;
+		p->event = e2e_event;
+		break;
 	case CLOCK_TYPE_MANAGEMENT:
 		return NULL;
 	}
@@ -2846,6 +2849,10 @@ struct port *port_open(int phc_index,
 
 	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P) {
 		pr_err("port %d: P2P TC needs P2P ports", number);
+		goto err_port;
+	}
+	if (number && type == CLOCK_TYPE_E2E && p->delayMechanism != DM_E2E) {
+		pr_err("port %d: E2E TC needs E2E ports", number);
 		goto err_port;
 	}
 	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
