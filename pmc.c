@@ -665,6 +665,7 @@ static void usage(char *progname)
 		" Other Options\n\n"
 		" -b [num]  boundary hops, default 1\n"
 		" -d [num]  domain number, default 0\n"
+		" -f [file] read configuration from 'file'\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
 		"           for network and '/var/run/pmc.$pid' for UDS.\n"
@@ -679,13 +680,14 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	const char *iface_name = NULL;
-	char *progname;
-	int c, cnt, length, tmo = -1, batch_mode = 0, zero_datalen = 0;
+	char *config = NULL, *progname;
+	int c, cnt, index, length, tmo = -1, batch_mode = 0, zero_datalen = 0;
 	int ret = 0;
 	char line[1024], *command = NULL, uds_local[MAX_IFNAME_SIZE + 1];
 	enum transport_type transport_type = TRANS_UDP_IPV4;
 	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
 	struct ptp_message *msg;
+	struct option *opts;
 	struct config *cfg;
 #define N_FD 2
 	struct pollfd pollfd[N_FD];
@@ -697,28 +699,55 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	opts = config_long_options(cfg);
+
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "246u""b:d:hi:s:t:vz"))) {
+	while (EOF != (c = getopt_long(argc, argv, "246u""b:d:f:hi:s:t:vz",
+				       opts, &index))) {
 		switch (c) {
+		case 0:
+			if (config_parse_option(cfg, opts[index].name, optarg)) {
+				ret = -1;
+				goto out;
+			}
+			break;
 		case '2':
-			transport_type = TRANS_IEEE_802_3;
+			if (config_set_int(cfg, "network_transport", TRANS_IEEE_802_3)) {
+				ret = -1;
+				goto out;
+			}
 			break;
 		case '4':
-			transport_type = TRANS_UDP_IPV4;
+			if (config_set_int(cfg, "network_transport", TRANS_UDP_IPV4)) {
+				ret = -1;
+				goto out;
+			}
 			break;
 		case '6':
-			transport_type = TRANS_UDP_IPV6;
+			if (config_set_int(cfg, "network_transport", TRANS_UDP_IPV6)) {
+				ret = -1;
+				goto out;
+			}
 			break;
 		case 'u':
-			transport_type = TRANS_UDS;
+			if (config_set_int(cfg, "network_transport", TRANS_UDS)) {
+				ret = -1;
+				goto out;
+			}
 			break;
 		case 'b':
 			boundary_hops = atoi(optarg);
 			break;
 		case 'd':
-			domain_number = atoi(optarg);
+			if (config_set_int(cfg, "domainNumber", atoi(optarg))) {
+				ret = -1;
+				goto out;
+			}
+			break;
+		case 'f':
+			config = optarg;
 			break;
 		case 'i':
 			iface_name = optarg;
@@ -736,8 +765,12 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 't':
-			if (1 == sscanf(optarg, "%x", &c))
-				transport_specific = c << 4;
+			if (1 == sscanf(optarg, "%x", &c)) {
+				if (config_set_int(cfg, "transportSpecific", c)) {
+					ret = -1;
+					goto out;
+				}
+			}
 			break;
 		case 'v':
 			version_show(stdout);
@@ -757,6 +790,15 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 	}
+
+	if (config && (c = config_read(config, cfg))) {
+		config_destroy(cfg);
+		return -1;
+	}
+
+	transport_type = config_get_int(cfg, NULL, "network_transport");
+	transport_specific = config_get_int(cfg, NULL, "transportSpecific") << 4;
+	domain_number = config_get_int(cfg, NULL, "domainNumber");
 
 	if (!iface_name) {
 		if (transport_type == TRANS_UDS) {
@@ -855,6 +897,8 @@ int main(int argc, char *argv[])
 
 	pmc_destroy(pmc);
 	msg_cleanup();
+
+out:
 	config_destroy(cfg);
 	return ret;
 }
