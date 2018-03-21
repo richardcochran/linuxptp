@@ -93,6 +93,10 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 	}
 
 	strncpy(iface.name, iface_name, MAX_IFNAME_SIZE);
+	if (iface.ts_label[0] == '\0') {
+		strncpy(iface.ts_label, iface.name, MAX_IFNAME_SIZE);
+	}
+
 	if (transport_open(pmc->transport, &iface,
 			   &pmc->fdarray, TS_SOFTWARE)) {
 		pr_err("failed to open transport");
