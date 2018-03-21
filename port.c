@@ -1331,12 +1331,14 @@ static int port_delay_request(struct port *p)
 		p->peer_delay_fup = NULL;
 	}
 
-	if (p->delayMechanism == DM_P2P)
+	if (p->delayMechanism == DM_P2P) {
 		return port_pdelay_request(p);
+	}
 
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1825,14 +1827,18 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	master = clock_parent_identity(p->clock);
 	req = &p->delay_req->delay_req;
 
-	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE)
+	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE) {
 		return;
-	if (!pid_eq(&rsp->requestingPortIdentity, &req->hdr.sourcePortIdentity))
+	}
+	if (!pid_eq(&rsp->requestingPortIdentity, &req->hdr.sourcePortIdentity)) {
 		return;
-	if (rsp->hdr.sequenceId != ntohs(req->hdr.sequenceId))
+	}
+	if (rsp->hdr.sequenceId != ntohs(req->hdr.sequenceId)) {
 		return;
-	if (!pid_eq(&master, &m->header.sourcePortIdentity))
+	}
+	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
 		return;
+	}
 
 	c3 = correction_to_tmv(m->header.correction);
 	t3 = p->delay_req->hwts.ts;
