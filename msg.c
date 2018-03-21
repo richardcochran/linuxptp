@@ -368,6 +368,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	case DELAY_RESP:
 		timestamp_post_recv(m, &m->delay_resp.receiveTimestamp);
+		port_id_post_recv(&m->delay_resp.requestingPortIdentity);
 		suffix = m->delay_resp.suffix;
 		break;
 	case PDELAY_RESP_FOLLOW_UP:
@@ -413,6 +414,7 @@ int msg_pre_send(struct ptp_message *m)
 	case SYNC:
 		break;
 	case DELAY_REQ:
+		clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
 		break;
 	case PDELAY_REQ:
 		break;

@@ -86,7 +86,7 @@ struct port {
 	struct foreign_clock *best;
 	enum syfu_state syfu;
 	struct ptp_message *last_syncfup;
-	struct ptp_message *delay_req;
+	TAILQ_HEAD(delay_req, ptp_message) delay_req;
 	struct ptp_message *peer_delay_req;
 	struct ptp_message *peer_delay_resp;
 	struct ptp_message *peer_delay_fup;
@@ -143,6 +143,7 @@ struct port {
 
 #define NSEC2SEC 1000000000LL
 
+static void flush_delay_req(struct port *p);
 static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
 static void port_nrate_initialize(struct port *p);
@@ -373,6 +374,32 @@ static void fc_prune(struct foreign_clock *fc)
 			break;
 		TAILQ_REMOVE(&fc->messages, m, list);
 		fc->n_messages--;
+		msg_put(m);
+	}
+}
+
+static int delay_req_current(struct ptp_message *m, struct timespec now)
+{
+	int64_t t1, t2, tmo = 5 * NSEC2SEC;
+
+	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+
+	return t2 - t1 < tmo;
+}
+
+static void delay_req_prune(struct port *p)
+{
+	struct timespec now;
+	struct ptp_message *m;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	while (!TAILQ_EMPTY(&p->delay_req)) {
+		m = TAILQ_LAST(&p->delay_req, delay_req);
+		if (delay_req_current(m, now)) {
+			break;
+		}
+		TAILQ_REMOVE(&p->delay_req, m, list);
 		msg_put(m);
 	}
 }
@@ -1167,10 +1194,7 @@ static void port_synchronize(struct port *p,
 		break;
 	case SERVO_JUMP:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
-		if (p->delay_req) {
-			msg_put(p->delay_req);
-			p->delay_req = NULL;
-		}
+		flush_delay_req(p);
 		if (p->peer_delay_req) {
 			msg_put(p->peer_delay_req);
 			p->peer_delay_req = NULL;
@@ -1367,10 +1391,8 @@ static int port_delay_request(struct port *p)
 		goto out;
 	}
 
-	if (p->delay_req)
-		msg_put(p->delay_req);
+	TAILQ_INSERT_HEAD(&p->delay_req, msg, list);
 
-	p->delay_req = msg;
 	return 0;
 out:
 	msg_put(msg);
@@ -1543,9 +1565,10 @@ static void flush_last_sync(struct port *p)
 
 static void flush_delay_req(struct port *p)
 {
-	if (p->delay_req) {
-		msg_put(p->delay_req);
-		p->delay_req = NULL;
+	struct ptp_message *m;
+	while ((m = TAILQ_FIRST(&p->delay_req)) != NULL) {
+		TAILQ_REMOVE(&p->delay_req, m, list);
+		msg_put(m);
 	}
 }
 
@@ -1816,36 +1839,40 @@ out:
 
 static void process_delay_resp(struct port *p, struct ptp_message *m)
 {
-	struct delay_req_msg *req;
 	struct delay_resp_msg *rsp = &m->delay_resp;
 	struct PortIdentity master;
+	struct ptp_message *req;
 	tmv_t c3, t3, t4, t4c;
 
-	if (!p->delay_req)
-		return;
-
 	master = clock_parent_identity(p->clock);
-	req = &p->delay_req->delay_req;
 
 	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE) {
 		return;
 	}
-	if (!pid_eq(&rsp->requestingPortIdentity, &req->hdr.sourcePortIdentity)) {
-		return;
-	}
-	if (rsp->hdr.sequenceId != ntohs(req->hdr.sequenceId)) {
+	if (!pid_eq(&rsp->requestingPortIdentity, &p->portIdentity)) {
 		return;
 	}
 	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
 		return;
 	}
+	TAILQ_FOREACH(req, &p->delay_req, list) {
+		if (rsp->hdr.sequenceId == ntohs(req->delay_req.hdr.sequenceId)) {
+			break;
+		}
+	}
+	if (!req) {
+		return;
+	}
 
 	c3 = correction_to_tmv(m->header.correction);
-	t3 = p->delay_req->hwts.ts;
+	t3 = req->hwts.ts;
 	t4 = timestamp_to_tmv(m->ts.pdu);
 	t4c = tmv_sub(t4, c3);
 
 	clock_path_delay(p->clock, t3, t4c);
+
+	TAILQ_REMOVE(&p->delay_req, req, list);
+	msg_put(req);
 
 	if (p->logMinDelayReqInterval == rsp->hdr.logMessageInterval) {
 		return;
@@ -2439,6 +2466,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
+		delay_req_prune(p);
 		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
 		    port_renew_transport(p)) {
 			return EV_FAULT_DETECTED;
@@ -2448,6 +2476,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_DELAY_TIMER:
 		pr_debug("port %hu: delay timeout", portnum(p));
 		port_set_delay_tmo(p);
+		delay_req_prune(p);
 		return port_delay_request(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_QUALIFICATION_TIMER:
