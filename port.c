@@ -129,8 +129,8 @@ struct port {
 	int                 min_neighbor_prop_delay;
 	int                 net_sync_monitor;
 	int                 path_trace_enabled;
-	int                 rx_timestamp_offset;
-	int                 tx_timestamp_offset;
+	Integer64           rx_timestamp_offset;
+	Integer64           tx_timestamp_offset;
 	enum link_state     link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
@@ -378,27 +378,12 @@ static void fc_prune(struct foreign_clock *fc)
 	}
 }
 
-static void ts_add(struct timespec *ts, int ns)
+static void ts_add(tmv_t *ts, Integer64 correction)
 {
-	if (!ns) {
+	if (!correction) {
 		return;
 	}
-	ts->tv_nsec += ns;
-	while (ts->tv_nsec < 0) {
-		ts->tv_nsec += (long) NS_PER_SEC;
-		ts->tv_sec--;
-	}
-	while (ts->tv_nsec >= (long) NS_PER_SEC) {
-		ts->tv_nsec -= (long) NS_PER_SEC;
-		ts->tv_sec++;
-	}
-}
-
-static void ts_to_timestamp(struct timespec *src, struct Timestamp *dst)
-{
-	dst->seconds_lsb = src->tv_sec;
-	dst->seconds_msb = 0;
-	dst->nanoseconds = src->tv_nsec;
+	*ts = tmv_add(*ts, correction_to_tmv(correction));
 }
 
 /*
@@ -565,14 +550,11 @@ static void free_foreign_masters(struct port *p)
 
 static int fup_sync_ok(struct ptp_message *fup, struct ptp_message *sync)
 {
-	int64_t tfup, tsync;
-	tfup = tmv_to_nanoseconds(timespec_to_tmv(fup->hwts.sw));
-	tsync = tmv_to_nanoseconds(timespec_to_tmv(sync->hwts.sw));
 	/*
 	 * NB - If the sk_check_fupsync option is not enabled, then
 	 * both of these time stamps will be zero.
 	 */
-	if (tfup < tsync) {
+	if (tmv_cmp(fup->hwts.sw, sync->hwts.sw) < 0) {
 		return 0;
 	}
 	return 1;
@@ -1164,7 +1146,7 @@ static void port_slave_priority_warning(struct port *p)
 }
 
 static void port_synchronize(struct port *p,
-			     struct timespec ingress_ts,
+			     tmv_t ingress_ts,
 			     struct timestamp origin_ts,
 			     Integer64 correction1, Integer64 correction2)
 {
@@ -1174,7 +1156,7 @@ static void port_synchronize(struct port *p,
 	port_set_sync_rx_tmo(p);
 
 	t1 = timestamp_to_tmv(origin_ts);
-	t2 = timespec_to_tmv(ingress_ts);
+	t2 = ingress_ts;
 	c1 = correction_to_tmv(correction1);
 	c2 = correction_to_tmv(correction2);
 	t1c = tmv_add(t1, tmv_add(c1, c2));
@@ -1504,7 +1486,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	fup->header.control            = CTL_FOLLOW_UP;
 	fup->header.logMessageInterval = p->logSyncInterval;
 
-	ts_to_timestamp(&msg->hwts.ts, &fup->follow_up.preciseOriginTimestamp);
+	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
 
 	if (dst) {
 		fup->address = *dst;
@@ -1799,7 +1781,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.control            = CTL_DELAY_RESP;
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
-	ts_to_timestamp(&m->hwts.ts, &msg->delay_resp.receiveTimestamp);
+	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
@@ -1857,7 +1839,7 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	}
 
 	c3 = correction_to_tmv(m->header.correction);
-	t3 = timespec_to_tmv(req->hwts.ts);
+	t3 = req->hwts.ts;
 	t4 = timestamp_to_tmv(m->ts.pdu);
 	t4c = tmv_sub(t4, c3);
 
@@ -1986,7 +1968,7 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	 * NB - We do not have any fraction nanoseconds for the correction
 	 * fields, neither in the response or the follow up.
 	 */
-	ts_to_timestamp(&m->hwts.ts, &rsp->pdelay_resp.requestReceiptTimestamp);
+	rsp->pdelay_resp.requestReceiptTimestamp = tmv_to_Timestamp(m->hwts.ts);
 	rsp->pdelay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
 	fup->hwts.type = p->timestamping;
@@ -2013,8 +1995,8 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		goto out;
 	}
 
-	ts_to_timestamp(&rsp->hwts.ts,
-			&fup->pdelay_resp_fup.responseOriginTimestamp);
+	fup->pdelay_resp_fup.responseOriginTimestamp =
+		tmv_to_Timestamp(rsp->hwts.ts);
 
 	err = peer_prepare_and_send(p, fup, 0);
 	if (err)
@@ -2044,8 +2026,8 @@ static void port_peer_delay(struct port *p)
 	if (rsp->header.sequenceId != ntohs(req->header.sequenceId))
 		return;
 
-	t1 = timespec_to_tmv(req->hwts.ts);
-	t4 = timespec_to_tmv(rsp->hwts.ts);
+	t1 = req->hwts.ts;
+	t4 = rsp->hwts.ts;
 	c1 = correction_to_tmv(rsp->header.correction + p->asymmetry);
 
 	/* Process one-step response immediately. */
@@ -2530,7 +2512,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	}
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
-		clock_check_ts(p->clock, msg->hwts.ts);
+		clock_check_ts(p->clock, tmv_to_nanoseconds(msg->hwts.ts));
 	}
 	if (port_ignore(p, msg)) {
 		msg_put(msg);
@@ -2848,7 +2830,9 @@ struct port *port_open(int phc_index,
 	p->net_sync_monitor = config_get_int(cfg, p->name, "net_sync_monitor");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
+	p->rx_timestamp_offset <<= 16;
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
+	p->tx_timestamp_offset <<= 16;
 	p->link_status = LINK_UP;
 	p->clock = clock;
 	p->trp = transport_create(cfg, transport);

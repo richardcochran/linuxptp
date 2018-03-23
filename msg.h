@@ -27,6 +27,7 @@
 #include "address.h"
 #include "ddt.h"
 #include "tlv.h"
+#include "tmv.h"
 
 #define PTP_VERSION 2
 
@@ -64,8 +65,8 @@ enum timestamp_type {
 
 struct hw_timestamp {
 	enum timestamp_type type;
-	struct timespec ts;
-	struct timespec sw;
+	tmv_t ts;
+	tmv_t sw;
 };
 
 enum controlField {
@@ -369,7 +370,7 @@ int msg_sots_missing(struct ptp_message *m);
  */
 static inline int msg_sots_valid(struct ptp_message *m)
 {
-	return (m->hwts.ts.tv_sec || m->hwts.ts.tv_nsec) ? 1 : 0;
+	return !tmv_is_zero(m->hwts.ts);
 }
 
 /**
