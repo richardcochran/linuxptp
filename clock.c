@@ -1599,7 +1599,11 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	tsproc_down_ts(c->tsproc, origin, ingress);
 
 	if (tsproc_update_offset(c->tsproc, &c->master_offset, &weight)) {
-		return state;
+		if (c->free_running) {
+			return clock_no_adjust(c, ingress, origin);
+		} else {
+			return state;
+		}
 	}
 
 	if (clock_utc_correct(c, ingress)) {
