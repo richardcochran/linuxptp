@@ -96,8 +96,8 @@ static int64_t nsm_compute_offset(struct tsproc *tsp,
 	c3 = correction_to_tmv(resp->header.correction);
 
 	t1 = timestamp_to_tmv(fup->ts.pdu);
-	t2 = timespec_to_tmv(syn->hwts.ts);
-	t3 = timespec_to_tmv(req->hwts.ts);
+	t2 = syn->hwts.ts;
+	t3 = req->hwts.ts;
 	t4 = timestamp_to_tmv(resp->ts.pdu);
 
 	t1c = tmv_add(t1, tmv_add(c1, c2));
