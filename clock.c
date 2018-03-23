@@ -1767,11 +1767,9 @@ enum clock_type clock_type(struct clock *c)
 	return c->type;
 }
 
-void clock_check_ts(struct clock *c, struct timespec ts)
+void clock_check_ts(struct clock *c, uint64_t ts)
 {
-	if (c->sanity_check &&
-	    clockcheck_sample(c->sanity_check,
-			      ts.tv_sec * NS_PER_SEC + ts.tv_nsec)) {
+	if (c->sanity_check && clockcheck_sample(c->sanity_check, ts)) {
 		servo_reset(c->servo);
 	}
 }

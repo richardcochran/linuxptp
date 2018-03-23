@@ -316,7 +316,7 @@ enum clock_type clock_type(struct clock *c);
  * @param c  The clock instance.
  * @param ts The time stamp.
  */
-void clock_check_ts(struct clock *c, struct timespec ts);
+void clock_check_ts(struct clock *c, uint64_t ts);
 
 /**
  * Obtain ratio between master's frequency and current clock frequency.
