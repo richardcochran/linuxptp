@@ -378,6 +378,32 @@ static void fc_prune(struct foreign_clock *fc)
 	}
 }
 
+static int delay_req_current(struct ptp_message *m, struct timespec now)
+{
+	int64_t t1, t2, tmo = 5 * NSEC2SEC;
+
+	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+
+	return t2 - t1 < tmo;
+}
+
+static void delay_req_prune(struct port *p)
+{
+	struct timespec now;
+	struct ptp_message *m;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	while (!TAILQ_EMPTY(&p->delay_req)) {
+		m = TAILQ_LAST(&p->delay_req, delay_req);
+		if (delay_req_current(m, now)) {
+			break;
+		}
+		TAILQ_REMOVE(&p->delay_req, m, list);
+		msg_put(m);
+	}
+}
+
 static void ts_add(tmv_t *ts, Integer64 correction)
 {
 	if (!correction) {
@@ -1814,8 +1840,8 @@ out:
 static void process_delay_resp(struct port *p, struct ptp_message *m)
 {
 	struct delay_resp_msg *rsp = &m->delay_resp;
-	struct ptp_message *req, *obs;
 	struct PortIdentity master;
+	struct ptp_message *req;
 	tmv_t c3, t3, t4, t4c;
 
 	master = clock_parent_identity(p->clock);
@@ -1845,10 +1871,6 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 
 	clock_path_delay(p->clock, t3, t4c);
 
-	while ((obs = TAILQ_NEXT(req, list)) != NULL) {
-		TAILQ_REMOVE(&p->delay_req, obs, list);
-		msg_put(obs);
-	}
 	TAILQ_REMOVE(&p->delay_req, req, list);
 	msg_put(req);
 
@@ -2444,6 +2466,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
+		delay_req_prune(p);
 		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
 		    port_renew_transport(p)) {
 			return EV_FAULT_DETECTED;
@@ -2453,6 +2476,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_DELAY_TIMER:
 		pr_debug("port %hu: delay timeout", portnum(p));
 		port_set_delay_tmo(p);
+		delay_req_prune(p);
 		return port_delay_request(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_QUALIFICATION_TIMER:
