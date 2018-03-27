@@ -1,6 +1,6 @@
 /**
- * @file mtab.h
- * @brief master table implementation
+ * @file unicast_fsm.h
+ * @brief Unicast client state machine
  * @note Copyright (C) 2018 Richard Cochran <richardcochran@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,38 +17,24 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA.
  */
-#ifndef HAVE_MTAB_H
-#define HAVE_MTAB_H
+#ifndef HAVE_UNICAST_FSM_H
+#define HAVE_UNICAST_FSM_H
 
-#include <sys/queue.h>
-#include <time.h>
-
-#include "address.h"
-#include "pdt.h"
-#include "transport.h"
-#include "unicast_fsm.h"
-
-struct unicast_master_address {
-	STAILQ_ENTRY(unicast_master_address) list;
-	struct PortIdentity portIdentity;
-	enum transport_type type;
-	enum unicast_state state;
-	struct address address;
-	unsigned int granted;
-	unsigned int sydymsk;
-	time_t renewal_tmo;
+enum unicast_state {
+	UC_WAIT,
+	UC_HAVE_ANN,
+	UC_NEED_SYDY,
+	UC_HAVE_SYDY,
 };
 
-struct unicast_master_table {
-	STAILQ_HEAD(addrs_head, unicast_master_address) addrs;
-	STAILQ_ENTRY(unicast_master_table) list;
-	Integer8 logQueryInterval;
-	int table_index;
-	int count;
-	int port;
-	/* for use with P2P delay mechanism: */
-	struct unicast_master_address peer_addr;
-	char *peer_name;
+enum unicast_event {
+	UC_EV_GRANT_ANN,
+	UC_EV_SELECTED,
+	UC_EV_GRANT_SYDY,
+	UC_EV_UNSELECTED,
+	UC_EV_CANCEL,
 };
+
+enum unicast_state unicast_fsm(enum unicast_state state, enum unicast_event ev);
 
 #endif
