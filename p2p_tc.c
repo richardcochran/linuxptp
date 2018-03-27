@@ -119,6 +119,7 @@ enum fsm_event p2p_event(struct port *p, int fd_index)
 
 	case FD_MANNO_TIMER:
 	case FD_SYNC_TX_TIMER:
+	case FD_UNICAST_REQ_TIMER:
 		pr_err("unexpected timer expiration");
 		return EV_NONE;
 

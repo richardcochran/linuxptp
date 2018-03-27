@@ -2239,6 +2239,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
+	/* Leave FD_UNICAST_REQ_TIMER running. */
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -2280,6 +2281,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 	port_clr_tmo(p->fda.fd[FD_QUALIFICATION_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_MANNO_TIMER]);
 	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
+	/* Leave FD_UNICAST_REQ_TIMER running. */
 
 	switch (next) {
 	case PS_INITIALIZING:
@@ -2447,6 +2449,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		pr_debug("port %hu: master sync timeout", portnum(p));
 		port_set_sync_tx_tmo(p);
 		return port_tx_sync(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
+
+	case FD_UNICAST_REQ_TIMER:
+		pr_debug("port %hu: unicast request timeout", portnum(p));
+		return EV_NONE;
 
 	case FD_RTNL:
 		pr_debug("port %hu: received link status notification", portnum(p));
