@@ -391,9 +391,6 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	}
 
-	if (msg_sots_missing(m))
-		return -ETIME;
-
 	err = suffix_post_recv(m, suffix, cnt - pdulen);
 	if (err)
 		return err;
@@ -414,6 +411,7 @@ int msg_pre_send(struct ptp_message *m)
 	case SYNC:
 		break;
 	case DELAY_REQ:
+		clock_gettime(CLOCK_MONOTONIC, &m->ts.host);
 		break;
 	case PDELAY_REQ:
 		break;

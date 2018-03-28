@@ -43,7 +43,7 @@ int sk_check_fupsync;
 
 /* private methods */
 
-static int hwts_init(int fd, const char *device, int rx_filter, int one_step)
+static int hwts_init(int fd, const char *device, int rx_filter, int tx_type)
 {
 	struct ifreq ifreq;
 	struct hwtstamp_config cfg, req;
@@ -55,7 +55,7 @@ static int hwts_init(int fd, const char *device, int rx_filter, int one_step)
 	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name) - 1);
 
 	ifreq.ifr_data = (void *) &cfg;
-	cfg.tx_type    = one_step ? HWTSTAMP_TX_ONESTEP_SYNC : HWTSTAMP_TX_ON;
+	cfg.tx_type    = tx_type;
 	cfg.rx_filter  = rx_filter;
 	req = cfg;
 	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
@@ -359,6 +359,7 @@ int sk_receive(int fd, void *buf, int buflen,
 		break;
 	case TS_HARDWARE:
 	case TS_ONESTEP:
+	case TS_P2P1STEP:
 		hwts->ts = timespec_to_tmv(ts[2]);
 		break;
 	case TS_LEGACY_HW:
@@ -394,7 +395,7 @@ int sk_set_priority(int fd, uint8_t dscp)
 int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 			 enum transport_type transport)
 {
-	int err, filter1, filter2 = 0, flags, one_step;
+	int err, filter1, filter2 = 0, flags, tx_type;
 
 	switch (type) {
 	case TS_SOFTWARE:
@@ -404,6 +405,7 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 		break;
 	case TS_HARDWARE:
 	case TS_ONESTEP:
+	case TS_P2P1STEP:
 		flags = SOF_TIMESTAMPING_TX_HARDWARE |
 			SOF_TIMESTAMPING_RX_HARDWARE |
 			SOF_TIMESTAMPING_RAW_HARDWARE;
@@ -419,7 +421,21 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 
 	if (type != TS_SOFTWARE) {
 		filter1 = HWTSTAMP_FILTER_PTP_V2_EVENT;
-		one_step = type == TS_ONESTEP ? 1 : 0;
+		switch (type) {
+		case TS_SOFTWARE:
+			tx_type = HWTSTAMP_TX_OFF;
+			break;
+		case TS_HARDWARE:
+		case TS_LEGACY_HW:
+			tx_type = HWTSTAMP_TX_ON;
+			break;
+		case TS_ONESTEP:
+			tx_type = HWTSTAMP_TX_ONESTEP_SYNC;
+			break;
+		case TS_P2P1STEP:
+			tx_type = HWTSTAMP_TX_ONESTEP_P2P;
+			break;
+		}
 		switch (transport) {
 		case TRANS_UDP_IPV4:
 		case TRANS_UDP_IPV6:
@@ -434,10 +450,10 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 		case TRANS_UDS:
 			return -1;
 		}
-		err = hwts_init(fd, device, filter1, one_step);
+		err = hwts_init(fd, device, filter1, tx_type);
 		if (err) {
 			pr_info("driver rejected most general HWTSTAMP filter");
-			err = hwts_init(fd, device, filter2, one_step);
+			err = hwts_init(fd, device, filter2, tx_type);
 			if (err) {
 				pr_err("ioctl SIOCSHWTSTAMP failed: %m");
 				return err;

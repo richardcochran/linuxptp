@@ -378,6 +378,32 @@ static void fc_prune(struct foreign_clock *fc)
 	}
 }
 
+static int delay_req_current(struct ptp_message *m, struct timespec now)
+{
+	int64_t t1, t2, tmo = 5 * NSEC2SEC;
+
+	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+
+	return t2 - t1 < tmo;
+}
+
+static void delay_req_prune(struct port *p)
+{
+	struct timespec now;
+	struct ptp_message *m;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	while (!TAILQ_EMPTY(&p->delay_req)) {
+		m = TAILQ_LAST(&p->delay_req, delay_req);
+		if (delay_req_current(m, now)) {
+			break;
+		}
+		TAILQ_REMOVE(&p->delay_req, m, list);
+		msg_put(m);
+	}
+}
+
 static void ts_add(tmv_t *ts, Integer64 correction)
 {
 	if (!correction) {
@@ -1424,7 +1450,21 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	struct ptp_message *msg, *fup;
 	int err, event;
 
-	event = p->timestamping == TS_ONESTEP ? TRANS_ONESTEP : TRANS_EVENT;
+	switch (p->timestamping) {
+	case TS_SOFTWARE:
+	case TS_LEGACY_HW:
+	case TS_HARDWARE:
+		event = TRANS_EVENT;
+		break;
+	case TS_ONESTEP:
+		event = TRANS_ONESTEP;
+		break;
+	case TS_P2P1STEP:
+		event = TRANS_P2P1STEP;
+		break;
+	default:
+		return -1;
+	}
 
 	if (!port_capable(p)) {
 		return 0;
@@ -1452,7 +1492,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	msg->header.control            = CTL_SYNC;
 	msg->header.logMessageInterval = p->logSyncInterval;
 
-	if (p->timestamping != TS_ONESTEP)
+	if (p->timestamping != TS_ONESTEP && p->timestamping != TS_P2P1STEP)
 		msg->header.flagField[0] |= TWO_STEP;
 
 	if (dst) {
@@ -1464,7 +1504,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 		pr_err("port %hu: send sync failed", portnum(p));
 		goto out;
 	}
-	if (p->timestamping == TS_ONESTEP) {
+	if (p->timestamping == TS_ONESTEP || p->timestamping == TS_P2P1STEP) {
 		goto out;
 	} else if (msg_sots_missing(msg)) {
 		pr_err("missing timestamp on transmitted sync");
@@ -1814,8 +1854,8 @@ out:
 static void process_delay_resp(struct port *p, struct ptp_message *m)
 {
 	struct delay_resp_msg *rsp = &m->delay_resp;
-	struct ptp_message *req, *obs;
 	struct PortIdentity master;
+	struct ptp_message *req;
 	tmv_t c3, t3, t4, t4c;
 
 	master = clock_parent_identity(p->clock);
@@ -1839,17 +1879,12 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	}
 
 	c3 = correction_to_tmv(m->header.correction);
-	t3 = p->delay_req->hwts.ts;
 	t3 = req->hwts.ts;
 	t4 = timestamp_to_tmv(m->ts.pdu);
 	t4c = tmv_sub(t4, c3);
 
 	clock_path_delay(p->clock, t3, t4c);
 
-	while ((obs = TAILQ_NEXT(req, list)) != NULL) {
-		TAILQ_REMOVE(&p->delay_req, obs, list);
-		msg_put(obs);
-	}
 	TAILQ_REMOVE(&p->delay_req, req, list);
 	msg_put(req);
 
@@ -1913,7 +1948,21 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 static int process_pdelay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *rsp, *fup;
-	int err;
+	int err, event;
+
+	switch (p->timestamping) {
+	case TS_SOFTWARE:
+	case TS_LEGACY_HW:
+	case TS_HARDWARE:
+	case TS_ONESTEP:
+		event = TRANS_EVENT;
+		break;
+	case TS_P2P1STEP:
+		event = TRANS_P2P1STEP;
+		break;
+	default:
+		return -1;
+	}
 
 	if (p->delayMechanism == DM_E2E) {
 		pr_warning("port %hu: pdelay_req on E2E port", portnum(p));
@@ -1959,19 +2008,36 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	rsp->header.sequenceId         = m->header.sequenceId;
 	rsp->header.control            = CTL_OTHER;
 	rsp->header.logMessageInterval = 0x7f;
-	/*
-	 * NB - There is no kernel support for one step P2P messaging,
-	 * so we always send a follow up message.
-	 */
-	rsp->header.flagField[0] |= TWO_STEP;
 
 	/*
 	 * NB - We do not have any fraction nanoseconds for the correction
 	 * fields, neither in the response or the follow up.
 	 */
-	rsp->pdelay_resp.requestReceiptTimestamp = tmv_to_Timestamp(m->hwts.ts);
+	if (p->timestamping == TS_P2P1STEP) {
+		rsp->header.correction = m->header.correction;
+	} else {
+		rsp->header.flagField[0] |= TWO_STEP;
+		rsp->pdelay_resp.requestReceiptTimestamp =
+			tmv_to_Timestamp(m->hwts.ts);
+	}
 	rsp->pdelay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
+	err = peer_prepare_and_send(p, rsp, event);
+	if (err) {
+		pr_err("port %hu: send peer delay response failed", portnum(p));
+		goto out;
+	}
+	if (p->timestamping == TS_P2P1STEP) {
+		goto out;
+	} else if (msg_sots_missing(rsp)) {
+		pr_err("missing timestamp on transmitted peer delay response");
+		err = -1;
+		goto out;
+	}
+
+	/*
+	 * Send the follow up message right away.
+	 */
 	fup->hwts.type = p->timestamping;
 
 	fup->header.tsmt               = PDELAY_RESP_FOLLOW_UP | p->transportSpecific;
@@ -1986,23 +2052,12 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 	fup->pdelay_resp_fup.requestingPortIdentity = m->header.sourcePortIdentity;
 
-	err = peer_prepare_and_send(p, rsp, 1);
-	if (err) {
-		pr_err("port %hu: send peer delay response failed", portnum(p));
-		goto out;
-	}
-	if (msg_sots_missing(rsp)) {
-		pr_err("missing timestamp on transmitted peer delay response");
-		goto out;
-	}
-
 	fup->pdelay_resp_fup.responseOriginTimestamp =
 		tmv_to_Timestamp(rsp->hwts.ts);
 
 	err = peer_prepare_and_send(p, fup, 0);
 	if (err)
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
-
 out:
 	msg_put(rsp);
 	msg_put(fup);
@@ -2445,6 +2500,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
+		delay_req_prune(p);
 		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
 		    port_renew_transport(p)) {
 			return EV_FAULT_DETECTED;
@@ -2454,6 +2510,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_DELAY_TIMER:
 		pr_debug("port %hu: delay timeout", portnum(p));
 		port_set_delay_tmo(p);
+		delay_req_prune(p);
 		return port_delay_request(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_QUALIFICATION_TIMER:
@@ -2500,14 +2557,17 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		case -EBADMSG:
 			pr_err("port %hu: bad message", portnum(p));
 			break;
-		case -ETIME:
-			pr_err("port %hu: received %s without timestamp",
-				portnum(p), msg_type_string(msg_type(msg)));
-			break;
 		case -EPROTO:
 			pr_debug("port %hu: ignoring message", portnum(p));
 			break;
 		}
+		msg_put(msg);
+		return EV_NONE;
+	}
+	if (msg_sots_missing(msg) &&
+	    !(p->timestamping == TS_P2P1STEP && msg_type(msg) == PDELAY_REQ)) {
+		pr_err("port %hu: received %s without timestamp",
+		       portnum(p), msg_type_string(msg_type(msg)));
 		msg_put(msg);
 		return EV_NONE;
 	}
