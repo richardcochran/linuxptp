@@ -391,9 +391,6 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	}
 
-	if (msg_sots_missing(m))
-		return -ETIME;
-
 	err = suffix_post_recv(m, suffix, cnt - pdulen);
 	if (err)
 		return err;

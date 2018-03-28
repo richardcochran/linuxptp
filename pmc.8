@@ -5,6 +5,8 @@ pmc \- PTP management client
 .SH SYNOPSIS
 .B pmc
 [
+.BI \-f " config-file"
+] [
 .B \-2
 |
 .B \-4
@@ -22,6 +24,8 @@ pmc \- PTP management client
 .BI \-s " uds-address"
 ] [
 .BI \-t " transport-specific-field"
+] [
+.I long-options
 ] [
 .B \-v
 ] [
@@ -97,6 +101,61 @@ pmc program normally sends GET requests with properly formed TLV
 values. This option enables the legacy option of sending zero
 length TLV values instead.
 
+.SH LONG OPTIONS
+
+Each and every configuration file option (see below in sections
+.BR PROGRAM\ OPTIONS
+and
+.BR PORT\ OPTIONS )
+may also appear
+as a "long" style command line argument. For example, the transportSpecific
+option may be set using either of these two forms:
+
+.RS
+\f(CW\-\-transportSpecific 1   \-\-transportSpecific=1\fP
+.RE
+
+Option values given on the command line override values in the global
+section of the configuration file (which, in turn, overrides default
+values).
+
+.SH CONFIGURATION FILE
+
+The configuration file is divided into sections. Each section starts with a
+line containing its name enclosed in brackets and it follows with settings.
+Each setting is placed on a separate line, it contains the name of the
+option and the value separated by whitespace characters. Empty lines and lines
+starting with # are ignored.
+
+The global section (indicated as
+.BR [global] )
+sets the global program options as well as the default port specific options.
+Other sections are port specific sections and they override the default port
+options. The name of the section is the name of the configured port (e.g.
+.BR [eth0]
+).
+
+.SH PROGRAM OPTIONS
+.TP
+.B domainNumber
+The domain attribute of the local clock. The default is 0.
+
+.SH PORT OPTIONS
+.TP
+.B transportSpecific
+The transport specific field. Must be in the range 0 to 255.
+The default is 0.
+
+.TP
+.B network_transport
+Select the network transport. Possible values are UDPv4, UDPv6 and L2. The default
+is UDPv4.
+
+.TP
+.B ptp_dst_mac
+The MAC address to which PTP management messages should be sent. Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
+
+
 .SH MANAGEMENT IDS
 
 .TP
@@ -147,6 +206,18 @@ length TLV values instead.
 .B USER_DESCRIPTION
 .TP
 .B VERSION_NUMBER
+
+.SH WARNING
+
+Be cautious when the same configuration file is used for both ptp4l
+and pmc.  Keep in mind that values specified in the configuration file
+take precedence over their default values. If a certain option which
+is common to ptp4l and pmc is specified to a non-default value in the
+configuration file (e.g. for ptp4l), then this non-default value
+applies also for pmc. This might be not what is expected.
+
+To avoid securely these unexpected behaviour, different configuration files
+for ptp4l and pmc are recommended.
 
 .SH SEE ALSO
 .BR ptp4l (8)

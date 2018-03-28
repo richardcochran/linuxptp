@@ -823,6 +823,7 @@ int clock_required_modes(struct clock *c)
 		break;
 	case TS_HARDWARE:
 	case TS_ONESTEP:
+	case TS_P2P1STEP:
 		required_modes |= SOF_TIMESTAMPING_TX_HARDWARE |
 			SOF_TIMESTAMPING_RX_HARDWARE |
 			SOF_TIMESTAMPING_RAW_HARDWARE;
@@ -847,10 +848,9 @@ static void ensure_ts_label(struct interface *iface)
 struct clock *clock_create(enum clock_type type, struct config *config,
 			   const char *phc_device)
 {
-	enum timestamp_type timestamping =
-		config_get_int(config, NULL, "time_stamping");
-	int fadj = 0, max_adj = 0, sw_ts = timestamping == TS_SOFTWARE ? 1 : 0;
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
+	enum timestamp_type timestamping;
+	int fadj = 0, max_adj = 0, sw_ts;
 	int phc_index, required_modes = 0;
 	struct clock *c = &the_clock;
 	struct port *p;
@@ -918,12 +918,6 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	if (config_get_int(config, NULL, "slaveOnly")) {
 		c->dds.flags |= DDS_SLAVE_ONLY;
 	}
-	if (config_get_int(config, NULL, "twoStepFlag")) {
-		c->dds.flags |= DDS_TWO_STEP_FLAG;
-	}
-	c->dds.priority1 = config_get_int(config, NULL, "priority1");
-	c->dds.priority2 = config_get_int(config, NULL, "priority2");
-
 	if (!config_get_int(config, NULL, "gmCapable") &&
 	    c->dds.flags & DDS_SLAVE_ONLY) {
 		pr_err("Cannot mix 1588 slaveOnly with 802.1AS !gmCapable");
@@ -934,22 +928,22 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		c->dds.clockQuality.clockClass = 255;
 	}
 
-	if (!(c->dds.flags & DDS_TWO_STEP_FLAG)) {
-		switch (timestamping) {
-		case TS_SOFTWARE:
-		case TS_LEGACY_HW:
-			pr_err("one step is only possible "
-			       "with hardware time stamping");
-			return NULL;
-		case TS_HARDWARE:
-			timestamping = TS_ONESTEP;
-			if (config_set_int(config, "time_stamping", TS_ONESTEP))
-				return NULL;
-			break;
-		case TS_ONESTEP:
-			break;
-		}
+	/* Harmonize the twoStepFlag with the time_stamping option. */
+	if (config_harmonize_onestep(config)) {
+		return NULL;
 	}
+	if (config_get_int(config, NULL, "twoStepFlag")) {
+		c->dds.flags |= DDS_TWO_STEP_FLAG;
+	}
+	timestamping = config_get_int(config, NULL, "time_stamping");
+	if (timestamping == TS_SOFTWARE) {
+		sw_ts = 1;
+	} else {
+		sw_ts = 0;
+	}
+
+	c->dds.priority1 = config_get_int(config, NULL, "priority1");
+	c->dds.priority2 = config_get_int(config, NULL, "priority2");
 
 	/* Check the time stamping mode on each interface. */
 	c->timestamping = timestamping;
@@ -1709,8 +1703,13 @@ static void handle_state_decision_event(struct clock *c)
 		best_id = c->dds.clockIdentity;
 	}
 
-	pr_notice("selected best master clock %s",
-		  cid2str(&best_id));
+	if (cid_eq(&best_id, &c->dds.clockIdentity)) {
+		pr_notice("selected local clock %s as best master",
+			  cid2str(&best_id));
+	} else {
+		pr_notice("selected best master clock %s",
+			  cid2str(&best_id));
+	}
 
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
