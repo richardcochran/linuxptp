@@ -179,6 +179,30 @@ static void clock_set_pmtime(struct clock *c)
 	c->pm_stats_record.periodComplete = 0;
 }
 
+static void clock_handle_pm_err(struct clock *c)
+{
+	clock_disarm_pm_timer(c->pm_fd);
+	pm_free_clock_recordlist(&c->pm_recordlist);
+	c->performance_monitoring = 0;
+}
+
+static void clock_pm_event(struct clock *c)
+{
+	clock_set_pm_timer(c);
+
+	if (pm_update_clock_stats_recordlist(&c->pm_stats_record,
+					     &c->pm_recordlist)) {
+		pr_err("update of pm recordlist for clock failed");
+		goto err;
+	}
+
+	clock_set_pmtime(c);
+	return;
+err:
+	clock_handle_pm_err(c);
+	return;
+}
+
 static void clock_update_pm_master_slave_delay(struct clock *c, tmv_t delay)
 {
 	stats_add_value(c->pm_stats_record.masterSlaveDelay,
@@ -349,6 +373,7 @@ void clock_destroy(struct clock *c)
 	stats_destroy(c->stats.freq);
 	stats_destroy(c->stats.delay);
 	pm_destroy_clock_stats(&c->pm_stats_record);
+	pm_free_clock_recordlist(&c->pm_recordlist);
 	if (c->sanity_check) {
 		clockcheck_destroy(c->sanity_check);
 	}
@@ -1629,7 +1654,7 @@ int clock_poll(struct clock *c)
 
 	/* Check the pm timer. */
 	if (cur[0].revents & (POLLIN|POLLPRI)) {
-		;
+		clock_pm_event(c);
 	}
 
 	if (c->sde) {
