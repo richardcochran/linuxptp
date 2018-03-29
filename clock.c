@@ -155,11 +155,15 @@ static void clock_set_pmtime(struct clock *c)
 {
 	struct timespec now;
 	PMTimestamp pmtime;
+	struct port *p;
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	pmtime = timespec_to_tmv(now);
 
 	c->pm_stats_record.head.PMTime = pmtime;
+	LIST_FOREACH(p, &c->ports, list) {
+		port_set_pmtime(p, pmtime);
+	}
 	c->pm_stats_record.measurementValid = 1;
 	c->pm_stats_record.periodComplete = 0;
 }

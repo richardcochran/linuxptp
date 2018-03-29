@@ -137,6 +137,10 @@ struct port {
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
+	/* performance monitoring */
+	struct port_pm_stats pm_stats_record;
+	struct port_pm_counters pm_counter_record;
+	struct port_pm_record_list pm_recordlist;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
@@ -147,6 +151,18 @@ static void flush_delay_req(struct port *p);
 static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
 static void port_nrate_initialize(struct port *p);
+
+void port_set_pmtime(struct port *p, PMTimestamp pmtime)
+{
+	p->pm_stats_record.head.PMTime = pmtime;
+	p->pm_counter_record.head.PMTime = pmtime;
+}
+
+static void port_update_pm_mean_link_delay(struct port *p)
+{
+	stats_add_value(p->pm_stats_record.meanLinkDelay,
+			tmv_dbl(p->peer_delay));
+}
 
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
 {
@@ -422,6 +438,8 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	struct foreign_clock *fc;
 	struct ptp_message *tmp;
 	int broke_threshold = 0, diff = 0;
+
+	p->pm_counter_record.counter[ANNOUNCE_FOREIGN_MASTER_RX]++;
 
 	LIST_FOREACH(fc, &p->foreign_masters, list) {
 		if (msg_source_equal(m, fc)) {
@@ -1341,6 +1359,9 @@ static int port_pdelay_request(struct port *p)
 		pr_err("port %hu: send peer delay request failed", portnum(p));
 		goto out;
 	}
+
+	p->pm_counter_record.counter[PDELAY_REQ_TX]++;
+
 	if (msg_sots_missing(msg)) {
 		pr_err("missing timestamp on transmitted peer delay request");
 		goto out;
@@ -1404,6 +1425,9 @@ static int port_delay_request(struct port *p)
 		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
 	}
+
+	p->pm_counter_record.counter[DELAY_REQ_TX]++;
+
 	if (msg_sots_missing(msg)) {
 		pr_err("missing timestamp on transmitted delay request");
 		goto out;
@@ -1461,6 +1485,9 @@ static int port_tx_announce(struct port *p)
 	if (err) {
 		pr_err("port %hu: send announce failed", portnum(p));
 	}
+
+	p->pm_counter_record.counter[ANNOUNCE_TX]++;
+
 	msg_put(msg);
 	return err;
 }
@@ -1526,6 +1553,9 @@ static int port_tx_sync(struct port *p, struct address *dst)
 		pr_err("port %hu: send sync failed", portnum(p));
 		goto out;
 	}
+
+	p->pm_counter_record.counter[SYNC_TX]++;
+
 	if (p->timestamping == TS_ONESTEP || p->timestamping == TS_P2P1STEP) {
 		goto out;
 	} else if (msg_sots_missing(msg)) {
@@ -1564,6 +1594,8 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	if (err) {
 		pr_err("port %hu: send follow up failed", portnum(p));
 	}
+
+	p->pm_counter_record.counter[FOLLOWUP_TX]++;
 out:
 	msg_put(msg);
 	msg_put(fup);
@@ -1818,6 +1850,8 @@ static int process_announce(struct port *p, struct ptp_message *m)
 		result = update_current_master(p, m);
 		break;
 	}
+
+	p->pm_counter_record.counter[ANNOUNCE_RX]++;
 	return result;
 }
 
@@ -1835,6 +1869,10 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	if (p->delayMechanism == DM_P2P) {
 		pr_warning("port %hu: delay request on P2P port", portnum(p));
 		return 0;
+	}
+
+	if (!nsm) {
+		p->pm_counter_record.counter[DELAY_REQ_RX]++;
 	}
 
 	msg = msg_allocate();
@@ -1873,11 +1911,14 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		pr_err("port %hu: send delay response failed", portnum(p));
 		goto out;
 	}
+
 	if (nsm) {
 		saved_seqnum_sync = p->seqnum.sync;
 		p->seqnum.sync = m->header.sequenceId;
 		err = port_tx_sync(p, &m->address);
 		p->seqnum.sync = saved_seqnum_sync;
+	} else {
+		p->pm_counter_record.counter[DELAY_RESP_TX]++;
 	}
 out:
 	msg_put(msg);
@@ -1921,6 +1962,8 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	TAILQ_REMOVE(&p->delay_req, req, list);
 	msg_put(req);
 
+	p->pm_counter_record.counter[DELAY_RESP_RX]++;
+
 	if (p->logMinDelayReqInterval == rsp->hdr.logMessageInterval) {
 		return;
 	}
@@ -1962,6 +2005,8 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master))) {
 		return;
 	}
+
+	p->pm_counter_record.counter[FOLLOWUP_RX]++;
 
 	if (p->follow_up_info) {
 		struct follow_up_info_tlv *fui = follow_up_info_extract(m);
@@ -2023,6 +2068,8 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 			pid2str(&p->peer_portid));
 	}
 
+	p->pm_counter_record.counter[PDELAY_REQ_RX]++;
+
 	rsp = msg_allocate();
 	if (!rsp) {
 		return -1;
@@ -2070,6 +2117,8 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		goto out;
 	}
 
+	p->pm_counter_record.counter[PDELAY_RESP_TX]++;
+
 	/*
 	 * Send the follow up message right away.
 	 */
@@ -2094,6 +2143,8 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 	if (err) {
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
 	}
+
+	p->pm_counter_record.counter[PDELAY_RESP_FOLLOWUP_TX]++;
 out:
 	msg_put(rsp);
 	msg_put(fup);
@@ -2166,6 +2217,9 @@ calc:
 	}
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
+	if (clock_performance_monitoring(p->clock)) {
+		port_update_pm_mean_link_delay(p);
+	}
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, t1, t2,
@@ -2211,6 +2265,8 @@ static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 			pid2str(&p->peer_portid));
 	}
 
+	p->pm_counter_record.counter[PDELAY_RESP_RX]++;
+
 	if (p->peer_delay_resp) {
 		msg_put(p->peer_delay_resp);
 	}
@@ -2225,6 +2281,8 @@ static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 	if (!p->peer_delay_req) {
 		return;
 	}
+
+	p->pm_counter_record.counter[PDELAY_RESP_FOLLOWUP_RX]++;
 
 	if (p->peer_delay_fup) {
 		msg_put(p->peer_delay_fup);
@@ -2263,6 +2321,8 @@ static void process_sync(struct port *p, struct ptp_message *m)
 		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
 
+	p->pm_counter_record.counter[SYNC_RX]++;
+
 	m->header.correction += p->asymmetry;
 
 	if (one_step(m)) {
@@ -2299,6 +2359,7 @@ void port_close(struct port *p)
 	if (p->fault_fd >= 0) {
 		close(p->fault_fd);
 	}
+	pm_destroy_port_stats(&p->pm_stats_record);
 	free(p);
 }
 
@@ -3006,8 +3067,14 @@ struct port *port_open(int phc_index,
 			goto err_tsproc;
 		}
 	}
+	if (pm_create_port_stats(&p->pm_stats_record)) {
+		pr_err("failed to create pm port stats");
+		goto err_pmstats;
+	}
 	return p;
 
+err_pmstats:
+	pm_destroy_port_stats(&p->pm_stats_record);
 err_tsproc:
 	tsproc_destroy(p->tsproc);
 err_transport:

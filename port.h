@@ -24,6 +24,7 @@
 #include "foreign.h"
 #include "fsm.h"
 #include "notification.h"
+#include "pm.h"
 #include "transport.h"
 
 /* forward declarations */
@@ -32,6 +33,14 @@ struct clock;
 
 /** Opaque type. */
 struct port;
+
+/**
+ * Set the pm timestamp for the current port pm data.
+ *
+ * @param port    A port instance.
+ * @param pmtime  Current pm timestamp.
+ */
+void port_set_pmtime(struct port *p, PMTimestamp pmtime);
 
 /**
  * Returns the dataset from a port's best foreign clock record, if any
