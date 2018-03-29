@@ -34,6 +34,7 @@
 #include "missing.h"
 #include "msg.h"
 #include "phc.h"
+#include "pm.h"
 #include "port.h"
 #include "servo.h"
 #include "stats.h"
@@ -121,6 +122,10 @@ struct clock {
 	struct clockcheck *sanity_check;
 	struct interface uds_interface;
 	LIST_HEAD(clock_subscribers_head, clock_subscriber) subscribers;
+	/* performance monitoring */
+	int performance_monitoring;
+	struct clock_pm_stats pm_stats_record;
+	struct clock_pm_record_list pm_recordlist;
 };
 
 struct clock the_clock;
@@ -140,6 +145,48 @@ static int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
 	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 #endif
+
+int clock_performance_monitoring(struct clock *c)
+{
+	return c->performance_monitoring;
+}
+
+static void clock_set_pmtime(struct clock *c)
+{
+	struct timespec now;
+	PMTimestamp pmtime;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	pmtime = timespec_to_tmv(now);
+
+	c->pm_stats_record.head.PMTime = pmtime;
+	c->pm_stats_record.measurementValid = 1;
+	c->pm_stats_record.periodComplete = 0;
+}
+
+static void clock_update_pm_master_slave_delay(struct clock *c, tmv_t delay)
+{
+	stats_add_value(c->pm_stats_record.masterSlaveDelay,
+			tmv_dbl(delay));
+}
+
+static void clock_update_pm_slave_master_delay(struct clock *c, tmv_t delay)
+{
+	stats_add_value(c->pm_stats_record.slaveMasterDelay,
+			tmv_dbl(delay));
+}
+
+static void clock_update_pm_mean_path_delay(struct clock *c)
+{
+	stats_add_value(c->pm_stats_record.meanPathDelay,
+			tmv_dbl(c->path_delay));
+}
+
+static void clock_update_pm_offset_from_master(struct clock *c)
+{
+	stats_add_value(c->pm_stats_record.offsetFromMaster,
+			tmv_dbl(c->master_offset));
+}
 
 static void remove_subscriber(struct clock_subscriber *s)
 {
@@ -284,6 +331,7 @@ void clock_destroy(struct clock *c)
 	stats_destroy(c->stats.offset);
 	stats_destroy(c->stats.freq);
 	stats_destroy(c->stats.delay);
+	pm_destroy_clock_stats(&c->pm_stats_record);
 	if (c->sanity_check) {
 		clockcheck_destroy(c->sanity_check);
 	}
@@ -1116,12 +1164,18 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 
+	if (pm_create_clock_stats(&c->pm_stats_record)) {
+		pr_err("failed to create pm clock stats");
+		return NULL;
+	}
+
 	/* Create the UDS interface. */
 	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
 	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
 		return NULL;
 	}
+
 	clock_fda_changed(c);
 
 	/* Create the ports. */
@@ -1138,6 +1192,10 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		port_dispatch(p, EV_INITIALIZE, 0);
 	}
 	port_dispatch(c->uds_port, EV_INITIALIZE, 0);
+
+	if (c->performance_monitoring) {
+		clock_set_pmtime(c);
+	}
 
 	return c;
 }
@@ -1547,12 +1605,18 @@ int clock_poll(struct clock *c)
 void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 {
 	tsproc_up_ts(c->tsproc, req, rx);
+	if (c->performance_monitoring) {
+		clock_update_pm_slave_master_delay(c, tmv_sub(rx, req));
+	}
 
 	if (tsproc_update_delay(c->tsproc, &c->path_delay)) {
 		return;
 	}
 
 	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
+	if (c->performance_monitoring) {
+		clock_update_pm_mean_path_delay(c);
+	}
 
 	if (c->stats.delay) {
 		stats_add_value(c->stats.delay, tmv_dbl(c->path_delay));
@@ -1626,6 +1690,9 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->ingress_ts = ingress;
 
 	tsproc_down_ts(c->tsproc, origin, ingress);
+	if (c->performance_monitoring) {
+		clock_update_pm_master_slave_delay(c, tmv_sub(ingress, origin));
+	}
 
 	if (tsproc_update_offset(c->tsproc, &c->master_offset, &weight)) {
 		return state;
@@ -1636,6 +1703,9 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	}
 
 	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
+	if (c->performance_monitoring) {
+		clock_update_pm_offset_from_master(c);
+	}
 
 	if (c->free_running) {
 		return clock_no_adjust(c, ingress, origin);
