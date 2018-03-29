@@ -96,4 +96,69 @@ struct port_pm_record_list {
 	TAILQ_HEAD(port_pm_24_counters_head, port_pm_counters) record24_cnt;
 };
 
+/**
+ * Creates stats instances for clock statistics.
+ * @param cr Handle to current record.
+ * @return   Zero on success, non-zero if the message is invalid.
+ */
+int pm_create_clock_stats(struct clock_pm_stats *cr);
+
+/**
+ * Creates stats instances for port statistics.
+ * @param cr Handle to current record.
+ * @return   Zero on success, non-zero if the message is invalid.
+ */
+int pm_create_port_stats(struct port_pm_stats *cr);
+
+/**
+ * Destroys stats instances for clock statistics.
+ * @param cr Handle to current record.
+ */
+void pm_destroy_clock_stats(struct clock_pm_stats *cr);
+
+/**
+ * Destroys stats instances for port statistics.
+ * @param cr Handle to current record.
+ */
+void pm_destroy_port_stats(struct port_pm_stats *cr);
+
+/**
+ * Clear the record list and frees all the memory.
+ * @param rl Handle to clock recordlist.
+ */
+void pm_free_clock_recordlist(struct clock_pm_record_list *rl);
+
+/**
+ * Clear the record list and frees all the memory.
+ * @param rl Handle to port recordlist.
+ */
+void pm_free_port_recordlist(struct port_pm_record_list *rl);
+
+/**
+ * Update clock stats 15 minutes and 24 hour recordlist.
+ * @param cr Handle to current record to store.
+ * @param rl Handle to recordlist.
+ * @return   Zero on success, non-zero if the message is invalid.
+ */
+int pm_update_clock_stats_recordlist(struct clock_pm_stats *cr,
+				     struct clock_pm_record_list *rl);
+
+/**
+ * Update port stats 15 minutes and 24 hour recordlist.
+ * @param cr Handle to current record to store.
+ * @param rl Handle to recordlist.
+ * @return   Zero on success, non-zero if the message is invalid.
+ */
+int pm_update_port_stats_recordlist(struct port_pm_stats *cr,
+				    struct port_pm_record_list *rl);
+
+/**
+ * Update port counters 15 minutes and 24 hour recordlist.
+ * @param cr Handle to current record to store.
+ * @param rl Handle to recordlist.
+ * @return   Zero on success, non-zero if the message is invalid.
+ */
+int pm_update_port_counters_recordlist(struct port_pm_counters *cr,
+				       struct port_pm_record_list *rl);
+
 #endif
