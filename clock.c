@@ -181,19 +181,32 @@ static void clock_set_pmtime(struct clock *c)
 
 static void clock_handle_pm_err(struct clock *c)
 {
+	struct port *p;
+
 	clock_disarm_pm_timer(c->pm_fd);
 	pm_free_clock_recordlist(&c->pm_recordlist);
+	LIST_FOREACH(p, &c->ports, list) {
+		port_free_pm_recordlist(p);
+	}
 	c->performance_monitoring = 0;
 }
 
 static void clock_pm_event(struct clock *c)
 {
+	struct port *p;
 	clock_set_pm_timer(c);
 
 	if (pm_update_clock_stats_recordlist(&c->pm_stats_record,
 					     &c->pm_recordlist)) {
 		pr_err("update of pm recordlist for clock failed");
 		goto err;
+	}
+	LIST_FOREACH(p, &c->ports, list) {
+		if (port_update_pm_recordlist(p)) {
+			pr_err("update of pm recordlist for port: %d failed",
+			       port_number(p));
+			goto err;
+		}
 	}
 
 	clock_set_pmtime(c);

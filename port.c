@@ -158,6 +158,24 @@ void port_set_pmtime(struct port *p, PMTimestamp pmtime)
 	p->pm_counter_record.head.PMTime = pmtime;
 }
 
+void port_free_pm_recordlist(struct port *p)
+{
+	pm_free_port_recordlist(&p->pm_recordlist);
+}
+
+int port_update_pm_recordlist(struct port *p)
+{
+	if (pm_update_port_stats_recordlist(&p->pm_stats_record,
+					    &p->pm_recordlist)) {
+		return -1;
+	}
+	if (pm_update_port_counters_recordlist(&p->pm_counter_record,
+						  &p->pm_recordlist)) {
+		return -1;
+	}
+	return 0;
+}
+
 static void port_update_pm_mean_link_delay(struct port *p)
 {
 	stats_add_value(p->pm_stats_record.meanLinkDelay,
@@ -2350,6 +2368,7 @@ void port_close(struct port *p)
 		close(p->fault_fd);
 	}
 	pm_destroy_port_stats(&p->pm_stats_record);
+	pm_free_port_recordlist(&p->pm_recordlist);
 	free(p);
 }
 

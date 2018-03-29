@@ -43,6 +43,21 @@ struct port;
 void port_set_pmtime(struct port *p, PMTimestamp pmtime);
 
 /**
+ * Free all memory in the recordlist for the port.
+ *
+ * @param port    A port instance.
+ */
+void port_free_pm_recordlist(struct port *p);
+
+/**
+ * Updates the recordlist for the port.
+ *
+ * @param port    A port instance.
+ * @return        Zero on success, non-zero otherwise.
+ */
+int port_update_pm_recordlist(struct port *p);
+
+/**
  * Returns the dataset from a port's best foreign clock record, if any
  * has yet been discovered. This function does not bring the returned
  * dataset up to date, so the caller should invoke port_compute_best()
