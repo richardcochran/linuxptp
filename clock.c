@@ -1131,6 +1131,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
 	c->utc_offset = config_get_int(config, NULL, "utc_offset");
 	c->time_source = config_get_int(config, NULL, "timeSource");
+	c->performance_monitoring =
+		config_get_int(config, NULL, "performance_monitoring");
 
 	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
