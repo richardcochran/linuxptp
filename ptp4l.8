@@ -229,6 +229,15 @@ time stamps in the message to estimate the node's offset.  This option
 requires that the 'hybrid_e2e' option be enabled as well.
 The default is 0 (disabled).
 .TP
+.B performance_monitoring
+Enables Performance monitoring (PM). The purpose of monitoring is to
+visulize how the PTP timestamps change over time in the network. The
+monitoring will be made in 15 minutes and 24 hour cycles. Statistics
+for the last completed and the current 24 hour cycle will be stored in
+a recordlist along with the statistics for the last 96 15 minutes
+cycles.
+The default is 0 (disabled).
+.TP
 .B ptp_dst_mac
 The MAC address to which PTP messages should be sent.
 Relevant only with L2 transport. The default is 01:1B:19:00:00:00.

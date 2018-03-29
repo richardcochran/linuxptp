@@ -43,6 +43,13 @@ enum clock_type {
 };
 
 /**
+ * Obtain the performance monitoring attribute from a clock.
+ * @param c  The clock instance.
+ * @return   The value of the clock's performance monitoring flag.
+ */
+int clock_performance_monitoring(struct clock *c);
+
+/**
  * Obtains a reference to the best foreign master of a clock.
  * @param c  The clock instance.
  * @return   A pointer to the data set of the foreign master,

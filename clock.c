@@ -34,6 +34,7 @@
 #include "missing.h"
 #include "msg.h"
 #include "phc.h"
+#include "pm.h"
 #include "port.h"
 #include "servo.h"
 #include "stats.h"
@@ -121,6 +122,11 @@ struct clock {
 	struct clockcheck *sanity_check;
 	struct interface uds_interface;
 	LIST_HEAD(clock_subscribers_head, clock_subscriber) subscribers;
+	/* performance monitoring */
+	int performance_monitoring;
+	int pm_fd;
+	struct clock_pm_stats pm_stats_record;
+	struct clock_pm_record_list pm_recordlist;
 };
 
 struct clock the_clock;
@@ -140,6 +146,99 @@ static int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
 	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 #endif
+
+int clock_performance_monitoring(struct clock *c)
+{
+	return c->performance_monitoring;
+}
+
+static int clock_set_pm_timer(struct clock *c)
+{
+	return set_tmo_lin(c->pm_fd, PM_15M_TIMER);
+}
+
+static int clock_disarm_pm_timer(int fd)
+{
+	return set_tmo_lin(fd, 0);
+}
+
+static void clock_set_pmtime(struct clock *c)
+{
+	struct timespec now;
+	PMTimestamp pmtime;
+	struct port *p;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	pmtime = timespec_to_tmv(now);
+
+	c->pm_stats_record.head.PMTime = pmtime;
+	LIST_FOREACH(p, &c->ports, list) {
+		port_set_pmtime(p, pmtime);
+	}
+	c->pm_stats_record.measurementValid = 1;
+	c->pm_stats_record.periodComplete = 0;
+}
+
+static void clock_handle_pm_err(struct clock *c)
+{
+	struct port *p;
+
+	clock_disarm_pm_timer(c->pm_fd);
+	pm_free_clock_recordlist(&c->pm_recordlist);
+	LIST_FOREACH(p, &c->ports, list) {
+		port_free_pm_recordlist(p);
+	}
+	c->performance_monitoring = 0;
+}
+
+static void clock_pm_event(struct clock *c)
+{
+	struct port *p;
+	clock_set_pm_timer(c);
+
+	if (pm_update_clock_stats_recordlist(&c->pm_stats_record,
+					     &c->pm_recordlist)) {
+		pr_err("update of pm recordlist for clock failed");
+		goto err;
+	}
+	LIST_FOREACH(p, &c->ports, list) {
+		if (port_update_pm_recordlist(p)) {
+			pr_err("update of pm recordlist for port: %d failed",
+			       port_number(p));
+			goto err;
+		}
+	}
+
+	clock_set_pmtime(c);
+	return;
+err:
+	clock_handle_pm_err(c);
+	return;
+}
+
+static void clock_update_pm_master_slave_delay(struct clock *c, tmv_t delay)
+{
+	stats_add_value(c->pm_stats_record.masterSlaveDelay,
+			tmv_dbl(delay));
+}
+
+static void clock_update_pm_slave_master_delay(struct clock *c, tmv_t delay)
+{
+	stats_add_value(c->pm_stats_record.slaveMasterDelay,
+			tmv_dbl(delay));
+}
+
+static void clock_update_pm_mean_path_delay(struct clock *c)
+{
+	stats_add_value(c->pm_stats_record.meanPathDelay,
+			tmv_dbl(c->path_delay));
+}
+
+static void clock_update_pm_offset_from_master(struct clock *c)
+{
+	stats_add_value(c->pm_stats_record.offsetFromMaster,
+			tmv_dbl(c->master_offset));
+}
 
 static void remove_subscriber(struct clock_subscriber *s)
 {
@@ -177,8 +276,9 @@ static void clock_update_subscription(struct clock *c, struct ptp_message *req,
 			return;
 		}
 	}
-	if (remove)
+	if (remove) {
 		return;
+	}
 	/* Not present yet, add the subscriber. */
 	s = malloc(sizeof(*s));
 	if (!s) {
@@ -250,8 +350,9 @@ void clock_send_notification(struct clock *c, struct ptp_message *msg,
 	struct clock_subscriber *s;
 
 	LIST_FOREACH(s, &c->subscribers, list) {
-		if (!(s->events[event_pos] & mask))
+		if (!(s->events[event_pos] & mask)) {
 			continue;
+		}
 		/* send event */
 		msg->header.sequenceId = htons(s->sequenceId);
 		s->sequenceId++;
@@ -273,6 +374,8 @@ void clock_destroy(struct clock *c)
 		clock_remove_port(c, p);
 	}
 	port_close(c->uds_port);
+	clock_disarm_pm_timer(c->pm_fd);
+	close(c->pm_fd);
 	free(c->pollfd);
 	if (c->clkid != CLOCK_REALTIME) {
 		phc_close(c->clkid);
@@ -282,8 +385,11 @@ void clock_destroy(struct clock *c)
 	stats_destroy(c->stats.offset);
 	stats_destroy(c->stats.freq);
 	stats_destroy(c->stats.delay);
-	if (c->sanity_check)
+	pm_destroy_clock_stats(&c->pm_stats_record);
+	pm_free_clock_recordlist(&c->pm_recordlist);
+	if (c->sanity_check) {
 		clockcheck_destroy(c->sanity_check);
+	}
 	memset(c, 0, sizeof(*c));
 	msg_cleanup();
 }
@@ -323,8 +429,9 @@ static void clock_freq_est_reset(struct clock *c)
 static void clock_management_send_error(struct port *p,
 					struct ptp_message *msg, int error_id)
 {
-	if (port_management_error(port_identity(p), p, msg, error_id))
+	if (port_management_error(port_identity(p), p, msg, error_id)) {
 		pr_err("failed to send management error status");
+	}
 }
 
 /* The 'p' and 'req' paremeters are needed for the GET actions that operate
@@ -423,10 +530,11 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		tsn->scaledLastGmPhaseChange = c->status.scaledLastGmPhaseChange;
 		tsn->gmTimeBaseIndicator = c->status.gmTimeBaseIndicator;
 		tsn->lastGmPhaseChange = c->status.lastGmPhaseChange;
-		if (cid_eq(&c->dad.pds.grandmasterIdentity, &c->dds.clockIdentity))
+		if (cid_eq(&c->dad.pds.grandmasterIdentity, &c->dds.clockIdentity)) {
 			tsn->gmPresent = 0;
-		else
+		} else {
 			tsn->gmPresent = 1;
+		}
 		tsn->gmIdentity = c->dad.pds.grandmasterIdentity;
 		datalen = sizeof(*tsn);
 		break;
@@ -474,8 +582,9 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 		return 0;
 	}
 	respond = clock_management_fill_response(c, p, req, rsp, id);
-	if (respond)
+	if (respond) {
 		port_prepare_and_send(p, rsp, 0);
+	}
 	msg_put(rsp);
 	return respond;
 }
@@ -520,8 +629,9 @@ static int clock_management_set(struct clock *c, struct port *p,
 		respond = 1;
 		break;
 	}
-	if (respond && !clock_management_get_response(c, p, id, req))
+	if (respond && !clock_management_get_response(c, p, id, req)) {
 		pr_err("failed to send management set response");
+	}
 	return respond ? 1 : 0;
 }
 
@@ -533,8 +643,9 @@ static void clock_stats_update(struct clock_stats *s,
 	stats_add_value(s->offset, offset);
 	stats_add_value(s->freq, freq);
 
-	if (stats_get_num_values(s->offset) < s->max_count)
+	if (stats_get_num_values(s->offset) < s->max_count) {
 		return;
+	}
 
 	stats_get_result(s->offset, &offset_stats);
 	stats_get_result(s->freq, &freq_stats);
@@ -669,8 +780,9 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 	int utc_offset, leap, clock_leap;
 	uint64_t ts;
 
-	if (!c->utc_timescale)
+	if (!c->utc_timescale) {
 		return 0;
+	}
 
 	utc_offset = c->utc_offset;
 
@@ -689,8 +801,9 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 		if (c->servo_state == SERVO_UNLOCKED) {
 			ts = tmv_to_nanoseconds(tmv_sub(ingress,
 							c->master_offset));
-			if (c->tds.flags & PTP_TIMESCALE)
+			if (c->tds.flags & PTP_TIMESCALE) {
 				ts -= utc_offset * NS_PER_SEC;
+			}
 		} else {
 			ts = tmv_to_nanoseconds(ingress);
 		}
@@ -704,10 +817,11 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 		clock_leap = leap_second_status(ts, c->leap_set,
 						&leap, &utc_offset);
 		if (c->leap_set != clock_leap) {
-			if (c->kernel_leap)
+			if (c->kernel_leap) {
 				sysclk_set_leap(clock_leap);
-			else
+			} else {
 				servo_leap(c->servo, clock_leap);
+			}
 			c->leap_set = clock_leap;
 		}
 	}
@@ -719,8 +833,9 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 		c->utc_offset_set = utc_offset;
 	}
 
-	if (!(c->tds.flags & PTP_TIMESCALE))
+	if (!(c->tds.flags & PTP_TIMESCALE)) {
 		return 0;
+	}
 
 	offset.tv_sec = utc_offset;
 	offset.tv_nsec = 0;
@@ -841,8 +956,9 @@ int clock_required_modes(struct clock *c)
  */
 static void ensure_ts_label(struct interface *iface)
 {
-	if (iface->ts_label[0] == '\0')
+	if (iface->ts_label[0] == '\0') {
 		strncpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
+	}
 }
 
 struct clock *clock_create(enum clock_type type, struct config *config,
@@ -863,8 +979,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 
-	if (c->nports)
+	if (c->nports) {
 		clock_destroy(c);
+	}
 
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
@@ -1014,6 +1131,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
 	c->utc_offset = config_get_int(config, NULL, "utc_offset");
 	c->time_source = config_get_int(config, NULL, "timeSource");
+	c->performance_monitoring =
+		config_get_int(config, NULL, "performance_monitoring");
 
 	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
@@ -1102,12 +1221,23 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 
+	c->pm_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+	if (c->pm_fd < 0) {
+		pr_err("timerfd_create failed: %m");
+		return NULL;
+	}
+	if (pm_create_clock_stats(&c->pm_stats_record)) {
+		pr_err("failed to create pm clock stats");
+		return NULL;
+	}
+
 	/* Create the UDS interface. */
 	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
 	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
 		return NULL;
 	}
+
 	clock_fda_changed(c);
 
 	/* Create the ports. */
@@ -1124,6 +1254,11 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		port_dispatch(p, EV_INITIALIZE, 0);
 	}
 	port_dispatch(c->uds_port, EV_INITIALIZE, 0);
+
+	if (c->performance_monitoring) {
+		clock_set_pm_timer(c);
+		clock_set_pmtime(c);
+	}
 
 	return c;
 }
@@ -1189,17 +1324,19 @@ static int clock_resize_pollfd(struct clock *c, int new_nports)
 {
 	struct pollfd *new_pollfd;
 
-	/* Need to allocate one whole extra block of fds for UDS. */
+	/* Need to allocate one extra fd for pm and one whole extra block
+	 * of fds for UDS. */
 	new_pollfd = realloc(c->pollfd,
-			     (new_nports + 1) * N_CLOCK_PFD *
+			     (1 + (new_nports + 1) * N_CLOCK_PFD) *
 			     sizeof(struct pollfd));
-	if (!new_pollfd)
+	if (!new_pollfd) {
 		return -1;
+	}
 	c->pollfd = new_pollfd;
 	return 0;
 }
 
-static void clock_fill_pollfd(struct pollfd *dest, struct port *p)
+static void clock_fill_port_pollfd(struct pollfd *dest, struct port *p)
 {
 	struct fdarray *fda;
 	int i;
@@ -1213,18 +1350,27 @@ static void clock_fill_pollfd(struct pollfd *dest, struct port *p)
 	dest[i].events = POLLIN|POLLPRI;
 }
 
+static void clock_fill_pm_pollfd(struct pollfd *dest, struct clock *c)
+{
+	dest[0].fd = c->pm_fd;
+	dest[0].events = POLLIN|POLLPRI;
+}
+
 static void clock_check_pollfd(struct clock *c)
 {
 	struct port *p;
 	struct pollfd *dest = c->pollfd;
 
-	if (c->pollfd_valid)
+	if (c->pollfd_valid) {
 		return;
+	}
 	LIST_FOREACH(p, &c->ports, list) {
-		clock_fill_pollfd(dest, p);
+		clock_fill_port_pollfd(dest, p);
 		dest += N_CLOCK_PFD;
 	}
-	clock_fill_pollfd(dest, c->uds_port);
+	clock_fill_port_pollfd(dest, c->uds_port);
+	dest += N_CLOCK_PFD;
+	clock_fill_pm_pollfd(dest, c);
 	c->pollfd_valid = 1;
 }
 
@@ -1237,8 +1383,9 @@ static int clock_do_forward_mgmt(struct clock *c,
 				 struct port *in, struct port *out,
 				 struct ptp_message *msg, int *pre_sent)
 {
-	if (in == out || !forwarding(c, out))
+	if (in == out || !forwarding(c, out)) {
 		return 0;
+	}
 
 	/* Don't forward any requests to the UDS port. */
 	if (out == c->uds_port) {
@@ -1268,12 +1415,14 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 		pdulen = msg->header.messageLength;
 		msg->management.boundaryHops--;
 		LIST_FOREACH(piter, &c->ports, list) {
-			if (clock_do_forward_mgmt(c, p, piter, msg, &msg_ready))
+			if (clock_do_forward_mgmt(c, p, piter, msg, &msg_ready)) {
 				pr_err("port %d: management forward failed",
 				       port_number(piter));
+			}
 		}
-		if (clock_do_forward_mgmt(c, p, c->uds_port, msg, &msg_ready))
+		if (clock_do_forward_mgmt(c, p, c->uds_port, msg, &msg_ready)) {
 			pr_err("uds port: management forward failed");
+		}
 		if (msg_ready) {
 			msg_post_recv(msg, pdulen);
 			msg->management.boundaryHops++;
@@ -1316,8 +1465,9 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	*/
 	switch (management_action(msg)) {
 	case GET:
-		if (clock_management_get_response(c, p, mgt->id, msg))
+		if (clock_management_get_response(c, p, mgt->id, msg)) {
 			return changed;
+		}
 		break;
 	case SET:
 		if (mgt->length == 2 && mgt->id != TLV_NULL_MANAGEMENT) {
@@ -1329,8 +1479,9 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 			return changed;
 		}
-		if (clock_management_set(c, p, mgt->id, msg, &changed))
+		if (clock_management_set(c, p, mgt->id, msg, &changed)) {
 			return changed;
+		}
 		break;
 	case COMMAND:
 		break;
@@ -1387,10 +1538,12 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		answers = 0;
 		LIST_FOREACH(piter, &c->ports, list) {
 			res = port_manage(piter, p, msg);
-			if (res < 0)
+			if (res < 0) {
 				return changed;
-			if (res > 0)
+			}
+			if (res > 0) {
 				answers++;
+			}
 		}
 		if (!answers) {
 			/* IEEE 1588 Interpretation #21 suggests to use
@@ -1418,13 +1571,16 @@ void clock_notify_event(struct clock *c, enum notification event)
 	/* targetPortIdentity and sequenceId will be filled by
 	 * clock_send_notification */
 	msg = port_management_notify(pid, uds);
-	if (!msg)
+	if (!msg) {
 		return;
-	if (!clock_management_fill_response(c, NULL, NULL, msg, id))
+	}
+	if (!clock_management_fill_response(c, NULL, NULL, msg, id)) {
 		goto err;
+	}
 	msg_len = msg->header.messageLength;
-	if (msg_pre_send(msg))
+	if (msg_pre_send(msg)) {
 		goto err;
+	}
 	clock_send_notification(c, msg, msg_len, event);
 err:
 	msg_put(msg);
@@ -1453,7 +1609,7 @@ int clock_poll(struct clock *c)
 	struct port *p;
 
 	clock_check_pollfd(c);
-	cnt = poll(c->pollfd, (c->nports + 1) * N_CLOCK_PFD, -1);
+	cnt = poll(c->pollfd, 1 + (c->nports + 1) * N_CLOCK_PFD, -1);
 	if (cnt < 0) {
 		if (EINTR == errno) {
 			return 0;
@@ -1472,10 +1628,12 @@ int clock_poll(struct clock *c)
 		for (i = 0; i < N_POLLFD; i++) {
 			if (cur[i].revents & (POLLIN|POLLPRI)) {
 				event = port_event(p, i);
-				if (EV_STATE_DECISION_EVENT == event)
+				if (EV_STATE_DECISION_EVENT == event) {
 					c->sde = 1;
-				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event)
+				}
+				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event) {
 					c->sde = 1;
+				}
 				port_dispatch(p, event, 0);
 				/* Clear any fault after a little while. */
 				if (PS_FAULTY == port_state(p)) {
@@ -1507,6 +1665,12 @@ int clock_poll(struct clock *c)
 				c->sde = 1;
 		}
 	}
+	cur += N_CLOCK_PFD;
+
+	/* Check the pm timer. */
+	if (cur[0].revents & (POLLIN|POLLPRI)) {
+		clock_pm_event(c);
+	}
 
 	if (c->sde) {
 		handle_state_decision_event(c);
@@ -1519,14 +1683,22 @@ int clock_poll(struct clock *c)
 void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 {
 	tsproc_up_ts(c->tsproc, req, rx);
+	if (c->performance_monitoring) {
+		clock_update_pm_slave_master_delay(c, tmv_sub(rx, req));
+	}
 
-	if (tsproc_update_delay(c->tsproc, &c->path_delay))
+	if (tsproc_update_delay(c->tsproc, &c->path_delay)) {
 		return;
+	}
 
 	c->cur.meanPathDelay = tmv_to_TimeInterval(c->path_delay);
+	if (c->performance_monitoring) {
+		clock_update_pm_mean_path_delay(c);
+	}
 
-	if (c->stats.delay)
+	if (c->stats.delay) {
 		stats_add_value(c->stats.delay, tmv_dbl(c->path_delay));
+	}
 }
 
 void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
@@ -1538,8 +1710,9 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 	tsproc_set_delay(c->tsproc, ppd);
 	tsproc_up_ts(c->tsproc, req, rx);
 
-	if (c->stats.delay)
+	if (c->stats.delay) {
 		stats_add_value(c->stats.delay, tmv_dbl(ppd));
+	}
 }
 
 int clock_slave_only(struct clock *c)
@@ -1595,17 +1768,26 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->ingress_ts = ingress;
 
 	tsproc_down_ts(c->tsproc, origin, ingress);
+	if (c->performance_monitoring) {
+		clock_update_pm_master_slave_delay(c, tmv_sub(ingress, origin));
+	}
 
-	if (tsproc_update_offset(c->tsproc, &c->master_offset, &weight))
+	if (tsproc_update_offset(c->tsproc, &c->master_offset, &weight)) {
 		return state;
+	}
 
-	if (clock_utc_correct(c, ingress))
+	if (clock_utc_correct(c, ingress)) {
 		return c->servo_state;
+	}
 
 	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
+	if (c->performance_monitoring) {
+		clock_update_pm_offset_from_master(c);
+	}
 
-	if (c->free_running)
+	if (c->free_running) {
 		return clock_no_adjust(c, ingress, origin);
+	}
 
 	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
 			   tmv_to_nanoseconds(ingress), weight, &state);
@@ -1638,10 +1820,12 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 		break;
 	case SERVO_LOCKED:
 		clockadj_set_freq(c->clkid, -adj);
-		if (c->clkid == CLOCK_REALTIME)
+		if (c->clkid == CLOCK_REALTIME) {
 			sysclk_set_sync();
-		if (c->sanity_check)
+		}
+		if (c->sanity_check) {
 			clockcheck_set_freq(c->sanity_check, -adj);
+		}
 		break;
 	}
 	return state;
@@ -1652,18 +1836,18 @@ void clock_sync_interval(struct clock *c, int n)
 	int shift;
 
 	shift = c->freq_est_interval - n;
-	if (shift < 0)
+	if (shift < 0) {
 		shift = 0;
-	else if (shift >= sizeof(int) * 8) {
+	} else if (shift >= sizeof(int) * 8) {
 		shift = sizeof(int) * 8 - 1;
 		pr_warning("freq_est_interval is too long");
 	}
 	c->fest.max_count = (1 << shift);
 
 	shift = c->stats_interval - n;
-	if (shift < 0)
+	if (shift < 0) {
 		shift = 0;
-	else if (shift >= sizeof(int) * 8) {
+	} else if (shift >= sizeof(int) * 8) {
 		shift = sizeof(int) * 8 - 1;
 		pr_warning("summary_interval is too long");
 	}
@@ -1691,10 +1875,12 @@ static void handle_state_decision_event(struct clock *c)
 
 	LIST_FOREACH(piter, &c->ports, list) {
 		fc = port_compute_best(piter);
-		if (!fc)
+		if (!fc) {
 			continue;
-		if (!best || dscmp(&fc->dataset, &best->dataset) > 0)
+		}
+		if (!best || dscmp(&fc->dataset, &best->dataset) > 0) {
 			best = fc;
+		}
 	}
 
 	if (best) {

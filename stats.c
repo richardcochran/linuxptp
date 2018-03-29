@@ -59,6 +59,25 @@ void stats_add_value(struct stats *stats, double value)
 	stats->sum_diff_sqr += (value - old_mean) * (value - stats->mean);
 }
 
+void stats_copy(struct stats *to, struct stats *from)
+{
+	memcpy(to, from, sizeof(*to));
+}
+
+void stats_combine(struct stats *to, struct stats *from)
+{
+	if (!from->num) {
+		return;
+	}
+	to->min = (to->num && to->min < from->min) ? to->min : from->min;
+	to->max = (to->num && to->max > from->max) ? to->max : from->max;
+	to->mean = (to->mean * to->num + from->mean * from->num) /
+		   (to->num + from->num);
+	to->num          += from->num;
+	to->sum_sqr      += from->sum_sqr;
+	to->sum_diff_sqr += from->sum_diff_sqr;
+}
+
 unsigned int stats_get_num_values(struct stats *stats)
 {
 	return stats->num;

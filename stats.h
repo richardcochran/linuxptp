@@ -43,6 +43,20 @@ void stats_destroy(struct stats *stats);
 void stats_add_value(struct stats *stats, double value);
 
 /**
+ * Copy from one stats struct to another.
+ * @param to   Pointer to stats obtained via @ref stats_create().
+ * @param from Pointer to stats obtained via @ref stats_create().
+ */
+void stats_copy(struct stats *to, struct stats *from);
+
+/**
+ * Combine from one stats struct into another.
+ * @param to   Pointer to stats obtained via @ref stats_create().
+ * @param from Pointer to stats obtained via @ref stats_create().
+ */
+void stats_combine(struct stats *to, struct stats *from);
+
+/**
  * Get the number of values collected in the stats so far.
  * @param stats Pointer to stats obtained via @ref stats_create().
  * @return      The number of values.

@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "address.h"
+#include "missing.h"
 #include "print.h"
 #include "sk.h"
 #include "util.h"
@@ -584,4 +585,14 @@ int rate_limited(int interval, time_t *last)
 	*last = ts.tv_sec;
 
 	return 0;
+}
+
+int set_tmo_lin(int fd, int seconds)
+{
+	struct itimerspec tmo = {
+		{0, 0}, {0, 0}
+	};
+
+	tmo.it_value.tv_sec = seconds;
+	return timerfd_settime(fd, 0, &tmo, NULL);
 }

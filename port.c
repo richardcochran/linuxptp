@@ -137,6 +137,10 @@ struct port {
 	unsigned int        versionNumber; /*UInteger4*/
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
+	/* performance monitoring */
+	struct port_pm_stats pm_stats_record;
+	struct port_pm_counters pm_counter_record;
+	struct port_pm_record_list pm_recordlist;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
@@ -147,6 +151,36 @@ static void flush_delay_req(struct port *p);
 static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
 static void port_nrate_initialize(struct port *p);
+
+void port_set_pmtime(struct port *p, PMTimestamp pmtime)
+{
+	p->pm_stats_record.head.PMTime = pmtime;
+	p->pm_counter_record.head.PMTime = pmtime;
+}
+
+void port_free_pm_recordlist(struct port *p)
+{
+	pm_free_port_recordlist(&p->pm_recordlist);
+}
+
+int port_update_pm_recordlist(struct port *p)
+{
+	if (pm_update_port_stats_recordlist(&p->pm_stats_record,
+					    &p->pm_recordlist)) {
+		return -1;
+	}
+	if (pm_update_port_counters_recordlist(&p->pm_counter_record,
+						  &p->pm_recordlist)) {
+		return -1;
+	}
+	return 0;
+}
+
+static void port_update_pm_mean_link_delay(struct port *p)
+{
+	stats_add_value(p->pm_stats_record.meanLinkDelay,
+			tmv_dbl(p->peer_delay));
+}
 
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
 {
@@ -292,19 +326,10 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 			tmo.it_value.tv_sec++;
 		}
 
-	} else
+	} else {
 		tmo.it_value.tv_sec = scale * (1 << log_seconds);
+	}
 
-	return timerfd_settime(fd, 0, &tmo, NULL);
-}
-
-int set_tmo_lin(int fd, int seconds)
-{
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
-
-	tmo.it_value.tv_sec = seconds;
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
@@ -370,8 +395,9 @@ static void fc_prune(struct foreign_clock *fc)
 
 	while (!TAILQ_EMPTY(&fc->messages)) {
 		m = TAILQ_LAST(&fc->messages, messages);
-		if (msg_current(m, now))
+		if (msg_current(m, now)) {
 			break;
+		}
 		TAILQ_REMOVE(&fc->messages, m, list);
 		fc->n_messages--;
 		msg_put(m);
@@ -421,9 +447,12 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	struct ptp_message *tmp;
 	int broke_threshold = 0, diff = 0;
 
+	p->pm_counter_record.counter[ANNOUNCE_FOREIGN_MASTER_RX]++;
+
 	LIST_FOREACH(fc, &p->foreign_masters, list) {
-		if (msg_source_equal(m, fc))
+		if (msg_source_equal(m, fc)) {
 			break;
+		}
 	}
 	if (!fc) {
 		pr_notice("port %hu: new foreign master %s", portnum(p),
@@ -447,8 +476,9 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	 * If this message breaks the threshold, that is an important change.
 	 */
 	fc_prune(fc);
-	if (FOREIGN_MASTER_THRESHOLD - 1 == fc->n_messages)
+	if (FOREIGN_MASTER_THRESHOLD - 1 == fc->n_messages) {
 		broke_threshold = 1;
+	}
 
 	/*
 	 * Okay, go ahead and add this announcement.
@@ -645,8 +675,9 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 		cnt = path_length(ptt);
 		cid = clock_identity(p->clock);
 		for (i = 0; i < cnt; i++) {
-			if (0 == memcmp(&ptt->cid[i], &cid, sizeof(cid)))
+			if (0 == memcmp(&ptt->cid[i], &cid, sizeof(cid))) {
 				return 1;
+			}
 		}
 	}
 	return 0;
@@ -677,60 +708,68 @@ static int port_capable(struct port *p)
 	}
 
 	if (tmv_to_nanoseconds(p->peer_delay) >	p->neighborPropDelayThresh) {
-		if (p->asCapable)
+		if (p->asCapable) {
 			pr_debug("port %hu: peer_delay (%" PRId64 ") > neighborPropDelayThresh "
 				"(%" PRId32 "), resetting asCapable", portnum(p),
 				tmv_to_nanoseconds(p->peer_delay),
 				p->neighborPropDelayThresh);
+		}
 		goto not_capable;
 	}
 
 	if (tmv_to_nanoseconds(p->peer_delay) <	p->min_neighbor_prop_delay) {
-		if (p->asCapable)
+		if (p->asCapable) {
 			pr_debug("port %hu: peer_delay (%" PRId64 ") < min_neighbor_prop_delay "
 				"(%" PRId32 "), resetting asCapable", portnum(p),
 				tmv_to_nanoseconds(p->peer_delay),
 				p->min_neighbor_prop_delay);
+		}
 		goto not_capable;
 	}
 
 	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
-		if (p->asCapable)
+		if (p->asCapable) {
 			pr_debug("port %hu: missed %d peer delay resp, "
 				"resetting asCapable", portnum(p), p->pdr_missing);
+		}
 		goto not_capable;
 	}
 
 	if (p->multiple_seq_pdr_count) {
-		if (p->asCapable)
+		if (p->asCapable) {
 			pr_debug("port %hu: multiple sequential peer delay resp, "
 				"resetting asCapable", portnum(p));
+		}
 		goto not_capable;
 	}
 
 	if (!p->peer_portid_valid) {
-		if (p->asCapable)
+		if (p->asCapable) {
 			pr_debug("port %hu: invalid peer port id, "
 				"resetting asCapable", portnum(p));
+		}
 		goto not_capable;
 	}
 
 	if (!p->nrate.ratio_valid) {
-		if (p->asCapable)
+		if (p->asCapable) {
 			pr_debug("port %hu: invalid nrate, "
 				"resetting asCapable", portnum(p));
+		}
 		goto not_capable;
 	}
 
 capable:
-	if (!p->asCapable)
+	if (!p->asCapable) {
 		pr_debug("port %hu: setting asCapable", portnum(p));
+	}
 	p->asCapable = 1;
 	return 1;
 
 not_capable:
-	if (p->asCapable)
+	if (p->asCapable) {
 		port_nrate_initialize(p);
+	}
 	p->asCapable = 0;
 	return 0;
 }
@@ -827,8 +866,9 @@ static int port_is_ieee8021as(struct port *p)
 static void port_management_send_error(struct port *p, struct port *ingress,
 				       struct ptp_message *msg, int error_id)
 {
-	if (port_management_error(p->portIdentity, ingress, msg, error_id))
+	if (port_management_error(p->portIdentity, ingress, msg, error_id)) {
 		pr_err("port %hu: management error failed", portnum(p));
+	}
 }
 
 static const Octet profile_id_drr[] = {0x00, 0x1B, 0x19, 0x00, 0x01, 0x00};
@@ -1026,8 +1066,9 @@ static int port_management_get_response(struct port *target,
 		return 0;
 	}
 	respond = port_management_fill_response(target, rsp, id);
-	if (respond)
+	if (respond) {
 		port_prepare_and_send(ingress, rsp, 0);
+	}
 	msg_put(rsp);
 	return respond;
 }
@@ -1049,8 +1090,9 @@ static int port_management_set(struct port *target,
 		respond = 1;
 		break;
 	}
-	if (respond && !port_management_get_response(target, ingress, id, req))
+	if (respond && !port_management_get_response(target, ingress, id, req)) {
 		pr_err("port %hu: failed to send management set response", portnum(target));
+	}
 	return respond ? 1 : 0;
 }
 
@@ -1090,9 +1132,9 @@ static void port_nrate_initialize(struct port *p)
 {
 	int shift = p->freq_est_interval - p->logMinPdelayReqInterval;
 
-	if (shift < 0)
+	if (shift < 0) {
 		shift = 0;
-	else if (shift >= sizeof(int) * 8) {
+	} else if (shift >= sizeof(int) * 8) {
 		shift = sizeof(int) * 8 - 1;
 		pr_warning("freq_est_interval is too long");
 	}
@@ -1297,13 +1339,15 @@ static int port_pdelay_request(struct port *p)
 	int err;
 
 	/* If multiple pdelay resp were not detected the counter can be reset */
-	if (!p->multiple_pdr_detected)
+	if (!p->multiple_pdr_detected) {
 		p->multiple_seq_pdr_count = 0;
+	}
 	p->multiple_pdr_detected = 0;
 
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1323,6 +1367,9 @@ static int port_pdelay_request(struct port *p)
 		pr_err("port %hu: send peer delay request failed", portnum(p));
 		goto out;
 	}
+
+	p->pm_counter_record.counter[PDELAY_REQ_TX]++;
+
 	if (msg_sots_missing(msg)) {
 		pr_err("missing timestamp on transmitted peer delay request");
 		goto out;
@@ -1386,6 +1433,9 @@ static int port_delay_request(struct port *p)
 		pr_err("port %hu: send delay request failed", portnum(p));
 		goto out;
 	}
+
+	p->pm_counter_record.counter[DELAY_REQ_TX]++;
+
 	if (msg_sots_missing(msg)) {
 		pr_err("missing timestamp on transmitted delay request");
 		goto out;
@@ -1410,8 +1460,9 @@ static int port_tx_announce(struct port *p)
 		return 0;
 	}
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1439,8 +1490,12 @@ static int port_tx_announce(struct port *p)
 	}
 
 	err = port_prepare_and_send(p, msg, 0);
-	if (err)
+	if (err) {
 		pr_err("port %hu: send announce failed", portnum(p));
+	}
+
+	p->pm_counter_record.counter[ANNOUNCE_TX]++;
+
 	msg_put(msg);
 	return err;
 }
@@ -1473,8 +1528,9 @@ static int port_tx_sync(struct port *p, struct address *dst)
 		return 0;
 	}
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 	fup = msg_allocate();
 	if (!fup) {
 		msg_put(msg);
@@ -1492,8 +1548,9 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	msg->header.control            = CTL_SYNC;
 	msg->header.logMessageInterval = p->logSyncInterval;
 
-	if (p->timestamping != TS_ONESTEP && p->timestamping != TS_P2P1STEP)
+	if (p->timestamping != TS_ONESTEP && p->timestamping != TS_P2P1STEP) {
 		msg->header.flagField[0] |= TWO_STEP;
+	}
 
 	if (dst) {
 		msg->address = *dst;
@@ -1504,6 +1561,9 @@ static int port_tx_sync(struct port *p, struct address *dst)
 		pr_err("port %hu: send sync failed", portnum(p));
 		goto out;
 	}
+
+	p->pm_counter_record.counter[SYNC_TX]++;
+
 	if (p->timestamping == TS_ONESTEP || p->timestamping == TS_P2P1STEP) {
 		goto out;
 	} else if (msg_sots_missing(msg)) {
@@ -1539,8 +1599,11 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	}
 
 	err = port_prepare_and_send(p, fup, 0);
-	if (err)
+	if (err) {
 		pr_err("port %hu: send follow up failed", portnum(p));
+	}
+
+	p->pm_counter_record.counter[FOLLOWUP_TX]++;
 out:
 	msg_put(msg);
 	msg_put(fup);
@@ -1606,8 +1669,9 @@ static void port_clear_fda(struct port *p, int count)
 {
 	int i;
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count; i++) {
 		p->fda.fd[i] = -1;
+	}
 }
 
 static void port_disable(struct port *p)
@@ -1662,22 +1726,26 @@ static int port_initialize(struct port *p)
 			goto no_timers;
 		}
 	}
-	if (transport_open(p->trp, p->iface, &p->fda, p->timestamping))
+	if (transport_open(p->trp, p->iface, &p->fda, p->timestamping)) {
 		goto no_tropen;
+	}
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		p->fda.fd[FD_ANNOUNCE_TIMER + i] = fd[i];
 	}
 
-	if (port_set_announce_tmo(p))
+	if (port_set_announce_tmo(p)) {
 		goto no_tmo;
+	}
 
 	/* No need to open rtnl socket on UDS port. */
 	if (transport_type(p->trp) != TRANS_UDS) {
-		if (p->fda.fd[FD_RTNL] == -1)
+		if (p->fda.fd[FD_RTNL] == -1) {
 			p->fda.fd[FD_RTNL] = rtnl_open();
-		if (p->fda.fd[FD_RTNL] >= 0)
+		}
+		if (p->fda.fd[FD_RTNL] >= 0) {
 			rtnl_link_query(p->fda.fd[FD_RTNL], p->iface->name);
+		}
 	}
 
 	port_nrate_initialize(p);
@@ -1690,8 +1758,9 @@ no_tmo:
 no_tropen:
 no_timers:
 	for (i = 0; i < N_TIMER_FDS; i++) {
-		if (fd[i] >= 0)
+		if (fd[i] >= 0) {
 			close(fd[i]);
+		}
 	}
 	return -1;
 }
@@ -1723,8 +1792,9 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 	struct path_trace_tlv *ptt;
 	struct timePropertiesDS tds;
 
-	if (!msg_source_equal(m, fc))
+	if (!msg_source_equal(m, fc)) {
 		return add_foreign_master(p, m);
+	}
 
 	if (p->state != PS_PASSIVE) {
 		tds.currentUtcOffset = m->announce.currentUtcOffset;
@@ -1767,8 +1837,9 @@ static int process_announce(struct port *p, struct ptp_message *m)
 	/* Do not qualify announce messages with stepsRemoved >= 255, see
 	 * IEEE1588-2008 section 9.3.2.5 (d)
 	 */
-	if (m->announce.stepsRemoved >= 255)
+	if (m->announce.stepsRemoved >= 255) {
 		return result;
+	}
 
 	switch (p->state) {
 	case PS_INITIALIZING:
@@ -1787,6 +1858,8 @@ static int process_announce(struct port *p, struct ptp_message *m)
 		result = update_current_master(p, m);
 		break;
 	}
+
+	p->pm_counter_record.counter[ANNOUNCE_RX]++;
 	return result;
 }
 
@@ -1797,17 +1870,23 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 
 	nsm = port_nsm_reply(p, m);
 
-	if (!nsm && p->state != PS_MASTER && p->state != PS_GRAND_MASTER)
+	if (!nsm && p->state != PS_MASTER && p->state != PS_GRAND_MASTER) {
 		return 0;
+	}
 
 	if (p->delayMechanism == DM_P2P) {
 		pr_warning("port %hu: delay request on P2P port", portnum(p));
 		return 0;
 	}
 
+	if (!nsm) {
+		p->pm_counter_record.counter[DELAY_REQ_RX]++;
+	}
+
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1840,11 +1919,14 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		pr_err("port %hu: send delay response failed", portnum(p));
 		goto out;
 	}
+
 	if (nsm) {
 		saved_seqnum_sync = p->seqnum.sync;
 		p->seqnum.sync = m->header.sequenceId;
 		err = port_tx_sync(p, &m->address);
 		p->seqnum.sync = saved_seqnum_sync;
+	} else {
+		p->pm_counter_record.counter[DELAY_RESP_TX]++;
 	}
 out:
 	msg_put(msg);
@@ -1888,6 +1970,8 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	TAILQ_REMOVE(&p->delay_req, req, list);
 	msg_put(req);
 
+	p->pm_counter_record.counter[DELAY_RESP_RX]++;
+
 	if (p->logMinDelayReqInterval == rsp->hdr.logMessageInterval) {
 		return;
 	}
@@ -1926,8 +2010,11 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 		break;
 	}
 	master = clock_parent_identity(p->clock);
-	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master)))
+	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master))) {
 		return;
+	}
+
+	p->pm_counter_record.counter[FOLLOWUP_RX]++;
 
 	if (p->follow_up_info) {
 		struct follow_up_info_tlv *fui = follow_up_info_extract(m);
@@ -1989,9 +2076,12 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 			pid2str(&p->peer_portid));
 	}
 
+	p->pm_counter_record.counter[PDELAY_REQ_RX]++;
+
 	rsp = msg_allocate();
-	if (!rsp)
+	if (!rsp) {
 		return -1;
+	}
 	fup = msg_allocate();
 	if (!fup) {
 		msg_put(rsp);
@@ -2035,6 +2125,8 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		goto out;
 	}
 
+	p->pm_counter_record.counter[PDELAY_RESP_TX]++;
+
 	/*
 	 * Send the follow up message right away.
 	 */
@@ -2056,8 +2148,11 @@ static int process_pdelay_req(struct port *p, struct ptp_message *m)
 		tmv_to_Timestamp(rsp->hwts.ts);
 
 	err = peer_prepare_and_send(p, fup, 0);
-	if (err)
+	if (err) {
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
+	}
+
+	p->pm_counter_record.counter[PDELAY_RESP_FOLLOWUP_TX]++;
 out:
 	msg_put(rsp);
 	msg_put(fup);
@@ -2073,14 +2168,15 @@ static void port_peer_delay(struct port *p)
 
 	/* Check for response, validate port and sequence number. */
 
-	if (!rsp)
+	if (!rsp) {
 		return;
-
-	if (!pid_eq(&rsp->pdelay_resp.requestingPortIdentity, &p->portIdentity))
+	}
+	if (!pid_eq(&rsp->pdelay_resp.requestingPortIdentity, &p->portIdentity)) {
 		return;
-
-	if (rsp->header.sequenceId != ntohs(req->header.sequenceId))
+	}
+	if (rsp->header.sequenceId != ntohs(req->header.sequenceId)) {
 		return;
+	}
 
 	t1 = req->hwts.ts;
 	t4 = rsp->hwts.ts;
@@ -2096,17 +2192,18 @@ static void port_peer_delay(struct port *p)
 
 	/* Check for follow up, validate port and sequence number. */
 
-	if (!fup)
+	if (!fup) {
 		return;
-
-	if (!pid_eq(&fup->pdelay_resp_fup.requestingPortIdentity, &p->portIdentity))
+	}
+	if (!pid_eq(&fup->pdelay_resp_fup.requestingPortIdentity, &p->portIdentity)) {
 		return;
-
-	if (fup->header.sequenceId != rsp->header.sequenceId)
+	}
+	if (fup->header.sequenceId != rsp->header.sequenceId) {
 		return;
-
-	if (!source_pid_eq(fup, rsp))
+	}
+	if (!source_pid_eq(fup, rsp)) {
 		return;
+	}
 
 	/* Process follow up response. */
 	t2 = timestamp_to_tmv(rsp->ts.pdu);
@@ -2115,17 +2212,22 @@ static void port_peer_delay(struct port *p)
 calc:
 	t3c = tmv_add(t3, tmv_add(c1, c2));
 
-	if (p->follow_up_info)
+	if (p->follow_up_info) {
 		port_nrate_calculate(p, t3c, t4);
+	}
 
 	tsproc_set_clock_rate_ratio(p->tsproc, p->nrate.ratio *
 				    clock_rate_ratio(p->clock));
 	tsproc_up_ts(p->tsproc, t1, t2);
 	tsproc_down_ts(p->tsproc, t3c, t4);
-	if (tsproc_update_delay(p->tsproc, &p->peer_delay))
+	if (tsproc_update_delay(p->tsproc, &p->peer_delay)) {
 		return;
+	}
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
+	if (clock_performance_monitoring(p->clock)) {
+		port_update_pm_mean_link_delay(p);
+	}
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, t1, t2,
@@ -2171,6 +2273,8 @@ static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 			pid2str(&p->peer_portid));
 	}
 
+	p->pm_counter_record.counter[PDELAY_RESP_RX]++;
+
 	if (p->peer_delay_resp) {
 		msg_put(p->peer_delay_resp);
 	}
@@ -2182,11 +2286,15 @@ static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 
 static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 {
-	if (!p->peer_delay_req)
+	if (!p->peer_delay_req) {
 		return;
+	}
 
-	if (p->peer_delay_fup)
+	p->pm_counter_record.counter[PDELAY_RESP_FOLLOWUP_RX]++;
+
+	if (p->peer_delay_fup) {
 		msg_put(p->peer_delay_fup);
+	}
 
 	msg_get(m);
 	p->peer_delay_fup = m;
@@ -2221,6 +2329,8 @@ static void process_sync(struct port *p, struct ptp_message *m)
 		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
 
+	p->pm_counter_record.counter[SYNC_RX]++;
+
 	m->header.correction += p->asymmetry;
 
 	if (one_step(m)) {
@@ -2248,13 +2358,17 @@ void port_close(struct port *p)
 		port_disable(p);
 	}
 
-	if (p->fda.fd[FD_RTNL] >= 0)
+	if (p->fda.fd[FD_RTNL] >= 0) {
 		rtnl_close(p->fda.fd[FD_RTNL]);
+	}
 
 	transport_destroy(p->trp);
 	tsproc_destroy(p->tsproc);
-	if (p->fault_fd >= 0)
+	if (p->fault_fd >= 0) {
 		close(p->fault_fd);
+	}
+	pm_destroy_port_stats(&p->pm_stats_record);
+	pm_free_port_recordlist(&p->pm_recordlist);
 	free(p);
 }
 
@@ -2267,22 +2381,25 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 	LIST_FOREACH(fc, &p->foreign_masters, list) {
 		tmp = TAILQ_FIRST(&fc->messages);
-		if (!tmp)
+		if (!tmp) {
 			continue;
+		}
 
 		announce_to_dataset(tmp, p, &fc->dataset);
 
 		fc_prune(fc);
 
-		if (fc->n_messages < FOREIGN_MASTER_THRESHOLD)
+		if (fc->n_messages < FOREIGN_MASTER_THRESHOLD) {
 			continue;
+		}
 
-		if (!p->best)
+		if (!p->best) {
 			p->best = fc;
-		else if (dscmp(&fc->dataset, &p->best->dataset) > 0)
+		} else if (dscmp(&fc->dataset, &p->best->dataset) > 0) {
 			p->best = fc;
-		else
+		} else {
 			fc_clear(fc);
+		}
 	}
 
 	return p->best;
@@ -2406,8 +2523,9 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		next = p->state_machine(next, event, 0);
 	}
 
-	if (next == p->state)
+	if (next == p->state) {
 		return;
+	}
 
 	port_show_transition(p, next, event);
 
@@ -2482,8 +2600,9 @@ static void port_link_status(void *ctx, int linkup, int ts_index)
 	 * A port going down can affect the BMCA result.
 	 * Force a state decision event.
 	 */
-	if (p->link_status & LINK_DOWN)
+	if (p->link_status & LINK_DOWN) {
 		clock_set_sde(p->clock, 1);
+	}
 }
 
 enum fsm_event port_event(struct port *p, int fd_index)
@@ -2497,8 +2616,9 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_SYNC_RX_TIMER:
 		pr_debug("port %hu: %s timeout", portnum(p),
 			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
-		if (p->best)
+		if (p->best) {
 			fc_clear(p->best);
+		}
 		port_set_announce_tmo(p);
 		delay_req_prune(p);
 		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
@@ -2530,18 +2650,20 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	case FD_RTNL:
 		pr_debug("port %hu: received link status notification", portnum(p));
 		rtnl_link_status(fd, p->name, port_link_status, p);
-		if (p->link_status == (LINK_UP | LINK_STATE_CHANGED))
+		if (p->link_status == (LINK_UP | LINK_STATE_CHANGED)) {
 			return EV_FAULT_CLEARED;
-		else if ((p->link_status == (LINK_DOWN | LINK_STATE_CHANGED)) ||
-			 (p->link_status & TS_LABEL_CHANGED))
+		} else if ((p->link_status == (LINK_DOWN | LINK_STATE_CHANGED)) ||
+			 (p->link_status & TS_LABEL_CHANGED)) {
 			return EV_FAULT_DETECTED;
-		else
+		} else {
 			return EV_NONE;
+		}
 	}
 
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return EV_FAULT_DETECTED;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -2606,14 +2728,16 @@ enum fsm_event port_event(struct port *p, int fd_index)
 		process_pdelay_resp_fup(p, msg);
 		break;
 	case ANNOUNCE:
-		if (process_announce(p, msg))
+		if (process_announce(p, msg)) {
 			event = EV_STATE_DECISION_EVENT;
+		}
 		break;
 	case SIGNALING:
 		break;
 	case MANAGEMENT:
-		if (clock_manage(p->clock, p, msg))
+		if (clock_manage(p->clock, p, msg)) {
 			event = EV_STATE_DECISION_EVENT;
+		}
 		break;
 	}
 
@@ -2683,12 +2807,14 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 
 	switch (management_action(msg)) {
 	case GET:
-		if (port_management_get_response(p, ingress, mgt->id, msg))
+		if (port_management_get_response(p, ingress, mgt->id, msg)) {
 			return 1;
+		}
 		break;
 	case SET:
-		if (port_management_set(p, ingress, mgt->id, msg))
+		if (port_management_set(p, ingress, mgt->id, msg)) {
 			return 1;
+		}
 		break;
 	case COMMAND:
 		break;
@@ -2763,8 +2889,9 @@ port_management_construct(struct PortIdentity pid, struct port *ingress,
 	struct ptp_message *msg;
 
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return NULL;
+	}
 
 	msg->hwts.type = ingress->timestamping;
 
@@ -2777,8 +2904,9 @@ port_management_construct(struct PortIdentity pid, struct port *ingress,
 	msg->header.control            = CTL_MANAGEMENT;
 	msg->header.logMessageInterval = 0x7f;
 
-	if (targetPortIdentity)
+	if (targetPortIdentity) {
 		msg->management.targetPortIdentity = *targetPortIdentity;
+	}
 	msg->management.startingBoundaryHops = boundaryHops;
 	msg->management.boundaryHops = boundaryHops;
 
@@ -2831,13 +2959,16 @@ void port_notify_event(struct port *p, enum notification event)
 	/* targetPortIdentity and sequenceId will be filled by
 	 * clock_send_notification */
 	msg = port_management_notify(pid, p);
-	if (!msg)
+	if (!msg) {
 		return;
-	if (!port_management_fill_response(p, msg, id))
+	}
+	if (!port_management_fill_response(p, msg, id)) {
 		goto err;
+	}
 	msg_len = msg->header.messageLength;
-	if (msg_pre_send(msg))
+	if (msg_pre_send(msg)) {
 		goto err;
+	}
 	clock_send_notification(p->clock, msg, msg_len, event);
 err:
 	msg_put(msg);
@@ -2854,8 +2985,9 @@ struct port *port_open(int phc_index,
 	enum transport_type transport;
 	int i;
 
-	if (!p)
+	if (!p) {
 		return NULL;
+	}
 
 	memset(p, 0, sizeof(*p));
 
@@ -2864,11 +2996,11 @@ struct port *port_open(int phc_index,
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
 
-	if (transport == TRANS_UDS)
+	if (transport == TRANS_UDS) {
 		; /* UDS cannot have a PHC. */
-	else if (!interface->ts_info.valid)
+	} else if (!interface->ts_info.valid) {
 		pr_warning("port %d: get_ts_info not supported", number);
-	else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
+	} else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
 		if (p->jbod) {
 			pr_warning("port %d: just a bunch of devices", number);
 			p->phc_index = interface->ts_info.phc_index;
@@ -2897,8 +3029,9 @@ struct port *port_open(int phc_index,
 	p->link_status = LINK_UP;
 	p->clock = clock;
 	p->trp = transport_create(cfg, transport);
-	if (!p->trp)
+	if (!p->trp) {
 		goto err_port;
+	}
 	p->timestamping = timestamping;
 	p->portIdentity.clockIdentity = clock_identity(clock);
 	p->portIdentity.portNumber = number;
@@ -2943,8 +3076,14 @@ struct port *port_open(int phc_index,
 			goto err_tsproc;
 		}
 	}
+	if (pm_create_port_stats(&p->pm_stats_record)) {
+		pr_err("failed to create pm port stats");
+		goto err_pmstats;
+	}
 	return p;
 
+err_pmstats:
+	pm_destroy_port_stats(&p->pm_stats_record);
 err_tsproc:
 	tsproc_destroy(p->tsproc);
 err_transport:

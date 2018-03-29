@@ -24,6 +24,7 @@
 #include "foreign.h"
 #include "fsm.h"
 #include "notification.h"
+#include "pm.h"
 #include "transport.h"
 
 /* forward declarations */
@@ -32,6 +33,29 @@ struct clock;
 
 /** Opaque type. */
 struct port;
+
+/**
+ * Set the pm timestamp for the current port pm data.
+ *
+ * @param port    A port instance.
+ * @param pmtime  Current pm timestamp.
+ */
+void port_set_pmtime(struct port *p, PMTimestamp pmtime);
+
+/**
+ * Free all memory in the recordlist for the port.
+ *
+ * @param port    A port instance.
+ */
+void port_free_pm_recordlist(struct port *p);
+
+/**
+ * Updates the recordlist for the port.
+ *
+ * @param port    A port instance.
+ * @return        Zero on success, non-zero otherwise.
+ */
+int port_update_pm_recordlist(struct port *p);
 
 /**
  * Returns the dataset from a port's best foreign clock record, if any
@@ -258,19 +282,6 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds);
  * @return Zero on success, non-zero otherwise.
  */
 int set_tmo_random(int fd, int min, int span, int log_seconds);
-
-/**
- * Utility function for setting or resetting a file descriptor timer.
- *
- * This function sets the timer 'fd' to the value of the 'seconds' parameter.
- *
- * Passing 'seconds' as zero disables the timer.
- *
- * @param fd A file descriptor previously opened with timerfd_create(2).
- * @param seconds The timeout value for the timer.
- * @return Zero on success, non-zero otherwise.
- */
-int set_tmo_lin(int fd, int seconds);
 
 /**
  * Sets port's fault file descriptor timer.
