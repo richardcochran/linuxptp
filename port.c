@@ -315,16 +315,6 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
-int set_tmo_lin(int fd, int seconds)
-{
-	struct itimerspec tmo = {
-		{0, 0}, {0, 0}
-	};
-
-	tmo.it_value.tv_sec = seconds;
-	return timerfd_settime(fd, 0, &tmo, NULL);
-}
-
 int set_tmo_random(int fd, int min, int span, int log_seconds)
 {
 	uint64_t value_ns, min_ns, span_ns;
