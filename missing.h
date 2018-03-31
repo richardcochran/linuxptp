@@ -127,6 +127,8 @@ enum {
 
 #else
 
+#define TFD_TIMER_ABSTIME (1 << 0)
+
 static inline int clock_nanosleep(clockid_t clock_id, int flags,
 				  const struct timespec *request,
 				  struct timespec *remain)

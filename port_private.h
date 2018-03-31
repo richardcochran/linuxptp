@@ -135,6 +135,8 @@ struct port {
 	TAILQ_HEAD(tct, tc_txd) tc_transmitted;
 	/* unicast client mode */
 	struct unicast_master_table *unicast_master_table;
+	/* unicast service mode */
+	struct unicast_service *unicast_service;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
