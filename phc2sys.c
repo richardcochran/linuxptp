@@ -262,11 +262,37 @@ static struct clock *clock_add(struct node *node, char *device)
 
 static void clock_cleanup(struct node *node)
 {
-	struct clock *c;
+	struct clock *c, *tmp;
 
-	LIST_FOREACH(c, &node->clocks, list) {
-		if (c->device)
+	LIST_FOREACH_SAFE(c, &node->clocks, list, tmp) {
+		if (c->servo) {
+			servo_destroy(c->servo);
+		}
+		if (c->sanity_check) {
+			clockcheck_destroy(c->sanity_check);
+		}
+		if (c->delay_stats) {
+			stats_destroy(c->delay_stats);
+		}
+		if (c->freq_stats) {
+			stats_destroy(c->freq_stats);
+		}
+		if (c->offset_stats) {
+			stats_destroy(c->offset_stats);
+		}
+		if (c->device) {
 			free(c->device);
+		}
+		free(c);
+	}
+}
+
+static void port_cleanup(struct node *node)
+{
+	struct port *p, *tmp;
+
+	LIST_FOREACH_SAFE(p, &node->ports, list, tmp) {
+		free(p);
 	}
 }
 
@@ -1582,7 +1608,9 @@ end:
 	if (node.pmc)
 		close_pmc(&node);
 	clock_cleanup(&node);
+	port_cleanup(&node);
 	config_destroy(cfg);
+	msg_cleanup();
 	return r;
 bad_usage:
 	usage(progname);
