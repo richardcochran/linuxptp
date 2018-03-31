@@ -2474,6 +2474,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		port_set_sync_tx_tmo(p);
 		return port_tx_sync(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
 
+	case FD_UNICAST_SRV_TIMER:
+		pr_debug("port %hu: unicast service timeout", portnum(p));
+		return EV_NONE;
+
 	case FD_UNICAST_REQ_TIMER:
 		pr_debug("port %hu: unicast request timeout", portnum(p));
 		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
