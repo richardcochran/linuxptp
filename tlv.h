@@ -115,6 +115,34 @@ enum management_action {
 #define TLV_NOT_SUPPORTED				0x0006
 #define TLV_GENERAL_ERROR				0xFFFE
 
+#define CANCEL_UNICAST_MAINTAIN_REQUEST	(1 << 0)
+#define CANCEL_UNICAST_MAINTAIN_GRANT	(1 << 1)
+#define GRANT_UNICAST_RENEWAL_INVITED	(1 << 0)
+
+struct ack_cancel_unicast_xmit_tlv {
+	Enumeration16   type;
+	UInteger16      length;
+	uint8_t         message_type_flags;
+	uint8_t         reserved;
+} PACKED;
+
+struct cancel_unicast_xmit_tlv {
+	Enumeration16   type;
+	UInteger16      length;
+	uint8_t         message_type_flags;
+	uint8_t         reserved;
+} PACKED;
+
+struct grant_unicast_xmit_tlv {
+	Enumeration16   type;
+	UInteger16      length;
+	uint8_t         message_type;
+	Integer8        logInterMessagePeriod;
+	UInteger32      durationField;
+	uint8_t         reserved;
+	uint8_t         flags;
+} PACKED;
+
 struct management_tlv {
 	Enumeration16 type;
 	UInteger16    length;
@@ -170,6 +198,14 @@ struct path_trace_tlv {
 	Enumeration16 type;
 	UInteger16    length;
 	struct ClockIdentity cid[0];
+} PACKED;
+
+struct request_unicast_xmit_tlv {
+	Enumeration16   type;
+	UInteger16      length;
+	uint8_t         message_type;
+	Integer8        logInterMessagePeriod;
+	UInteger32      durationField;
 } PACKED;
 
 static inline unsigned int path_length(struct path_trace_tlv *p)

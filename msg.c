@@ -417,6 +417,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		announce_post_recv(&m->announce);
 		break;
 	case SIGNALING:
+		port_id_post_recv(&m->signaling.targetPortIdentity);
 		break;
 	case MANAGEMENT:
 		port_id_post_recv(&m->management.targetPortIdentity);
@@ -467,6 +468,7 @@ int msg_pre_send(struct ptp_message *m)
 		announce_pre_send(&m->announce);
 		break;
 	case SIGNALING:
+		port_id_pre_send(&m->signaling.targetPortIdentity);
 		break;
 	case MANAGEMENT:
 		port_id_pre_send(&m->management.targetPortIdentity);

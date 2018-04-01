@@ -544,6 +544,91 @@ static void org_pre_send(struct organization_tlv *org)
 	}
 }
 
+static int unicast_message_type_valid(uint8_t message_type)
+{
+	message_type >>= 4;
+	switch (message_type) {
+	case ANNOUNCE:
+	case SYNC:
+	case DELAY_RESP:
+	case PDELAY_RESP:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int unicast_negotiation_post_recv(struct tlv_extra *extra)
+{
+	struct request_unicast_xmit_tlv *request;
+	struct ack_cancel_unicast_xmit_tlv *ack;
+	struct cancel_unicast_xmit_tlv *cancel;
+	struct grant_unicast_xmit_tlv *grant;
+	struct TLV *tlv = extra->tlv;
+
+	switch (tlv->type) {
+	case TLV_REQUEST_UNICAST_TRANSMISSION:
+		if (TLV_LENGTH_INVALID(tlv, request_unicast_xmit_tlv)) {
+			return -EBADMSG;
+		}
+		request = (struct request_unicast_xmit_tlv *) tlv;
+		if (!unicast_message_type_valid(request->message_type)) {
+			return -EBADMSG;
+		}
+		NTOHL(request->durationField);
+		break;
+	case TLV_GRANT_UNICAST_TRANSMISSION:
+		if (TLV_LENGTH_INVALID(tlv, grant_unicast_xmit_tlv)) {
+			return -EBADMSG;
+		}
+		grant = (struct grant_unicast_xmit_tlv *) tlv;
+		if (!unicast_message_type_valid(grant->message_type)) {
+			return -EBADMSG;
+		}
+		NTOHL(grant->durationField);
+		break;
+	case TLV_CANCEL_UNICAST_TRANSMISSION:
+		if (TLV_LENGTH_INVALID(tlv, cancel_unicast_xmit_tlv)) {
+			return -EBADMSG;
+		}
+		cancel = (struct cancel_unicast_xmit_tlv *) tlv;
+		if (!unicast_message_type_valid(cancel->message_type_flags)) {
+			return -EBADMSG;
+		}
+		break;
+	case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+		if (TLV_LENGTH_INVALID(tlv, ack_cancel_unicast_xmit_tlv)) {
+			return -EBADMSG;
+		}
+		ack = (struct ack_cancel_unicast_xmit_tlv *) tlv;
+		if (!unicast_message_type_valid(ack->message_type_flags)) {
+			return -EBADMSG;
+		}
+		break;
+	}
+	return 0;
+}
+
+static void unicast_negotiation_pre_send(struct TLV *tlv)
+{
+	struct request_unicast_xmit_tlv *request;
+	struct grant_unicast_xmit_tlv *grant;
+
+	switch (tlv->type) {
+	case TLV_REQUEST_UNICAST_TRANSMISSION:
+		request = (struct request_unicast_xmit_tlv *) tlv;
+		HTONL(request->durationField);
+		break;
+	case TLV_GRANT_UNICAST_TRANSMISSION:
+		grant = (struct grant_unicast_xmit_tlv *) tlv;
+		HTONL(grant->durationField);
+		break;
+	case TLV_CANCEL_UNICAST_TRANSMISSION:
+	case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+		break;
+	}
+}
+
 struct tlv_extra *tlv_extra_alloc(void)
 {
 	struct tlv_extra *extra = TAILQ_FIRST(&tlv_pool);
@@ -605,6 +690,7 @@ int tlv_post_recv(struct tlv_extra *extra)
 	case TLV_GRANT_UNICAST_TRANSMISSION:
 	case TLV_CANCEL_UNICAST_TRANSMISSION:
 	case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+		result = unicast_negotiation_post_recv(extra);
 		break;
 	case TLV_PATH_TRACE:
 		ptt = (struct path_trace_tlv *) tlv;
@@ -654,6 +740,8 @@ void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)
 	case TLV_GRANT_UNICAST_TRANSMISSION:
 	case TLV_CANCEL_UNICAST_TRANSMISSION:
 	case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+		unicast_negotiation_pre_send(tlv);
+		break;
 	case TLV_PATH_TRACE:
 	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
 	case TLV_AUTHENTICATION:
