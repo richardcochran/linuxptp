@@ -84,6 +84,7 @@ struct port {
 	struct {
 		UInteger16 announce;
 		UInteger16 delayreq;
+		UInteger16 signaling;
 		UInteger16 sync;
 	} seqnum;
 	tmv_t peer_delay;
@@ -160,6 +161,9 @@ int port_set_delay_tmo(struct port *p);
 int port_set_qualification_tmo(struct port *p);
 void port_show_transition(struct port *p, enum port_state next,
 			  enum fsm_event event);
+struct ptp_message *port_signaling_construct(struct port *p,
+					     struct address *address,
+					     struct PortIdentity *tpid);
 int port_tx_announce(struct port *p, struct address *dst);
 int port_tx_sync(struct port *p, struct address *dst);
 int process_announce(struct port *p, struct ptp_message *m);
