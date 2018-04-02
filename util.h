@@ -41,6 +41,15 @@ extern const char *ps_str[];
  */
 extern const char *ev_str[];
 
+/**
+ * Compares two binary addresses for equality.
+ * @param type  One of the enumerated transport types.
+ * @param a     One address to compare.
+ * @param b     The second address to compare.
+ * @return      One if the addresses are identical, zero otherwise.
+ */
+int addreq(enum transport_type type, struct address *a, struct address *b);
+
 static inline uint16_t align16(uint16_t *p)
 {
 	uint16_t v;

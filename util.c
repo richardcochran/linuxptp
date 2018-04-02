@@ -69,6 +69,34 @@ const char *ev_str[] = {
 	"RS_PASSIVE",
 };
 
+int addreq(enum transport_type type, struct address *a, struct address *b)
+{
+	void *bufa, *bufb;
+	int len;
+
+	switch (type) {
+	case TRANS_UDP_IPV4:
+		bufa = &a->sin.sin_addr;
+		bufb = &b->sin.sin_addr;
+		len = sizeof(a->sin);
+		break;
+	case TRANS_IEEE_802_3:
+		bufa = &a->sll.sll_addr;
+		bufb = &b->sll.sll_addr;
+		len = MAC_LEN;
+		break;
+	case TRANS_UDS:
+	case TRANS_UDP_IPV6:
+	case TRANS_DEVICENET:
+	case TRANS_CONTROLNET:
+	case TRANS_PROFINET:
+	default:
+		pr_err("sorry, cannot compare addresses for this transport");
+		return 0;
+	}
+	return memcmp(bufa, bufb, len) == 0 ? 1 : 0;
+}
+
 char *bin2str_impl(Octet *data, int len, char *buf, int buf_len)
 {
 	int i, offset = 0;
