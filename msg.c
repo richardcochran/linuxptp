@@ -151,6 +151,8 @@ static struct tlv_extra *msg_tlv_prepare(struct ptp_message *msg, int length)
 	tmp = TAILQ_LAST(&msg->tlv_list, tlv_list);
 	if (tmp) {
 		ptr = (uint8_t *) tmp->tlv;
+		ptr += sizeof(tmp->tlv->type);
+		ptr += sizeof(tmp->tlv->length);
 		ptr += tmp->tlv->length;
 	}
 
