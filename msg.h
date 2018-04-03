@@ -395,6 +395,16 @@ static inline int msg_sots_valid(struct ptp_message *m)
 }
 
 /**
+ * Test whether a message is a unicast message.
+ * @param m  Message to test.
+ * @return   One if the message is unicast, zero otherwise.
+ */
+static inline Boolean msg_unicast(struct ptp_message *m)
+{
+	return field_is_set(m, 0, UNICAST);
+}
+
+/**
  * Work around buggy 802.1AS switches.
  */
 extern int assume_two_step;

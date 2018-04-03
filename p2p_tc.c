@@ -150,7 +150,7 @@ enum fsm_event p2p_event(struct port *p, int fd_index)
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
 	}
-	if (msg->header.flagField[0] & UNICAST) {
+	if (msg_unicast(msg)) {
 		pl_warning(600, "cannot switch unicast messages!");
 		msg_put(msg);
 		return EV_NONE;

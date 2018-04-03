@@ -697,7 +697,7 @@ static int port_nsm_reply(struct port *p, struct ptp_message *m)
 	if (!p->hybrid_e2e) {
 		return 0;
 	}
-	if (!(m->header.flagField[0] & UNICAST)) {
+	if (!msg_unicast(m)) {
 		return 0;
 	}
 	TAILQ_FOREACH(extra, &m->tlv_list, list) {
@@ -1753,7 +1753,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
-	if (p->hybrid_e2e && m->header.flagField[0] & UNICAST) {
+	if (p->hybrid_e2e && msg_unicast(m)) {
 		msg->address = m->address;
 		msg->header.flagField[0] |= UNICAST;
 		msg->header.logMessageInterval = 0x7f;
@@ -1819,7 +1819,7 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 	if (p->logMinDelayReqInterval == rsp->hdr.logMessageInterval) {
 		return;
 	}
-	if (m->header.flagField[0] & UNICAST) {
+	if (msg_unicast(m)) {
 		/* Unicast responses have logMinDelayReqInterval set to 0x7F. */
 		return;
 	}
@@ -2563,7 +2563,7 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 	if (msg_pre_send(msg)) {
 		return -1;
 	}
-	if (msg->header.flagField[0] & UNICAST) {
+	if (msg_unicast(msg)) {
 		cnt = transport_sendto(p->trp, &p->fda, event, msg);
 	} else {
 		cnt = transport_send(p->trp, &p->fda, event, msg);

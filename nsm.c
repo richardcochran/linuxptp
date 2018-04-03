@@ -138,7 +138,7 @@ static void nsm_handle_msg(struct nsm *nsm, struct ptp_message *msg, FILE *fp)
 	    ntohs(nsm->nsm_delay_req->header.sequenceId)) {
 		return;
 	}
-	if (!(msg->header.flagField[0] & UNICAST)) {
+	if (!msg_unicast(msg)) {
 		return;
 	}
 
