@@ -2150,7 +2150,8 @@ void process_sync(struct port *p, struct ptp_message *m)
 		return;
 	}
 
-	if (m->header.logMessageInterval != p->log_sync_interval) {
+	if (!msg_unicast(m) &&
+	    m->header.logMessageInterval != p->log_sync_interval) {
 		p->log_sync_interval = m->header.logMessageInterval;
 		clock_sync_interval(p->clock, p->log_sync_interval);
 	}
