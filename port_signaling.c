@@ -18,6 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA.
  */
 #include "port_private.h"
+#include "unicast_client.h"
 
 struct ptp_message *port_signaling_construct(struct port *p,
 					     struct address *address,
@@ -43,4 +44,41 @@ struct ptp_message *port_signaling_construct(struct port *p,
 	msg->address = *address;
 
 	return msg;
+}
+
+int process_signaling(struct port *p, struct ptp_message *m)
+{
+	struct tlv_extra *extra;
+	int err = 0;
+
+	switch (p->state) {
+	case PS_INITIALIZING:
+	case PS_FAULTY:
+	case PS_DISABLED:
+		return 0;
+	case PS_LISTENING:
+	case PS_PRE_MASTER:
+	case PS_MASTER:
+	case PS_GRAND_MASTER:
+	case PS_PASSIVE:
+	case PS_UNCALIBRATED:
+	case PS_SLAVE:
+		break;
+	}
+
+	TAILQ_FOREACH(extra, &m->tlv_list, list) {
+		switch (extra->tlv->type) {
+		case TLV_REQUEST_UNICAST_TRANSMISSION:
+			break;
+		case TLV_GRANT_UNICAST_TRANSMISSION:
+			unicast_client_grant(p, m, extra);
+			break;
+		case TLV_CANCEL_UNICAST_TRANSMISSION:
+			err = unicast_client_cancel(p, m, extra);
+			break;
+		case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
+			break;
+		}
+	}
+	return err;
 }
