@@ -1604,8 +1604,12 @@ int port_initialize(struct port *p)
 		p->fda.fd[FD_FIRST_TIMER + i] = fd[i];
 	}
 
-	if (port_set_announce_tmo(p))
+	if (port_set_announce_tmo(p)) {
 		goto no_tmo;
+	}
+	if (unicast_client_enabled(p) && unicast_client_set_tmo(p)) {
+		goto no_tmo;
+	}
 
 	/* No need to open rtnl socket on UDS port. */
 	if (transport_type(p->trp) != TRANS_UDS) {
@@ -2472,7 +2476,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_UNICAST_REQ_TIMER:
 		pr_debug("port %hu: unicast request timeout", portnum(p));
-		return EV_NONE;
+		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_RTNL:
 		pr_debug("port %hu: received link status notification", portnum(p));
@@ -2557,6 +2561,9 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 			event = EV_STATE_DECISION_EVENT;
 		break;
 	case SIGNALING:
+		if (process_signaling(p, msg)) {
+			event = EV_FAULT_DETECTED;
+		}
 		break;
 	case MANAGEMENT:
 		if (clock_manage(p->clock, p, msg))
@@ -2854,7 +2861,6 @@ struct port *port_open(int phc_index,
 	p->announce_span = transport == TRANS_UDS ? 0 : ANNOUNCE_SPAN;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
-	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 	p->net_sync_monitor = config_get_int(cfg, p->name, "net_sync_monitor");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->tc_spanning_tree = config_get_int(cfg, p->name, "tc_spanning_tree");
@@ -2874,6 +2880,15 @@ struct port *port_open(int phc_index,
 	p->state = PS_INITIALIZING;
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_VERSION;
+
+	if (number && unicast_client_claim_table(p)) {
+		goto err_port;
+	}
+	if (unicast_client_enabled(p) &&
+	    config_set_section_int(cfg, p->name, "hybrid_e2e", 1)) {
+		goto err_port;
+	}
+	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 
 	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P) {
 		pr_err("port %d: P2P TC needs P2P ports", number);
@@ -2970,6 +2985,7 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 		port_show_transition(p, next, event);
 		p->state = next;
 		port_notify_event(p, NOTIFY_PORT_STATE);
+		unicast_client_state_changed(p);
 		return 1;
 	}
 
