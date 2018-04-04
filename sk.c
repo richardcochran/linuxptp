@@ -304,8 +304,11 @@ int sk_receive(int fd, void *buf, int buflen,
 	struct cmsghdr *cm;
 	struct iovec iov = { buf, buflen };
 	struct msghdr msg;
-	struct timespec *sw, *ts = NULL;
+	struct timespec *sw;
+	struct timespec *ts = NULL;
+	struct timehires *hr = NULL;
 
+	memset(&hwts->ts, 0, sizeof(hwts->ts));
 	memset(control, 0, sizeof(control));
 	memset(&msg, 0, sizeof(msg));
 	if (addr) {
@@ -341,9 +344,14 @@ int sk_receive(int fd, void *buf, int buflen,
 		level = cm->cmsg_level;
 		type  = cm->cmsg_type;
 		if (SOL_SOCKET == level && SO_TIMESTAMPING == type) {
-			if (cm->cmsg_len < sizeof(*ts) * 3) {
+			if (cm->cmsg_len < 3 * sizeof(struct timespec)) {
 				pr_warning("short SO_TIMESTAMPING message");
 				return -1;
+			}
+			if (cm->cmsg_len >= 3 * sizeof(struct timespec) +
+						sizeof(struct timehires)) {
+				hr = (struct timehires *) (CMSG_DATA(cm) +
+					3 * sizeof(struct timespec));
 			}
 			ts = (struct timespec *) CMSG_DATA(cm);
 		}
@@ -360,22 +368,22 @@ int sk_receive(int fd, void *buf, int buflen,
 	if (addr)
 		addr->len = msg.msg_namelen;
 
-	if (!ts) {
-		memset(&hwts->ts, 0, sizeof(hwts->ts));
-		return cnt;
-	}
-
 	switch (hwts->type) {
 	case TS_SOFTWARE:
-		hwts->ts = timespec_to_tmv(ts[0]);
+		if (ts)
+			hwts->ts = timespec_to_tmv(ts[0]);
 		break;
 	case TS_HARDWARE:
 	case TS_ONESTEP:
 	case TS_P2P1STEP:
-		hwts->ts = timespec_to_tmv(ts[2]);
+		if (hr)
+			hwts->ts = timehires_to_tmv(hr[0]);
+		else if (ts)
+			hwts->ts = timespec_to_tmv(ts[2]);
 		break;
 	case TS_LEGACY_HW:
-		hwts->ts = timespec_to_tmv(ts[1]);
+		if (ts)
+			hwts->ts = timespec_to_tmv(ts[1]);
 		break;
 	}
 	return cnt;

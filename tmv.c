@@ -25,7 +25,8 @@
 #include "msg.h"
 #include "tmv.h"
 
-#define NS_FRAC 0x10000
+#define NS_BITS 16
+#define NS_FRAC (1<<NS_BITS)
 
 static tmv_t tmv_normalize(int64_t ns, int32_t frac)
 {
@@ -150,3 +151,10 @@ tmv_t timestamp_to_tmv(struct timestamp ts)
 	t.frac = 0;
 	return t;
 }
+
+tmv_t timehires_to_tmv(struct timehires ts)
+{
+	return tmv_normalize(ts.tv_nsec, ts.tv_frac >>
+				(8*sizeof(ts.tv_frac)-NS_BITS));
+}
+

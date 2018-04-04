@@ -28,6 +28,7 @@
 #include <sys/timex.h>
 #include <net/if_arp.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #ifndef ADJ_TAI
 #define ADJ_TAI 0x0080
@@ -121,6 +122,14 @@ enum {
 
 #ifndef ARPHRD_6LOWPAN
 #define ARPHRD_6LOWPAN 825
+#endif
+
+#ifndef HAVE_TIMEHIRES
+struct timehires {
+	int64_t		tv_nsec;                /* nanoseconds */
+	uint32_t	tv_frac;                /* fractional ns */
+	uint32_t	__res;
+};
 #endif
 
 #ifdef __UCLIBC__

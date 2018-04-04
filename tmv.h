@@ -24,6 +24,7 @@
 
 #include "ddt.h"
 #include "pdt.h"
+#include "missing.h"
 
 #define NS_PER_SEC 1000000000LL
 
@@ -54,5 +55,6 @@ extern TimeInterval tmv_to_TimeInterval(tmv_t x);
 extern struct Timestamp tmv_to_Timestamp(tmv_t x);
 extern tmv_t timespec_to_tmv(struct timespec ts);
 extern tmv_t timestamp_to_tmv(struct timestamp ts);
+extern tmv_t timehires_to_tmv(struct timehires ts);
 
 #endif
