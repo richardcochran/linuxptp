@@ -1418,6 +1418,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	if (dst) {
 		msg->address = *dst;
 		msg->header.flagField[0] |= UNICAST;
+		msg->header.logMessageInterval = 0x7f;
 	}
 	err = port_prepare_and_send(p, msg, event);
 	if (err) {
