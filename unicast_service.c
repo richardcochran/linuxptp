@@ -417,6 +417,8 @@ int unicast_service_initialize(struct port *p)
 		free(p->unicast_service);
 		return -1;
 	}
+	p->inhibit_multicast_service =
+		config_get_int(cfg, p->name, "inhibit_multicast_service");
 
 	return 0;
 }

@@ -137,6 +137,7 @@ struct port {
 	struct unicast_master_table *unicast_master_table;
 	/* unicast service mode */
 	struct unicast_service *unicast_service;
+	int inhibit_multicast_service;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)

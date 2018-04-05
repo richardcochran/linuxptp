@@ -1329,6 +1329,9 @@ int port_tx_announce(struct port *p, struct address *dst)
 	struct ptp_message *msg;
 	int err;
 
+	if (p->inhibit_multicast_service && !dst) {
+		return 0;
+	}
 	if (!port_capable(p)) {
 		return 0;
 	}
@@ -1395,6 +1398,9 @@ int port_tx_sync(struct port *p, struct address *dst)
 		return -1;
 	}
 
+	if (p->inhibit_multicast_service && !dst) {
+		return 0;
+	}
 	if (!port_capable(p)) {
 		return 0;
 	}

@@ -218,6 +218,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("hybrid_e2e", 0, 0, 1),
 	PORT_ITEM_INT("ignore_transport_specific", 0, 0, 1),
 	PORT_ITEM_INT("ingressLatency", 0, INT_MIN, INT_MAX),
+	PORT_ITEM_INT("inhibit_multicast_service", 0, 0, 1),
 	GLOB_ITEM_INT("initial_delay", 0, 0, INT_MAX),
 	GLOB_ITEM_INT("kernel_leap", 1, 0, 1),
 	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
