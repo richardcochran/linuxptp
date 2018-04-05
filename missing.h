@@ -132,6 +132,12 @@ struct timehires {
 };
 #endif
 
+#ifndef HAVE_TIMESTAMPING_HIGH_RES
+enum {
+	SOF_TIMESTAMPING_HIGH_RES = (1<<12),
+};
+#endif
+
 #ifdef __UCLIBC__
 
 #if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && \

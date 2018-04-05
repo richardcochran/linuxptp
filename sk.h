@@ -131,4 +131,10 @@ extern int sk_tx_timeout;
  */
 extern int sk_check_fupsync;
 
+/**
+ * Enables the SOF_TIMESTAMPING_HIGH_RES socket option for obtaining
+ * high resolution, fractional nanosecond timestamps.
+ */
+extern int sk_high_res;
+
 #endif

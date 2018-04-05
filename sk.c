@@ -40,6 +40,7 @@
 
 int sk_tx_timeout = 1;
 int sk_check_fupsync;
+int sk_high_res = 0;
 
 /* private methods */
 
@@ -376,7 +377,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	case TS_HARDWARE:
 	case TS_ONESTEP:
 	case TS_P2P1STEP:
-		if (hr)
+		if (hr && sk_high_res)
 			hwts->ts = timehires_to_tmv(hr[0]);
 		else if (ts)
 			hwts->ts = timespec_to_tmv(ts[2]);
@@ -429,6 +430,8 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 		flags = SOF_TIMESTAMPING_TX_HARDWARE |
 			SOF_TIMESTAMPING_RX_HARDWARE |
 			SOF_TIMESTAMPING_RAW_HARDWARE;
+		if (sk_high_res)
+			flags |= SOF_TIMESTAMPING_HIGH_RES;
 		break;
 	case TS_LEGACY_HW:
 		flags = SOF_TIMESTAMPING_TX_HARDWARE |
