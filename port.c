@@ -32,6 +32,7 @@
 #include "msg.h"
 #include "phc.h"
 #include "port.h"
+#include "port_private.h"
 #include "print.h"
 #include "rtnl.h"
 #include "sk.h"
@@ -43,105 +44,12 @@
 #define ALLOWED_LOST_RESPONSES 3
 #define ANNOUNCE_SPAN 1
 
-enum syfu_state {
-	SF_EMPTY,
-	SF_HAVE_SYNC,
-	SF_HAVE_FUP,
-};
-
 enum syfu_event {
 	SYNC_MISMATCH,
 	SYNC_MATCH,
 	FUP_MISMATCH,
 	FUP_MATCH,
 };
-
-enum link_state {
-	LINK_DOWN  = (1<<0),
-	LINK_UP  = (1<<1),
-	LINK_STATE_CHANGED = (1<<3),
-	TS_LABEL_CHANGED  = (1<<4),
-};
-
-struct nrate_estimator {
-	double ratio;
-	tmv_t origin1;
-	tmv_t ingress1;
-	unsigned int max_count;
-	unsigned int count;
-	int ratio_valid;
-};
-
-struct port {
-	LIST_ENTRY(port) list;
-	char *name;
-	struct interface *iface;
-	struct clock *clock;
-	struct transport *trp;
-	enum timestamp_type timestamping;
-	struct fdarray fda;
-	int fault_fd;
-	int phc_index;
-	int jbod;
-	struct foreign_clock *best;
-	enum syfu_state syfu;
-	struct ptp_message *last_syncfup;
-	TAILQ_HEAD(delay_req, ptp_message) delay_req;
-	struct ptp_message *peer_delay_req;
-	struct ptp_message *peer_delay_resp;
-	struct ptp_message *peer_delay_fup;
-	int peer_portid_valid;
-	struct PortIdentity peer_portid;
-	struct {
-		UInteger16 announce;
-		UInteger16 delayreq;
-		UInteger16 sync;
-	} seqnum;
-	tmv_t peer_delay;
-	struct tsproc *tsproc;
-	int log_sync_interval;
-	struct nrate_estimator nrate;
-	unsigned int pdr_missing;
-	unsigned int multiple_seq_pdr_count;
-	unsigned int multiple_pdr_detected;
-	enum port_state (*state_machine)(enum port_state state,
-					 enum fsm_event event, int mdiff);
-	/* portDS */
-	struct PortIdentity portIdentity;
-	enum port_state     state; /*portState*/
-	Integer64           asymmetry;
-	int                 asCapable;
-	Integer8            logMinDelayReqInterval;
-	TimeInterval        peerMeanPathDelay;
-	Integer8            logAnnounceInterval;
-	UInteger8           announceReceiptTimeout;
-	int                 announce_span;
-	UInteger8           syncReceiptTimeout;
-	UInteger8           transportSpecific;
-	Integer8            logSyncInterval;
-	Enumeration8        delayMechanism;
-	Integer8            logMinPdelayReqInterval;
-	UInteger32          neighborPropDelayThresh;
-	int                 follow_up_info;
-	int                 freq_est_interval;
-	int                 hybrid_e2e;
-	int                 match_transport_specific;
-	int                 min_neighbor_prop_delay;
-	int                 net_sync_monitor;
-	int                 path_trace_enabled;
-	Integer64           rx_timestamp_offset;
-	Integer64           tx_timestamp_offset;
-	enum link_state     link_status;
-	struct fault_interval flt_interval_pertype[FT_CNT];
-	enum fault_type     last_fault_type;
-	unsigned int        versionNumber; /*UInteger4*/
-	/* foreignMasterDS */
-	LIST_HEAD(fm, foreign_clock) foreign_masters;
-};
-
-#define portnum(p) (p->portIdentity.portNumber)
-
-#define NSEC2SEC 1000000000LL
 
 static void flush_delay_req(struct port *p);
 static int port_capable(struct port *p);
@@ -174,7 +82,7 @@ static void announce_to_dataset(struct ptp_message *m, struct port *p,
 	out->receiver     = p->portIdentity;
 }
 
-static int clear_fault_asap(struct fault_interval *faint)
+int clear_fault_asap(struct fault_interval *faint)
 {
 	switch (faint->type) {
 	case FTMO_LINEAR_SECONDS:
@@ -238,12 +146,12 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 	return 0 == memcmp(id1, id2, sizeof(*id1));
 }
 
-static int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
+int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
 {
 	return 0 == memcmp(a, b, sizeof(*a));
 }
 
-static int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
+int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 {
 	return pid_eq(&m1->header.sourcePortIdentity,
 		      &m2->header.sourcePortIdentity);
@@ -342,7 +250,7 @@ int port_set_fault_timer_lin(struct port *port, int seconds)
 	return set_tmo_lin(port->fault_fd, seconds);
 }
 
-static void fc_clear(struct foreign_clock *fc)
+void fc_clear(struct foreign_clock *fc)
 {
 	struct ptp_message *m;
 
@@ -404,7 +312,7 @@ static void delay_req_prune(struct port *p)
 	}
 }
 
-static void ts_add(tmv_t *ts, Integer64 correction)
+void ts_add(tmv_t *ts, Integer64 correction)
 {
 	if (!correction) {
 		return;
@@ -735,7 +643,7 @@ not_capable:
 	return 0;
 }
 
-static int port_clr_tmo(int fd)
+int port_clr_tmo(int fd)
 {
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
@@ -1111,14 +1019,14 @@ static void port_nrate_initialize(struct port *p)
 	p->nrate.ratio_valid = 0;
 }
 
-static int port_set_announce_tmo(struct port *p)
+int port_set_announce_tmo(struct port *p)
 {
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
 			      p->announceReceiptTimeout,
 			      p->announce_span, p->logAnnounceInterval);
 }
 
-static int port_set_delay_tmo(struct port *p)
+int port_set_delay_tmo(struct port *p)
 {
 	if (p->delayMechanism == DM_P2P) {
 		return set_tmo_log(p->fda.fd[FD_DELAY_TIMER], 1,
@@ -1151,8 +1059,8 @@ static int port_set_sync_tx_tmo(struct port *p)
 	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
 }
 
-static void port_show_transition(struct port *p,
-				 enum port_state next, enum fsm_event event)
+void port_show_transition(struct port *p, enum port_state next,
+			  enum fsm_event event)
 {
 	if (event == EV_FAULT_DETECTED) {
 		pr_notice("port %hu: %s to %s on %s (%s)", portnum(p),
@@ -1341,7 +1249,7 @@ out:
 	return -1;
 }
 
-static int port_delay_request(struct port *p)
+int port_delay_request(struct port *p)
 {
 	struct ptp_message *msg;
 
@@ -1550,7 +1458,7 @@ out:
 /*
  * port initialize and disable
  */
-static int port_is_enabled(struct port *p)
+int port_is_enabled(struct port *p)
 {
 	switch (p->state) {
 	case PS_INITIALIZING:
@@ -1610,7 +1518,7 @@ static void port_clear_fda(struct port *p, int count)
 		p->fda.fd[i] = -1;
 }
 
-static void port_disable(struct port *p)
+void port_disable(struct port *p)
 {
 	int i;
 
@@ -1631,7 +1539,7 @@ static void port_disable(struct port *p)
 	clock_fda_changed(p->clock);
 }
 
-static int port_initialize(struct port *p)
+int port_initialize(struct port *p)
 {
 	struct config *cfg = clock_config(p->clock);
 	int fd[N_TIMER_FDS], i;
@@ -1760,7 +1668,7 @@ struct dataset *port_best_foreign(struct port *port)
 /*
  * Returns non-zero if the announce message is both qualified and different.
  */
-static int process_announce(struct port *p, struct ptp_message *m)
+int process_announce(struct port *p, struct ptp_message *m)
 {
 	int result = 0;
 
@@ -1907,7 +1815,7 @@ static void process_delay_resp(struct port *p, struct ptp_message *m)
 	port_set_delay_tmo(p);
 }
 
-static void process_follow_up(struct port *p, struct ptp_message *m)
+void process_follow_up(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
 	struct PortIdentity master;
@@ -1945,7 +1853,7 @@ static void process_follow_up(struct port *p, struct ptp_message *m)
 	port_syfufsm(p, event, m);
 }
 
-static int process_pdelay_req(struct port *p, struct ptp_message *m)
+int process_pdelay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *rsp, *fup;
 	int err, event;
@@ -2136,7 +2044,7 @@ calc:
 	p->peer_delay_req = NULL;
 }
 
-static int process_pdelay_resp(struct port *p, struct ptp_message *m)
+int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
 	if (p->peer_delay_resp) {
 		if (!source_pid_eq(p->peer_delay_resp, m)) {
@@ -2180,7 +2088,7 @@ static int process_pdelay_resp(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
-static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
+void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 {
 	if (!p->peer_delay_req)
 		return;
@@ -2193,7 +2101,7 @@ static void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 	port_peer_delay(p);
 }
 
-static void process_sync(struct port *p, struct ptp_message *m)
+void process_sync(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
 	struct PortIdentity master;
@@ -2279,7 +2187,7 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 		if (!p->best)
 			p->best = fc;
-		else if (dscmp(&fc->dataset, &p->best->dataset) > 0)
+		else if (p->dscmp(&fc->dataset, &p->best->dataset) > 0)
 			p->best = fc;
 		else
 			fc_clear(fc);
@@ -2372,55 +2280,28 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 
 void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
-	enum port_state next;
+	p->dispatch(p, event, mdiff);
+}
 
+static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
+{
 	if (clock_slave_only(p->clock)) {
 		if (event == EV_RS_MASTER || event == EV_RS_GRAND_MASTER) {
 			port_slave_priority_warning(p);
 		}
 	}
-	next = p->state_machine(p->state, event, mdiff);
 
-	if (PS_FAULTY == next) {
-		struct fault_interval i;
-		fault_interval(p, last_fault_type(p), &i);
-		if (clear_fault_asap(&i)) {
-			pr_notice("port %hu: clearing fault immediately", portnum(p));
-			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
-		}
-	}
-	if (PS_INITIALIZING == next) {
-		/*
-		 * This is a special case. Since we initialize the
-		 * port immediately, we can skip right to listening
-		 * state if all goes well.
-		 */
-		if (port_is_enabled(p)) {
-			port_disable(p);
-		}
-		if (port_initialize(p)) {
-			event = EV_FAULT_DETECTED;
-		} else {
-			event = EV_INIT_COMPLETE;
-		}
-		next = p->state_machine(next, event, 0);
-	}
-
-	if (next == p->state)
+	if (!port_state_update(p, event, mdiff)) {
 		return;
-
-	port_show_transition(p, next, event);
+	}
 
 	if (p->delayMechanism == DM_P2P) {
-		port_p2p_transition(p, next);
+		port_p2p_transition(p, p->state);
 	} else {
-		port_e2e_transition(p, next);
+		port_e2e_transition(p, p->state);
 	}
 
-	p->state = next;
-	port_notify_event(p, NOTIFY_PORT_STATE);
-
-	if (p->jbod && next == PS_UNCALIBRATED) {
+	if (p->jbod && p->state == PS_UNCALIBRATED) {
 		if (clock_switch_phc(p->clock, p->phc_index)) {
 			p->last_fault_type = FT_SWITCH_PHC;
 			port_dispatch(p, EV_FAULT_DETECTED, 0);
@@ -2430,7 +2311,7 @@ void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 }
 
-static void port_link_status(void *ctx, int linkup, int ts_index)
+void port_link_status(void *ctx, int linkup, int ts_index)
 {
 	struct port *p = ctx;
 	int link_state;
@@ -2487,6 +2368,11 @@ static void port_link_status(void *ctx, int linkup, int ts_index)
 }
 
 enum fsm_event port_event(struct port *p, int fd_index)
+{
+	return p->event(p, fd_index);
+}
+
+static enum fsm_event bc_event(struct port *p, int fd_index)
 {
 	enum fsm_event event = EV_NONE;
 	struct ptp_message *msg;
@@ -2849,6 +2735,7 @@ struct port *port_open(int phc_index,
 		       struct interface *interface,
 		       struct clock *clock)
 {
+	enum clock_type type = clock_type(clock);
 	struct config *cfg = clock_config(clock);
 	struct port *p = malloc(sizeof(*p));
 	enum transport_type transport;
@@ -2859,7 +2746,20 @@ struct port *port_open(int phc_index,
 
 	memset(p, 0, sizeof(*p));
 
+	switch (type) {
+	case CLOCK_TYPE_ORDINARY:
+	case CLOCK_TYPE_BOUNDARY:
+		p->dispatch = bc_dispatch;
+		p->event = bc_event;
+		break;
+	case CLOCK_TYPE_P2P:
+	case CLOCK_TYPE_E2E:
+	case CLOCK_TYPE_MANAGEMENT:
+		return NULL;
+	}
+
 	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
+	p->dscmp = dscmp;
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
@@ -2957,4 +2857,44 @@ err_port:
 enum port_state port_state(struct port *port)
 {
 	return port->state;
+}
+
+int port_state_update(struct port *p, enum fsm_event event, int mdiff)
+{
+	enum port_state next = p->state_machine(p->state, event, mdiff);
+
+	if (PS_FAULTY == next) {
+		struct fault_interval i;
+		fault_interval(p, last_fault_type(p), &i);
+		if (clear_fault_asap(&i)) {
+			pr_notice("port %hu: clearing fault immediately", portnum(p));
+			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
+		}
+	}
+
+	if (PS_INITIALIZING == next) {
+		/*
+		 * This is a special case. Since we initialize the
+		 * port immediately, we can skip right to listening
+		 * state if all goes well.
+		 */
+		if (port_is_enabled(p)) {
+			port_disable(p);
+		}
+		if (port_initialize(p)) {
+			event = EV_FAULT_DETECTED;
+		} else {
+			event = EV_INIT_COMPLETE;
+		}
+		next = p->state_machine(next, event, 0);
+	}
+
+	if (next != p->state) {
+		port_show_transition(p, next, event);
+		p->state = next;
+		port_notify_event(p, NOTIFY_PORT_STATE);
+		return 1;
+	}
+
+	return 0;
 }

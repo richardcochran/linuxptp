@@ -213,6 +213,15 @@ struct port *port_open(int phc_index,
 enum port_state port_state(struct port *port);
 
 /**
+ * Update a port's current state based on a given event.
+ * @param p        A pointer previously obtained via port_open().
+ * @param event    One of the @a fsm_event codes.
+ * @param mdiff    Whether a new master has been selected.
+ * @return         One (1) if the port state has changed, zero otherwise.
+ */
+int port_state_update(struct port *p, enum fsm_event event, int mdiff);
+
+/**
  * Return array of file descriptors for this port. The fault fd is not
  * included.
  * @param port	A port instance
