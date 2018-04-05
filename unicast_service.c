@@ -403,7 +403,9 @@ int unicast_service_initialize(struct port *p)
 	if (!config_get_int(cfg, p->name, "unicast_listen")) {
 		return 0;
 	}
-
+	if (config_set_section_int(cfg, p->name, "hybrid_e2e", 1)) {
+		return -1;
+	}
 	p->unicast_service = calloc(1, sizeof(*p->unicast_service));
 	if (!p->unicast_service) {
 		return -1;

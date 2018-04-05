@@ -19,6 +19,7 @@
  */
 #include "port_private.h"
 #include "unicast_client.h"
+#include "unicast_service.h"
 
 struct ptp_message *port_signaling_construct(struct port *p,
 					     struct address *address,
@@ -49,7 +50,7 @@ struct ptp_message *port_signaling_construct(struct port *p,
 int process_signaling(struct port *p, struct ptp_message *m)
 {
 	struct tlv_extra *extra;
-	int err = 0;
+	int err = 0, result;
 
 	switch (p->state) {
 	case PS_INITIALIZING:
@@ -69,13 +70,29 @@ int process_signaling(struct port *p, struct ptp_message *m)
 	TAILQ_FOREACH(extra, &m->tlv_list, list) {
 		switch (extra->tlv->type) {
 		case TLV_REQUEST_UNICAST_TRANSMISSION:
+			result = unicast_service_add(p, m, extra);
+			switch (result) {
+			case SERVICE_GRANTED:
+				err = unicast_service_grant(p, m, extra);
+				break;
+			case SERVICE_DENIED:
+				err = unicast_service_deny(p, m, extra);
+				break;
+			case SERVICE_DISABLED:
+			default:
+				break;
+			}
 			break;
+
 		case TLV_GRANT_UNICAST_TRANSMISSION:
 			unicast_client_grant(p, m, extra);
 			break;
+
 		case TLV_CANCEL_UNICAST_TRANSMISSION:
 			err = unicast_client_cancel(p, m, extra);
+			unicast_service_remove(p, m, extra);
 			break;
+
 		case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
 			break;
 		}

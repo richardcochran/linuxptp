@@ -41,6 +41,7 @@
 #include "tmv.h"
 #include "tsproc.h"
 #include "unicast_client.h"
+#include "unicast_service.h"
 #include "util.h"
 
 #define ALLOWED_LOST_RESPONSES 3
@@ -2212,6 +2213,7 @@ void port_close(struct port *p)
 		rtnl_close(p->fda.fd[FD_RTNL]);
 	}
 
+	unicast_service_cleanup(p);
 	transport_destroy(p->trp);
 	tsproc_destroy(p->tsproc);
 	if (p->fault_fd >= 0) {
@@ -2476,7 +2478,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_UNICAST_SRV_TIMER:
 		pr_debug("port %hu: unicast service timeout", portnum(p));
-		return EV_NONE;
+		return unicast_service_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_UNICAST_REQ_TIMER:
 		pr_debug("port %hu: unicast request timeout", portnum(p));
@@ -2890,6 +2892,9 @@ struct port *port_open(int phc_index,
 	}
 	if (unicast_client_enabled(p) &&
 	    config_set_section_int(cfg, p->name, "hybrid_e2e", 1)) {
+		goto err_port;
+	}
+	if (number && unicast_service_initialize(p)) {
 		goto err_port;
 	}
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");

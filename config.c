@@ -265,6 +265,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
 	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
+	PORT_ITEM_INT("unicast_listen", 0, 0, 1),
 	PORT_ITEM_INT("unicast_master_table", 0, 0, INT_MAX),
 	PORT_ITEM_INT("unicast_req_duration", 3600, 10, INT_MAX),
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
