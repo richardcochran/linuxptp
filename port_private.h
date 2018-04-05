@@ -157,6 +157,8 @@ int port_set_delay_tmo(struct port *p);
 int port_set_qualification_tmo(struct port *p);
 void port_show_transition(struct port *p, enum port_state next,
 			  enum fsm_event event);
+int port_tx_announce(struct port *p, struct address *dst);
+int port_tx_sync(struct port *p, struct address *dst);
 int process_announce(struct port *p, struct ptp_message *m);
 void process_delay_resp(struct port *p, struct ptp_message *m);
 void process_follow_up(struct port *p, struct ptp_message *m);

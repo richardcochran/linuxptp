@@ -1311,7 +1311,7 @@ out:
 	return -1;
 }
 
-static int port_tx_announce(struct port *p, struct address *dst)
+int port_tx_announce(struct port *p, struct address *dst)
 {
 	struct timePropertiesDS *tp = clock_time_properties(p->clock);
 	struct parent_ds *dad = clock_parent_ds(p->clock);
@@ -1363,7 +1363,7 @@ static int port_tx_announce(struct port *p, struct address *dst)
 	return err;
 }
 
-static int port_tx_sync(struct port *p, struct address *dst)
+int port_tx_sync(struct port *p, struct address *dst)
 {
 	struct ptp_message *msg, *fup;
 	int err, event;
