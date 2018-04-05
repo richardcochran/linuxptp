@@ -1311,7 +1311,7 @@ out:
 	return -1;
 }
 
-static int port_tx_announce(struct port *p)
+static int port_tx_announce(struct port *p, struct address *dst)
 {
 	struct timePropertiesDS *tp = clock_time_properties(p->clock);
 	struct parent_ds *dad = clock_parent_ds(p->clock);
@@ -1339,6 +1339,10 @@ static int port_tx_announce(struct port *p)
 
 	msg->header.flagField[1] = tp->flags;
 
+	if (dst) {
+		msg->address = *dst;
+		msg->header.flagField[0] |= UNICAST;
+	}
 	msg->announce.currentUtcOffset        = tp->currentUtcOffset;
 	msg->announce.grandmasterPriority1    = dad->pds.grandmasterPriority1;
 	msg->announce.grandmasterClockQuality = dad->pds.grandmasterClockQuality;
@@ -2437,7 +2441,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_MANNO_TIMER:
 		pr_debug("port %hu: master tx announce timeout", portnum(p));
 		port_set_manno_tmo(p);
-		return port_tx_announce(p) ? EV_FAULT_DETECTED : EV_NONE;
+		return port_tx_announce(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_SYNC_TX_TIMER:
 		pr_debug("port %hu: master sync timeout", portnum(p));
