@@ -495,32 +495,35 @@ static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 	struct port *best = clock_best_port(p->clock);
 	struct nsm_resp_tlv_head *head;
 	struct Timestamp last_sync;
-	struct PortAddress paddr;
+	struct PortAddress *paddr;
 	struct ptp_message *tmp;
 	struct tlv_extra *extra;
 	unsigned char *ptr;
 	int tlv_len;
 
+	uint8_t buf[sizeof(*paddr) + sizeof(struct sockaddr_storage)];
+
 	last_sync = tmv_to_Timestamp(clock_ingress_time(p->clock));
 	pid = dad->pds.parentPortIdentity.clockIdentity;
+	paddr = (struct PortAddress *)buf;
 
 	if (best && memcmp(&cid, &pid, sizeof(cid))) {
 		/* Extract the parent's protocol address. */
-		paddr.networkProtocol = transport_type(best->trp);
-		paddr.addressLength =
-			transport_protocol_addr(best->trp, paddr.address);
+		paddr->networkProtocol = transport_type(best->trp);
+		paddr->addressLength =
+			transport_protocol_addr(best->trp, paddr->address);
 		if (best->best) {
 			tmp = TAILQ_FIRST(&best->best->messages);
-			extract_address(tmp, &paddr);
+			extract_address(tmp, paddr);
 		}
 	} else {
 		/* We are our own parent. */
-		paddr.networkProtocol = transport_type(p->trp);
-		paddr.addressLength =
-			transport_protocol_addr(p->trp, paddr.address);
+		paddr->networkProtocol = transport_type(p->trp);
+		paddr->addressLength =
+			transport_protocol_addr(p->trp, paddr->address);
 	}
 
-	tlv_len = sizeof(*head) + sizeof(*extra->foot) + paddr.addressLength;
+	tlv_len = sizeof(*head) + sizeof(*extra->foot) + paddr->addressLength;
 
 	extra = msg_tlv_append(m, tlv_len);
 	if (!extra) {
@@ -531,12 +534,12 @@ static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 	head->type = TLV_PTPMON_RESP;
 	head->length = tlv_len - sizeof(head->type) - sizeof(head->length);
 	head->port_state = p->state == PS_GRAND_MASTER ? PS_MASTER : p->state;
-	head->parent_addr.networkProtocol = paddr.networkProtocol;
-	head->parent_addr.addressLength = paddr.addressLength;
-	memcpy(head->parent_addr.address, paddr.address, paddr.addressLength);
+	head->parent_addr.networkProtocol = paddr->networkProtocol;
+	head->parent_addr.addressLength = paddr->addressLength;
+	memcpy(head->parent_addr.address, paddr->address, paddr->addressLength);
 
 	ptr = (unsigned char *) head;
-	ptr += sizeof(*head) + paddr.addressLength;
+	ptr += sizeof(*head) + paddr->addressLength;
 	extra->foot = (struct nsm_resp_tlv_foot *) ptr;
 
 	memcpy(&extra->foot->parent, &dad->pds, sizeof(extra->foot->parent));
