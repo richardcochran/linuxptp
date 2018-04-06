@@ -276,8 +276,9 @@ void clock_destroy(struct clock *c)
 	stats_destroy(c->stats.offset);
 	stats_destroy(c->stats.freq);
 	stats_destroy(c->stats.delay);
-	if (c->sanity_check)
+	if (c->sanity_check) {
 		clockcheck_destroy(c->sanity_check);
+	}
 	memset(c, 0, sizeof(*c));
 	msg_cleanup();
 }
@@ -857,8 +858,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 
-	if (c->nports)
+	if (c->nports) {
 		clock_destroy(c);
+	}
 
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
@@ -1188,8 +1190,9 @@ static int clock_resize_pollfd(struct clock *c, int new_nports)
 	new_pollfd = realloc(c->pollfd,
 			     (new_nports + 1) * N_CLOCK_PFD *
 			     sizeof(struct pollfd));
-	if (!new_pollfd)
+	if (!new_pollfd) {
 		return -1;
+	}
 	c->pollfd = new_pollfd;
 	return 0;
 }
@@ -1213,8 +1216,9 @@ static void clock_check_pollfd(struct clock *c)
 	struct port *p;
 	struct pollfd *dest = c->pollfd;
 
-	if (c->pollfd_valid)
+	if (c->pollfd_valid) {
 		return;
+	}
 	LIST_FOREACH(p, &c->ports, list) {
 		clock_fill_pollfd(dest, p);
 		dest += N_CLOCK_PFD;
@@ -1467,10 +1471,12 @@ int clock_poll(struct clock *c)
 		for (i = 0; i < N_POLLFD; i++) {
 			if (cur[i].revents & (POLLIN|POLLPRI)) {
 				event = port_event(p, i);
-				if (EV_STATE_DECISION_EVENT == event)
+				if (EV_STATE_DECISION_EVENT == event) {
 					c->sde = 1;
-				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event)
+				}
+				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event) {
 					c->sde = 1;
+				}
 				port_dispatch(p, event, 0);
 				/* Clear any fault after a little while. */
 				if (PS_FAULTY == port_state(p)) {
@@ -1498,8 +1504,9 @@ int clock_poll(struct clock *c)
 	for (i = 0; i < N_POLLFD; i++) {
 		if (cur[i].revents & (POLLIN|POLLPRI)) {
 			event = port_event(c->uds_port, i);
-			if (EV_STATE_DECISION_EVENT == event)
+			if (EV_STATE_DECISION_EVENT == event) {
 				c->sde = 1;
+			}
 		}
 	}
 
@@ -1591,16 +1598,19 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 
 	tsproc_down_ts(c->tsproc, origin, ingress);
 
-	if (tsproc_update_offset(c->tsproc, &c->master_offset, &weight))
+	if (tsproc_update_offset(c->tsproc, &c->master_offset, &weight)) {
 		return state;
+	}
 
-	if (clock_utc_correct(c, ingress))
+	if (clock_utc_correct(c, ingress)) {
 		return c->servo_state;
+	}
 
 	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
 
-	if (c->free_running)
+	if (c->free_running) {
 		return clock_no_adjust(c, ingress, origin);
+	}
 
 	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
 			   tmv_to_nanoseconds(ingress), weight, &state);
@@ -1633,10 +1643,12 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 		break;
 	case SERVO_LOCKED:
 		clockadj_set_freq(c->clkid, -adj);
-		if (c->clkid == CLOCK_REALTIME)
+		if (c->clkid == CLOCK_REALTIME) {
 			sysclk_set_sync();
-		if (c->sanity_check)
+		}
+		if (c->sanity_check) {
 			clockcheck_set_freq(c->sanity_check, -adj);
+		}
 		break;
 	}
 	return state;
