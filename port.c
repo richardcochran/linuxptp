@@ -330,8 +330,9 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	int broke_threshold = 0, diff = 0;
 
 	LIST_FOREACH(fc, &p->foreign_masters, list) {
-		if (msg_source_equal(m, fc))
+		if (msg_source_equal(m, fc)) {
 			break;
+		}
 	}
 	if (!fc) {
 		pr_notice("port %hu: new foreign master %s", portnum(p),
@@ -355,8 +356,9 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	 * If this message breaks the threshold, that is an important change.
 	 */
 	fc_prune(fc);
-	if (FOREIGN_MASTER_THRESHOLD - 1 == fc->n_messages)
+	if (FOREIGN_MASTER_THRESHOLD - 1 == fc->n_messages) {
 		broke_threshold = 1;
+	}
 
 	/*
 	 * Okay, go ahead and add this announcement.
@@ -1208,13 +1210,15 @@ static int port_pdelay_request(struct port *p)
 	int err;
 
 	/* If multiple pdelay resp were not detected the counter can be reset */
-	if (!p->multiple_pdr_detected)
+	if (!p->multiple_pdr_detected) {
 		p->multiple_seq_pdr_count = 0;
+	}
 	p->multiple_pdr_detected = 0;
 
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1321,8 +1325,9 @@ static int port_tx_announce(struct port *p)
 		return 0;
 	}
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1350,8 +1355,9 @@ static int port_tx_announce(struct port *p)
 	}
 
 	err = port_prepare_and_send(p, msg, 0);
-	if (err)
+	if (err) {
 		pr_err("port %hu: send announce failed", portnum(p));
+	}
 	msg_put(msg);
 	return err;
 }
@@ -1384,8 +1390,9 @@ static int port_tx_sync(struct port *p, struct address *dst)
 		return 0;
 	}
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 	fup = msg_allocate();
 	if (!fup) {
 		msg_put(msg);
@@ -1403,8 +1410,9 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	msg->header.control            = CTL_SYNC;
 	msg->header.logMessageInterval = p->logSyncInterval;
 
-	if (p->timestamping != TS_ONESTEP && p->timestamping != TS_P2P1STEP)
+	if (p->timestamping != TS_ONESTEP && p->timestamping != TS_P2P1STEP) {
 		msg->header.flagField[0] |= TWO_STEP;
+	}
 
 	if (dst) {
 		msg->address = *dst;
@@ -1450,8 +1458,9 @@ static int port_tx_sync(struct port *p, struct address *dst)
 	}
 
 	err = port_prepare_and_send(p, fup, 0);
-	if (err)
+	if (err) {
 		pr_err("port %hu: send follow up failed", portnum(p));
+	}
 out:
 	msg_put(msg);
 	msg_put(fup);
@@ -1678,8 +1687,9 @@ int process_announce(struct port *p, struct ptp_message *m)
 	/* Do not qualify announce messages with stepsRemoved >= 255, see
 	 * IEEE1588-2008 section 9.3.2.5 (d)
 	 */
-	if (m->announce.stepsRemoved >= 255)
+	if (m->announce.stepsRemoved >= 255) {
 		return result;
+	}
 
 	switch (p->state) {
 	case PS_INITIALIZING:
@@ -1708,8 +1718,9 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 
 	nsm = port_nsm_reply(p, m);
 
-	if (!nsm && p->state != PS_MASTER && p->state != PS_GRAND_MASTER)
+	if (!nsm && p->state != PS_MASTER && p->state != PS_GRAND_MASTER) {
 		return 0;
+	}
 
 	if (p->delayMechanism == DM_P2P) {
 		pr_warning("port %hu: delay request on P2P port", portnum(p));
@@ -1717,8 +1728,9 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	}
 
 	msg = msg_allocate();
-	if (!msg)
+	if (!msg) {
 		return -1;
+	}
 
 	msg->hwts.type = p->timestamping;
 
@@ -1837,8 +1849,9 @@ void process_follow_up(struct port *p, struct ptp_message *m)
 		break;
 	}
 	master = clock_parent_identity(p->clock);
-	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master)))
+	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master))) {
 		return;
+	}
 
 	if (p->follow_up_info) {
 		struct follow_up_info_tlv *fui = follow_up_info_extract(m);
@@ -1901,8 +1914,10 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	}
 
 	rsp = msg_allocate();
-	if (!rsp)
+	if (!rsp) {
 		return -1;
+	}
+
 	fup = msg_allocate();
 	if (!fup) {
 		msg_put(rsp);
@@ -1967,8 +1982,9 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 		tmv_to_Timestamp(rsp->hwts.ts);
 
 	err = peer_prepare_and_send(p, fup, 0);
-	if (err)
+	if (err) {
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
+	}
 out:
 	msg_put(rsp);
 	msg_put(fup);
@@ -2093,11 +2109,13 @@ int process_pdelay_resp(struct port *p, struct ptp_message *m)
 
 void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 {
-	if (!p->peer_delay_req)
+	if (!p->peer_delay_req) {
 		return;
+	}
 
-	if (p->peer_delay_fup)
+	if (p->peer_delay_fup) {
 		msg_put(p->peer_delay_fup);
+	}
 
 	msg_get(m);
 	p->peer_delay_fup = m;
@@ -2159,13 +2177,15 @@ void port_close(struct port *p)
 		port_disable(p);
 	}
 
-	if (p->fda.fd[FD_RTNL] >= 0)
+	if (p->fda.fd[FD_RTNL] >= 0) {
 		rtnl_close(p->fda.fd[FD_RTNL]);
+	}
 
 	transport_destroy(p->trp);
 	tsproc_destroy(p->tsproc);
-	if (p->fault_fd >= 0)
+	if (p->fault_fd >= 0) {
 		close(p->fault_fd);
+	}
 	free(p);
 }
 
@@ -2744,8 +2764,9 @@ struct port *port_open(int phc_index,
 	enum transport_type transport;
 	int i;
 
-	if (!p)
+	if (!p) {
 		return NULL;
+	}
 
 	memset(p, 0, sizeof(*p));
 
@@ -2767,11 +2788,11 @@ struct port *port_open(int phc_index,
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
 
-	if (transport == TRANS_UDS)
+	if (transport == TRANS_UDS) {
 		; /* UDS cannot have a PHC. */
-	else if (!interface->ts_info.valid)
+	} else if (!interface->ts_info.valid) {
 		pr_warning("port %d: get_ts_info not supported", number);
-	else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
+	} else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
 		if (p->jbod) {
 			pr_warning("port %d: just a bunch of devices", number);
 			p->phc_index = interface->ts_info.phc_index;
@@ -2800,8 +2821,9 @@ struct port *port_open(int phc_index,
 	p->link_status = LINK_UP;
 	p->clock = clock;
 	p->trp = transport_create(cfg, transport);
-	if (!p->trp)
+	if (!p->trp) {
 		goto err_port;
+	}
 	p->timestamping = timestamping;
 	p->portIdentity.clockIdentity = clock_identity(clock);
 	p->portIdentity.portNumber = number;
