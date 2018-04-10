@@ -395,7 +395,7 @@ int sk_set_priority(int fd, uint8_t dscp)
 int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 			 enum transport_type transport)
 {
-	int err, filter1, filter2 = 0, flags, tx_type;
+	int err, filter1, filter2 = 0, flags, tx_type = HWTSTAMP_TX_ON;
 
 	switch (type) {
 	case TS_SOFTWARE:

@@ -74,7 +74,9 @@ force:
 install: $(PRG)
 	install -p -m 755 -d $(DESTDIR)$(sbindir) $(DESTDIR)$(man8dir)
 	install $(PRG) $(DESTDIR)$(sbindir)
-	install -p -m 644 -t $(DESTDIR)$(man8dir) $(PRG:%=%.8)
+	for x in $(PRG:%=%.8); do \
+		[ -f $$x ] && install -p -m 644 -t $(DESTDIR)$(man8dir) $$x ; \
+	done
 
 clean:
 	rm -f $(OBJECTS) $(DEPEND) $(PRG)
