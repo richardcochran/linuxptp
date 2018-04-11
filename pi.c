@@ -37,7 +37,7 @@
 
 struct pi_servo {
 	struct servo servo;
-	int64_t offset[2];
+	double offset[2];
 	uint64_t local[2];
 	double drift;
 	double kp;
@@ -62,7 +62,7 @@ static void pi_destroy(struct servo *servo)
 }
 
 static double pi_sample(struct servo *servo,
-			int64_t offset,
+			double offset,
 			uint64_t local_ts,
 			double weight,
 			enum servo_state *state)

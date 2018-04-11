@@ -234,6 +234,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
 	GLOB_ITEM_INT("timeSource", INTERNAL_OSCILLATOR, 0x10, 0xfe),
 	GLOB_ITEM_ENU("time_stamping", TS_HARDWARE, timestamping_enu),
+	GLOB_ITEM_INT("high_resolution", 0, 0, 1),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
 	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),
 	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),

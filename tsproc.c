@@ -134,11 +134,10 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 	delay = tmv_div(tmv_add(t23, t41), 2);
 
 	if (tmv_sign(delay) < 0) {
-		pr_debug("negative delay %10" PRId64,
-			 tmv_to_nanoseconds(delay));
+		pr_debug("negative delay %10.3f", tmv_dbl(delay));
 		pr_debug("delay = (t2 - t3) * rr + (t4 - t1)");
-		pr_debug("t2 - t3 = %+10" PRId64, tmv_to_nanoseconds(t23));
-		pr_debug("t4 - t1 = %+10" PRId64, tmv_to_nanoseconds(t41));
+		pr_debug("t2 - t3 = %+10.3f", tmv_dbl(t23));
+		pr_debug("t4 - t1 = %+10.3f", tmv_dbl(t41));
 		pr_debug("rr = %.9f", tsp->clock_rate_ratio);
 	}
 
@@ -156,9 +155,8 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 	tsp->filtered_delay = filter_sample(tsp->delay_filter, raw_delay);
 	tsp->filtered_delay_valid = 1;
 
-	pr_debug("delay   filtered %10" PRId64 "   raw %10" PRId64,
-		 tmv_to_nanoseconds(tsp->filtered_delay),
-		 tmv_to_nanoseconds(raw_delay));
+	pr_debug("delay   filtered %10.3f   raw %10.3f",
+		 tmv_dbl(tsp->filtered_delay), tmv_dbl(raw_delay));
 
 	if (!delay) {
 		return 0;

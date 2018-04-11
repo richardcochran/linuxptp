@@ -34,7 +34,7 @@ static void nullf_destroy(struct servo *servo)
 	free(s);
 }
 
-static double nullf_sample(struct servo *servo, int64_t offset,
+static double nullf_sample(struct servo *servo, double offset,
 			   uint64_t local_ts, double weight,
 			   enum servo_state *state)
 {

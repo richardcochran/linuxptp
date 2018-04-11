@@ -40,6 +40,7 @@
 
 int sk_tx_timeout = 1;
 int sk_check_fupsync;
+int sk_high_res = 0;
 
 /* private methods */
 
@@ -59,8 +60,10 @@ static int hwts_init(int fd, const char *device, int rx_filter, int tx_type)
 	cfg.rx_filter  = rx_filter;
 	req = cfg;
 	err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
-	if (err < 0)
-		return err;
+	// HACK - SIOCHWTSTAMP is not passed through the ieee802154 layer
+	//if (err < 0)
+	//return err;
+	(void) err;
 
 	if (memcmp(&cfg, &req, sizeof(cfg))) {
 
@@ -150,6 +153,11 @@ int sk_get_ts_info(const char *name, struct sk_ts_info *sk_info)
 	sk_info->so_timestamping = info.so_timestamping;
 	sk_info->tx_types = info.tx_types;
 	sk_info->rx_filters = info.rx_filters;
+	// HACK - SIOCETHTOOL is not passed through the ieee802154 layer
+	sk_info->phc_index = 0;
+	sk_info->so_timestamping = (SOF_TIMESTAMPING_TX_HARDWARE |
+				    SOF_TIMESTAMPING_RX_HARDWARE |
+				    SOF_TIMESTAMPING_RAW_HARDWARE);
 
 	return 0;
 failed:
@@ -238,6 +246,11 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 			}
 			mac->sll.sll_halen = EUI64;
 			break;
+		case ARPHRD_6LOWPAN:
+			memcpy(mac->sll.sll_addr, &ifreq.ifr_hwaddr.sa_data,
+			       GUID_LEN);
+			mac->sll.sll_halen = EUI64;
+			break;
 		default:
 			memcpy(mac->sll.sll_addr, &ifreq.ifr_hwaddr.sa_data, MAC_LEN);
 			mac->sll.sll_halen = EUI48;
@@ -292,8 +305,11 @@ int sk_receive(int fd, void *buf, int buflen,
 	struct cmsghdr *cm;
 	struct iovec iov = { buf, buflen };
 	struct msghdr msg;
-	struct timespec *sw, *ts = NULL;
+	struct timespec *sw;
+	struct timespec *ts = NULL;
+	struct timehires *hr = NULL;
 
+	memset(&hwts->ts, 0, sizeof(hwts->ts));
 	memset(control, 0, sizeof(control));
 	memset(&msg, 0, sizeof(msg));
 	if (addr) {
@@ -329,9 +345,14 @@ int sk_receive(int fd, void *buf, int buflen,
 		level = cm->cmsg_level;
 		type  = cm->cmsg_type;
 		if (SOL_SOCKET == level && SO_TIMESTAMPING == type) {
-			if (cm->cmsg_len < sizeof(*ts) * 3) {
+			if (cm->cmsg_len < 3 * sizeof(struct timespec)) {
 				pr_warning("short SO_TIMESTAMPING message");
 				return -1;
+			}
+			if (cm->cmsg_len >= 3 * sizeof(struct timespec) +
+						sizeof(struct timehires)) {
+				hr = (struct timehires *) (CMSG_DATA(cm) +
+					3 * sizeof(struct timespec));
 			}
 			ts = (struct timespec *) CMSG_DATA(cm);
 		}
@@ -348,22 +369,22 @@ int sk_receive(int fd, void *buf, int buflen,
 	if (addr)
 		addr->len = msg.msg_namelen;
 
-	if (!ts) {
-		memset(&hwts->ts, 0, sizeof(hwts->ts));
-		return cnt;
-	}
-
 	switch (hwts->type) {
 	case TS_SOFTWARE:
-		hwts->ts = timespec_to_tmv(ts[0]);
+		if (ts)
+			hwts->ts = timespec_to_tmv(ts[0]);
 		break;
 	case TS_HARDWARE:
 	case TS_ONESTEP:
 	case TS_P2P1STEP:
-		hwts->ts = timespec_to_tmv(ts[2]);
+		if (hr && sk_high_res)
+			hwts->ts = timehires_to_tmv(hr[0]);
+		else if (ts)
+			hwts->ts = timespec_to_tmv(ts[2]);
 		break;
 	case TS_LEGACY_HW:
-		hwts->ts = timespec_to_tmv(ts[1]);
+		if (ts)
+			hwts->ts = timespec_to_tmv(ts[1]);
 		break;
 	}
 	return cnt;
@@ -409,6 +430,8 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 		flags = SOF_TIMESTAMPING_TX_HARDWARE |
 			SOF_TIMESTAMPING_RX_HARDWARE |
 			SOF_TIMESTAMPING_RAW_HARDWARE;
+		if (sk_high_res)
+			flags |= SOF_TIMESTAMPING_HIGH_RES;
 		break;
 	case TS_LEGACY_HW:
 		flags = SOF_TIMESTAMPING_TX_HARDWARE |

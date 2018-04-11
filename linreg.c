@@ -214,7 +214,7 @@ static void update_size(struct linreg_servo *s)
 }
 
 static double linreg_sample(struct servo *servo,
-			    int64_t offset,
+			    double xoffset,
 			    uint64_t local_ts,
 			    double weight,
 			    enum servo_state *state)
@@ -222,6 +222,7 @@ static double linreg_sample(struct servo *servo,
 	struct linreg_servo *s = container_of(servo, struct linreg_servo, servo);
 	struct result *res;
 	int corr_interval;
+	int64_t offset = (int64_t) xoffset;
 
 	/*
 	 * The current time and the time when will be the frequency of the

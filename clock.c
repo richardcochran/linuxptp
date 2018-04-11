@@ -535,15 +535,15 @@ static void clock_stats_update(struct clock_stats *s,
 
 	/* Path delay stats are updated separately, they may be empty. */
 	if (!stats_get_result(s->delay, &delay_stats)) {
-		pr_info("rms %4.0f max %4.0f "
-			"freq %+6.0f +/- %3.0f "
-			"delay %5.0f +/- %3.0f",
+		pr_info("rms %4.3f max %4.3f "
+			"freq %+6.3f +/- %3.3f "
+			"delay %5.3f +/- %3.3f",
 			offset_stats.rms, offset_stats.max_abs,
 			freq_stats.mean, freq_stats.stddev,
 			delay_stats.mean, delay_stats.stddev);
 	} else {
-		pr_info("rms %4.0f max %4.0f "
-			"freq %+6.0f +/- %3.0f",
+		pr_info("rms %4.3f max %4.3f "
+			"freq %+6.3f +/- %3.3f",
 			offset_stats.rms, offset_stats.max_abs,
 			freq_stats.mean, freq_stats.stddev);
 	}
@@ -592,10 +592,9 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	if (c->stats.max_count > 1) {
 		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), freq);
 	} else {
-		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
-			"path delay %9" PRId64,
-			tmv_to_nanoseconds(c->master_offset), state, freq,
-			tmv_to_nanoseconds(c->path_delay));
+		pr_info("master offset %10.3f s%d freq %+7.3f path delay %9.3f",
+			tmv_dbl(c->master_offset), state, freq,
+			tmv_dbl(c->path_delay));
 	}
 
 	fui = 1.0 + (c->status.cumulativeScaledRateOffset + 0.0) / POW2_41;
@@ -1602,17 +1601,16 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	if (c->free_running)
 		return clock_no_adjust(c, ingress, origin);
 
-	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
+	adj = servo_sample(c->servo, tmv_dbl(c->master_offset),
 			   tmv_to_nanoseconds(ingress), weight, &state);
 	c->servo_state = state;
 
 	if (c->stats.max_count > 1) {
 		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), adj);
 	} else {
-		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
-			"path delay %9" PRId64,
-			tmv_to_nanoseconds(c->master_offset), state, adj,
-			tmv_to_nanoseconds(c->path_delay));
+		pr_info("master offset %10.3f s%d freq %+7.3f path delay %9.3f",
+			tmv_dbl(c->master_offset), state, adj,
+			tmv_dbl(c->path_delay));
 	}
 
 	tsproc_set_clock_rate_ratio(c->tsproc, clock_rate_ratio(c));

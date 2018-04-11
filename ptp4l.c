@@ -52,6 +52,7 @@ static void usage(char *progname)
 		" -H        HARDWARE (default)\n"
 		" -S        SOFTWARE\n"
 		" -L        LEGACY HW\n\n"
+		" -N        HIGH RESOLUTION\n"
 		" Other Options\n\n"
 		" -f [file] read configuration from 'file'\n"
 		" -i [dev]  interface device to use, for example 'eth0'\n"
@@ -88,7 +89,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt_long(argc, argv, "AEP246HSLf:i:p:sl:mqvh",
+	while (EOF != (c = getopt_long(argc, argv, "AEP246HSLNf:i:p:sl:mqvh",
 				       opts, &index))) {
 		switch (c) {
 		case 0:
@@ -132,6 +133,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'L':
 			if (config_set_int(cfg, "time_stamping", TS_LEGACY_HW))
+				goto out;
+			break;
+		case 'N':
+			if (config_set_int(cfg, "high_resolution", 1))
 				goto out;
 			break;
 		case 'f':
@@ -189,6 +194,7 @@ int main(int argc, char *argv[])
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
+	sk_high_res = config_get_int(cfg, NULL, "high_resolution");
 
 	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);

@@ -24,123 +24,37 @@
 
 #include "ddt.h"
 #include "pdt.h"
+#include "missing.h"
 
 #define NS_PER_SEC 1000000000LL
 
 /**
  * We implement the time value as a 64 bit signed integer containing
- * nanoseconds. Using this representation, we could really spare the
- * arithmetic functions such as @ref tmv_add() and the like, and just
- * use plain old math operators in the code.
- *
- * However, we are going to be a bit pedantic here and enforce the
- * use of the these functions, so that we can easily upgrade the code
- * to a finer representation later on. In that way, we can make use of
- * the fractional nanosecond parts of the correction fields, if and
- * when people start asking for them.
+ * integer nanoseconds and a 32 bit signed integer containing
+ * fractional (2^-16) nanoseconds, where the fractional part is
+ * guaranteed to lie within the range [-0xffff,0xffff] and to have the
+ * same sign as the integer part.
  */
 typedef struct {
 	int64_t ns;
+	int32_t frac;
 } tmv_t;
 
-static inline tmv_t tmv_add(tmv_t a, tmv_t b)
-{
-	tmv_t t;
-	t.ns = a.ns + b.ns;
-	return t;
-}
-
-static inline tmv_t tmv_div(tmv_t a, int divisor)
-{
-	tmv_t t;
-	t.ns = a.ns / divisor;
-	return t;
-}
-
-static inline int tmv_cmp(tmv_t a, tmv_t b)
-{
-	return a.ns == b.ns ? 0 : a.ns > b.ns ? +1 : -1;
-}
-
-static inline int tmv_sign(tmv_t x)
-{
-	return x.ns == 0 ? 0 : x.ns > 0 ? +1 : -1;
-}
-
-static inline int tmv_is_zero(tmv_t x)
-{
-	return x.ns == 0 ? 1 : 0;
-}
-
-static inline tmv_t tmv_sub(tmv_t a, tmv_t b)
-{
-	tmv_t t;
-	t.ns = a.ns - b.ns;
-	return t;
-}
-
-static inline tmv_t tmv_zero(void)
-{
-	tmv_t t = { 0 };
-	return t;
-}
-
-static inline tmv_t correction_to_tmv(Integer64 c)
-{
-	tmv_t t;
-	t.ns = (c >> 16);
-	return t;
-}
-
-static inline double tmv_dbl(tmv_t x)
-{
-	return (double) x.ns;
-}
-
-static inline tmv_t dbl_tmv(double x)
-{
-	tmv_t t;
-	t.ns = x;
-	return t;
-}
-
-static inline int64_t tmv_to_nanoseconds(tmv_t x)
-{
-	return x.ns;
-}
-
-static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
-{
-	return x.ns << 16;
-}
-
-static inline struct Timestamp tmv_to_Timestamp(tmv_t x)
-{
-	struct Timestamp result;
-	uint64_t sec, nsec;
-
-	sec  = x.ns / 1000000000ULL;
-	nsec = x.ns % 1000000000ULL;
-
-	result.seconds_lsb = sec & 0xFFFFFFFF;
-	result.seconds_msb = (sec >> 32) & 0xFFFF;
-	result.nanoseconds = nsec;
-
-	return result;
-}
-
-static inline tmv_t timespec_to_tmv(struct timespec ts)
-{
-	tmv_t t;
-	t.ns = ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
-	return t;
-}
-
-static inline tmv_t timestamp_to_tmv(struct timestamp ts)
-{
-	tmv_t t;
-	t.ns = ts.sec * NS_PER_SEC + ts.nsec;
-	return t;
-}
+extern tmv_t tmv_add(tmv_t a, tmv_t b);
+extern tmv_t tmv_div(tmv_t a, int divisor);
+extern int tmv_cmp(tmv_t a, tmv_t b);
+extern int tmv_sign(tmv_t x);
+extern int tmv_is_zero(tmv_t x);
+extern tmv_t tmv_sub(tmv_t a, tmv_t b);
+extern tmv_t tmv_zero(void);
+extern tmv_t correction_to_tmv(Integer64 c);
+extern double tmv_dbl(tmv_t x);
+extern tmv_t dbl_tmv(double x);
+extern int64_t tmv_to_nanoseconds(tmv_t x);
+extern TimeInterval tmv_to_TimeInterval(tmv_t x);
+extern struct Timestamp tmv_to_Timestamp(tmv_t x);
+extern tmv_t timespec_to_tmv(struct timespec ts);
+extern tmv_t timestamp_to_tmv(struct timestamp ts);
+extern tmv_t timehires_to_tmv(struct timehires ts);
 
 #endif

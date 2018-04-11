@@ -90,7 +90,7 @@ void servo_destroy(struct servo *servo);
  * @return The clock adjustment in parts per billion.
  */
 double servo_sample(struct servo *servo,
-		    int64_t offset,
+		    double offset,
 		    uint64_t local_ts,
 		    double weight,
 		    enum servo_state *state);

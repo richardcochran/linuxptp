@@ -40,6 +40,17 @@ user_flags()
 		done
 	done
 
+	# Look for struct timehires.
+	for d in $dirs; do
+		files=$(find $d -type f -name time.h -o -name timex.h)
+		for f in $files; do
+			if grep -q timehires $f; then
+				printf " -DHAVE_TIMEHIRES"
+				break 2
+			fi
+		done
+	done
+
 	# Look for posix_spawn().
 	for d in $dirs; do
 		files=$(find $d -type f -name spawn.h)
@@ -85,6 +96,10 @@ kernel_flags()
 
 	if grep -q HWTSTAMP_TX_ONESTEP_P2P ${prefix}${tstamp}; then
 		printf " -DHAVE_ONESTEP_P2P"
+	fi
+
+	if grep -q SOF_TIMESTAMPING_HIGH_RES ${prefix}${tstamp}; then
+		printf " -DHAVE_TIMESTAMPING_HIGH_RES"
 	fi
 }
 
