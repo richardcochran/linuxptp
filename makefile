@@ -60,7 +60,7 @@ hwstamp_ctl: hwstamp_ctl.o version.o
 
 phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
 
-timemaster: print.o sk.o timemaster.o util.o version.o
+timemaster: print.o rtnl.o sk.o timemaster.o util.o version.o
 
 version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 

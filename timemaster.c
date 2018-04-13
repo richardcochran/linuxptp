@@ -23,6 +23,7 @@
 #include <libgen.h>
 #include <limits.h>
 #include <linux/net_tstamp.h>
+#include <net/if.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdarg.h>
@@ -35,6 +36,7 @@
 #include <unistd.h>
 
 #include "print.h"
+#include "rtnl.h"
 #include "sk.h"
 #include "util.h"
 #include "version.h"
@@ -674,6 +676,7 @@ static int add_ptp_source(struct ptp_domain *source,
 {
 	struct config_file *config_file;
 	char **command, *uds_path, **interfaces, *message_tag;
+	char ts_interface[IF_NAMESIZE];
 	int i, j, num_interfaces, *phc, *phcs, hw_ts, sw_ts;
 	struct sk_ts_info ts_info;
 
@@ -696,26 +699,38 @@ static int add_ptp_source(struct ptp_domain *source,
 	for (i = 0; i < num_interfaces; i++) {
 		phcs[i] = -1;
 
+		/*
+		 * if it is a bonded interface, use the name of the active
+		 * slave interface (which will be timestamping packets)
+		 */
+		if (!rtnl_get_ts_device(source->interfaces[i], ts_interface)) {
+			pr_debug("slave interface of %s: %s",
+				 source->interfaces[i], ts_interface);
+		} else {
+			snprintf(ts_interface, sizeof(ts_interface), "%s",
+				 source->interfaces[i]);
+		}
+
 		/* check if the interface has a usable PHC */
-		if (sk_get_ts_info(source->interfaces[i], &ts_info)) {
+		if (sk_get_ts_info(ts_interface, &ts_info)) {
 			pr_err("failed to get time stamping info for %s",
-			       source->interfaces[i]);
+			       ts_interface);
 			free(phcs);
 			return 1;
 		}
 
 		if (((ts_info.so_timestamping & hw_ts) != hw_ts)) {
-			pr_debug("interface %s: no PHC", source->interfaces[i]);
+			pr_debug("interface %s: no PHC", ts_interface);
 			if ((ts_info.so_timestamping & sw_ts) != sw_ts) {
 				pr_err("time stamping not supported on %s",
-				       source->interfaces[i]);
+				       ts_interface);
 				free(phcs);
 				return 1;
 			}
 			continue;
 		}
 
-		pr_debug("interface %s: PHC %d", source->interfaces[i],
+		pr_debug("interface %s: PHC %d", ts_interface,
 			 ts_info.phc_index);
 
 		/* and the PHC isn't already used in another source */
