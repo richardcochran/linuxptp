@@ -1150,6 +1150,8 @@ static int auto_init_ports(struct node *node, int add_rt)
 	char iface[IFNAMSIZ];
 
 	while (1) {
+		if (!is_running())
+			return -1;
 		res = run_pmc_clock_identity(node, 1000);
 		if (res < 0)
 			return -1;
