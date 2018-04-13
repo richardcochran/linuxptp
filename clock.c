@@ -948,7 +948,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->timestamping = timestamping;
 	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
-		rtnl_get_ts_label(iface);
+		rtnl_get_ts_device(iface->name, iface->ts_label);
 		ensure_ts_label(iface);
 		sk_get_ts_info(iface->ts_label, &iface->ts_info);
 		if (iface->ts_info.valid &&

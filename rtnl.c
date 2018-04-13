@@ -43,13 +43,13 @@ int rtnl_close(int fd)
 	return close(fd);
 }
 
-static void rtnl_get_ts_label_callback(void *ctx, int linkup, int ts_index)
+static void rtnl_get_ts_device_callback(void *ctx, int linkup, int ts_index)
 {
 	int *dst = ctx;
 	*dst = ts_index;
 }
 
-int rtnl_get_ts_label(struct interface *iface)
+int rtnl_get_ts_device(char *device, char *ts_device)
 {
 	int err, fd;
 	int ts_index = -1;
@@ -58,13 +58,13 @@ int rtnl_get_ts_label(struct interface *iface)
 	if (fd < 0)
 		return fd;
 
-	err = rtnl_link_query(fd, iface->name);
+	err = rtnl_link_query(fd, device);
 	if (err) {
 		goto no_info;
 	}
 
-	rtnl_link_status(fd, iface->name, rtnl_get_ts_label_callback, &ts_index);
-	if (ts_index > 0 && if_indextoname(ts_index, iface->ts_label))
+	rtnl_link_status(fd, device, rtnl_get_ts_device_callback, &ts_index);
+	if (ts_index > 0 && if_indextoname(ts_index, ts_device))
 		err = 0;
 	else
 		err = -1;

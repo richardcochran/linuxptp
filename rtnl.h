@@ -20,8 +20,6 @@
 #ifndef HAVE_RTNL_H
 #define HAVE_RTNL_H
 
-#include "config.h"
-
 typedef void (*rtnl_callback)(void *ctx, int linkup, int ts_index);
 
 /**
@@ -32,11 +30,14 @@ typedef void (*rtnl_callback)(void *ctx, int linkup, int ts_index);
 int rtnl_close(int fd);
 
 /**
- * Get interface ts_label information
- * @param iface  struct interface.
- * @return       Zero on success, or -1 on error.
+ * Get name of the slave interface which timestamps packets going through
+ * a master interface (e.g. bond0)
+ * @param device    Name of the master interface.
+ * @param ts_device Buffer for the name of the slave interface, which must be
+ *                  at least IF_NAMESIZE bytes long.
+ * @return          Zero on success, or -1 on error.
  */
-int rtnl_get_ts_label(struct interface *iface);
+int rtnl_get_ts_device(char *device, char *ts_device);
 
 /**
  * Request the link status from the kernel.
