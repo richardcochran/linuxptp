@@ -87,6 +87,16 @@ Specify the first number in a sequence of SHM segments that will be used by
 can be useful to avoid conflicts with time sources that are not started by
 \fBtimemaster\fR, e.g. \fBgpsd\fR using segments number 0 and 1.
 
+.TP
+.B restart_processes
+Enable or disable restarting of processes started by \fBtimemaster\fR. If the
+option is set to a non-zero value, all processes except \fBchronyd\fR and
+\fBntpd\fR will be automatically restarted when terminated and \fBtimemaster\fR
+is running for at least one second (i.e. the process did not terminate due to a
+configuration error). If a process was terminated and is not started again,
+\fBtimemaster\fR will kill the other processes and exit with a non-zero status.
+The default value is 1 (enabled).
+
 .SS [ntp_server address]
 
 The \fBntp_server\fR section specifies an NTP server that should be used as a
@@ -318,6 +328,7 @@ ptp4l_option delay_mechanism P2P
 ntp_program chronyd
 rundir /var/run/timemaster
 first_shm_segment 1
+restart_processes 0
 
 [chronyd]
 path /usr/sbin/chronyd

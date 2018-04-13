@@ -44,6 +44,7 @@
 #define DEFAULT_RUNDIR "/var/run/timemaster"
 
 #define DEFAULT_FIRST_SHM_SEGMENT 0
+#define DEFAULT_RESTART_PROCESSES 1
 
 #define DEFAULT_NTP_PROGRAM CHRONYD
 #define DEFAULT_NTP_MINPOLL 6
@@ -108,6 +109,7 @@ struct timemaster_config {
 	enum ntp_program ntp_program;
 	char *rundir;
 	int first_shm_segment;
+	int restart_processes;
 	struct program_config chronyd;
 	struct program_config ntpd;
 	struct program_config phc2sys;
@@ -122,6 +124,9 @@ struct config_file {
 struct script {
 	struct config_file **configs;
 	char ***commands;
+	int **command_groups;
+	int restart_groups;
+	int no_restart_group;
 };
 
 static void free_parray(void **a)
@@ -385,6 +390,8 @@ static int parse_timemaster_settings(char **settings,
 			replace_string(value, &config->rundir);
 		} else if (!strcasecmp(name, "first_shm_segment")) {
 			r = parse_int(value, &config->first_shm_segment);
+		} else if (!strcasecmp(name, "restart_processes")) {
+			r = parse_int(value, &config->restart_processes);
 		} else {
 			pr_err("unknown timemaster setting %s", name);
 			return 1;
@@ -508,6 +515,7 @@ static struct timemaster_config *config_parse(char *path)
 	config->ntp_program = DEFAULT_NTP_PROGRAM;
 	config->rundir = xstrdup(DEFAULT_RUNDIR);
 	config->first_shm_segment = DEFAULT_FIRST_SHM_SEGMENT;
+	config->restart_processes = DEFAULT_RESTART_PROCESSES;
 
 	init_program_config(&config->chronyd, "chronyd",
 			    NULL, DEFAULT_CHRONYD_SETTINGS, NULL);
@@ -632,6 +640,18 @@ static char *get_refid(char *prefix, unsigned int number)
 	return NULL;
 };
 
+static void add_command(char **command, int command_group,
+			struct script *script)
+{
+	int *group;
+
+	parray_append((void ***)&script->commands, command);
+
+	group = xmalloc(sizeof(int));
+	*group = command_group;
+	parray_append((void ***)&script->command_groups, group);
+}
+
 static void add_shm_source(int shm_segment, int poll, int dpoll, double delay,
 			   char *ntp_options, char *prefix,
 			   struct timemaster_config *config, char **ntp_config)
@@ -671,8 +691,8 @@ static int add_ntp_source(struct ntp_server *source, char **ntp_config)
 
 static int add_ptp_source(struct ptp_domain *source,
 			  struct timemaster_config *config, int *shm_segment,
-			  int ***allocated_phcs, char **ntp_config,
-			  struct script *script)
+			  int *command_group, int ***allocated_phcs,
+			  char **ntp_config, struct script *script)
 {
 	struct config_file *config_file;
 	char **command, *uds_path, **interfaces, *message_tag;
@@ -798,19 +818,19 @@ static int add_ptp_source(struct ptp_domain *source,
 			/* HW time stamping */
 			command = get_ptp4l_command(&config->ptp4l, config_file,
 						    interfaces, 1);
-			parray_append((void ***)&script->commands, command);
+			add_command(command, *command_group, script);
 
 			command = get_phc2sys_command(&config->phc2sys,
 						      source->domain,
 						      source->phc2sys_poll,
 						      *shm_segment, uds_path,
 						      message_tag);
-			parray_append((void ***)&script->commands, command);
+			add_command(command, (*command_group)++, script);
 		} else {
 			/* SW time stamping */
 			command = get_ptp4l_command(&config->ptp4l, config_file,
 						    interfaces, 0);
-			parray_append((void ***)&script->commands, command);
+			add_command(command, (*command_group)++, script);
 
 			string_appendf(&config_file->content,
 				       "clock_servo ntpshm\n"
@@ -862,7 +882,8 @@ static char **get_ntpd_command(struct program_config *config,
 }
 
 static struct config_file *add_ntp_program(struct timemaster_config *config,
-					   struct script *script)
+					   struct script *script,
+					   int command_group)
 {
 	struct config_file *ntp_config = xmalloc(sizeof(*ntp_config));
 	char **command = NULL;
@@ -886,7 +907,7 @@ static struct config_file *add_ntp_program(struct timemaster_config *config,
 	}
 
 	parray_append((void ***)&script->configs, ntp_config);
-	parray_append((void ***)&script->commands, command);
+	add_command(command, command_group, script);
 
 	return ntp_config;
 }
@@ -894,6 +915,7 @@ static struct config_file *add_ntp_program(struct timemaster_config *config,
 static void script_destroy(struct script *script)
 {
 	char ***commands, **command;
+	int **groups;
 	struct config_file *config, **configs;
 
 	for (configs = script->configs; *configs; configs++) {
@@ -911,6 +933,10 @@ static void script_destroy(struct script *script)
 	}
 	free(script->commands);
 
+	for (groups = script->command_groups; *groups; groups++)
+		free(*groups);
+	free(script->command_groups);
+
 	free(script);
 }
 
@@ -920,12 +946,15 @@ static struct script *script_create(struct timemaster_config *config)
 	struct source *source, **sources;
 	struct config_file *ntp_config = NULL;
 	int **allocated_phcs = (int **)parray_new();
-	int ret = 0, shm_segment;
+	int ret = 0, shm_segment, command_group = 0;
 
 	script->configs = (struct config_file **)parray_new();
 	script->commands = (char ***)parray_new();
+	script->command_groups = (int **)parray_new();
+	script->no_restart_group = command_group;
+	script->restart_groups = config->restart_processes;
 
-	ntp_config = add_ntp_program(config, script);
+	ntp_config = add_ntp_program(config, script, command_group++);
 	shm_segment = config->first_shm_segment;
 
 	for (sources = config->sources; (source = *sources); sources++) {
@@ -936,7 +965,7 @@ static struct script *script_create(struct timemaster_config *config)
 			break;
 		case PTP_DOMAIN:
 			if (add_ptp_source(&source->ptp, config, &shm_segment,
-					   &allocated_phcs,
+					   &command_group, &allocated_phcs,
 					   &ntp_config->content, script))
 				ret = 1;
 			break;
@@ -1063,10 +1092,11 @@ static int remove_config_files(struct config_file **configs)
 
 static int script_run(struct script *script)
 {
+	struct timespec ts_start, ts_now;
 	sigset_t mask, old_mask;
 	siginfo_t info;
 	pid_t pid, *pids;
-	int i, num_commands, status, ret = 0;
+	int i, group, num_commands, status, quit = 0, ret = 0;
 
 	for (num_commands = 0; script->commands[num_commands]; num_commands++)
 		;
@@ -1101,7 +1131,9 @@ static int script_run(struct script *script)
 		}
 	}
 
-	/* wait for one of the blocked signals */
+	clock_gettime(CLOCK_MONOTONIC, &ts_start);
+
+	/* process the blocked signals */
 	while (1) {
 		if (sigwaitinfo(&mask, &info) < 0) {
 			if (errno == EINTR)
@@ -1110,36 +1142,111 @@ static int script_run(struct script *script)
 			break;
 		}
 
-		/*
-		 * assume only the first process (i.e. chronyd or ntpd) is
-		 * essential and continue if other processes terminate
-		 */
-		if (info.si_signo == SIGCHLD && info.si_pid != pids[0]) {
-			pr_info("process %d terminated (ignored)", info.si_pid);
+		clock_gettime(CLOCK_MONOTONIC, &ts_now);
+
+		if (info.si_signo != SIGCHLD) {
+			if (quit)
+				continue;
+
+			quit = 1;
+			pr_debug("exiting on signal %d", info.si_signo);
+
+			/* terminate remaining processes */
+			for (i = 0; i < num_commands; i++) {
+				if (pids[i] > 0) {
+					pr_debug("killing process %d", pids[i]);
+					kill(pids[i], SIGTERM);
+				}
+			}
+
 			continue;
 		}
 
-		pr_info("received signal %d", info.si_signo);
-		break;
-	}
+		/* wait for all terminated processes */
+		while (1) {
+			pid = waitpid(-1, &status, WNOHANG);
+			if (pid <= 0)
+				break;
 
-	/* kill all started processes */
-	for (i = 0; i < num_commands; i++) {
-		if (pids[i] > 0) {
-			pr_debug("killing process %d", pids[i]);
-			kill(pids[i], SIGTERM);
+			if (!WIFEXITED(status)) {
+				pr_info("process %d terminated abnormally",
+					pid);
+			} else {
+				pr_info("process %d terminated with status %d",
+					pid, WEXITSTATUS(status));
+			}
+
+			for (i = 0; i < num_commands; i++) {
+				if (pids[i] == pid)
+					pids[i] = 0;
+			}
 		}
-	}
 
-	while ((pid = wait(&status)) >= 0) {
-		if (!WIFEXITED(status)) {
-			pr_info("process %d terminated abnormally", pid);
-			ret = 1;
-		} else {
-			if (WEXITSTATUS(status))
+		/* wait for all processes to terminate when exiting */
+		if (quit) {
+			for (i = 0; i < num_commands; i++) {
+				if (pids[i])
+					break;
+			}
+			if (i == num_commands)
+				break;
+
+			pr_debug("waiting for other processes to terminate");
+			continue;
+		}
+
+		/*
+		 * terminate (and then restart if allowed) all processes in
+		 * groups that have a terminated process
+		 */
+		for (group = 0; group < num_commands; group++) {
+			int terminated = 0, running = 0;
+
+			for (i = 0; i < num_commands; i++) {
+				if (*(script->command_groups[i]) != group)
+					continue;
+				if (pids[i])
+					running++;
+				else
+					terminated++;
+			}
+
+			if (!terminated)
+				continue;
+
+			/*
+			 * exit with a non-zero status if the group should not
+			 * be restarted (i.e. chronyd/ntpd), timemaster is
+			 * running only for a short time (and it is likely a
+			 * configuration error), or restarting is disabled
+			 * completely
+			 */
+			if (group == script->no_restart_group ||
+			    ts_now.tv_sec - ts_start.tv_sec <= 1 ||
+			    !script->restart_groups) {
+				kill(getpid(), SIGTERM);
 				ret = 1;
-			pr_info("process %d terminated with status %d", pid,
-				WEXITSTATUS(status));
+				break;
+			}
+
+			for (i = 0; i < num_commands; i++) {
+				if (*(script->command_groups[i]) != group)
+					continue;
+
+				/* terminate all processes in the group first */
+				if (running && pids[i]) {
+					pr_debug("killing process %d", pids[i]);
+					kill(pids[i], SIGTERM);
+				} else if (!running && !pids[i]) {
+					pids[i] = start_program(script->commands[i],
+								&old_mask);
+					if (!pids[i])
+						kill(getpid(), SIGTERM);
+
+					/* limit restarting rate */
+					sleep(1);
+				}
+			}
 		}
 	}
 
@@ -1154,6 +1261,7 @@ static int script_run(struct script *script)
 static void script_print(struct script *script)
 {
 	char ***commands, **command;
+	int **groups;
 	struct config_file *config, **configs;
 
 	for (configs = script->configs; *configs; configs++) {
@@ -1162,7 +1270,9 @@ static void script_print(struct script *script)
 	}
 
 	fprintf(stderr, "commands:\n\n");
-	for (commands = script->commands; *commands; commands++) {
+	for (commands = script->commands, groups = script->command_groups;
+	     *commands; commands++, groups++) {
+		fprintf(stderr, "[%d] ", **groups);
 		for (command = *commands; *command; command++)
 			fprintf(stderr, "%s ", *command);
 		fprintf(stderr, "\n");
