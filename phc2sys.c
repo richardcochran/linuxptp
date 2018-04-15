@@ -1349,7 +1349,6 @@ int main(int argc, char *argv[])
 	int ntpshm_segment;
 	double phc_rate, tmp;
 	struct node node = {
-		.sanity_freq_limit = 200000000,
 		.phc_readings = 5,
 		.phc_interval = 1.0,
 	};
@@ -1445,8 +1444,10 @@ int main(int argc, char *argv[])
 			node.forced_sync_offset = -1;
 			break;
 		case 'L':
-			if (get_arg_val_i(c, optarg, &node.sanity_freq_limit, 0, INT_MAX))
+			if (get_arg_val_i(c, optarg, &node.sanity_freq_limit, 0, INT_MAX) ||
+			    config_set_int(cfg, "sanity_freq_limit", node.sanity_freq_limit)) {
 				goto end;
+			}
 			break;
 		case 'M':
 			if (get_arg_val_i(c, optarg, &ntpshm_segment, INT_MIN, INT_MAX) ||
@@ -1548,8 +1549,10 @@ int main(int argc, char *argv[])
 	node.servo_type = config_get_int(cfg, NULL, "clock_servo");
 	if (node.servo_type == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
+		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
 	node.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
+	node.sanity_freq_limit = config_get_int(cfg, NULL, "sanity_freq_limit");
 
 	if (autocfg) {
 		if (init_pmc(cfg, &node))
