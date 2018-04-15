@@ -1,4 +1,4 @@
-.TH PHC2SYS 8 "November 2012" "linuxptp"
+.TH PHC2SYS 8 "April 2018" "linuxptp"
 .SH NAME
 phc2sys \- synchronize two or more clocks
 
@@ -8,10 +8,16 @@ phc2sys \- synchronize two or more clocks
 .B \-r
 ] [
 .B \-r
-] [ options ]
+] [
+.BI \-f " config-file"
+] [ options ] [
+.I long-options
+]
 .br
 .B phc2sys
 [
+.BI \-f " config-file"
+] [
 .BI \-d " pps-device"
 ] [
 .BI \-s " device"
@@ -21,7 +27,11 @@ phc2sys \- synchronize two or more clocks
 .BI \-O " offset"
 ] [
 .BI \-w
-] [ options ]
+] [ options ] [
+.I long-options
+]
+.I .\|.\|.
+
 
 .SH DESCRIPTION
 .B phc2sys
@@ -66,6 +76,10 @@ system clock is not considered as a possible time source. If you want the
 system clock to be eligible to become a time source, specify the
 .B \-r
 option twice.
+.TP
+.BI \-f " config"
+Read configuration from the specified file. No configuration file is read by
+default.
 .TP
 .BI \-d " pps-device"
 Specify the PPS device of the master clock (e.g. /dev/pps0). With this option
@@ -226,6 +240,167 @@ Display a help message.
 .B \-v
 Prints the software version and exits.
 
+.SH LONG OPTIONS
+
+Each and every configuration file option (see below in section
+.BR FILE\ OPTIONS)
+may also appear
+as a "long" style command line argument.  For example, the transportSpecific
+option may be set using either of these two forms:
+
+.RS
+\f(CW\-\-transportSpecific 1   \-\-transportSpecific=1\fP
+.RE
+
+Option values given on the command line override values in the global
+section of the configuration file (which, in turn overrides default
+values).
+
+.SH CONFIGURATION FILE
+
+The configuration file is divided into sections. Each section starts with a
+line containing its name enclosed in brackets and it follows with settings.
+Each setting is placed on a separate line, it contains the name of the
+option and the value separated by whitespace characters. Empty lines and lines
+starting with # are ignored.
+
+The global section (indicated as
+.BR [global] )
+sets the program options. This is the only used option.
+
+.SH FILE OPTIONS
+
+.TP
+.B domainNumber
+Specify the domain number used by phc2sys. The default is 0. Same as option
+.B \-n
+(see above).
+
+.TP
+.B kernel_leap
+When a leap second is announced, let the kernel apply it by stepping the
+clock instead of correcting the one-second offset with servo, which would
+correct the one-second offset slowly by changing the clock frequency
+(unless the step_threshold option is set to correct such offset by
+stepping). Relevant only with software time stamping. The default is 1
+(enabled). Same as option
+.B \-x
+(see above).
+
+The maximum logging level of messages which should be printed.
+The default is 6 (LOG_INFO). Same as option
+.B \-l
+(see above).
+
+.TP
+.B logging_level
+The maximum logging level of messages which should be printed.
+The default is 6 (LOG_INFO). Same as option
+.B \-l
+(see above).
+
+.TP
+.B message_tag
+The tag which is added to all messages printed to the standard output
+or system log. The default is an empty string (which cannot be set in
+the configuration file as the option requires an argument).
+Same as option
+.B \-t
+(see above).
+
+.TP
+.B sanity_freq_limit
+The maximum allowed frequency offset between uncorrected clock and the
+system monotonic clock in parts per billion (ppb). This is used as a
+sanity check of the synchronized clock. When a larger offset is measured,
+a warning message will be printed and the servo will be reset. When set
+to 0, the sanity check is disabled. The default is 200000000 (20%).
+Same as option
+.B \-L
+(see above).
+
+.TP
+.B clock_servo
+The servo which is used to synchronize the local clock. Valid values
+are "pi" for a PI controller, "linreg" for an adaptive controller using
+linear regression, "ntpshm" for the NTP SHM reference clock to allow
+another process to synchronize the local clock (the SHM segment number
+is set to the domain number), and "nullf" for a servo that always dials
+frequency offset zero (for use in SyncE nodes). The default is "pi."
+Same as option
+.B \-E
+(see above).
+
+.TP
+.B transportSpecific
+The transport specific field. Must be in the range 0 to 255.
+The default is 0.
+
+.TP
+.B use_syslog
+Print messages to the system log if enabled.  The default is 1 (enabled).
+Related to option
+.B \-q
+(see above).
+
+.TP
+.B verbose
+Print messages to the standard output if enabled.  The default is 0 (disabled).
+Related to option
+.B \-m
+(see above).
+
+.TP
+.B pi_proportional_const
+Specifies the proportional constant of the PI controller.
+Same as option
+.B \-P
+(see above).
+
+.TP
+.B pi_integral_const
+Specifies the integral constant of the PI controller.
+Same as option
+.B \-I
+(see above).
+
+.TP
+.B step_threshold
+Specifies the step threshold of the servo. It is the maximum offset that
+the servo corrects by changing the clock frequency instead of stepping
+the clock. The clock is stepped on start regardless of the option if the
+offset is larger than 20 microseconds (unless the -F option is used).
+It's  specified  in seconds. The value of 0.0 disables stepping after
+the start. The default is 0.0.
+Same as option
+.B \-S
+(see above).
+
+.TP
+.B first_step_threshold
+Specify the step threshold applied only on the first update. It is the
+maximum offset that is corrected by adjusting clock. It's specified in
+seconds. The value of 0.0 disables stepping on start. The default is
+0.00002 (20 microseconds).
+Same as option
+.B \-F
+(see above).
+
+.TP
+.B ntpshm_segment
+The number of the SHM segment used by ntpshm servo.  The default is 0.
+Same as option
+.B \-M
+(see above).
+
+.TP
+.B uds_address
+Specifies the address of the server's UNIX domain socket. The default
+is /var/run/ptp4
+Same as option
+.B \-z
+(see above).
+
 .SH TIME SCALE USAGE
 
 .B Ptp4l
@@ -269,6 +444,12 @@ in the domain to its system clock.
 \f(CWphc2sys \-a \-rr\fP
 .RE
 
+Same as above, in an IEEE 802.1AS domain.
+
+.RS
+\f(CWphc2sys \-a \-rr --transportSpecific=1\fP
+.RE
+
 The host is a domain master, PTP clock is synchronized to system clock and the
 time offset is obtained from
 .BR ptp4l .
@@ -309,6 +490,18 @@ does not wait.
 .RS
 \f(CWphc2sys \-s eth0 \-O \-35\fP
 .RE
+
+.SH WARNING
+
+Be cautious when the same configuration file is used for both ptp4l and phc2sys.
+Keep in mind, that values specified in the configuration file take precedence
+over their default values. If a certain option, which is common to ptp4l and
+phc2sys, is specified to a non-default value in the configuration file
+(p.e., for ptp4l), then this non-default value applies also for phc2sys. This
+might be not what is expected.
+
+It is recommended to use seperate configuration files for ptp4l and
+phc2sys in order to avoid any unexpected behavior.
 
 .SH SEE ALSO
 .BR ptp4l (8)
