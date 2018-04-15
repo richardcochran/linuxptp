@@ -1345,7 +1345,7 @@ int main(int argc, char *argv[])
 	int autocfg = 0, rt = 0;
 	int c, domain_number = 0, pps_fd = -1;
 	int r = -1, wait_sync = 0;
-	int print_level = LOG_INFO, use_syslog = 1;
+	int print_level = LOG_INFO;
 	int ntpshm_segment;
 	double phc_rate, tmp;
 	struct node node = {
@@ -1497,7 +1497,9 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'q':
-			use_syslog = 0;
+			if (config_set_int(cfg, "use_syslog", 0)) {
+				goto end;
+			}
 			break;
 		case 'v':
 			version_show(stdout);
@@ -1537,7 +1539,7 @@ int main(int argc, char *argv[])
 	print_set_progname(progname);
 	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
 	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
-	print_set_syslog(use_syslog);
+	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	if (autocfg) {
