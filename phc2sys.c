@@ -1350,7 +1350,6 @@ int main(int argc, char *argv[])
 	double phc_rate, tmp;
 	struct node node = {
 		.sanity_freq_limit = 200000000,
-		.servo_type = CLOCK_SERVO_PI,
 		.phc_readings = 5,
 		.phc_interval = 1.0,
 		.kernel_leap = 1,
@@ -1397,11 +1396,14 @@ int main(int argc, char *argv[])
 			break;
 		case 'E':
 			if (!strcasecmp(optarg, "pi")) {
-				node.servo_type = CLOCK_SERVO_PI;
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_PI);
 			} else if (!strcasecmp(optarg, "linreg")) {
-				node.servo_type = CLOCK_SERVO_LINREG;
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_LINREG);
 			} else if (!strcasecmp(optarg, "ntpshm")) {
-				node.servo_type = CLOCK_SERVO_NTPSHM;
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_NTPSHM);
 			} else {
 				fprintf(stderr,
 					"invalid servo name %s\n", optarg);
@@ -1541,6 +1543,7 @@ int main(int argc, char *argv[])
 	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
+	node.servo_type = config_get_int(cfg, NULL, "clock_servo");
 
 	if (autocfg) {
 		if (init_pmc(cfg, &node))
