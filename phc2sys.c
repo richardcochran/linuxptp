@@ -1338,7 +1338,7 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *progname, *message_tag = NULL;
+	char *progname;
 	char *src_name = NULL, *dst_name = NULL;
 	struct clock *src, *dst;
 	struct config *cfg;
@@ -1487,7 +1487,9 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 't':
-			message_tag = optarg;
+			if (config_set_string(cfg, "message_tag", optarg)) {
+				goto end;
+			}
 			break;
 		case 'm':
 			verbose = 1;
@@ -1531,7 +1533,7 @@ int main(int argc, char *argv[])
 	}
 
 	print_set_progname(progname);
-	print_set_tag(message_tag);
+	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
 	print_set_verbose(verbose);
 	print_set_syslog(use_syslog);
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
