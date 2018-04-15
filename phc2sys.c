@@ -904,7 +904,8 @@ static int init_pmc(struct config *cfg, struct node *node)
 	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d",
 		 getpid());
 	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0,
-			       config_get_int(cfg, NULL, "domainNumber"), 0, 1);
+			       config_get_int(cfg, NULL, "domainNumber"),
+			       config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
 	if (!node->pmc) {
 		pr_err("failed to create pmc");
 		return -1;
