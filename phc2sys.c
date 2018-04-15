@@ -897,13 +897,14 @@ static void send_subscription(struct node *node)
 	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
 
-static int init_pmc(struct config *cfg, struct node *node, int domain_number)
+static int init_pmc(struct config *cfg, struct node *node)
 {
 	char uds_local[MAX_IFNAME_SIZE + 1];
 
 	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d",
 		 getpid());
-	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0, domain_number, 0, 1);
+	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0,
+			       config_get_int(cfg, NULL, "domainNumber"), 0, 1);
 	if (!node->pmc) {
 		pr_err("failed to create pmc");
 		return -1;
@@ -1460,8 +1461,10 @@ int main(int argc, char *argv[])
 			wait_sync = 1;
 			break;
 		case 'n':
-			if (get_arg_val_i(c, optarg, &domain_number, 0, 255))
+			if (get_arg_val_i(c, optarg, &domain_number, 0, 255) ||
+			    config_set_int(cfg, "domainNumber", domain_number)) {
 				goto end;
+			}
 			break;
 		case 'x':
 			node.kernel_leap = 0;
@@ -1532,7 +1535,7 @@ int main(int argc, char *argv[])
 	print_set_level(print_level);
 
 	if (autocfg) {
-		if (init_pmc(cfg, &node, domain_number))
+		if (init_pmc(cfg, &node))
 			goto end;
 		if (auto_init_ports(&node, rt) < 0)
 			goto end;
@@ -1568,7 +1571,7 @@ int main(int argc, char *argv[])
 	r = -1;
 
 	if (wait_sync) {
-		if (init_pmc(cfg, &node, domain_number))
+		if (init_pmc(cfg, &node))
 			goto end;
 
 		while (is_running()) {
