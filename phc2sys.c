@@ -1342,11 +1342,9 @@ int main(int argc, char *argv[])
 	char *config = NULL, *dst_name = NULL, *progname, *src_name = NULL;
 	struct clock *src, *dst;
 	struct config *cfg;
-	int autocfg = 0, rt = 0;
-	int c, domain_number = 0, pps_fd = -1;
-	int r = -1, wait_sync = 0;
-	int print_level = LOG_INFO;
-	int ntpshm_segment;
+	struct option *opts;
+	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment;
+	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0, wait_sync = 0;
 	double phc_rate, tmp;
 	struct node node = {
 		.phc_readings = 5,
@@ -1360,15 +1358,23 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	opts = config_long_options(cfg);
+
 	config_set_double(cfg, "pi_proportional_const", KP);
 	config_set_double(cfg, "pi_integral_const", KI);
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv,
-				  "arc:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh"))) {
+	while (EOF != (c = getopt_long(argc, argv,
+				"arc:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh",
+				opts, &index))) {
 		switch (c) {
+		case 0:
+			if (config_parse_option(cfg, opts[index].name, optarg)) {
+				goto bad_usage;
+			}
+			break;
 		case 'a':
 			autocfg = 1;
 			break;
