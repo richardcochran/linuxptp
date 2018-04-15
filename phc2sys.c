@@ -1352,7 +1352,6 @@ int main(int argc, char *argv[])
 		.sanity_freq_limit = 200000000,
 		.phc_readings = 5,
 		.phc_interval = 1.0,
-		.kernel_leap = 1,
 	};
 
 	handle_term_signals();
@@ -1469,7 +1468,9 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'x':
-			node.kernel_leap = 0;
+			if (config_set_int(cfg, "kernel_leap", 0)) {
+				goto end;
+			}
 			break;
 		case 'z':
 			if (strlen(optarg) > MAX_IFNAME_SIZE) {
@@ -1543,7 +1544,12 @@ int main(int argc, char *argv[])
 	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
+
 	node.servo_type = config_get_int(cfg, NULL, "clock_servo");
+	if (node.servo_type == CLOCK_SERVO_NTPSHM) {
+		config_set_int(cfg, "kernel_leap", 0);
+	}
+	node.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
 
 	if (autocfg) {
 		if (init_pmc(cfg, &node))
