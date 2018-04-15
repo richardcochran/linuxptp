@@ -1313,6 +1313,7 @@ static void usage(char *progname)
 		" -O [offset]    slave-master time offset (0)\n"
 		" -w             wait for ptp4l\n"
 		" common options:\n"
+		" -f [file]      configuration file\n"
 		" -E [pi|linreg] clock servo (pi)\n"
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
@@ -1338,8 +1339,7 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *progname;
-	char *src_name = NULL, *dst_name = NULL;
+	char *config = NULL, *dst_name = NULL, *progname, *src_name = NULL;
 	struct clock *src, *dst;
 	struct config *cfg;
 	int autocfg = 0, rt = 0;
@@ -1367,7 +1367,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt(argc, argv,
-				  "arc:d:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh"))) {
+				  "arc:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh"))) {
 		switch (c) {
 		case 'a':
 			autocfg = 1;
@@ -1385,6 +1385,9 @@ int main(int argc, char *argv[])
 					"cannot open '%s': %m\n", optarg);
 				goto end;
 			}
+			break;
+		case 'f':
+			config = optarg;
 			break;
 		case 'i':
 			fprintf(stderr,
@@ -1516,6 +1519,10 @@ int main(int argc, char *argv[])
 		default:
 			goto bad_usage;
 		}
+	}
+
+	if (config && (c = config_read(config, cfg))) {
+		return c;
 	}
 
 	if (autocfg && (src_name || dst_name || pps_fd >= 0 || wait_sync || node.forced_sync_offset)) {
