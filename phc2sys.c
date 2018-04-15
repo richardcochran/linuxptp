@@ -1481,8 +1481,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'l':
 			if (get_arg_val_i(c, optarg, &print_level,
-					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
+					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX) ||
+			    config_set_int(cfg, "logging_level", print_level)) {
 				goto end;
+			}
 			break;
 		case 't':
 			message_tag = optarg;
@@ -1532,7 +1534,7 @@ int main(int argc, char *argv[])
 	print_set_tag(message_tag);
 	print_set_verbose(verbose);
 	print_set_syslog(use_syslog);
-	print_set_level(print_level);
+	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	if (autocfg) {
 		if (init_pmc(cfg, &node))
