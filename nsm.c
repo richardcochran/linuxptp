@@ -337,14 +337,15 @@ static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 		case -EBADMSG:
 			pr_err("bad message");
 			break;
-		case -ETIME:
-			pr_err("received %s without timestamp",
-			       msg_type_string(msg_type(msg)));
-			break;
 		case -EPROTO:
 			pr_debug("ignoring message");
 			break;
 		}
+		goto failed;
+	}
+	if (msg_sots_missing(msg)) {
+		pr_err("received %s without timestamp",
+		       msg_type_string(msg_type(msg)));
 		goto failed;
 	}
 
