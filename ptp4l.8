@@ -399,6 +399,12 @@ Treat one-step responses as two-step if enabled. It is used to work around
 buggy 802.1AS switches.
 The default is 0 (disabled).
 .TP
+.B tc_spanning_tree
+When running as a Transparent Clock, increment the "stepsRemoved"
+field of Announce messages that pass through the switch.  Enabling
+this option ensures that PTP message loops never form, provided the
+switches all implement this option together with the BMCA.
+.TP
 .B tx_timestamp_timeout
 The number of milliseconds to poll waiting for the tx time stamp from the kernel
 when a message has recently been sent.

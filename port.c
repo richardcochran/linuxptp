@@ -2830,6 +2830,7 @@ struct port *port_open(int phc_index,
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 	p->net_sync_monitor = config_get_int(cfg, p->name, "net_sync_monitor");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
+	p->tc_spanning_tree = config_get_int(cfg, p->name, "tc_spanning_tree");
 	p->rx_timestamp_offset = config_get_int(cfg, p->name, "ingressLatency");
 	p->rx_timestamp_offset <<= 16;
 	p->tx_timestamp_offset = config_get_int(cfg, p->name, "egressLatency");
