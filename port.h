@@ -105,10 +105,10 @@ int port_forward_to(struct port *p, struct ptp_message *msg);
  * port_forward if you need to send single message to several ports.
  * @param p        A pointer previously obtained via port_open().
  * @param msg      The message to send.
- * @param event    0 if the message is a general message, 1 if it is an
- *                 event message.
+ * @param event    One of the @ref transport_event enumeration values.
  */
-int port_prepare_and_send(struct port *p, struct ptp_message *msg, int event);
+int port_prepare_and_send(struct port *p, struct ptp_message *msg,
+			  enum transport_event event);
 
 /**
  * Obtain a port's identity.

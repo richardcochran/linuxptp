@@ -317,6 +317,26 @@ struct ptp_message *msg_allocate(void);
 void msg_cleanup(void);
 
 /**
+ * Duplicate a message instance.
+ *
+ * This function accepts a message in network byte order and returns a
+ * duplicate in host byte.
+ *
+ * Messages are reference counted, and newly allocated messages have a
+ * reference count of one. Allocated messages are freed using the
+ * function @ref msg_put().
+ *
+ * @param msg  A message obtained using @ref msg_allocate().
+ *             The passed message must be in network byte order, not
+ *             having been passed to @ref msg_post_recv().
+ *
+ * @return     Pointer to a message on success, NULL otherwise.
+ *             The returned message will be in host byte order, having
+ *             been passed to @ref msg_post_recv().
+ */
+struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt);
+
+/**
  * Obtain a reference to a message, increasing its reference count by one.
  * @param m A message obtained using @ref msg_allocate().
  */
