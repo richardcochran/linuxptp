@@ -315,10 +315,6 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 		case -EBADMSG:
 			pr_err("msg_duplicate: bad message");
 			break;
-		case -ETIME:
-			pr_err("msg_duplicate: received %s without timestamp",
-				msg_type_string(msg_type(msg)));
-			break;
 		case -EPROTO:
 			pr_debug("msg_duplicate: ignoring message");
 			break;
@@ -326,6 +322,13 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 		msg_put(dup);
 		return NULL;
 	}
+	if (msg_sots_missing(msg)) {
+		pr_err("msg_duplicate: received %s without timestamp",
+		       msg_type_string(msg_type(msg)));
+		msg_put(dup);
+		return NULL;
+	}
+
 	return dup;
 }
 
