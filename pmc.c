@@ -414,7 +414,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case TLV_LOG_SYNC_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "ANNOUNCE_RECEIPT_TIMEOUT "
+		fprintf(fp, "LOG_SYNC_INTERVAL "
 			IFMT "logSyncInterval %hhd", mtd->val);
 		break;
 	case TLV_VERSION_NUMBER:

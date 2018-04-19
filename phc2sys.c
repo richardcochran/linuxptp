@@ -897,13 +897,15 @@ static void send_subscription(struct node *node)
 	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
 
-static int init_pmc(struct config *cfg, struct node *node, int domain_number)
+static int init_pmc(struct config *cfg, struct node *node)
 {
 	char uds_local[MAX_IFNAME_SIZE + 1];
 
 	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d",
 		 getpid());
-	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0, domain_number, 0, 1);
+	node->pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0,
+			       config_get_int(cfg, NULL, "domainNumber"),
+			       config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
 	if (!node->pmc) {
 		pr_err("failed to create pmc");
 		return -1;
@@ -1312,6 +1314,7 @@ static void usage(char *progname)
 		" -O [offset]    slave-master time offset (0)\n"
 		" -w             wait for ptp4l\n"
 		" common options:\n"
+		" -f [file]      configuration file\n"
 		" -E [pi|linreg] clock servo (pi)\n"
 		" -P [kp]        proportional constant (0.7)\n"
 		" -I [ki]        integration constant (0.3)\n"
@@ -1337,22 +1340,16 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *progname, *message_tag = NULL;
-	char *src_name = NULL, *dst_name = NULL;
+	char *config = NULL, *dst_name = NULL, *progname, *src_name = NULL;
 	struct clock *src, *dst;
 	struct config *cfg;
-	int autocfg = 0, rt = 0;
-	int c, domain_number = 0, pps_fd = -1;
-	int r = -1, wait_sync = 0;
-	int print_level = LOG_INFO, use_syslog = 1, verbose = 0;
-	int ntpshm_segment;
+	struct option *opts;
+	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment;
+	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0, wait_sync = 0;
 	double phc_rate, tmp;
 	struct node node = {
-		.sanity_freq_limit = 200000000,
-		.servo_type = CLOCK_SERVO_PI,
 		.phc_readings = 5,
 		.phc_interval = 1.0,
-		.kernel_leap = 1,
 	};
 
 	handle_term_signals();
@@ -1362,15 +1359,23 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	opts = config_long_options(cfg);
+
 	config_set_double(cfg, "pi_proportional_const", KP);
 	config_set_double(cfg, "pi_integral_const", KI);
 
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt(argc, argv,
-				  "arc:d:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh"))) {
+	while (EOF != (c = getopt_long(argc, argv,
+				"arc:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh",
+				opts, &index))) {
 		switch (c) {
+		case 0:
+			if (config_parse_option(cfg, opts[index].name, optarg)) {
+				goto bad_usage;
+			}
+			break;
 		case 'a':
 			autocfg = 1;
 			break;
@@ -1388,6 +1393,9 @@ int main(int argc, char *argv[])
 				goto end;
 			}
 			break;
+		case 'f':
+			config = optarg;
+			break;
 		case 'i':
 			fprintf(stderr,
 				"'-i' has been deprecated. please use '-s' instead.\n");
@@ -1396,11 +1404,14 @@ int main(int argc, char *argv[])
 			break;
 		case 'E':
 			if (!strcasecmp(optarg, "pi")) {
-				node.servo_type = CLOCK_SERVO_PI;
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_PI);
 			} else if (!strcasecmp(optarg, "linreg")) {
-				node.servo_type = CLOCK_SERVO_LINREG;
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_LINREG);
 			} else if (!strcasecmp(optarg, "ntpshm")) {
-				node.servo_type = CLOCK_SERVO_NTPSHM;
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_NTPSHM);
 			} else {
 				fprintf(stderr,
 					"invalid servo name %s\n", optarg);
@@ -1443,8 +1454,10 @@ int main(int argc, char *argv[])
 			node.forced_sync_offset = -1;
 			break;
 		case 'L':
-			if (get_arg_val_i(c, optarg, &node.sanity_freq_limit, 0, INT_MAX))
+			if (get_arg_val_i(c, optarg, &node.sanity_freq_limit, 0, INT_MAX) ||
+			    config_set_int(cfg, "sanity_freq_limit", node.sanity_freq_limit)) {
 				goto end;
+			}
 			break;
 		case 'M':
 			if (get_arg_val_i(c, optarg, &ntpshm_segment, INT_MIN, INT_MAX) ||
@@ -1460,11 +1473,15 @@ int main(int argc, char *argv[])
 			wait_sync = 1;
 			break;
 		case 'n':
-			if (get_arg_val_i(c, optarg, &domain_number, 0, 255))
+			if (get_arg_val_i(c, optarg, &domain_number, 0, 255) ||
+			    config_set_int(cfg, "domainNumber", domain_number)) {
 				goto end;
+			}
 			break;
 		case 'x':
-			node.kernel_leap = 0;
+			if (config_set_int(cfg, "kernel_leap", 0)) {
+				goto end;
+			}
 			break;
 		case 'z':
 			if (strlen(optarg) > MAX_IFNAME_SIZE) {
@@ -1478,17 +1495,25 @@ int main(int argc, char *argv[])
 			break;
 		case 'l':
 			if (get_arg_val_i(c, optarg, &print_level,
-					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
+					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX) ||
+			    config_set_int(cfg, "logging_level", print_level)) {
 				goto end;
+			}
 			break;
 		case 't':
-			message_tag = optarg;
+			if (config_set_string(cfg, "message_tag", optarg)) {
+				goto end;
+			}
 			break;
 		case 'm':
-			verbose = 1;
+			if (config_set_int(cfg, "verbose", 1)) {
+				goto end;
+			}
 			break;
 		case 'q':
-			use_syslog = 0;
+			if (config_set_int(cfg, "use_syslog", 0)) {
+				goto end;
+			}
 			break;
 		case 'v':
 			version_show(stdout);
@@ -1501,6 +1526,10 @@ int main(int argc, char *argv[])
 		default:
 			goto bad_usage;
 		}
+	}
+
+	if (config && (c = config_read(config, cfg))) {
+		return c;
 	}
 
 	if (autocfg && (src_name || dst_name || pps_fd >= 0 || wait_sync || node.forced_sync_offset)) {
@@ -1526,13 +1555,21 @@ int main(int argc, char *argv[])
 	}
 
 	print_set_progname(progname);
-	print_set_tag(message_tag);
-	print_set_verbose(verbose);
-	print_set_syslog(use_syslog);
-	print_set_level(print_level);
+	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
+	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
+	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
+	print_set_level(config_get_int(cfg, NULL, "logging_level"));
+
+	node.servo_type = config_get_int(cfg, NULL, "clock_servo");
+	if (node.servo_type == CLOCK_SERVO_NTPSHM) {
+		config_set_int(cfg, "kernel_leap", 0);
+		config_set_int(cfg, "sanity_freq_limit", 0);
+	}
+	node.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
+	node.sanity_freq_limit = config_get_int(cfg, NULL, "sanity_freq_limit");
 
 	if (autocfg) {
-		if (init_pmc(cfg, &node, domain_number))
+		if (init_pmc(cfg, &node))
 			goto end;
 		if (auto_init_ports(&node, rt) < 0)
 			goto end;
@@ -1568,7 +1605,7 @@ int main(int argc, char *argv[])
 	r = -1;
 
 	if (wait_sync) {
-		if (init_pmc(cfg, &node, domain_number))
+		if (init_pmc(cfg, &node))
 			goto end;
 
 		while (is_running()) {
