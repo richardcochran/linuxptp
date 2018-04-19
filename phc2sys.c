@@ -221,7 +221,7 @@ static struct clock *clock_add(struct node *node, char *device)
 	c->clkid = clkid;
 	c->phc_index = phc_index;
 	c->servo_state = SERVO_UNLOCKED;
-	c->device = strdup(device);
+	c->device = device ? strdup(device) : NULL;
 
 	if (c->clkid == CLOCK_REALTIME) {
 		c->source_label = "sys";
@@ -249,9 +249,10 @@ static struct clock *clock_add(struct node *node, char *device)
 		}
 	}
 
-	c->servo = servo_add(node, c);
+	if (clkid != CLOCK_INVALID)
+		c->servo = servo_add(node, c);
 
-	if (clkid != CLOCK_REALTIME)
+	if (clkid != CLOCK_INVALID && clkid != CLOCK_REALTIME)
 		c->sysoff_supported = (SYSOFF_SUPPORTED ==
 				       sysoff_probe(CLOCKID_TO_FD(clkid),
 						    node->phc_readings));
