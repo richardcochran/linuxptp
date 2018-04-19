@@ -490,8 +490,8 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
+	int batch_mode = 0, c, cnt, err = 0, index, length, tmo = -1;
 	char *cmd = NULL, *config = NULL, line[1024], *progname;
-	int c, cnt, err = 0, index, length, tmo = -1;
 	struct pollfd pollfd[NSM_NFD];
 	struct nsm *nsm = &the_nsm;
 	struct ptp_message *msg;
@@ -560,14 +560,31 @@ int main(int argc, char *argv[])
 	if (err) {
 		goto out;
 	}
+
+	if (optind < argc) {
+		batch_mode = 1;
+	}
+
 	pollfd[0].fd = nsm->fda.fd[0];
 	pollfd[1].fd = nsm->fda.fd[1];
-	pollfd[2].fd = STDIN_FILENO;
+	pollfd[2].fd = batch_mode ? -1 : STDIN_FILENO;
 	pollfd[0].events = POLLIN | POLLPRI;
 	pollfd[1].events = POLLIN | POLLPRI;
-	pollfd[2].events = POLLIN | POLLPRI;
+	pollfd[2].events = batch_mode ? 0 : POLLIN | POLLPRI;
 
 	while (is_running()) {
+		if (batch_mode) {
+			if (optind < argc && !nsm->nsm_delay_req) {
+				cmd = argv[optind++];
+				if (nsm_command(nsm, cmd)) {
+					pr_err("command failed");
+					continue;
+				}
+			}
+			/* Wait a bit for any outstanding replies. */
+			tmo = 100;
+		}
+
 		cnt = poll(pollfd, NSM_NFD, tmo);
 		if (cnt < 0) {
 			if (EINTR == errno) {
@@ -577,6 +594,11 @@ int main(int argc, char *argv[])
 				err = -1;
 				break;
 			}
+		} else if (!cnt && optind < argc) {
+			/* For batch mode. No response received from target node,
+			 * continue with next command. */
+			nsm_reset(nsm);
+			continue;
 		} else if (!cnt) {
 			break;
 		}
