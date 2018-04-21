@@ -51,7 +51,6 @@ enum syfu_event {
 	FUP_MATCH,
 };
 
-static void flush_delay_req(struct port *p);
 static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
 static void port_nrate_initialize(struct port *p);
@@ -297,7 +296,7 @@ static int delay_req_current(struct ptp_message *m, struct timespec now)
 	return t2 - t1 < tmo;
 }
 
-static void delay_req_prune(struct port *p)
+void delay_req_prune(struct port *p)
 {
 	struct timespec now;
 	struct ptp_message *m;
@@ -1048,7 +1047,7 @@ static int port_set_manno_tmo(struct port *p)
 	return set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, p->logAnnounceInterval);
 }
 
-static int port_set_qualification_tmo(struct port *p)
+int port_set_qualification_tmo(struct port *p)
 {
 	return set_tmo_log(p->fda.fd[FD_QUALIFICATION_TIMER],
 		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
@@ -1490,7 +1489,7 @@ int port_is_enabled(struct port *p)
 	return 1;
 }
 
-static void flush_last_sync(struct port *p)
+void flush_last_sync(struct port *p)
 {
 	if (p->syfu != SF_EMPTY) {
 		msg_put(p->last_syncfup);
@@ -1498,7 +1497,7 @@ static void flush_last_sync(struct port *p)
 	}
 }
 
-static void flush_delay_req(struct port *p)
+void flush_delay_req(struct port *p)
 {
 	struct ptp_message *m;
 	while ((m = TAILQ_FIRST(&p->delay_req)) != NULL) {
@@ -1777,7 +1776,7 @@ out:
 	return err;
 }
 
-static void process_delay_resp(struct port *p, struct ptp_message *m)
+void process_delay_resp(struct port *p, struct ptp_message *m)
 {
 	struct delay_resp_msg *rsp = &m->delay_resp;
 	struct PortIdentity master;
