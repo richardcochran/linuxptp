@@ -80,6 +80,13 @@ struct config *clock_config(struct clock *c);
 struct currentDS *clock_current_dataset(struct clock *c);
 
 /**
+ * Obtains the clock's data set comparison function.
+ * @param c  The clock instance.
+ * @return   A pointer to the data set comparison function, without fail.
+ */
+int (*clock_dscmp(struct clock *c))(struct dataset *a, struct dataset *b);
+
+/**
  * Obtains the required time stamping mode.
  * @param c  The clock instance.
  * @return   The value of required time stamping mode, which is a bit mask

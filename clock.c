@@ -758,6 +758,11 @@ struct config *clock_config(struct clock *c)
 	return c->config;
 }
 
+int (*clock_dscmp(struct clock *c))(struct dataset *a, struct dataset *b)
+{
+	return c->dscmp;
+}
+
 struct currentDS *clock_current_dataset(struct clock *c)
 {
 	return &c->cur;

@@ -2191,9 +2191,11 @@ void port_close(struct port *p)
 
 struct foreign_clock *port_compute_best(struct port *p)
 {
+	int (*dscmp)(struct dataset *a, struct dataset *b);
 	struct foreign_clock *fc;
 	struct ptp_message *tmp;
 
+	dscmp = clock_dscmp(p->clock);
 	p->best = NULL;
 
 	LIST_FOREACH(fc, &p->foreign_masters, list) {
@@ -2210,7 +2212,7 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 		if (!p->best)
 			p->best = fc;
-		else if (p->dscmp(&fc->dataset, &p->best->dataset) > 0)
+		else if (dscmp(&fc->dataset, &p->best->dataset) > 0)
 			p->best = fc;
 		else
 			fc_clear(fc);
@@ -2784,7 +2786,6 @@ struct port *port_open(int phc_index,
 	}
 
 	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
-	p->dscmp = dscmp;
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
