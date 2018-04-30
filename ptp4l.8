@@ -1,4 +1,4 @@
-.TH PTP4l 8 "March 2018" "linuxptp"
+.TH PTP4l 8 "April 2018" "linuxptp"
 .SH NAME
 ptp4l - PTP Boundary/Ordinary/Transparent Clock
 
@@ -117,16 +117,28 @@ Each setting is placed on a separate line, it contains the name of the
 option and the value separated by whitespace characters. Empty lines and lines
 starting with # are ignored.
 
+There are three different section types.
+
+.TP
+.B 1.
 The global section (indicated as
 .BR [global] )
 sets the program options, clock options and default port options. Other
 sections are port specific sections and they override the default port options.
-The name of the section is the name of the configured port (e.g.
+.TP
+.B 2.
+Port sections give the name of the configured port (e.g.
 .BR [eth0] ).
 Ports specified in the configuration file don't need to be
 specified by the
 .B \-i
 option. An empty port section can be used to replace the command line option.
+.TP
+.B 3.
+Tables for configuring unicast discovery begin with
+.B \%[unicast_master_table].
+
+See UNICAST DISCOVERY OPTIONS, below.
 
 .SH PORT OPTIONS
 
@@ -219,6 +231,11 @@ delay requests using unicast delay responses. This option has no
 effect if the delay_mechanism is set to P2P.
 The default is 0 (disabled).
 .TP
+.B inhibit_multicast_service
+Some unicast mode profiles insist that no multicast message are ever
+transmitted.  Setting this option inhibits multicast transmission.
+The default is 0 (mutlicast enabled).
+.TP
 .B net_sync_monitor
 Enables the NetSync Monitor (NSM) protocol. The NSM protocol allows a
 station to measure how well another node is synchronized. The monitor
@@ -228,6 +245,26 @@ messages. If the monitor is synchronized to the GM, it can use the
 time stamps in the message to estimate the node's offset.  This option
 requires that the 'hybrid_e2e' option be enabled as well.
 The default is 0 (disabled).
+.TP
+.B unicast_listen
+When enabled, this option allows the port to grant unicast message
+contracts.  Incoming requests for will be granted limited only by the
+amount of memory available.
+The default is 0 (disabled).
+.TP
+.B unicast_master_table
+When set to a positive integer, this option specifies the table id to
+be used for unicast discovery.  Each table lives in its own section
+and has a unique, positive numerical ID.  Entries in the table are a
+pair of transport type and protocol address.  Tables may not be shared
+between ports, but nothing prevents table entries from appearing in
+more than table.
+The default is 0 (unicast discovery disabled).
+.TP
+.B unicast_req_duration
+The service time in seconds to be requested during unicast discovery.
+Note that the remote node is free to grant a different duration.
+The default is 3600 seconds or one hour.
 .TP
 .B ptp_dst_mac
 The MAC address to which PTP messages should be sent.
@@ -624,6 +661,31 @@ The time source is a single byte code that gives an idea of the kind
 of local clock in use. The value is purely informational, having no
 effect on the outcome of the Best Master Clock algorithm, and is
 advertised when the clock becomes grand master.
+
+.SH UNICAST DISCOVERY OPTIONS
+
+.TP
+.B table_id
+Each table must begin with a unique, positive table ID.  The port that
+claims a given table does so by including the ID as the value of
+its 'unicast_master_table' option.
+.TP
+.B logQueryInterval
+This option configures the time to wait between unicast negotiation
+attempts.  It is specified as a power of two in seconds.
+The default is 0 (1 second).
+.TP
+.B peer_address
+This option specifies the unicast address of the peer for use with the
+peer to peer delay mechanism.  If specified, the port owning the table
+will negotiate unicast peer delay responses from the machine at the
+given remote address, otherwise the port will send multicast peer
+delay requests.
+.TP
+.B L2|UDPv4
+Each table entry specifies the transport type and network address of a
+potential remote master.  If multiple masters are specified, then
+unicast negotiation will be performed with each if them.
 
 .SH TIME SCALE USAGE
 
