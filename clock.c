@@ -1187,6 +1187,11 @@ void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f)
 	       sizeof(c->status.lastGmPhaseChange));
 }
 
+int clock_free_running(struct clock *c)
+{
+	return c->free_running ? 1 : 0;
+}
+
 int clock_gm_capable(struct clock *c)
 {
 	return c->grand_master_capable;
