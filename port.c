@@ -1545,7 +1545,7 @@ void port_disable(struct port *p)
 	transport_close(p->trp, &p->fda);
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
-		close(p->fda.fd[FD_ANNOUNCE_TIMER + i]);
+		close(p->fda.fd[FD_FIRST_TIMER + i]);
 	}
 
 	/* Keep rtnl socket to get link status info. */
@@ -1590,7 +1590,7 @@ int port_initialize(struct port *p)
 		goto no_tropen;
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
-		p->fda.fd[FD_ANNOUNCE_TIMER + i] = fd[i];
+		p->fda.fd[FD_FIRST_TIMER + i] = fd[i];
 	}
 
 	if (port_set_announce_tmo(p))
@@ -1628,7 +1628,7 @@ static int port_renew_transport(struct port *p)
 		return 0;
 	}
 	transport_close(p->trp, &p->fda);
-	port_clear_fda(p, FD_ANNOUNCE_TIMER);
+	port_clear_fda(p, FD_FIRST_TIMER);
 	res = transport_open(p->trp, p->iface, &p->fda, p->timestamping);
 	/* Need to call clock_fda_changed even if transport_open failed in
 	 * order to update clock to the now closed descriptors. */
