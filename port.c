@@ -40,6 +40,7 @@
 #include "tlv.h"
 #include "tmv.h"
 #include "tsproc.h"
+#include "unicast_client.h"
 #include "util.h"
 
 #define ALLOWED_LOST_RESPONSES 3
@@ -569,7 +570,11 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 	if (msg_pre_send(msg)) {
 		return -1;
 	}
-	cnt = transport_peer(p->trp, &p->fda, event, msg);
+	if (msg_unicast(msg)) {
+		cnt = transport_sendto(p->trp, &p->fda, event, msg);
+	} else {
+		cnt = transport_peer(p->trp, &p->fda, event, msg);
+	}
 	if (cnt <= 0) {
 		return -1;
 	}
@@ -1229,6 +1234,11 @@ static int port_pdelay_request(struct port *p)
 	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logMinPdelayReqInterval : 0x7f;
+
+	if (unicast_client_enabled(p) && p->unicast_master_table->peer_name) {
+		msg->address = p->unicast_master_table->peer_addr.address;
+		msg->header.flagField[0] |= UNICAST;
+	}
 
 	err = peer_prepare_and_send(p, msg, TRANS_EVENT);
 	if (err) {
@@ -1954,6 +1964,11 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	}
 	rsp->pdelay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
+	if (msg_unicast(m)) {
+		rsp->address = m->address;
+		rsp->header.flagField[0] |= UNICAST;
+	}
+
 	err = peer_prepare_and_send(p, rsp, event);
 	if (err) {
 		pr_err("port %hu: send peer delay response failed", portnum(p));
@@ -1986,6 +2001,11 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 	fup->pdelay_resp_fup.responseOriginTimestamp =
 		tmv_to_Timestamp(rsp->hwts.ts);
+
+	if (msg_unicast(m)) {
+		fup->address = m->address;
+		fup->header.flagField[0] |= UNICAST;
+	}
 
 	err = peer_prepare_and_send(p, fup, TRANS_GENERAL);
 	if (err) {
