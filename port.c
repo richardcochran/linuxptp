@@ -563,7 +563,7 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 }
 
 static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
-				 int event)
+				 enum transport_event event)
 {
 	int cnt;
 	if (msg_pre_send(msg)) {
@@ -1230,7 +1230,7 @@ static int port_pdelay_request(struct port *p)
 	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logMinPdelayReqInterval : 0x7f;
 
-	err = peer_prepare_and_send(p, msg, 1);
+	err = peer_prepare_and_send(p, msg, TRANS_EVENT);
 	if (err) {
 		pr_err("port %hu: send peer delay request failed", portnum(p));
 		goto out;
@@ -1873,7 +1873,8 @@ void process_follow_up(struct port *p, struct ptp_message *m)
 int process_pdelay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *rsp, *fup;
-	int err, event;
+	enum transport_event event;
+	int err;
 
 	switch (p->timestamping) {
 	case TS_SOFTWARE:
@@ -1982,7 +1983,7 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	fup->pdelay_resp_fup.responseOriginTimestamp =
 		tmv_to_Timestamp(rsp->hwts.ts);
 
-	err = peer_prepare_and_send(p, fup, 0);
+	err = peer_prepare_and_send(p, fup, TRANS_GENERAL);
 	if (err) {
 		pr_err("port %hu: send pdelay_resp_fup failed", portnum(p));
 	}
