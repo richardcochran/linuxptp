@@ -2484,6 +2484,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		msg_put(msg);
 		return EV_NONE;
 	}
+	if (port_ignore(p, msg)) {
+		msg_put(msg);
+		return EV_NONE;
+	}
 	if (msg_sots_missing(msg) &&
 	    !(p->timestamping == TS_P2P1STEP && msg_type(msg) == PDELAY_REQ)) {
 		pr_err("port %hu: received %s without timestamp",
@@ -2494,10 +2498,6 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
 		clock_check_ts(p->clock, tmv_to_nanoseconds(msg->hwts.ts));
-	}
-	if (port_ignore(p, msg)) {
-		msg_put(msg);
-		return EV_NONE;
 	}
 
 	switch (msg_type(msg)) {
