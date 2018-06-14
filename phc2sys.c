@@ -71,6 +71,7 @@
 
 struct clock {
 	LIST_ENTRY(clock) list;
+	LIST_ENTRY(clock) dst_list;
 	clockid_t clkid;
 	int phc_index;
 	int sysoff_supported;
@@ -117,6 +118,7 @@ struct node {
 	struct ClockIdentity clock_identity;
 	LIST_HEAD(port_head, port) ports;
 	LIST_HEAD(clock_head, clock) clocks;
+	LIST_HEAD(dst_clock_head, clock) dst_clocks;
 	struct clock *master;
 };
 
@@ -400,13 +402,27 @@ static void clock_reinit(struct node *node, struct clock *clock, int new_state)
 	}
 }
 
+static struct clock *find_dst_clock(struct node *node, int phc_index) {
+	struct clock *c = NULL;
+	LIST_FOREACH(c, &node->dst_clocks, dst_list) {
+		if (c->phc_index == phc_index) {
+			break;
+		}
+	}
+	return c;
+}
+
 static void reconfigure(struct node *node)
 {
-	struct clock *c, *rt = NULL, *src = NULL, *last = NULL;
+	struct clock *c, *rt = NULL, *src = NULL, *last = NULL, *dup = NULL;
 	int src_cnt = 0, dst_cnt = 0;
 
 	pr_info("reconfiguring after port state change");
 	node->state_changed = 0;
+
+	while (node->dst_clocks.lh_first != NULL) {
+		LIST_REMOVE(node->dst_clocks.lh_first, dst_list);
+	}
 
 	LIST_FOREACH(c, &node->clocks, list) {
 		if (c->clkid == CLOCK_REALTIME) {
@@ -427,8 +443,18 @@ static void reconfigure(struct node *node)
 		case PS_PRE_MASTER:
 		case PS_MASTER:
 		case PS_PASSIVE:
-			pr_info("selecting %s for synchronization", c->device);
-			dst_cnt++;
+			dup = find_dst_clock(node, c->phc_index);
+			if (!dup) {
+				pr_info("selecting %s for synchronization",
+					c->device);
+				dst_cnt++;
+				LIST_INSERT_HEAD(&node->dst_clocks,
+						 c, dst_list);
+			} else {
+				pr_info("skipping %s: %s has the same clock "
+					"and is already selected",
+					c->device, dup->device);
+			}
 			break;
 		case PS_UNCALIBRATED:
 			src_cnt++;
@@ -482,6 +508,7 @@ static void reconfigure(struct node *node)
 			rt->state = PS_MASTER;
 			clock_reinit(node, rt, rt->state);
 		}
+		LIST_INSERT_HEAD(&node->dst_clocks, rt, dst_list);
 		pr_info("selecting %s for synchronization", rt->device);
 	}
 	node->master = src;
@@ -745,7 +772,7 @@ static int do_loop(struct node *node, int subscriptions)
 		if (!node->master)
 			continue;
 
-		LIST_FOREACH(clock, &node->clocks, list) {
+		LIST_FOREACH(clock, &node->dst_clocks, dst_list) {
 			if (!update_needed(clock))
 				continue;
 
@@ -1598,6 +1625,7 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 	dst->state = PS_MASTER;
+	LIST_INSERT_HEAD(&node.dst_clocks, dst, dst_list);
 
 	if (pps_fd >= 0 && dst->clkid != CLOCK_REALTIME) {
 		fprintf(stderr,
