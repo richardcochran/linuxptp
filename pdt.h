@@ -22,7 +22,12 @@
 
 #include <stdint.h>
 
-enum {FALSE, TRUE};
+#ifndef FALSE
+#define FALSE	0
+#endif
+#ifndef TRUE
+#define TRUE	1
+#endif
 
 typedef	int       Boolean;
 typedef uint8_t   Enumeration8;
