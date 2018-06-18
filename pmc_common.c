@@ -48,6 +48,260 @@
 /* Includes one extra byte to make length even. */
 #define EMPTY_PTP_TEXT 2
 
+static void do_get_action(struct pmc *pmc, int action, int index, char *str);
+static void do_set_action(struct pmc *pmc, int action, int index, char *str);
+static void not_supported(struct pmc *pmc, int action, int index, char *str);
+static void null_management(struct pmc *pmc, int action, int index, char *str);
+
+static const char *action_string[] = {
+	"GET",
+	"SET",
+	"RESPONSE",
+	"COMMAND",
+	"ACKNOWLEDGE",
+};
+
+struct management_id {
+	char name[64];
+	int code;
+	void (*func)(struct pmc *pmc, int action, int index, char *str);
+};
+
+struct management_id idtab[] = {
+/* Clock management ID values */
+	{ "USER_DESCRIPTION", TLV_USER_DESCRIPTION, do_get_action },
+	{ "SAVE_IN_NON_VOLATILE_STORAGE", TLV_SAVE_IN_NON_VOLATILE_STORAGE, not_supported },
+	{ "RESET_NON_VOLATILE_STORAGE", TLV_RESET_NON_VOLATILE_STORAGE, not_supported },
+	{ "INITIALIZE", TLV_INITIALIZE, not_supported },
+	{ "FAULT_LOG", TLV_FAULT_LOG, not_supported },
+	{ "FAULT_LOG_RESET", TLV_FAULT_LOG_RESET, not_supported },
+	{ "DEFAULT_DATA_SET", TLV_DEFAULT_DATA_SET, do_get_action },
+	{ "CURRENT_DATA_SET", TLV_CURRENT_DATA_SET, do_get_action },
+	{ "PARENT_DATA_SET", TLV_PARENT_DATA_SET, do_get_action },
+	{ "TIME_PROPERTIES_DATA_SET", TLV_TIME_PROPERTIES_DATA_SET, do_get_action },
+	{ "PRIORITY1", TLV_PRIORITY1, do_set_action },
+	{ "PRIORITY2", TLV_PRIORITY2, do_set_action },
+	{ "DOMAIN", TLV_DOMAIN, do_get_action },
+	{ "SLAVE_ONLY", TLV_SLAVE_ONLY, do_get_action },
+	{ "TIME", TLV_TIME, not_supported },
+	{ "CLOCK_ACCURACY", TLV_CLOCK_ACCURACY, do_get_action },
+	{ "UTC_PROPERTIES", TLV_UTC_PROPERTIES, not_supported },
+	{ "TRACEABILITY_PROPERTIES", TLV_TRACEABILITY_PROPERTIES, do_get_action },
+	{ "TIMESCALE_PROPERTIES", TLV_TIMESCALE_PROPERTIES, do_get_action },
+	{ "PATH_TRACE_LIST", TLV_PATH_TRACE_LIST, not_supported },
+	{ "PATH_TRACE_ENABLE", TLV_PATH_TRACE_ENABLE, not_supported },
+	{ "GRANDMASTER_CLUSTER_TABLE", TLV_GRANDMASTER_CLUSTER_TABLE, not_supported },
+	{ "ACCEPTABLE_MASTER_TABLE", TLV_ACCEPTABLE_MASTER_TABLE, not_supported },
+	{ "ACCEPTABLE_MASTER_MAX_TABLE_SIZE", TLV_ACCEPTABLE_MASTER_MAX_TABLE_SIZE, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_ENABLE", TLV_ALTERNATE_TIME_OFFSET_ENABLE, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_NAME", TLV_ALTERNATE_TIME_OFFSET_NAME, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", TLV_ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", TLV_ALTERNATE_TIME_OFFSET_PROPERTIES, not_supported },
+	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", TLV_TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
+	{ "PRIMARY_DOMAIN", TLV_PRIMARY_DOMAIN, not_supported },
+	{ "TIME_STATUS_NP", TLV_TIME_STATUS_NP, do_get_action },
+	{ "GRANDMASTER_SETTINGS_NP", TLV_GRANDMASTER_SETTINGS_NP, do_set_action },
+/* Port management ID values */
+	{ "NULL_MANAGEMENT", TLV_NULL_MANAGEMENT, null_management },
+	{ "CLOCK_DESCRIPTION", TLV_CLOCK_DESCRIPTION, do_get_action },
+	{ "PORT_DATA_SET", TLV_PORT_DATA_SET, do_get_action },
+	{ "LOG_ANNOUNCE_INTERVAL", TLV_LOG_ANNOUNCE_INTERVAL, do_get_action },
+	{ "ANNOUNCE_RECEIPT_TIMEOUT", TLV_ANNOUNCE_RECEIPT_TIMEOUT, do_get_action },
+	{ "LOG_SYNC_INTERVAL", TLV_LOG_SYNC_INTERVAL, do_get_action },
+	{ "VERSION_NUMBER", TLV_VERSION_NUMBER, do_get_action },
+	{ "ENABLE_PORT", TLV_ENABLE_PORT, not_supported },
+	{ "DISABLE_PORT", TLV_DISABLE_PORT, not_supported },
+	{ "UNICAST_NEGOTIATION_ENABLE", TLV_UNICAST_NEGOTIATION_ENABLE, not_supported },
+	{ "UNICAST_MASTER_TABLE", TLV_UNICAST_MASTER_TABLE, not_supported },
+	{ "UNICAST_MASTER_MAX_TABLE_SIZE", TLV_UNICAST_MASTER_MAX_TABLE_SIZE, not_supported },
+	{ "ACCEPTABLE_MASTER_TABLE_ENABLED", TLV_ACCEPTABLE_MASTER_TABLE_ENABLED, not_supported },
+	{ "ALTERNATE_MASTER", TLV_ALTERNATE_MASTER, not_supported },
+	{ "TRANSPARENT_CLOCK_PORT_DATA_SET", TLV_TRANSPARENT_CLOCK_PORT_DATA_SET, not_supported },
+	{ "DELAY_MECHANISM", TLV_DELAY_MECHANISM, do_get_action },
+	{ "LOG_MIN_PDELAY_REQ_INTERVAL", TLV_LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
+	{ "PORT_DATA_SET_NP", TLV_PORT_DATA_SET_NP, do_set_action },
+};
+
+static void do_get_action(struct pmc *pmc, int action, int index, char *str)
+{
+	if (action == GET)
+		pmc_send_get_action(pmc, idtab[index].code);
+	else
+		fprintf(stderr, "%s only allows GET\n", idtab[index].name);
+}
+
+static void do_set_action(struct pmc *pmc, int action, int index, char *str)
+{
+	struct grandmaster_settings_np gsn;
+	struct management_tlv_datum mtd;
+	struct port_ds_np pnp;
+	int cnt, code = idtab[index].code;
+	int leap_61, leap_59, utc_off_valid;
+	int ptp_timescale, time_traceable, freq_traceable;
+
+	switch (action) {
+	case GET:
+		pmc_send_get_action(pmc, code);
+		return;
+	case SET:
+		break;
+	case RESPONSE:
+	case COMMAND:
+	case ACKNOWLEDGE:
+	default:
+		fprintf(stderr, "%s only allows GET or SET\n",
+			idtab[index].name);
+		return;
+	}
+	switch (code) {
+	case TLV_PRIORITY1:
+	case TLV_PRIORITY2:
+		cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
+		if (cnt != 1) {
+			fprintf(stderr, "%s SET needs 1 value\n",
+				idtab[index].name);
+			break;
+		}
+		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case TLV_GRANDMASTER_SETTINGS_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "clockClass              %hhu "
+			     "clockAccuracy           %hhx "
+			     "offsetScaledLogVariance %hx "
+			     "currentUtcOffset        %hd "
+			     "leap61                  %d "
+			     "leap59                  %d "
+			     "currentUtcOffsetValid   %d "
+			     "ptpTimescale            %d "
+			     "timeTraceable           %d "
+			     "frequencyTraceable      %d "
+			     "timeSource              %hhx ",
+			     &gsn.clockQuality.clockClass,
+			     &gsn.clockQuality.clockAccuracy,
+			     &gsn.clockQuality.offsetScaledLogVariance,
+			     &gsn.utc_offset,
+			     &leap_61,
+			     &leap_59,
+			     &utc_off_valid,
+			     &ptp_timescale,
+			     &time_traceable,
+			     &freq_traceable,
+			     &gsn.time_source);
+		if (cnt != 11) {
+			fprintf(stderr, "%s SET needs 11 values\n",
+				idtab[index].name);
+			break;
+		}
+		gsn.time_flags = 0;
+		if (leap_61)
+			gsn.time_flags |= LEAP_61;
+		if (leap_59)
+			gsn.time_flags |= LEAP_59;
+		if (utc_off_valid)
+			gsn.time_flags |= UTC_OFF_VALID;
+		if (ptp_timescale)
+			gsn.time_flags |= PTP_TIMESCALE;
+		if (time_traceable)
+			gsn.time_flags |= TIME_TRACEABLE;
+		if (freq_traceable)
+			gsn.time_flags |= FREQ_TRACEABLE;
+		pmc_send_set_action(pmc, code, &gsn, sizeof(gsn));
+		break;
+	case TLV_PORT_DATA_SET_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "neighborPropDelayThresh %u "
+			     "asCapable               %d ",
+			     &pnp.neighborPropDelayThresh,
+			     &pnp.asCapable);
+		if (cnt != 2) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		pmc_send_set_action(pmc, code, &pnp, sizeof(pnp));
+		break;
+	}
+}
+
+static void not_supported(struct pmc *pmc, int action, int index, char *str)
+{
+	fprintf(stdout, "sorry, %s not supported yet\n", idtab[index].name);
+}
+
+static void null_management(struct pmc *pmc, int action, int index, char *str)
+{
+	if (action == GET)
+		pmc_send_get_action(pmc, idtab[index].code);
+	else
+		puts("non-get actions still todo");
+}
+
+static int parse_action(char *s)
+{
+	int len = strlen(s);
+	if (0 == strncasecmp(s, "GET", len))
+		return GET;
+	else if (0 == strncasecmp(s, "SET", len))
+		return SET;
+	else if (0 == strncasecmp(s, "CMD", len))
+		return COMMAND;
+	else if (0 == strncasecmp(s, "COMMAND", len))
+		return COMMAND;
+	return BAD_ACTION;
+}
+
+static int parse_id(char *s)
+{
+	int i, index = BAD_ID, len = strlen(s);
+	/* check for exact match */
+	for (i = 0; i < ARRAY_SIZE(idtab); i++) {
+		if (strcasecmp(s, idtab[i].name) == 0) {
+			return i;
+		}
+	}
+	/* look for a unique prefix match */
+	for (i = 0; i < ARRAY_SIZE(idtab); i++) {
+		if (0 == strncasecmp(s, idtab[i].name, len)) {
+			if (index == BAD_ID)
+				index = i;
+			else
+				return AMBIGUOUS_ID;
+		}
+	}
+	return index;
+}
+
+static int parse_target(struct pmc *pmc, const char *str)
+{
+	struct PortIdentity pid;
+
+	if (str[0] == '*') {
+		memset(&pid, 0xff, sizeof(pid));
+	} else if (str2pid(str, &pid)) {
+		return -1;
+	}
+
+	return pmc_target(pmc, &pid);
+}
+
+static void print_help(FILE *fp)
+{
+	int i;
+	fprintf(fp, "\n");
+	for (i = 0; i < ARRAY_SIZE(idtab); i++) {
+		if (idtab[i].func != not_supported)
+			fprintf(fp, "\t[action] %s\n", idtab[i].name);
+	}
+	fprintf(fp, "\n");
+	fprintf(fp, "\tThe [action] can be GET, SET, CMD, or COMMAND\n");
+	fprintf(fp, "\tCommands are case insensitive and may be abbreviated.\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "\tTARGET [portIdentity]\n");
+	fprintf(fp, "\tTARGET *\n");
+	fprintf(fp, "\n");
+}
+
 struct pmc {
 	UInteger16 sequence_id;
 	UInteger8 boundary_hops;
@@ -358,4 +612,44 @@ void pmc_target_port(struct pmc *pmc, UInteger16 portNumber)
 void pmc_target_all(struct pmc *pmc)
 {
 	memset(&pmc->target, 0xff, sizeof(pmc->target));
+}
+
+const char *pmc_action_string(int action)
+{
+	return action_string[action];
+}
+
+int pmc_do_command(struct pmc *pmc, char *str)
+{
+	int action, id;
+	char action_str[10+1] = {0}, id_str[64+1] = {0};
+
+	if (0 == strncasecmp(str, "HELP", strlen(str))) {
+		print_help(stdout);
+		return 0;
+	}
+
+	if (2 != sscanf(str, " %10s %64s", action_str, id_str))
+		return -1;
+
+	if (0 == strncasecmp(action_str, "TARGET", strlen(action_str)))
+		return parse_target(pmc, id_str);
+
+	action = parse_action(action_str);
+	id = parse_id(id_str);
+
+	if (action == BAD_ACTION || id == BAD_ID)
+		return -1;
+
+	if (id == AMBIGUOUS_ID) {
+		fprintf(stdout, "id %s is too ambiguous\n", id_str);
+		return 0;
+	}
+
+	fprintf(stdout, "sending: %s %s\n",
+		action_string[action], idtab[id].name);
+
+	idtab[id].func(pmc, action, id, str);
+
+	return 0;
 }
