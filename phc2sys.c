@@ -807,9 +807,8 @@ static int check_clock_identity(struct node *node, struct ptp_message *msg)
 {
 	if (!node->clock_identity_set)
 		return 1;
-	return !memcmp(&node->clock_identity,
-		       &msg->header.sourcePortIdentity.clockIdentity,
-		       sizeof(struct ClockIdentity));
+	return cid_eq(&node->clock_identity,
+		       &msg->header.sourcePortIdentity.clockIdentity);
 }
 
 static int is_msg_mgt(struct ptp_message *msg)

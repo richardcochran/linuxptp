@@ -147,11 +147,6 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 	return 0 == memcmp(id1, id2, sizeof(*id1));
 }
 
-int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
-{
-	return 0 == memcmp(a, b, sizeof(*a));
-}
-
 int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 {
 	return pid_eq(&m1->header.sourcePortIdentity,
@@ -418,7 +413,7 @@ static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 	pid = dad->pds.parentPortIdentity.clockIdentity;
 	paddr = (struct PortAddress *)buf;
 
-	if (best && memcmp(&cid, &pid, sizeof(cid))) {
+	if (best && !cid_eq(&cid, &pid)) {
 		/* Extract the parent's protocol address. */
 		paddr->networkProtocol = transport_type(best->trp);
 		paddr->addressLength =
@@ -559,8 +554,9 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 		cnt = path_length(ptt);
 		cid = clock_identity(p->clock);
 		for (i = 0; i < cnt; i++) {
-			if (0 == memcmp(&ptt->cid[i], &cid, sizeof(cid)))
+			if (cid_eq(&ptt->cid[i], &cid)) {
 				return 1;
+			}
 		}
 	}
 	return 0;
@@ -681,7 +677,7 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 	c1 = clock_identity(p->clock);
 	c2 = m->header.sourcePortIdentity.clockIdentity;
 
-	if (0 == memcmp(&c1, &c2, sizeof(c1))) {
+	if (cid_eq(&c1, &c2)) {
 		return 1;
 	}
 	return 0;
@@ -724,7 +720,7 @@ static int port_sync_incapable(struct port *p)
 	}
 	cid = clock_identity(p->clock);
 	pid = clock_parent_identity(p->clock);
-	if (!memcmp(&cid, &pid.clockIdentity, sizeof(cid))) {
+	if (cid_eq(&cid, &pid.clockIdentity)) {
 		/*
 		 * We are the GM, but without gmCapable set.
 		 */
@@ -1854,7 +1850,7 @@ void process_follow_up(struct port *p, struct ptp_message *m)
 		break;
 	}
 	master = clock_parent_identity(p->clock);
-	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master))) {
+	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
 		return;
 	}
 
@@ -2146,7 +2142,7 @@ void process_sync(struct port *p, struct ptp_message *m)
 		break;
 	}
 	master = clock_parent_identity(p->clock);
-	if (memcmp(&master, &m->header.sourcePortIdentity, sizeof(master))) {
+	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
 		return;
 	}
 

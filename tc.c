@@ -490,7 +490,7 @@ int tc_ignore(struct port *p, struct ptp_message *m)
 	c1 = clock_identity(p->clock);
 	c2 = m->header.sourcePortIdentity.clockIdentity;
 
-	if (0 == memcmp(&c1, &c2, sizeof(c1))) {
+	if (cid_eq(&c1, &c2)) {
 		return 1;
 	}
 	return 0;

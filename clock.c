@@ -131,11 +131,6 @@ static void handle_state_decision_event(struct clock *c);
 static int clock_resize_pollfd(struct clock *c, int new_nports);
 static void clock_remove_port(struct clock *c, struct port *p);
 
-static int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
-{
-	return 0 == memcmp(a, b, sizeof(*a));
-}
-
 static void remove_subscriber(struct clock_subscriber *s)
 {
 	LIST_REMOVE(s, list);
@@ -157,8 +152,8 @@ static void clock_update_subscription(struct clock *c, struct ptp_message *req,
 	}
 
 	LIST_FOREACH(s, &c->subscribers, list) {
-		if (!memcmp(&s->targetPortIdentity, &req->header.sourcePortIdentity,
-		            sizeof(struct PortIdentity))) {
+		if (pid_eq(&s->targetPortIdentity,
+			   &req->header.sourcePortIdentity)) {
 			/* Found, update the transport address and event
 			 * mask. */
 			if (!remove) {
@@ -196,8 +191,8 @@ static void clock_get_subscription(struct clock *c, struct ptp_message *req,
 	struct timespec now;
 
 	LIST_FOREACH(s, &c->subscribers, list) {
-		if (!memcmp(&s->targetPortIdentity, &req->header.sourcePortIdentity,
-			    sizeof(struct PortIdentity))) {
+		if (pid_eq(&s->targetPortIdentity,
+			   &req->header.sourcePortIdentity)) {
 			memcpy(bitmask, s->events, EVENT_BITMASK_CNT);
 			clock_gettime(CLOCK_MONOTONIC, &now);
 			if (s->expiration < now.tv_sec)

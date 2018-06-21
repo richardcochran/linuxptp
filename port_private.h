@@ -164,7 +164,6 @@ int process_pdelay_req(struct port *p, struct ptp_message *m);
 int process_pdelay_resp(struct port *p, struct ptp_message *m);
 void process_pdelay_resp_fup(struct port *p, struct ptp_message *m);
 void process_sync(struct port *p, struct ptp_message *m);
-int pid_eq(struct PortIdentity *a, struct PortIdentity *b);
 int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2);
 void ts_add(tmv_t *ts, Integer64 correction);
 

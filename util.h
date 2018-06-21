@@ -60,6 +60,18 @@ char *bin2str_impl(Octet *data, int len, char *buf, int buf_len);
 char *cid2str(struct ClockIdentity *id);
 
 /**
+ * Compare two clock identities for equality.
+ *
+ * @param a  First clock identity.
+ * @param b  Second clock identity.
+ * @return   1 if identities are equal, 0 otherwise.
+ */
+static inline int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
+{
+	return memcmp(a, b, sizeof(*a)) == 0;
+}
+
+/**
  * Counts the number of occurrences of a given character.
  * @param str  String to evaluate.
  * @param c    The character of interest.
@@ -79,6 +91,18 @@ int count_char(const char *str, char c);
 char *pid2str(struct PortIdentity *id);
 
 char *portaddr2str(struct PortAddress *addr);
+
+/**
+ * Compare two port identities for equality.
+ *
+ * @param a  First port identity.
+ * @param b  Second port identity.
+ * @return   1 if identities are equal, 0 otherwise.
+ */
+static inline int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
+{
+	return memcmp(a, b, sizeof(*a)) == 0;
+}
 
 /**
  * Scan a string containing a MAC address and convert it into binary form.
