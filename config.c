@@ -525,7 +525,7 @@ static void check_deprecated_options(const char **option)
 	}
 }
 
-static struct option *config_alloc_longopts(struct config *cfg)
+static struct option *config_alloc_longopts(void)
 {
 	struct config_item *ci;
 	struct option *opts;
@@ -680,7 +680,7 @@ struct config *config_create(void)
 	}
 	STAILQ_INIT(&cfg->interfaces);
 
-	cfg->opts = config_alloc_longopts(cfg);
+	cfg->opts = config_alloc_longopts();
 	if (!cfg->opts) {
 		free(cfg);
 		return NULL;
