@@ -1428,6 +1428,7 @@ int main(int argc, char *argv[])
 		case 'i':
 			fprintf(stderr,
 				"'-i' has been deprecated. please use '-s' instead.\n");
+            /* fallthrough */
 		case 's':
 			src_name = strdup(optarg);
 			break;
