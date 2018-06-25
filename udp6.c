@@ -68,11 +68,10 @@ static int mc_bind(int fd, int index)
 	return 0;
 }
 
-static int mc_join(int fd, int index, const struct sockaddr *grp, socklen_t grplen)
+static int mc_join(int fd, int index, const struct sockaddr_in6 *sa)
 {
 	int err, off = 0;
 	struct ipv6_mreq req;
-	struct sockaddr_in6 *sa = (struct sockaddr_in6 *) grp;
 
 	memset(&req, 0, sizeof(req));
 	memcpy(&req.ipv6mr_multiaddr, &sa->sin6_addr, sizeof(struct in6_addr));
@@ -137,12 +136,12 @@ static int open_socket_ipv6(const char *name, struct in6_addr mc_addr[2], short 
 		goto no_option;
 	}
 	addr.sin6_addr = mc_addr[0];
-	if (mc_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
+	if (mc_join(fd, index, &addr)) {
 		pr_err("mcast_join failed");
 		goto no_option;
 	}
 	addr.sin6_addr = mc_addr[1];
-	if (mc_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
+	if (mc_join(fd, index, &addr)) {
 		pr_err("mcast_join failed");
 		goto no_option;
 	}

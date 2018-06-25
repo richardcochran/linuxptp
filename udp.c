@@ -62,12 +62,10 @@ static int mcast_bind(int fd, int index)
 	return 0;
 }
 
-static int mcast_join(int fd, int index, const struct sockaddr *grp,
-		      socklen_t grplen)
+static int mcast_join(int fd, int index, const struct sockaddr_in *sa)
 {
 	int err, off = 0;
 	struct ip_mreqn req;
-	struct sockaddr_in *sa = (struct sockaddr_in *) grp;
 
 	memset(&req, 0, sizeof(req));
 	memcpy(&req.imr_multiaddr, &sa->sin_addr, sizeof(struct in_addr));
@@ -129,12 +127,12 @@ static int open_socket(const char *name, struct in_addr mc_addr[2], short port,
 		goto no_option;
 	}
 	addr.sin_addr = mc_addr[0];
-	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
+	if (mcast_join(fd, index, &addr)) {
 		pr_err("mcast_join failed");
 		goto no_option;
 	}
 	addr.sin_addr = mc_addr[1];
-	if (mcast_join(fd, index, (struct sockaddr *) &addr, sizeof(addr))) {
+	if (mcast_join(fd, index, &addr)) {
 		pr_err("mcast_join failed");
 		goto no_option;
 	}
