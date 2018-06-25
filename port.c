@@ -374,7 +374,7 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	return broke_threshold || diff;
 }
 
-static int follow_up_info_append(struct port *p, struct ptp_message *m)
+static int follow_up_info_append(struct ptp_message *m)
 {
 	struct follow_up_info_tlv *fui;
 	struct tlv_extra *extra;
@@ -1449,7 +1449,7 @@ static int port_tx_sync(struct port *p, struct address *dst)
 		fup->address = *dst;
 		fup->header.flagField[0] |= UNICAST;
 	}
-	if (p->follow_up_info && follow_up_info_append(p, fup)) {
+	if (p->follow_up_info && follow_up_info_append(fup)) {
 		pr_err("port %hu: append fup info failed", portnum(p));
 		err = -1;
 		goto out;
