@@ -191,11 +191,10 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg);
  * Send notification about an event to all subscribers.
  * @param c      The clock instance.
  * @param msg    The PTP message to send, in network byte order.
- * @param msglen The length of the message in bytes.
  * @param event  The event that occured.
  */
 void clock_send_notification(struct clock *c, struct ptp_message *msg,
-			     int msglen, enum notification event);
+			     enum notification event);
 
 /**
  * Construct and send notification to subscribers about an event that

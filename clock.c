@@ -232,7 +232,7 @@ static void clock_prune_subscriptions(struct clock *c)
 }
 
 void clock_send_notification(struct clock *c, struct ptp_message *msg,
-			     int msglen, enum notification event)
+			     enum notification event)
 {
 	unsigned int event_pos = event / 8;
 	uint8_t mask = 1 << (event % 8);
@@ -1422,7 +1422,6 @@ void clock_notify_event(struct clock *c, enum notification event)
 	struct port *uds = c->uds_port;
 	struct PortIdentity pid = port_identity(uds);
 	struct ptp_message *msg;
-	UInteger16 msg_len;
 	int id;
 
 	switch (event) {
@@ -1437,10 +1436,9 @@ void clock_notify_event(struct clock *c, enum notification event)
 		return;
 	if (!clock_management_fill_response(c, NULL, NULL, msg, id))
 		goto err;
-	msg_len = msg->header.messageLength;
 	if (msg_pre_send(msg))
 		goto err;
-	clock_send_notification(c, msg, msg_len, event);
+	clock_send_notification(c, msg, event);
 err:
 	msg_put(msg);
 }

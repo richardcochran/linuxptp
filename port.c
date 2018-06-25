@@ -2735,7 +2735,6 @@ void port_notify_event(struct port *p, enum notification event)
 {
 	struct PortIdentity pid = port_identity(p);
 	struct ptp_message *msg;
-	UInteger16 msg_len;
 	int id;
 
 	switch (event) {
@@ -2752,10 +2751,9 @@ void port_notify_event(struct port *p, enum notification event)
 		return;
 	if (!port_management_fill_response(p, msg, id))
 		goto err;
-	msg_len = msg->header.messageLength;
 	if (msg_pre_send(msg))
 		goto err;
-	clock_send_notification(p->clock, msg, msg_len, event);
+	clock_send_notification(p->clock, msg, event);
 err:
 	msg_put(msg);
 }
