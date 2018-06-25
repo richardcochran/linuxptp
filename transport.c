@@ -66,7 +66,7 @@ int transport_sendto(struct transport *t, struct fdarray *fda,
 	return t->send(t, fda, event, 0, msg, len, &msg->address, &msg->hwts);
 }
 
-int transport_txts(struct transport *t, struct fdarray *fda,
+int transport_txts(struct fdarray *fda,
 		   struct ptp_message *msg)
 {
 	int cnt, len = ntohs(msg->header.messageLength);

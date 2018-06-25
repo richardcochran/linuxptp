@@ -290,7 +290,7 @@ static int tc_fwd_event(struct port *q, struct ptp_message *msg)
 		if (tc_blocked(q, p, msg)) {
 			continue;
 		}
-		err = transport_txts(p->trp, &p->fda, msg);
+		err = transport_txts(&p->fda, msg);
 		if (err || !msg_sots_valid(msg)) {
 			pr_err("failed to fetch txts on port %hd to %hd event",
 				portnum(q), portnum(p));

@@ -105,13 +105,12 @@ int transport_sendto(struct transport *t, struct fdarray *fda,
  * Fetches the transmit time stamp for a PTP message that was sent
  * with the TRANS_DEFER_EVENT flag.
  *
- * @param t	The transport.
  * @param fda	The array of descriptors filled in by transport_open.
  * @param msg	The message previously sent using transport_send(),
  *              transport_peer(), or transport_sendto().
  * @return	Zero on success, or negative value in case of an error.
  */
-int transport_txts(struct transport *t, struct fdarray *fda,
+int transport_txts(struct fdarray *fda,
 		   struct ptp_message *msg);
 
 /**
