@@ -440,6 +440,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		break;
 	default:
 		/* The caller should *not* respond to this message. */
+		tlv_extra_recycle(extra);
 		return 0;
 	}
 	if (datalen % 2) {
