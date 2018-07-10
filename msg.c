@@ -22,8 +22,6 @@
 #include <string.h>
 #include <time.h>
 
-#include <asm/byteorder.h>
-
 #include "contain.h"
 #include "msg.h"
 #include "print.h"
@@ -78,16 +76,6 @@ static void announce_post_recv(struct announce_msg *m)
 	m->grandmasterClockQuality.offsetScaledLogVariance =
 		ntohs(m->grandmasterClockQuality.offsetScaledLogVariance);
 	m->stepsRemoved = ntohs(m->stepsRemoved);
-}
-
-int64_t host2net64(int64_t val)
-{
-	return __cpu_to_be64(val);
-}
-
-int64_t net2host64(int64_t val)
-{
-	return __be64_to_cpu(val);
 }
 
 static int hdr_post_recv(struct ptp_header *m)

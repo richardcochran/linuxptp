@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 #include <time.h>
+#include <asm/byteorder.h>
 
 #include "address.h"
 #include "ddt.h"
@@ -427,11 +428,17 @@ static inline Boolean one_step(struct ptp_message *m)
 /**
  * Convert a 64 bit word into network byte order.
  */
-int64_t host2net64(int64_t val);
+static inline int64_t host2net64(int64_t val)
+{
+	return __cpu_to_be64(val);
+}
 
 /**
  * Convert a 64 bit word into host byte order.
  */
-int64_t net2host64(int64_t val);
+static inline int64_t net2host64(int64_t val)
+{
+	return __be64_to_cpu(val);
+}
 
 #endif
