@@ -174,6 +174,16 @@ static struct tlv_extra *msg_tlv_prepare(struct ptp_message *msg, int length)
 	return extra;
 }
 
+static void msg_tlv_recycle(struct ptp_message *msg)
+{
+	struct tlv_extra *extra;
+
+	while ((extra = TAILQ_FIRST(&msg->tlv_list)) != NULL) {
+		TAILQ_REMOVE(&msg->tlv_list, extra, list);
+		tlv_extra_recycle(extra);
+	}
+}
+
 static void port_id_post_recv(struct PortIdentity *pid)
 {
 	pid->portNumber = ntohs(pid->portNumber);
@@ -235,6 +245,7 @@ static void suffix_pre_send(struct ptp_message *msg)
 		tlv->type = htons(tlv->type);
 		tlv->length = htons(tlv->length);
 	}
+	msg_tlv_recycle(msg);
 }
 
 static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
@@ -561,18 +572,13 @@ void msg_print(struct ptp_message *m, FILE *fp)
 
 void msg_put(struct ptp_message *m)
 {
-	struct tlv_extra *extra;
-
 	m->refcnt--;
 	if (m->refcnt) {
 		return;
 	}
 	pool_stats.count++;
 	pool_debug("recycle", m);
-	while ((extra = TAILQ_FIRST(&m->tlv_list)) != NULL) {
-		TAILQ_REMOVE(&m->tlv_list, extra, list);
-		tlv_extra_recycle(extra);
-	}
+	msg_tlv_recycle(m);
 	TAILQ_INSERT_HEAD(&msg_pool, m, list);
 }
 
