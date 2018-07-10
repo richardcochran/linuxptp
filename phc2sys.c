@@ -819,7 +819,7 @@ static int is_msg_mgt(struct ptp_message *msg)
 		return 0;
 	if (management_action(msg) != RESPONSE)
 		return 0;
-	if (msg->tlv_count != 1)
+	if (msg_tlv_count(msg) != 1)
 		return 0;
 	tlv = (struct TLV *) msg->management.suffix;
 	if (tlv->type == TLV_MANAGEMENT)

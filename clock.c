@@ -1319,7 +1319,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	if (!cid_eq(tcid, &wildcard) && !cid_eq(tcid, &c->dds.clockIdentity)) {
 		return changed;
 	}
-	if (msg->tlv_count != 1) {
+	if (msg_tlv_count(msg) != 1) {
 		return changed;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;

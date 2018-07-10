@@ -318,7 +318,6 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 	memcpy(dup, msg, sizeof(*dup));
 	dup->refcnt = 1;
 	TAILQ_INIT(&dup->tlv_list);
-	dup->tlv_count = 0;
 
 	err = msg_post_recv(dup, cnt);
 	if (err) {
@@ -506,7 +505,19 @@ struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length)
 void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra)
 {
 	TAILQ_INSERT_TAIL(&msg->tlv_list, extra, list);
-	msg->tlv_count++;
+}
+
+int msg_tlv_count(struct ptp_message *msg)
+{
+	int count = 0;
+	struct tlv_extra *extra;
+
+	for (extra = TAILQ_FIRST(&msg->tlv_list);
+			extra != NULL;
+			extra = TAILQ_NEXT(extra, list))
+		count++;
+
+	return count;
 }
 
 const char *msg_type_string(int type)

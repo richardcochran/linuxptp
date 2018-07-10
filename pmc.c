@@ -80,7 +80,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	fprintf(fp, "\t%s seq %hu %s ",
 		pid2str(&msg->header.sourcePortIdentity),
 		msg->header.sequenceId, pmc_action_string(action));
-	if (msg->tlv_count != 1) {
+	if (msg_tlv_count(msg) != 1) {
 		goto out;
 	}
 	extra = TAILQ_FIRST(&msg->tlv_list);

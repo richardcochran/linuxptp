@@ -227,10 +227,6 @@ struct ptp_message {
 	 * pointers to the appended TLVs.
 	 */
 	TAILQ_HEAD(tlv_list, tlv_extra) tlv_list;
-	/**
-	 * Contains the number of TLVs in the suffix.
-	 */
-	int tlv_count;
 };
 
 /**
@@ -278,6 +274,13 @@ struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length);
  * @param extra   The TLV to be added to the list.
  */
 void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra);
+
+/*
+ * Return the number of TLVs attached to a message.
+ * @param msg  A message obtained using @ref msg_allocate().
+ * @return     The number of attached TLVs.
+ */
+int msg_tlv_count(struct ptp_message *msg);
 
 /**
  * Obtain the transportSpecific field from a message.
