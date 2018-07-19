@@ -506,6 +506,7 @@ int pmc_send_get_action(struct pmc *pmc, int id)
 	extra = tlv_extra_alloc();
 	if (!extra) {
 		pr_err("failed to allocate TLV descriptor");
+		msg_put(msg);
 		return -ENOMEM;
 	}
 	extra->tlv = (struct TLV *) msg->management.suffix;
