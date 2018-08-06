@@ -1968,6 +1968,8 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	 */
 	if (p->timestamping == TS_P2P1STEP) {
 		rsp->header.correction = m->header.correction;
+		rsp->header.correction += p->tx_timestamp_offset;
+		rsp->header.correction += p->rx_timestamp_offset;
 	} else {
 		rsp->header.flagField[0] |= TWO_STEP;
 		rsp->pdelay_resp.requestReceiptTimestamp =
