@@ -113,7 +113,7 @@ static int64_t calculate_offset(struct timespec *ts1,
 static clockid_t clock_open(char *device)
 {
 	struct sk_ts_info ts_info;
-	char phc_device[16];
+	char phc_device[19];
 	int clkid;
 
 	/* check if device is CLOCK_REALTIME */

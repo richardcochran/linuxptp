@@ -138,7 +138,7 @@ static int run_pmc_port_properties(struct node *node, int timeout,
 static clockid_t clock_open(char *device, int *phc_index)
 {
 	struct sk_ts_info ts_info;
-	char phc_device[16];
+	char phc_device[19];
 	int clkid;
 
 	/* check if device is CLOCK_REALTIME */
