@@ -914,6 +914,7 @@ static int port_management_fill_response(struct port *target,
 		break;
 	default:
 		/* The caller should *not* respond to this message. */
+		tlv_extra_recycle(extra);
 		return 0;
 	}
 
@@ -2844,7 +2845,7 @@ struct port *port_open(int phc_index,
 		p->event = e2e_event;
 		break;
 	case CLOCK_TYPE_MANAGEMENT:
-		return NULL;
+		goto err_port;
 	}
 
 	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
