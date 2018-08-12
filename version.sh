@@ -4,8 +4,8 @@
 # local version information from the git version control system.
 # Adapted from scripts/setlocalversion in the Linux kernel sources.
 #
-major=1
-minor=9
+major=2
+minor=0
 extra=
 
 usage() {
