@@ -17,6 +17,9 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <errno.h>
+#include <poll.h>
+
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 #include <net-snmp/agent/net-snmp-agent-includes.h>
@@ -24,9 +27,43 @@
 #include "config.h"
 #include "pmc_common.h"
 #include "print.h"
+#include "snmp4lptp_mib.h"
 #include "util.h"
 
+#define SNMP_NFD 1
 static struct pmc *pmc;
+
+struct ptp_message* snmp4lptp_run_pmc(char *cmd)
+{
+	struct pollfd pollfd[SNMP_NFD];
+	int cnt, tmo = 100;
+
+	pollfd[0].fd = pmc_get_transport_fd(pmc);
+	pollfd[0].events = POLLIN | POLLPRI;
+
+	if (cmd && pmc_do_command(pmc, cmd)) {
+		pr_err("bad command: %s", cmd);
+	}
+
+	while (is_running()) {
+		cnt = poll(pollfd, SNMP_NFD, tmo);
+		if (cnt < 0) {
+			if (EINTR == errno) {
+				continue;
+			} else {
+				pr_emerg("poll failed");
+				break;
+			}
+		} else if (!cnt) {
+			break;
+		}
+
+		if (pollfd[0].revents & (POLLIN|POLLPRI)) {
+			return pmc_recv(pmc);
+		}
+	}
+	return NULL;
+}
 
 static int open_pmc(struct config *cfg)
 {
