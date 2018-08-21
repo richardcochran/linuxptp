@@ -35,8 +35,15 @@ SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 incdefs := $(shell $(srcdir)/incdefs.sh)
+snmpflg	:= $(shell $(srcdir)/snmpflg.sh)
 version := $(shell $(srcdir)/version.sh $(srcdir))
 VPATH	= $(srcdir)
+
+ifneq (,$(findstring -DHAVE_NET_SNMP,$(snmpflg)))
+PRG	+= snmp4lptp
+OBJECTS	+= snmp4lptp.o
+snmplib	:= $(shell net-snmp-config --netsnmp-agent-libs)
+endif
 
 prefix	= /usr/local
 sbindir	= $(prefix)/sbin
@@ -60,6 +67,12 @@ phc2sys: clockadj.o clockcheck.o config.o hash.o linreg.o msg.o ntpshm.o \
 hwstamp_ctl: hwstamp_ctl.o version.o
 
 phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
+
+snmp4lptp: print.o sk.o snmp4lptp.o util.o
+	$(CC) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $(snmplib) -o $@
+
+snmp4lptp.o: snmp4lptp.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(snmpflg) -c $<
 
 timemaster: print.o rtnl.o sk.o timemaster.o util.o version.o
 
