@@ -661,6 +661,15 @@ The time source is a single byte code that gives an idea of the kind
 of local clock in use. The value is purely informational, having no
 effect on the outcome of the Best Master Clock algorithm, and is
 advertised when the clock becomes grand master.
+.TP
+.B hwts_filter
+Select the hardware time stamp filter setting mode.
+Possible values are normal, check, full.
+Normal mode set the filters as needed.
+Check mode only check but do not set.
+Full mode set the receive filter to mark all packets with hardware time stamp,
+ so all applications can get them.
+The default is normal.
 
 .SH UNICAST DISCOVERY OPTIONS
 

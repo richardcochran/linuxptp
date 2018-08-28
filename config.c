@@ -164,6 +164,13 @@ static struct config_enum delay_mech_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum hwts_filter_enu[] = {
+	{ "normal",  HWTS_FILTER_NORMAL  },
+	{ "check",   HWTS_FILTER_CHECK   },
+	{ "full",    HWTS_FILTER_FULL    },
+	{ NULL, 0 },
+};
+
 static struct config_enum nw_trans_enu[] = {
 	{ "L2",    TRANS_IEEE_802_3 },
 	{ "UDPv4", TRANS_UDP_IPV4   },
@@ -215,6 +222,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("G.8275.defaultDS.localPriority", 128, 1, UINT8_MAX),
 	PORT_ITEM_INT("G.8275.portDS.localPriority", 128, 1, UINT8_MAX),
 	GLOB_ITEM_INT("gmCapable", 1, 0, 1),
+	GLOB_ITEM_ENU("hwts_filter", HWTS_FILTER_NORMAL, hwts_filter_enu),
 	PORT_ITEM_INT("hybrid_e2e", 0, 0, 1),
 	PORT_ITEM_INT("ignore_transport_specific", 0, 0, 1),
 	PORT_ITEM_INT("ingressLatency", 0, INT_MIN, INT_MAX),

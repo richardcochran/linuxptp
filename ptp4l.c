@@ -191,6 +191,7 @@ int main(int argc, char *argv[])
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
+	sk_hwts_filter_mode = config_get_int(cfg, NULL, "hwts_filter");
 
 	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);

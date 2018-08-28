@@ -24,6 +24,16 @@
 #include "transport.h"
 
 /**
+ * Defines the available Hardware time-stamp setting modes.
+ */
+
+enum hwts_filter_mode {
+	HWTS_FILTER_NORMAL,    /* set hardware filters in normal way */
+	HWTS_FILTER_CHECK,     /* check filters but do not change them */
+	HWTS_FILTER_FULL,      /* Use time-stamp on all received packets */
+};
+
+/**
  * Contains timestamping information returned by the GET_TS_INFO ioctl.
  * @valid:            set to non-zero when the info struct contains valid data.
  * @phc_index:        index of the PHC device.
@@ -130,5 +140,10 @@ extern int sk_tx_timeout;
  * follow up messages using their network stack receipt time stamps.
  */
 extern int sk_check_fupsync;
+
+/**
+ * Hardware time-stamp setting mode
+ */
+extern enum hwts_filter_mode sk_hwts_filter_mode;
 
 #endif
