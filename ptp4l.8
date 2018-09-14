@@ -395,6 +395,15 @@ The clockAccuracy attribute of the local clock. It is used in the best master
 selection algorithm.
 The default is 0xFE.
 .TP
+.B clockIdentity
+The clockIdentity attribute of the local clock.
+The clockIdentity is an 8-octet array and should in this configuration be
+written in textual form, see default. It should be unique since it is used to
+identify the specific clock.
+If default is used or if not set at all, the clockIdentity will be automtically
+generated.
+The default is "000000.0000.000000"
+.TP
 .B offsetScaledLogVariance
 The offsetScaledLogVariance attribute of the local clock. It characterizes the
 stability of the clock.

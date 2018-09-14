@@ -988,9 +988,19 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
 	}
 
-	if (generate_clock_identity(&c->dds.clockIdentity, iface->name)) {
-		pr_err("failed to generate a clock identity");
-		return NULL;
+	if (strcmp(config_get_string(config, NULL, "clockIdentity"),
+		   "000000.0000.000000") == 0) {
+		if (generate_clock_identity(&c->dds.clockIdentity,
+					    iface->name)) {
+			pr_err("failed to generate a clock identity");
+			return NULL;
+		}
+	} else {
+		if (str2cid(config_get_string(config, NULL, "clockIdentity"),
+					      &c->dds.clockIdentity)) {
+			pr_err("failed to set clock identity");
+			return NULL;
+		}
 	}
 
 	/* Configure the UDS. */

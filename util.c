@@ -218,6 +218,21 @@ int str2mac(const char *s, unsigned char mac[MAC_LEN])
 	return 0;
 }
 
+int str2cid(const char *s, struct ClockIdentity *result)
+{
+	struct ClockIdentity cid;
+	unsigned char *ptr = cid.id;
+	int c;
+	c = sscanf(s, " %02hhx%02hhx%02hhx.%02hhx%02hhx.%02hhx%02hhx%02hhx",
+		   &ptr[0], &ptr[1], &ptr[2], &ptr[3],
+		   &ptr[4], &ptr[5], &ptr[6], &ptr[7]);
+	if (c == 8) {
+		*result = cid;
+		return 0;
+	}
+	return -1;
+}
+
 int str2pid(const char *s, struct PortIdentity *result)
 {
 	struct PortIdentity pid;
