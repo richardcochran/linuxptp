@@ -1711,10 +1711,7 @@ int process_announce(struct port *p, struct ptp_message *m)
 {
 	int result = 0;
 
-	/* Do not qualify announce messages with stepsRemoved >= 255, see
-	 * IEEE1588-2008 section 9.3.2.5 (d)
-	 */
-	if (m->announce.stepsRemoved >= 255) {
+	if (m->announce.stepsRemoved >= clock_max_steps_removed(p->clock)) {
 		return result;
 	}
 

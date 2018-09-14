@@ -261,6 +261,13 @@ int clock_poll(struct clock *c);
 int clock_slave_only(struct clock *c);
 
 /**
+ * Obtain the max steps removed field from a clock's default data set.
+ * @param c  The clock instance.
+ * @return   The value of the clock's max steps removed field.
+ */
+UInteger8 clock_max_steps_removed(struct clock *c);
+
+/**
  * Obtain the steps removed field from a clock's current data set.
  * @param c  The clock instance.
  * @return   The value of the clock's steps removed field.

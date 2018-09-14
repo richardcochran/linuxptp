@@ -106,6 +106,7 @@ struct clock {
 	int utc_offset;
 	int time_flags;  /* grand master role */
 	int time_source; /* grand master role */
+	UInteger8 max_steps_removed;
 	enum servo_state servo_state;
 	enum timestamp_type timestamping;
 	tmv_t master_offset;
@@ -930,6 +931,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 	c->default_dataset.localPriority =
 		config_get_int(config, NULL, "G.8275.defaultDS.localPriority");
+	c->max_steps_removed = config_get_int(config, NULL,"maxStepsRemoved");
 
 	/* Harmonize the twoStepFlag with the time_stamping option. */
 	if (config_harmonize_onestep(config)) {
@@ -1562,6 +1564,11 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 int clock_slave_only(struct clock *c)
 {
 	return c->dds.flags & DDS_SLAVE_ONLY;
+}
+
+UInteger8 clock_max_steps_removed(struct clock *c)
+{
+	return c->max_steps_removed;
 }
 
 UInteger16 clock_steps_removed(struct clock *c)

@@ -414,6 +414,13 @@ timing network without loops) only when using the default values of
 G.8275.defaultDS.localPriority and G.8275.portDS.localPriority.
 Careful network engineering is needed when using non-default values.
 .TP
+.B maxStepsRemoved
+When using this option, if the value of stepsRemoved of an Announce
+message is greater than or equal to the value of maxStepsRemoved the
+Announce message is not considered in the operation of the BMCA.
+The default value is 255.
+.TP
+
 .B domainNumber
 The domain attribute of the local clock.
 The default is 0.
