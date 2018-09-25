@@ -253,9 +253,13 @@ Specify extra options that should be added to all \fBptp4l\fR command lines. By
 default, \fB\-l 5\fR is added to the command lines.
 
 .SS [ptp4l.conf]
-Settings specified in this section are copied directly to the configuration
-files generated for all \fBptp4l\fR instances. There is no default content of
-this section.
+Settings specified in this section are copied directly to the global section of
+the configuration files generated for all \fBptp4l\fR instances. There is no
+default content of this section.
+
+Other sections (e.g. \fB[unicast_master_table]\fR) may be specified here, but
+lines beginning with the bracket need to be prefixed with the \fB>\fR character
+to prevent \fBtimemaster\fR from parsing it as a beginning of another section.
 
 .SH NOTES
 For best accuracy, \fBchronyd\fR is usually preferred over \fBntpd\fR, it also

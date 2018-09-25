@@ -405,6 +405,23 @@ static int parse_timemaster_settings(char **settings,
 	return 0;
 }
 
+static char **parse_raw_settings(char **settings)
+{
+	char **setting, *s, **parsed_settings;
+
+	parsed_settings = (char **)parray_new();
+
+	for (setting = settings; *setting; setting++) {
+		s = *setting;
+		/* Unescape lines beginning with '>' */
+		if (s[0] == '>')
+			s++;
+		parray_append((void ***)&parsed_settings, xstrdup(s));
+	}
+
+	return parsed_settings;
+}
+
 static int parse_section(char **settings, char *name,
 			 struct timemaster_config *config)
 {
@@ -451,8 +468,7 @@ static int parse_section(char **settings, char *name,
 
 	if (settings_dst) {
 		free_parray((void **)*settings_dst);
-		*settings_dst = (char **)parray_new();
-		extend_string_array(settings_dst, settings);
+		*settings_dst = parse_raw_settings(settings);
 	}
 
 	return 0;
@@ -802,9 +818,13 @@ static int add_ptp_source(struct ptp_domain *source,
 		config_file = xmalloc(sizeof(*config_file));
 		config_file->path = string_newf("%s/ptp4l.%d.conf",
 						config->rundir, *shm_segment);
+
 		config_file->content = xstrdup("[global]\n");
-		extend_config_string(&config_file->content,
-				     config->ptp4l.settings);
+		if (*config->ptp4l.settings) {
+			extend_config_string(&config_file->content,
+					     config->ptp4l.settings);
+			string_appendf(&config_file->content, "\n[global]\n");
+		}
 		extend_config_string(&config_file->content,
 				     source->ptp4l_settings);
 		string_appendf(&config_file->content,
