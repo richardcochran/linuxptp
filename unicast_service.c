@@ -502,7 +502,7 @@ int unicast_service_timer(struct port *p)
 		pr_debug("peek i={2^%d} tmo={%ld,%ld}", interval->log_period,
 			 interval->tmo.tv_sec, interval->tmo.tv_nsec);
 
-		if (timespec_compare(&now, &interval->tmo) >= 0) {
+		if (timespec_compare(&now, &interval->tmo) > 0) {
 			break;
 		}
 		interval = pqueue_extract(p->unicast_service->queue);
