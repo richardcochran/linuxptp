@@ -126,6 +126,17 @@ enum port_state bmc_state_decision(struct clock *c, struct port *r,
 	port_best = port_best_foreign(r);
 	ps = port_state(r);
 
+	/*
+	 * This scenario is particularly important in the designated_slave_fsm
+	 * when it is in PS_SLAVE state. In this scenario, there is no other
+	 * foreign master and it will elect itself as master ultimately
+	 * resulting in printing out some unnecessary warnings (see
+	 * port_slave_priority_warning()).
+	 */
+	if (!port_best && port_bmca(r) == BMCA_NOOP) {
+		return ps;
+	}
+
 	if (!port_best && PS_LISTENING == ps)
 		return ps;
 

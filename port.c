@@ -27,6 +27,7 @@
 
 #include "bmc.h"
 #include "clock.h"
+#include "designated_fsm.h"
 #include "filter.h"
 #include "missing.h"
 #include "msg.h"
@@ -1596,7 +1597,6 @@ int port_initialize(struct port *p)
 	p->transportSpecific       = config_get_int(cfg, p->name, "transportSpecific");
 	p->transportSpecific     <<= 4;
 	p->match_transport_specific = !config_get_int(cfg, p->name, "ignore_transport_specific");
-	p->master_only             = config_get_int(cfg, p->name, "masterOnly");
 	p->localPriority           = config_get_int(cfg, p->name, "G.8275.portDS.localPriority");
 	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
@@ -1635,6 +1635,14 @@ int port_initialize(struct port *p)
 
 	/* No need to open rtnl socket on UDS port. */
 	if (transport_type(p->trp) != TRANS_UDS) {
+		/*
+		 * The delay timer is usually started when the device
+		 * transitions to PS_LISTENING. But, we are skipping the state
+		 * when BMCA == 'noop'. So, start the timer here.
+		 */
+		if (p->bmca == BMCA_NOOP) {
+			port_set_delay_tmo(p);
+		}
 		if (p->fda.fd[FD_RTNL] == -1)
 			p->fda.fd[FD_RTNL] = rtnl_open();
 		if (p->fda.fd[FD_RTNL] >= 0)
@@ -2469,6 +2477,16 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		if (p->best)
 			fc_clear(p->best);
 		port_set_announce_tmo(p);
+
+		/*
+		 * Clear out the event returned by poll(). It is only cleared
+		 * in port_*_transition(). But, when BMCA == 'noop', there is no
+		 * state transition. So, it won't be cleared anywhere else.
+		 */
+		if (p->bmca == BMCA_NOOP) {
+			port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
+		}
+
 		delay_req_prune(p);
 		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
 		    port_renew_transport(p)) {
@@ -2859,10 +2877,24 @@ struct port *port_open(int phc_index,
 		goto err_port;
 	}
 
-	p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
+	p->master_only = config_get_int(cfg, p->name, "masterOnly");
+	p->bmca = config_get_int(cfg, p->name, "BMCA");
+
+	if (p->bmca == BMCA_NOOP && transport != TRANS_UDS) {
+		if (p->master_only) {
+			p->state_machine = designated_master_fsm;
+		} else if (clock_slave_only(clock)) {
+			p->state_machine = designated_slave_fsm;
+		} else {
+			pr_err("Please enable at least one of masterOnly or slaveOnly when BMCA == noop.\n");
+			goto err_port;
+		}
+	} else {
+		p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
+	}
 
 	if (transport == TRANS_UDS) {
 		; /* UDS cannot have a PHC. */
@@ -3019,4 +3051,9 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 	}
 
 	return 0;
+}
+
+enum bmca_select port_bmca(struct port *p)
+{
+	return p->bmca;
 }

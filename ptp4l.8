@@ -363,10 +363,7 @@ hardware time stamping.
 The default is 1 (enabled).
 .TP
 .B slaveOnly
-The local clock is a slave-only clock if enabled.
-This option is only for use with 1588 clocks and should not be enabled
-for 802.1AS clocks.
-The default is 0 (disabled).
+The local clock is a slave-only clock if enabled. The default is 0 (disabled).
 .TP
 .B gmCapable
 If this option is enabled, then the local clock is able to become grand master.
@@ -692,6 +689,18 @@ If set to 'true', all the checks which can unset asCapable variable (as
 described in Section 10.2.4.1 of 802.1AS) are skipped. If set to 'auto',
 asCapable is initialized to 'false' and will be set to 'true' after the
 relevant checks have passed. The default value is 'auto'.
+.TP
+.B BMCA
+This option enables use of static roles for master and slave devices instead of
+running the best master clock algorithm (BMCA) described in 1588 profile. This
+is useful when you know the roles of the devices in advance. When set to
+\'noop', the traditional BMCA algorithm used by 1588 is skipped. masterOnly and
+slaveOnly will be used to determine master or slave role for the device. In a
+bridge, slaveOnly (which is a global option) can be set to make all ports
+assume the slave role. masterOnly (which is a per-port config option) can then
+be used to set individual ports to take master role. BMCA is used in the
+Automotive profile to speed up the start time for grand master and slaves. The
+default value is 'ptp' which runs the BMCA related state machines.
 
 .SH UNICAST DISCOVERY OPTIONS
 

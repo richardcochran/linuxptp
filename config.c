@@ -202,11 +202,18 @@ static struct config_enum as_capable_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum bmca_enu[] = {
+	{ "ptp",  BMCA_PTP  },
+	{ "noop", BMCA_NOOP },
+	{ NULL, 0 },
+};
+
 struct config_item config_tab[] = {
 	PORT_ITEM_INT("announceReceiptTimeout", 3, 2, UINT8_MAX),
 	PORT_ITEM_ENU("asCapable", AS_CAPABLE_AUTO, as_capable_enu),
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	PORT_ITEM_INT("boundary_clock_jbod", 0, 0, 1),
+	PORT_ITEM_ENU("BMCA", BMCA_PTP, bmca_enu),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),
 	GLOB_ITEM_INT("clockAccuracy", 0xfe, 0, UINT8_MAX),
 	GLOB_ITEM_INT("clockClass", 248, 0, UINT8_MAX),

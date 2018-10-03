@@ -97,6 +97,7 @@ struct port {
 	unsigned int multiple_pdr_detected;
 	enum port_state (*state_machine)(enum port_state state,
 					 enum fsm_event event, int mdiff);
+	int bmca;
 	/* portDS */
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/

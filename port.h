@@ -323,6 +323,14 @@ void fault_interval(struct port *port, enum fault_type ft,
 		    struct fault_interval *i);
 
 /**
+ * Obtain the BMCA type of the port.
+ *
+ * @param port        A port instance.
+ * @return            bmca type.
+ */
+enum bmca_select port_bmca(struct port *p);
+
+/**
  * Release all of the memory in the TC transmit descriptor cache.
  */
 void tc_cleanup(void);
