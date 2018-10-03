@@ -21,6 +21,7 @@
 
 #include <sys/queue.h>
 
+#include "as_capable.h"
 #include "clock.h"
 #include "fsm.h"
 #include "msg.h"
@@ -100,7 +101,7 @@ struct port {
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
 	Integer64           asymmetry;
-	int                 asCapable;
+	enum as_capable     asCapable;
 	Integer8            logMinDelayReqInterval;
 	TimeInterval        peerMeanPathDelay;
 	Integer8            logAnnounceInterval;

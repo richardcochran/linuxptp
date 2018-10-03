@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "as_capable.h"
 #include "bmc.h"
 #include "clock.h"
 #include "config.h"
@@ -195,8 +196,15 @@ static struct config_enum tsproc_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum as_capable_enu[] = {
+	{ "true", AS_CAPABLE_TRUE },
+	{ "auto", AS_CAPABLE_AUTO },
+	{ NULL, 0 },
+};
+
 struct config_item config_tab[] = {
 	PORT_ITEM_INT("announceReceiptTimeout", 3, 2, UINT8_MAX),
+	PORT_ITEM_ENU("asCapable", AS_CAPABLE_AUTO, as_capable_enu),
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
 	PORT_ITEM_INT("boundary_clock_jbod", 0, 0, 1),
 	GLOB_ITEM_INT("check_fup_sync", 0, 0, 1),

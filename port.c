@@ -644,15 +644,16 @@ static int port_capable(struct port *p)
 	}
 
 capable:
-	if (!p->asCapable)
+	if (p->asCapable == NOT_CAPABLE) {
 		pr_debug("port %hu: setting asCapable", portnum(p));
-	p->asCapable = 1;
+		p->asCapable = AS_CAPABLE;
+	}
 	return 1;
 
 not_capable:
 	if (p->asCapable)
 		port_nrate_initialize(p);
-	p->asCapable = 0;
+	p->asCapable = NOT_CAPABLE;
 	return 0;
 }
 
@@ -742,6 +743,9 @@ static int port_sync_incapable(struct port *p)
 
 static int port_is_ieee8021as(struct port *p)
 {
+	if (p->asCapable == ALWAYS_CAPABLE) {
+		return 0;
+	}
 	return p->follow_up_info ? 1 : 0;
 }
 
@@ -1021,7 +1025,6 @@ static void port_nrate_initialize(struct port *p)
 
 	/* We start in the 'incapable' state. */
 	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
-	p->asCapable = 0;
 
 	p->peer_portid_valid = 0;
 
@@ -1599,6 +1602,12 @@ int port_initialize(struct port *p)
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
 	p->min_neighbor_prop_delay = config_get_int(cfg, p->name, "min_neighbor_prop_delay");
+
+	if (config_get_int(cfg, p->name, "asCapable") == AS_CAPABLE_TRUE) {
+		p->asCapable = ALWAYS_CAPABLE;
+	} else {
+		p->asCapable = NOT_CAPABLE;
+	}
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		fd[i] = -1;

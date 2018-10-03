@@ -686,6 +686,12 @@ Check mode only check but do not set.
 Full mode set the receive filter to mark all packets with hardware time stamp,
  so all applications can get them.
 The default is normal.
+.TP
+.B asCapable
+If set to 'true', all the checks which can unset asCapable variable (as
+described in Section 10.2.4.1 of 802.1AS) are skipped. If set to 'auto',
+asCapable is initialized to 'false' and will be set to 'true' after the
+relevant checks have passed. The default value is 'auto'.
 
 .SH UNICAST DISCOVERY OPTIONS
 
