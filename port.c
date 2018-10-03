@@ -1592,6 +1592,7 @@ int port_initialize(struct port *p)
 	p->logMinDelayReqInterval  = config_get_int(cfg, p->name, "logMinDelayReqInterval");
 	p->peerMeanPathDelay       = 0;
 	p->logAnnounceInterval     = config_get_int(cfg, p->name, "logAnnounceInterval");
+	p->inhibit_announce        = config_get_int(cfg, p->name, "inhibit_announce");
 	p->announceReceiptTimeout  = config_get_int(cfg, p->name, "announceReceiptTimeout");
 	p->syncReceiptTimeout      = config_get_int(cfg, p->name, "syncReceiptTimeout");
 	p->transportSpecific       = config_get_int(cfg, p->name, "transportSpecific");
@@ -2310,7 +2311,9 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
+		if (!p->inhibit_announce) {
+			set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
+		}
 		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
@@ -2353,7 +2356,9 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
+		if (!p->inhibit_announce) {
+			set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
+		}
 		port_set_sync_tx_tmo(p);
 		break;
 	case PS_PASSIVE:
@@ -2474,9 +2479,9 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_SYNC_RX_TIMER:
 		pr_debug("port %hu: %s timeout", portnum(p),
 			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
-		if (p->best)
+		if (p->best) {
 			fc_clear(p->best);
-		port_set_announce_tmo(p);
+		}
 
 		/*
 		 * Clear out the event returned by poll(). It is only cleared
@@ -2485,6 +2490,12 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		 */
 		if (p->bmca == BMCA_NOOP) {
 			port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
+		}
+
+		if (p->inhibit_announce) {
+			port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+		} else {
+			port_set_announce_tmo(p);
 		}
 
 		delay_req_prune(p);

@@ -701,6 +701,14 @@ assume the slave role. masterOnly (which is a per-port config option) can then
 be used to set individual ports to take master role. BMCA is used in the
 Automotive profile to speed up the start time for grand master and slaves. The
 default value is 'ptp' which runs the BMCA related state machines.
+.TP
+.B inhibit_announce
+This will disable the timer for announce messages (i.e. FD_MANNO_TIMER) and
+also the announce message timeout timer (i.e. FD_ANNOUNCE_TIMER). This is used
+by the Automotive profile as part of switching over to a static BMCA. if this
+option is enabled, ignore_source_id has to be enabled in the slave because it
+has no way to identify master identity in Sync and Follow_Up messages. The
+default is 0 (disabled).
 
 .SH UNICAST DISCOVERY OPTIONS
 

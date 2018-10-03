@@ -98,6 +98,7 @@ struct port {
 	enum port_state (*state_machine)(enum port_state state,
 					 enum fsm_event event, int mdiff);
 	int bmca;
+	int inhibit_announce;
 	/* portDS */
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
