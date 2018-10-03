@@ -636,7 +636,12 @@ static void clock_update_grandmaster(struct clock *c)
 static void clock_update_slave(struct clock *c)
 {
 	struct parentDS *pds = &c->dad.pds;
-	struct ptp_message *msg        = TAILQ_FIRST(&c->best->messages);
+	struct ptp_message *msg;
+
+	if (!c->best)
+		return;
+
+	msg                            = TAILQ_FIRST(&c->best->messages);
 	c->cur.stepsRemoved            = 1 + c->best->dataset.stepsRemoved;
 	pds->parentPortIdentity        = c->best->dataset.sender;
 	pds->grandmasterIdentity       = msg->announce.grandmasterIdentity;
