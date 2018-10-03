@@ -240,6 +240,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("gmCapable", 1, 0, 1),
 	GLOB_ITEM_ENU("hwts_filter", HWTS_FILTER_NORMAL, hwts_filter_enu),
 	PORT_ITEM_INT("hybrid_e2e", 0, 0, 1),
+	PORT_ITEM_INT("ignore_source_id", 0, 0, 1),
 	PORT_ITEM_INT("ignore_transport_specific", 0, 0, 1),
 	PORT_ITEM_INT("ingressLatency", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("inhibit_announce", 0, 0, 1),

@@ -709,6 +709,12 @@ by the Automotive profile as part of switching over to a static BMCA. if this
 option is enabled, ignore_source_id has to be enabled in the slave because it
 has no way to identify master identity in Sync and Follow_Up messages. The
 default is 0 (disabled).
+.TP
+.B ignore_source_id
+This will disable source port identity checking for Sync and Follow_Up
+messages. This is useful when the announce messages are disabled in the master
+and the slave does not have any way to know it's identity. The default is 0
+(disabled).
 
 .SH UNICAST DISCOVERY OPTIONS
 

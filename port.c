@@ -1593,6 +1593,7 @@ int port_initialize(struct port *p)
 	p->peerMeanPathDelay       = 0;
 	p->logAnnounceInterval     = config_get_int(cfg, p->name, "logAnnounceInterval");
 	p->inhibit_announce        = config_get_int(cfg, p->name, "inhibit_announce");
+	p->ignore_source_id        = config_get_int(cfg, p->name, "ignore_source_id");
 	p->announceReceiptTimeout  = config_get_int(cfg, p->name, "announceReceiptTimeout");
 	p->syncReceiptTimeout      = config_get_int(cfg, p->name, "syncReceiptTimeout");
 	p->transportSpecific       = config_get_int(cfg, p->name, "transportSpecific");
@@ -1877,10 +1878,20 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 	port_set_delay_tmo(p);
 }
 
+static int check_source_identity(struct port *p, struct ptp_message *m)
+{
+	struct PortIdentity master;
+
+	if (p->ignore_source_id) {
+		return 0;
+	}
+	master = clock_parent_identity(p->clock);
+	return pid_eq(&master, &m->header.sourcePortIdentity) ? 0 : -1;
+}
+
 void process_follow_up(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
-	struct PortIdentity master;
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -1895,8 +1906,8 @@ void process_follow_up(struct port *p, struct ptp_message *m)
 	case PS_SLAVE:
 		break;
 	}
-	master = clock_parent_identity(p->clock);
-	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
+
+	if (check_source_identity(p, m)) {
 		return;
 	}
 
@@ -2185,7 +2196,6 @@ void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 void process_sync(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
-	struct PortIdentity master;
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -2200,8 +2210,8 @@ void process_sync(struct port *p, struct ptp_message *m)
 	case PS_SLAVE:
 		break;
 	}
-	master = clock_parent_identity(p->clock);
-	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
+
+	if (check_source_identity(p, m)) {
 		return;
 	}
 
