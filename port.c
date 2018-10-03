@@ -144,6 +144,11 @@ static int msg_current(struct ptp_message *m, struct timespec now)
 static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 {
 	struct PortIdentity *id1, *id2;
+
+	if (!fc) {
+		return 0;
+	}
+
 	id1 = &m1->header.sourcePortIdentity;
 	id2 = &fc->dataset.sender;
 	return 0 == memcmp(id1, id2, sizeof(*id1));
