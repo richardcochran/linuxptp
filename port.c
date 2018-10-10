@@ -2901,8 +2901,8 @@ struct port *port_open(int phc_index,
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
-	p->master_only = config_get_int(cfg, p->name, "masterOnly");
-	p->bmca = config_get_int(cfg, p->name, "BMCA");
+	p->master_only = config_get_int(cfg, interface->name, "masterOnly");
+	p->bmca = config_get_int(cfg, interface->name, "BMCA");
 
 	if (p->bmca == BMCA_NOOP && transport != TRANS_UDS) {
 		if (p->master_only) {
