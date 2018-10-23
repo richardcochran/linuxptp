@@ -80,13 +80,17 @@ int addreq(enum transport_type type, struct address *a, struct address *b)
 		bufb = &b->sin.sin_addr;
 		len = sizeof(a->sin);
 		break;
+	case TRANS_UDP_IPV6:
+		bufa = &a->sin6.sin6_addr;
+		bufb = &b->sin6.sin6_addr;
+		len = sizeof(a->sin6);
+		break;
 	case TRANS_IEEE_802_3:
 		bufa = &a->sll.sll_addr;
 		bufb = &b->sll.sll_addr;
 		len = MAC_LEN;
 		break;
 	case TRANS_UDS:
-	case TRANS_UDP_IPV6:
 	case TRANS_DEVICENET:
 	case TRANS_CONTROLNET:
 	case TRANS_PROFINET:
@@ -171,12 +175,12 @@ int str2addr(enum transport_type type, const char *s, struct address *addr)
 {
 	unsigned char mac[MAC_LEN];
 	struct in_addr ipv4_addr;
+	struct in6_addr ipv6_addr;
 
 	memset(addr, 0, sizeof(*addr));
 
 	switch (type) {
 	case TRANS_UDS:
-	case TRANS_UDP_IPV6:
 	case TRANS_DEVICENET:
 	case TRANS_CONTROLNET:
 	case TRANS_PROFINET:
@@ -190,6 +194,15 @@ int str2addr(enum transport_type type, const char *s, struct address *addr)
 		addr->sin.sin_family = AF_INET;
 		addr->sin.sin_addr = ipv4_addr;
 		addr->len = sizeof(addr->sin);
+		break;
+	case TRANS_UDP_IPV6:
+		if (1 != inet_pton(AF_INET6, s, &ipv6_addr)) {
+			pr_err("bad IPv6 address");
+			return -1;
+		}
+		addr->sin6.sin6_family = AF_INET6;
+		addr->sin6.sin6_addr = ipv6_addr;
+		addr->len = sizeof(addr->sin6);
 		break;
 	case TRANS_IEEE_802_3:
 		if (str2mac(s, mac)) {
