@@ -406,13 +406,26 @@ int sk_receive(int fd, void *buf, int buflen,
 	return cnt;
 }
 
-int sk_set_priority(int fd, uint8_t dscp)
+int sk_set_priority(int fd, int family, uint8_t dscp)
 {
-	int tos;
+	int level, optname, tos;
 	socklen_t tos_len;
 
+	switch (family) {
+	case AF_INET:
+		level = IPPROTO_IP;
+		optname = IP_TOS;
+		break;
+	case AF_INET6:
+		level = IPPROTO_IPV6;
+		optname = IPV6_TCLASS;
+		break;
+	default:
+		return -1;
+	}
+
 	tos_len = sizeof(tos);
-	if (getsockopt(fd, SOL_IP, IP_TOS, &tos, &tos_len) < 0) {
+	if (getsockopt(fd, level, optname, &tos, &tos_len) < 0) {
 		tos = 0;
 	}
 
@@ -422,7 +435,7 @@ int sk_set_priority(int fd, uint8_t dscp)
 	/* set new DSCP value */
 	tos |= dscp<<2;
 	tos_len = sizeof(tos);
-	if (setsockopt(fd, SOL_IP, IP_TOS, &tos, tos_len) < 0) {
+	if (setsockopt(fd, level, optname, &tos, tos_len) < 0) {
 		return -1;
 	}
 

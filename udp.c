@@ -188,10 +188,10 @@ static int udp_open(struct transport *t, struct interface *iface,
 	event_dscp = config_get_int(t->cfg, NULL, "dscp_event");
 	general_dscp = config_get_int(t->cfg, NULL, "dscp_general");
 
-	if (event_dscp && sk_set_priority(efd, event_dscp)) {
+	if (event_dscp && sk_set_priority(efd, AF_INET, event_dscp)) {
 		pr_warning("Failed to set event DSCP priority.");
 	}
-	if (general_dscp && sk_set_priority(gfd, general_dscp)) {
+	if (general_dscp && sk_set_priority(gfd, AF_INET, general_dscp)) {
 		pr_warning("Failed to set general DSCP priority.");
 	}
 

@@ -111,11 +111,12 @@ int sk_receive(int fd, void *buf, int buflen,
 
 /**
  * Set DSCP value for socket.
- * @param fd    An open socket.
- * @param dscp  The desired DSCP code.
+ * @param fd     An open socket.
+ * @param family The address family in use: AF_INET or AF_INET6
+ * @param dscp   The desired DSCP code.
  * @return Zero on success, negative on failure
  */
-int sk_set_priority(int fd, uint8_t dscp);
+int sk_set_priority(int fd, int family, uint8_t dscp);
 
 /**
  * Enable time stamping on a given network interface.
