@@ -112,9 +112,9 @@ static double pi_sample(struct servo *servo,
 
 		if ((servo->first_update &&
 		     servo->first_step_threshold &&
-		     servo->first_step_threshold < fabs(offset)) ||
+		     servo->first_step_threshold < llabs(offset)) ||
 		    (servo->step_threshold &&
-		     servo->step_threshold < fabs(offset)))
+		     servo->step_threshold < llabs(offset)))
 			*state = SERVO_JUMP;
 		else
 			*state = SERVO_LOCKED;
@@ -131,7 +131,7 @@ static double pi_sample(struct servo *servo,
 		 * clock startup.
 		 */
 		if (servo->step_threshold &&
-		    servo->step_threshold < fabs(offset)) {
+		    servo->step_threshold < llabs(offset)) {
 			*state = SERVO_UNLOCKED;
 			s->count = 0;
 			break;
