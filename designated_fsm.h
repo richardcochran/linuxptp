@@ -19,6 +19,9 @@
  */
 #ifndef HAVE_DESIGNATED_FSM_H
 #define HAVE_DESIGNATED_FSM_H
+
+#include "fsm.h"
+
 /**
  * Run the state machine for a clock which is designated as master port.
  * @param state  The current state of the port.

@@ -19,7 +19,10 @@
 #ifndef HAVE_SERVO_PRIVATE_H
 #define HAVE_SERVO_PRIVATE_H
 
+#include <stdint.h>
+
 #include "contain.h"
+#include "servo.h"
 
 struct servo {
 	double max_frequency;
