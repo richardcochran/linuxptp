@@ -979,8 +979,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		phc_index = -1;
 	} else if (phc_device) {
 		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index)) {
-			pr_err("bad ptp device string");
-			return NULL;
+			phc_index = -1;
 		}
 	} else if (iface->ts_info.valid) {
 		phc_index = iface->ts_info.phc_index;
@@ -1052,6 +1051,14 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 			pr_err("clock is not adjustable");
 			return NULL;
 		}
+		clockadj_init(c->clkid);
+	} else if (phc_device) {
+		c->clkid = phc_open(phc_device);
+		if (c->clkid == CLOCK_INVALID) {
+			pr_err("Failed to open %s: %m", phc_device);
+			return NULL;
+		}
+		max_adj = clockadj_max_freq(c->clkid);
 		clockadj_init(c->clkid);
 	} else {
 		c->clkid = CLOCK_REALTIME;

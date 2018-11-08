@@ -103,6 +103,30 @@ void clockadj_step(clockid_t clkid, int64_t step)
 		pr_err("failed to step clock: %m");
 }
 
+int clockadj_max_freq(clockid_t clkid)
+{
+	int f = 0;
+	struct timex tx;
+
+	memset(&tx, 0, sizeof(tx));
+	if (clock_adjtime(clkid, &tx) < 0)
+		pr_err("failed to read out the clock maximum adjustment: %m");
+	else
+		f = tx.tolerance / 65.536;
+	if (!f)
+		f = 500000;
+
+	/* The kernel allows the tick length to be adjusted up to 10%. But use
+	 * it only if the overall frequency of the clock can be adjusted
+	 * continuously with the tick and freq fields (i.e. hz <= 1000).
+	 */
+	if (clkid == CLOCK_REALTIME && (realtime_nominal_tick && 2 * f >=
+					1000 * realtime_hz))
+		f = realtime_nominal_tick / 10 * 1000 * realtime_hz;
+
+	return f;
+}
+
 void sysclk_set_leap(int leap)
 {
 	clockid_t clkid = CLOCK_REALTIME;
@@ -142,24 +166,7 @@ void sysclk_set_tai_offset(int offset)
 
 int sysclk_max_freq(void)
 {
-	clockid_t clkid = CLOCK_REALTIME;
-	int f = 0;
-	struct timex tx;
-	memset(&tx, 0, sizeof(tx));
-	if (clock_adjtime(clkid, &tx) < 0)
-		pr_err("failed to read out the clock maximum adjustment: %m");
-	else
-		f = tx.tolerance / 65.536;
-	if (!f)
-		f = 500000;
-
-	/* The kernel allows the tick length to be adjusted up to 10%. But use
-	   it only if the overall frequency of the clock can be adjusted
-	   continuously with the tick and freq fields (i.e. hz <= 1000). */
-	if (realtime_nominal_tick && 2 * f >= 1000 * realtime_hz)
-		f = realtime_nominal_tick / 10 * 1000 * realtime_hz;
-
-	return f;
+	return clockadj_max_freq(CLOCK_REALTIME);
 }
 
 void sysclk_set_sync(void)

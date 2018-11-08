@@ -51,6 +51,12 @@ double clockadj_get_freq(clockid_t clkid);
 void clockadj_step(clockid_t clkid, int64_t step);
 
 /**
+ * Read maximum frequency adjustment of the target clock.
+ * @return The maximum frequency adjustment in parts per billion (ppb).
+ */
+int clockadj_max_freq(clockid_t clkid);
+
+/**
  * Set the system clock to insert/delete leap second at midnight.
  * @param leap  +1 to insert leap second, -1 to delete leap second,
  *              0 to reset the leap state.

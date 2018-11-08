@@ -28,7 +28,7 @@
  *
  * @return A valid clock ID on success, CLOCK_INVALID otherwise.
  */
-clockid_t phc_open(char *phc);
+clockid_t phc_open(const char *phc);
 
 /**
  * Closes a PTP hardware clock device.

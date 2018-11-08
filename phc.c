@@ -16,11 +16,12 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-#include <stdio.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <linux/ptp_clock.h>
@@ -38,18 +39,26 @@
 
 static int phc_get_caps(clockid_t clkid, struct ptp_clock_caps *caps);
 
-clockid_t phc_open(char *phc)
+clockid_t phc_open(const char *phc)
 {
 	clockid_t clkid;
-	struct ptp_clock_caps caps;
-	int fd = open(phc, O_RDWR);
+	struct timespec ts;
+	struct timex tx;
+	int fd;
 
+	memset(&tx, 0, sizeof(tx));
+
+	fd = open(phc, O_RDWR);
 	if (fd < 0)
 		return CLOCK_INVALID;
 
 	clkid = FD_TO_CLOCKID(fd);
 	/* check if clkid is valid */
-	if (phc_get_caps(clkid, &caps)) {
+	if (clock_gettime(clkid, &ts)) {
+		close(fd);
+		return CLOCK_INVALID;
+	}
+	if (clock_adjtime(clkid, &tx)) {
 		close(fd);
 		return CLOCK_INVALID;
 	}

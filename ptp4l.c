@@ -56,7 +56,7 @@ static void usage(char *progname)
 		" -f [file] read configuration from 'file'\n"
 		" -i [dev]  interface device to use, for example 'eth0'\n"
 		"           (may be specified multiple times)\n"
-		" -p [dev]  PTP hardware clock device to use, default auto\n"
+		" -p [dev]  Clock device to use, default auto\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
 		" -s        slave only mode (overrides configuration file)\n"
 		" -t        transparent clock\n"
