@@ -299,7 +299,7 @@ static inline UInteger8 msg_transport_specific(struct ptp_message *m)
  * @param m  Message to test.
  * @return   The value of the messageType field.
  */
-static inline int msg_type(struct ptp_message *m)
+static inline int msg_type(const struct ptp_message *m)
 {
 	return m->header.tsmt & 0x0f;
 }
