@@ -18,6 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <linux/ptp_clock.h>
 
@@ -76,6 +77,7 @@ int sysoff_measure(int fd, int n_samples,
 		   int64_t *result, uint64_t *ts, int64_t *delay)
 {
 	struct ptp_sys_offset pso;
+	memset(&pso, 0, sizeof(pso));
 	pso.n_samples = n_samples;
 	if (ioctl(fd, PTP_SYS_OFFSET, &pso)) {
 		perror("ioctl PTP_SYS_OFFSET");
