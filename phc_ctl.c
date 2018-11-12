@@ -367,10 +367,12 @@ static int do_cmp(clockid_t clkid, int cmdc, char *cmdv[])
 	struct timespec ts, rta, rtb;
 	int64_t sys_offset, delay = 0, offset;
 	uint64_t sys_ts;
+	int method;
 
-	if (SYSOFF_SUPPORTED ==
-	    sysoff_measure(CLOCKID_TO_FD(clkid),
-			   9, &sys_offset, &sys_ts, &delay)) {
+	method = sysoff_probe(CLOCKID_TO_FD(clkid), 9);
+
+	if (method >= 0 && sysoff_measure(CLOCKID_TO_FD(clkid), method, 9,
+					  &sys_offset, &sys_ts, &delay) >= 0) {
 		pr_notice( "offset from CLOCK_REALTIME is %"PRId64"ns\n",
 			sys_offset);
 		return 0;

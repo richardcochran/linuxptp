@@ -73,8 +73,8 @@ static int64_t sysoff_estimate(struct ptp_clock_time *pct, int n_samples,
 	return samples[0].offset;
 }
 
-int sysoff_measure(int fd, int n_samples,
-		   int64_t *result, uint64_t *ts, int64_t *delay)
+static int sysoff_basic(int fd, int n_samples,
+			int64_t *result, uint64_t *ts, int64_t *delay)
 {
 	struct ptp_sys_offset pso;
 	memset(&pso, 0, sizeof(pso));
@@ -84,13 +84,24 @@ int sysoff_measure(int fd, int n_samples,
 		return SYSOFF_RUN_TIME_MISSING;
 	}
 	*result = sysoff_estimate(pso.ts, n_samples, ts, delay);
-	return SYSOFF_SUPPORTED;
+	return SYSOFF_BASIC;
+}
+
+int sysoff_measure(int fd, int method, int n_samples,
+		   int64_t *result, uint64_t *ts, int64_t *delay)
+{
+	switch (method) {
+	case SYSOFF_BASIC:
+		return sysoff_basic(fd, n_samples, result, ts, delay);
+	}
+	return SYSOFF_COMPILE_TIME_MISSING;
 }
 
 int sysoff_probe(int fd, int n_samples)
 {
 	int64_t junk, delay;
 	uint64_t ts;
+	int i;
 
 	if (n_samples > PTP_MAX_SAMPLES) {
 		fprintf(stderr, "warning: %d exceeds kernel max readings %d\n",
@@ -99,7 +110,13 @@ int sysoff_probe(int fd, int n_samples)
 		return SYSOFF_RUN_TIME_MISSING;
 	}
 
-	return sysoff_measure(fd, n_samples, &junk, &ts, &delay);
+	for (i = 0; i < SYSOFF_LAST; i++) {
+		if (sysoff_measure(fd, i, n_samples, &junk, &ts, &delay) < 0)
+			continue;
+		return i;
+	}
+
+	return SYSOFF_RUN_TIME_MISSING;
 }
 
 #else /* !PTP_SYS_OFFSET */

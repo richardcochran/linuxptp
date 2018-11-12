@@ -74,7 +74,7 @@ struct clock {
 	LIST_ENTRY(clock) dst_list;
 	clockid_t clkid;
 	int phc_index;
-	int sysoff_supported;
+	int sysoff_method;
 	int is_utc;
 	int dest_only;
 	int state;
@@ -255,9 +255,8 @@ static struct clock *clock_add(struct node *node, char *device)
 		c->servo = servo_add(node, c);
 
 	if (clkid != CLOCK_INVALID && clkid != CLOCK_REALTIME)
-		c->sysoff_supported = (SYSOFF_SUPPORTED ==
-				       sysoff_probe(CLOCKID_TO_FD(clkid),
-						    node->phc_readings));
+		c->sysoff_method = sysoff_probe(CLOCKID_TO_FD(clkid),
+						node->phc_readings);
 
 	LIST_INSERT_HEAD(&node->clocks, c, list);
 	return c;
@@ -784,11 +783,12 @@ static int do_loop(struct node *node, int subscriptions)
 				continue;
 
 			if (clock->clkid == CLOCK_REALTIME &&
-			    node->master->sysoff_supported) {
+			    node->master->sysoff_method >= 0) {
 				/* use sysoff */
 				if (sysoff_measure(CLOCKID_TO_FD(node->master->clkid),
+						   node->master->sysoff_method,
 						   node->phc_readings,
-						   &offset, &ts, &delay))
+						   &offset, &ts, &delay) < 0)
 					return -1;
 			} else {
 				/* use phc */
