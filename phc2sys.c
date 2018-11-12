@@ -782,6 +782,11 @@ static int do_loop(struct node *node, int subscriptions)
 			    !strcmp(clock->device, node->master->device))
 				continue;
 
+			if (!clock->servo) {
+				pr_err("cannot update clock without servo");
+				return -1;
+			}
+
 			if (clock->clkid == CLOCK_REALTIME &&
 			    node->master->sysoff_method >= 0) {
 				/* use sysoff */
