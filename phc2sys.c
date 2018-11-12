@@ -790,6 +790,16 @@ static int do_loop(struct node *node, int subscriptions)
 						   node->phc_readings,
 						   &offset, &ts, &delay) < 0)
 					return -1;
+			} else if (node->master->clkid == CLOCK_REALTIME &&
+				   clock->sysoff_method >= 0) {
+				/* use reversed sysoff */
+				if (sysoff_measure(CLOCKID_TO_FD(clock->clkid),
+						   clock->sysoff_method,
+						   node->phc_readings,
+						   &offset, &ts, &delay) < 0)
+					return -1;
+				ts += offset;
+				offset = -offset;
 			} else {
 				/* use phc */
 				if (!read_phc(node->master->clkid, clock->clkid,
