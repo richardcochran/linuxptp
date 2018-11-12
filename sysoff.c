@@ -71,17 +71,23 @@ static void insertion_sort(int length, int64_t interval, int64_t offset, uint64_
 	samples[i+1].timestamp = ts;
 }
 
-static int64_t sysoff_estimate(struct ptp_clock_time *pct, int n_samples,
-			       uint64_t *ts, int64_t *delay)
+static int64_t sysoff_estimate(struct ptp_clock_time *pct, int extended,
+			       int n_samples, uint64_t *ts, int64_t *delay)
 {
 	int64_t t1, t2, tp;
 	int64_t interval, offset;
 	int i;
 
 	for (i = 0; i < n_samples; i++) {
-		t1 = pctns(&pct[2*i]);
-		tp = pctns(&pct[2*i+1]);
-		t2 = pctns(&pct[2*i+2]);
+		if (extended) {
+			t1 = pctns(&pct[3*i]);
+			tp = pctns(&pct[3*i+1]);
+			t2 = pctns(&pct[3*i+2]);
+		} else {
+			t1 = pctns(&pct[2*i]);
+			tp = pctns(&pct[2*i+1]);
+			t2 = pctns(&pct[2*i+2]);
+		}
 		interval = t2 - t1;
 		offset = (t2 + t1) / 2 - tp;
 		insertion_sort(i, interval, offset, (t2 + t1) / 2);
@@ -89,6 +95,24 @@ static int64_t sysoff_estimate(struct ptp_clock_time *pct, int n_samples,
 	*ts = samples[0].timestamp;
 	*delay = samples[0].interval;
 	return samples[0].offset;
+}
+
+static int sysoff_extended(int fd, int n_samples,
+			   int64_t *result, uint64_t *ts, int64_t *delay)
+{
+#ifdef PTP_SYS_OFFSET_EXTENDED
+	struct ptp_sys_offset_extended pso;
+	memset(&pso, 0, sizeof(pso));
+	pso.n_samples = n_samples;
+	if (ioctl(fd, PTP_SYS_OFFSET_EXTENDED, &pso)) {
+		pr_debug("ioctl PTP_SYS_OFFSET_EXTENDED: %m");
+		return SYSOFF_RUN_TIME_MISSING;
+	}
+	*result = sysoff_estimate(&pso.ts[0][0], 1, n_samples, ts, delay);
+	return SYSOFF_EXTENDED;
+#else
+	return SYSOFF_COMPILE_TIME_MISSING;
+#endif
 }
 
 static int sysoff_basic(int fd, int n_samples,
@@ -101,7 +125,7 @@ static int sysoff_basic(int fd, int n_samples,
 		perror("ioctl PTP_SYS_OFFSET");
 		return SYSOFF_RUN_TIME_MISSING;
 	}
-	*result = sysoff_estimate(pso.ts, n_samples, ts, delay);
+	*result = sysoff_estimate(pso.ts, 0, n_samples, ts, delay);
 	return SYSOFF_BASIC;
 }
 
@@ -112,6 +136,8 @@ int sysoff_measure(int fd, int method, int n_samples,
 	case SYSOFF_PRECISE:
 		*delay = 0;
 		return sysoff_precise(fd, result, ts);
+	case SYSOFF_EXTENDED:
+		return sysoff_extended(fd, n_samples, result, ts, delay);
 	case SYSOFF_BASIC:
 		return sysoff_basic(fd, n_samples, result, ts, delay);
 	}
