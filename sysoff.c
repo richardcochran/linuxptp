@@ -22,6 +22,7 @@
 #include <sys/ioctl.h>
 #include <linux/ptp_clock.h>
 
+#include "print.h"
 #include "sysoff.h"
 
 #define NS_PER_SEC 1000000000LL
@@ -38,6 +39,23 @@ static struct {
 	int64_t offset;
 	uint64_t timestamp;
 } samples[PTP_MAX_SAMPLES];
+
+static int sysoff_precise(int fd, int64_t *result, uint64_t *ts)
+{
+#ifdef PTP_SYS_OFFSET_PRECISE
+	struct ptp_sys_offset_precise pso;
+	memset(&pso, 0, sizeof(pso));
+	if (ioctl(fd, PTP_SYS_OFFSET_PRECISE, &pso)) {
+		pr_debug("ioctl PTP_SYS_OFFSET_PRECISE: %m");
+		return SYSOFF_RUN_TIME_MISSING;
+	}
+	*result = pctns(&pso.sys_realtime) - pctns(&pso.device);
+	*ts = pctns(&pso.sys_realtime);
+	return SYSOFF_PRECISE;
+#else
+	return SYSOFF_COMPILE_TIME_MISSING;
+#endif
+}
 
 static void insertion_sort(int length, int64_t interval, int64_t offset, uint64_t ts)
 {
@@ -91,6 +109,9 @@ int sysoff_measure(int fd, int method, int n_samples,
 		   int64_t *result, uint64_t *ts, int64_t *delay)
 {
 	switch (method) {
+	case SYSOFF_PRECISE:
+		*delay = 0;
+		return sysoff_precise(fd, result, ts);
 	case SYSOFF_BASIC:
 		return sysoff_basic(fd, n_samples, result, ts, delay);
 	}
