@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
+#include <time.h>
 #include <linux/net_tstamp.h>
 #include <net/if.h>
 #include <signal.h>

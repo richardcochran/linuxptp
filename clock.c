@@ -17,11 +17,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <errno.h>
+#include <time.h>
 #include <linux/net_tstamp.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/queue.h>
 
 #include "address.h"

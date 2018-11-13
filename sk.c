@@ -18,6 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <errno.h>
+#include <time.h>
 #include <linux/net_tstamp.h>
 #include <linux/sockios.h>
 #include <linux/ethtool.h>
