@@ -26,6 +26,8 @@
 #include "pdt.h"
 
 #define NS_PER_SEC 1000000000LL
+#define MIN_TMV_TO_TIMEINTERVAL 0xFFFF800000000000ll
+#define MAX_TMV_TO_TIMEINTERVAL 0x00007FFFFFFFFFFFll
 
 /**
  * We implement the time value as a 64 bit signed integer containing
@@ -111,6 +113,11 @@ static inline int64_t tmv_to_nanoseconds(tmv_t x)
 
 static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
 {
+	if (x.ns < (int64_t)MIN_TMV_TO_TIMEINTERVAL) {
+		return MIN_TMV_TO_TIMEINTERVAL << 16;
+	} else if (x.ns > (int64_t)MAX_TMV_TO_TIMEINTERVAL) {
+		return MAX_TMV_TO_TIMEINTERVAL << 16;
+	}
 	return x.ns << 16;
 }
 
