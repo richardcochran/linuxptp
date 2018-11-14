@@ -2510,6 +2510,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		    port_renew_transport(p)) {
 			return EV_FAULT_DETECTED;
 		}
+
+		if (p->inhibit_announce) {
+			return EV_NONE;
+		}
 		return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
 
 	case FD_DELAY_TIMER:
