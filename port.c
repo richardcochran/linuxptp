@@ -99,6 +99,17 @@ int clear_fault_asap(struct fault_interval *faint)
 	return 0;
 }
 
+static int check_source_identity(struct port *p, struct ptp_message *m)
+{
+	struct PortIdentity master;
+
+	if (p->ignore_source_id) {
+		return 0;
+	}
+	master = clock_parent_identity(p->clock);
+	return pid_eq(&master, &m->header.sourcePortIdentity) ? 0 : -1;
+}
+
 static void extract_address(struct ptp_message *m, struct PortAddress *paddr)
 {
 	int len = 0;
@@ -1825,11 +1836,8 @@ out:
 void process_delay_resp(struct port *p, struct ptp_message *m)
 {
 	struct delay_resp_msg *rsp = &m->delay_resp;
-	struct PortIdentity master;
 	struct ptp_message *req;
 	tmv_t c3, t3, t4, t4c;
-
-	master = clock_parent_identity(p->clock);
 
 	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE) {
 		return;
@@ -1837,7 +1845,7 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 	if (!pid_eq(&rsp->requestingPortIdentity, &p->portIdentity)) {
 		return;
 	}
-	if (!pid_eq(&master, &m->header.sourcePortIdentity)) {
+	if (check_source_identity(p, m)) {
 		return;
 	}
 	TAILQ_FOREACH(req, &p->delay_req, list) {
@@ -1876,17 +1884,6 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 	pr_notice("port %hu: minimum delay request interval 2^%d",
 		  portnum(p), p->logMinDelayReqInterval);
 	port_set_delay_tmo(p);
-}
-
-static int check_source_identity(struct port *p, struct ptp_message *m)
-{
-	struct PortIdentity master;
-
-	if (p->ignore_source_id) {
-		return 0;
-	}
-	master = clock_parent_identity(p->clock);
-	return pid_eq(&master, &m->header.sourcePortIdentity) ? 0 : -1;
 }
 
 void process_follow_up(struct port *p, struct ptp_message *m)
