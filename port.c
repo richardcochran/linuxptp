@@ -140,9 +140,9 @@ static int msg_current(struct ptp_message *m, struct timespec now)
 	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
 	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
 
-	if (m->header.logMessageInterval < -63) {
+	if (m->header.logMessageInterval <= -31) {
 		tmo = 0;
-	} else if (m->header.logMessageInterval > 31) {
+	} else if (m->header.logMessageInterval >= 31) {
 		tmo = INT64_MAX;
 	} else if (m->header.logMessageInterval < 0) {
 		tmo = 4LL * NSEC2SEC / (1 << -m->header.logMessageInterval);
