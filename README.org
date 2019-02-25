@@ -20,10 +20,11 @@
     SO_TIMESTAMPING socket option.
 
   - Supports the Linux PTP Hardware Clock (PHC) subsystem by using the
-    clock_gettime family of calls, including the new clock_adjtimex
-    system call.
+    clock_gettime family of calls, including the clock_adjtimex system
+    call.
 
-  - Implements Boundary Clock (BC) and Ordinary Clock (OC).
+  - Implements Boundary Clock (BC), Ordinary Clock (OC) and
+    Transparent Clock (TC).
 
   - Transport over UDP/IPv4, UDP/IPv6, and raw Ethernet (Layer 2).
 
@@ -31,6 +32,24 @@
 
   - Modular design allowing painless addition of new transports and
     clock servos.
+
+  - Implements unicast operation.
+
+  - Supports a number of profiles, including:
+
+    - The automotive profile
+
+    - The default 1588 profile.
+
+    - The enterprise profile.
+
+    - The telecom profiles G.8265.1, G.8275.1, and G.8275.2.
+
+  - Supports the NetSync Monitor protocol.
+
+  - Implements Peer to peer one-step.
+
+  - Supports bonded, IPoIB, and vlan interfaces.
 
 * Getting the Code
 
