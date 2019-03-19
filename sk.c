@@ -359,7 +359,7 @@ int sk_receive(int fd, void *buf, int buflen,
 	}
 
 	cnt = recvmsg(fd, &msg, flags);
-	if (cnt < 1)
+	if (cnt < 0)
 		pr_err("recvmsg%sfailed: %m",
 		       flags == MSG_ERRQUEUE ? " tx timestamp " : " ");
 

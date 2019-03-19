@@ -2563,7 +2563,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	msg->hwts.type = p->timestamping;
 
 	cnt = transport_recv(p->trp, fd, msg);
-	if (cnt <= 0) {
+	if (cnt < 0) {
 		pr_err("port %hu: recv message failed", portnum(p));
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
