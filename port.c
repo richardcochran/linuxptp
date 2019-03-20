@@ -2442,7 +2442,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		sk_get_ts_info(p->iface->ts_label, &p->iface->ts_info);
 
 		/* Only switch phc with HW time stamping mode */
-		if (p->phc_index >= 0 && p->iface->ts_info.valid) {
+		if (p->iface->ts_info.valid && p->iface->ts_info.phc_index >= 0) {
 			required_modes = clock_required_modes(p->clock);
 			if ((p->iface->ts_info.so_timestamping & required_modes) != required_modes) {
 				pr_err("interface '%s' does not support requested "
