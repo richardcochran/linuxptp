@@ -546,6 +546,7 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 	}
 	extra = msg_tlv_append(msg, sizeof(*mgt) + datasize);
 	if (!extra) {
+		msg_put(msg);
 		return -ENOMEM;
 	}
 	mgt = (struct management_tlv *) extra->tlv;
