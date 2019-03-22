@@ -20,6 +20,8 @@
 #include <sys/socket.h> /* Must come before linux/netlink.h on some systems. */
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <linux/genetlink.h>
+#include <linux/if_team.h>
 #include <net/if.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,8 +32,39 @@
 #include "print.h"
 #include "rtnl.h"
 
+#define BUF_SIZE 4096
+#define GENLMSG_DATA(glh) ((void *)(NLMSG_DATA(glh) + GENL_HDRLEN))
+
 static int rtnl_len;
 static char *rtnl_buf;
+static int get_team_active_iface(int master_index);
+
+static int nl_close(int fd)
+{
+	return close(fd);
+}
+
+static int nl_open(int family)
+{
+	int fd;
+	struct sockaddr_nl sa;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.nl_family = AF_NETLINK;
+	sa.nl_groups = RTNLGRP_LINK;
+
+	fd = socket(AF_NETLINK, SOCK_RAW, family);
+	if (fd < 0) {
+		pr_err("failed to open netlink socket: %m");
+		return -1;
+	}
+	if (bind(fd, (struct sockaddr *) &sa, sizeof(sa))) {
+		pr_err("failed to bind netlink socket: %m");
+		close(fd);
+		return -1;
+	}
+	return fd;
+}
 
 int rtnl_close(int fd)
 {
@@ -40,7 +73,12 @@ int rtnl_close(int fd)
 		rtnl_buf = NULL;
 		rtnl_len = 0;
 	}
-	return close(fd);
+	return nl_close(fd);
+}
+
+int rtnl_open(void)
+{
+	return nl_open(NETLINK_ROUTE);
 }
 
 static void rtnl_get_ts_device_callback(void *ctx, int linkup, int ts_index)
@@ -116,14 +154,24 @@ int rtnl_link_query(int fd, char *device)
 	return 0;
 }
 
-static inline __u32 rta_getattr_u32(const struct rtattr *rta)
+static inline __u8 rta_getattr_u8(struct rtattr *rta)
+{
+	return *(__u8 *)RTA_DATA(rta);
+}
+
+static inline __u16 rta_getattr_u16(struct rtattr *rta)
+{
+	return *(__u16 *)RTA_DATA(rta);
+}
+
+static inline __u32 rta_getattr_u32(struct rtattr *rta)
 {
 	return *(__u32 *)RTA_DATA(rta);
 }
 
-static inline const char *rta_getattr_str(const struct rtattr *rta)
+static inline char *rta_getattr_str(struct rtattr *rta)
 {
-	return (const char *)RTA_DATA(rta);
+	return (char *)RTA_DATA(rta);
 }
 
 static int rtnl_rtattr_parse(struct rtattr *tb[], int max, struct rtattr *rta, int len)
@@ -150,12 +198,12 @@ static inline int rtnl_nested_rtattr_parse(struct rtattr *tb[], int max, struct 
 	return rtnl_rtattr_parse(tb, max, RTA_DATA(rta), RTA_PAYLOAD(rta));
 }
 
-static int rtnl_linkinfo_parse(struct rtattr *rta)
+static int rtnl_linkinfo_parse(int master_index, struct rtattr *rta)
 {
-	int index = -1;
-	const char *kind;
 	struct rtattr *linkinfo[IFLA_INFO_MAX];
 	struct rtattr *bond[IFLA_BOND_MAX];
+	int index = -1;
+	char *kind;
 
 	if (rtnl_nested_rtattr_parse(linkinfo, IFLA_INFO_MAX, rta) < 0)
 		return -1;
@@ -172,6 +220,8 @@ static int rtnl_linkinfo_parse(struct rtattr *rta)
 			if (bond[IFLA_BOND_ACTIVE_SLAVE]) {
 				index = rta_getattr_u32(bond[IFLA_BOND_ACTIVE_SLAVE]);
 			}
+		} else if (kind && !strncmp(kind, "team", 4)) {
+			index = get_team_active_iface(master_index);
 		}
 	}
 	return index;
@@ -179,18 +229,18 @@ static int rtnl_linkinfo_parse(struct rtattr *rta)
 
 int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 {
-	int index, len, link_up;
-	int slave_index = -1;
-	struct iovec iov;
-	struct sockaddr_nl sa;
-	struct msghdr msg;
-	struct nlmsghdr *nh;
-	struct ifinfomsg *info = NULL;
 	struct rtattr *tb[IFLA_MAX+1];
+	struct ifinfomsg *info = NULL;
+	int index, len, link_up;
+	struct sockaddr_nl sa;
+	int slave_index = -1;
+	struct nlmsghdr *nh;
+	struct msghdr msg;
+	struct iovec iov;
 
 	index = if_nametoindex(device);
 	if (!rtnl_buf) {
-		rtnl_len = 4096;
+		rtnl_len = BUF_SIZE;
 		rtnl_buf = malloc(rtnl_len);
 		if (!rtnl_buf) {
 			pr_err("rtnl: low memory");
@@ -246,7 +296,7 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 				  IFLA_PAYLOAD(nh));
 
 		if (tb[IFLA_LINKINFO])
-			slave_index = rtnl_linkinfo_parse(tb[IFLA_LINKINFO]);
+			slave_index = rtnl_linkinfo_parse(index, tb[IFLA_LINKINFO]);
 
 		if (cb)
 			cb(ctx, link_up, slave_index);
@@ -255,24 +305,163 @@ int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
 	return 0;
 }
 
-int rtnl_open(void)
+static int genl_send_msg(int fd, int family_id, int genl_cmd, int genl_version,
+		  int rta_type, void *rta_data, int rta_len)
 {
-	int fd;
-	struct sockaddr_nl sa;
+	struct sockaddr_nl daddr;
+	struct genlmsghdr *gnlh;
+	struct nlmsghdr *nlh;
+	struct rtattr *attr;
+	char msg[BUF_SIZE];
 
-	memset(&sa, 0, sizeof(sa));
-	sa.nl_family = AF_NETLINK;
-	sa.nl_groups = RTNLGRP_LINK;
+	memset(&daddr, 0, sizeof(daddr));
+	daddr.nl_family = AF_NETLINK;
 
-	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-	if (fd < 0) {
-		pr_err("failed to open netlink socket: %m");
-		return -1;
+	memset(&msg, 0, sizeof(msg));
+	nlh = (struct nlmsghdr *) msg;
+	nlh->nlmsg_len = NLMSG_LENGTH(GENL_HDRLEN);
+	nlh->nlmsg_type = family_id;
+	nlh->nlmsg_flags = NLM_F_REQUEST;
+
+	gnlh = (struct genlmsghdr *) NLMSG_DATA(nlh);
+	gnlh->cmd = genl_cmd;
+	gnlh->version = genl_version;
+
+	if (rta_data && rta_len > 0) {
+		attr = (struct rtattr *) GENLMSG_DATA(msg);
+		attr->rta_type = rta_type;
+		attr->rta_len = RTA_LENGTH(rta_len);
+		nlh->nlmsg_len += NLMSG_ALIGN(attr->rta_len);
+		if (nlh->nlmsg_len < sizeof(msg))
+			memcpy(RTA_DATA(attr), rta_data, rta_len);
+		else
+			return -1;
 	}
-	if (bind(fd, (struct sockaddr *) &sa, sizeof(sa))) {
-		pr_err("failed to bind netlink socket: %m");
-		close(fd);
+
+	return sendto(fd, &msg, nlh->nlmsg_len, 0,
+		      (struct sockaddr *)&daddr, sizeof(daddr));
+}
+
+static int genl_get_family_id(int fd, void *family_name)
+{
+	struct rtattr *tb[CTRL_ATTR_MAX+1];
+	struct nlmsghdr *nlh;
+	struct rtattr *attr;
+	char msg[BUF_SIZE];
+	int len, gf_id;
+
+	len = genl_send_msg(fd, GENL_ID_CTRL, CTRL_CMD_GETFAMILY, 1,
+			    CTRL_ATTR_FAMILY_NAME, family_name,
+			    strlen(family_name) + 1);
+	if (len < 0)
+		return len;
+
+	len = recv(fd, &msg, sizeof(msg), 0);
+	if (len < 0)
+		return len;
+
+	nlh = (struct nlmsghdr *) msg;
+	if (nlh->nlmsg_type == NLMSG_ERROR || !NLMSG_OK(nlh, len))
 		return -1;
+
+	attr = (struct rtattr *) GENLMSG_DATA(msg);
+	rtnl_rtattr_parse(tb, CTRL_ATTR_MAX, attr, NLMSG_PAYLOAD(nlh, GENL_HDRLEN));
+
+	if (tb[CTRL_ATTR_FAMILY_ID])
+		gf_id = rta_getattr_u16(tb[CTRL_ATTR_FAMILY_ID]);
+	else
+		gf_id = -1;
+
+	return gf_id;
+}
+
+static int parase_team_list_option(struct rtattr *attr)
+{
+	struct rtattr *tb[TEAM_ATTR_OPTION_MAX+1];
+	int len = RTA_PAYLOAD(attr);
+	const char *optname = "";
+	const char *mode = "";
+	int active_index = -1;
+
+	for (attr = RTA_DATA(attr); RTA_OK(attr, len); attr = RTA_NEXT(attr, len)) {
+		rtnl_nested_rtattr_parse(tb, TEAM_ATTR_OPTION_MAX, attr);
+
+		if (tb[TEAM_ATTR_OPTION_NAME])
+			optname = rta_getattr_str(tb[TEAM_ATTR_OPTION_NAME]);
+
+		if (!strcmp(optname, "mode") && tb[TEAM_ATTR_OPTION_TYPE] &&
+		    rta_getattr_u8(tb[TEAM_ATTR_OPTION_TYPE]) == NLA_STRING)
+			mode = rta_getattr_str(tb[TEAM_ATTR_OPTION_DATA]);
+
+		if (!strcmp(optname, "activeport") && tb[TEAM_ATTR_OPTION_TYPE] &&
+		    rta_getattr_u8(tb[TEAM_ATTR_OPTION_TYPE]) == NLA_U32)
+			active_index = rta_getattr_u32(tb[TEAM_ATTR_OPTION_DATA]);
 	}
-	return fd;
+
+	if (strcmp(mode, "activebackup")) {
+		pr_err("team supported only in activebackup mode");
+		return -1;
+	} else {
+		return active_index;
+	}
+}
+
+static int get_team_active_iface(int master_index)
+{
+	struct rtattr *tb[TEAM_ATTR_MAX+1];
+	struct genlmsghdr *gnlh;
+	struct nlmsghdr *nlh;
+	char msg[BUF_SIZE];
+	int fd, gf_id, len;
+	int index = -1;
+
+	fd = nl_open(NETLINK_GENERIC);
+	if (fd < 0)
+		return fd;
+
+	gf_id = genl_get_family_id(fd, TEAM_GENL_NAME);
+	if (gf_id < 0) {
+		pr_err("get genl family failed");
+		goto no_info;
+	}
+
+	len = genl_send_msg(fd, gf_id, TEAM_CMD_OPTIONS_GET,
+			    TEAM_GENL_VERSION, TEAM_ATTR_TEAM_IFINDEX,
+			    &master_index, sizeof(master_index));
+	if (len < 0) {
+		pr_err("send team info request failed: %m");
+		goto no_info;
+	}
+
+	len = recv(fd, msg, sizeof(msg), 0);
+	if (len < 0) {
+		pr_err("recv team info failed: %m");
+		goto no_info;
+	}
+
+	nlh = (struct nlmsghdr *) msg;
+	for ( ; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
+		if (nlh->nlmsg_type != gf_id)
+			continue;
+
+		gnlh = (struct genlmsghdr *) NLMSG_DATA(nlh);
+		if (gnlh->cmd != TEAM_CMD_OPTIONS_GET)
+			continue;
+
+		rtnl_rtattr_parse(tb, TEAM_ATTR_MAX, (struct rtattr *)GENLMSG_DATA(msg),
+				  NLMSG_PAYLOAD(nlh, GENL_HDRLEN));
+
+		if (tb[TEAM_ATTR_TEAM_IFINDEX] &&
+		    master_index != rta_getattr_u32(tb[TEAM_ATTR_TEAM_IFINDEX]))
+			continue;
+
+		if (tb[TEAM_ATTR_LIST_OPTION]) {
+			index = parase_team_list_option(tb[TEAM_ATTR_LIST_OPTION]);
+			break;
+		}
+	}
+
+no_info:
+	nl_close(fd);
+	return index;
 }

@@ -118,6 +118,22 @@ enum {
 #define IFLA_BOND_MAX   (__IFLA_BOND_MAX - 1)
 #endif	/*IFLA_BOND_MAX*/
 
+#ifndef NLA_TYPE_MAX
+enum {
+        NLA_UNSPEC,
+        NLA_U8,
+        NLA_U16,
+        NLA_U32,
+        NLA_U64,
+        NLA_STRING,
+        NLA_FLAG,
+        NLA_MSECS,
+        NLA_NESTED,
+        __NLA_TYPE_MAX,
+};
+#define NLA_TYPE_MAX (__NLA_TYPE_MAX - 1)
+#endif /*NLA_TYPE_MAX*/
+
 #ifdef __UCLIBC__
 
 #if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && \
