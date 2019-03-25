@@ -78,12 +78,12 @@ int addreq(enum transport_type type, struct address *a, struct address *b)
 	case TRANS_UDP_IPV4:
 		bufa = &a->sin.sin_addr;
 		bufb = &b->sin.sin_addr;
-		len = sizeof(a->sin);
+		len = sizeof(a->sin.sin_addr);
 		break;
 	case TRANS_UDP_IPV6:
 		bufa = &a->sin6.sin6_addr;
 		bufb = &b->sin6.sin6_addr;
-		len = sizeof(a->sin6);
+		len = sizeof(a->sin6.sin6_addr);
 		break;
 	case TRANS_IEEE_802_3:
 		bufa = &a->sll.sll_addr;
