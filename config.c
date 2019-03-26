@@ -814,6 +814,7 @@ parse_error:
 struct interface *config_create_interface(char *name, struct config *cfg)
 {
 	struct interface *iface;
+	char *ptr;
 
 	/* only create each interface once (by name) */
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
@@ -828,6 +829,13 @@ struct interface *config_create_interface(char *name, struct config *cfg)
 	}
 
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	if ((ptr = strchr(iface->name, ':'))) {
+		*ptr = 0;
+		strncpy(iface->bind, ptr + 1, MAX_IFNAME_SIZE);
+	} else {
+		strncpy(iface->bind, name, MAX_IFNAME_SIZE);
+	}
+
 	STAILQ_INSERT_TAIL(&cfg->interfaces, iface, list);
 	cfg->n_interfaces++;
 

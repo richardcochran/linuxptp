@@ -171,11 +171,11 @@ static int udp_open(struct transport *t, struct interface *iface,
 	if (!inet_aton(PTP_PDELAY_MCAST_IPADDR, &mcast_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket(name, mcast_addr, EVENT_PORT, ttl);
+	efd = open_socket(iface->bind, mcast_addr, EVENT_PORT, ttl);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, mcast_addr, GENERAL_PORT, ttl);
+	gfd = open_socket(iface->bind, mcast_addr, GENERAL_PORT, ttl);
 	if (gfd < 0)
 		goto no_general;
 

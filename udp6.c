@@ -182,11 +182,11 @@ static int udp6_open(struct transport *t, struct interface *iface,
 	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR, &mc6_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket_ipv6(name, mc6_addr, EVENT_PORT, &udp6->index, hop_limit);
+	efd = open_socket_ipv6(iface->bind, mc6_addr, EVENT_PORT, &udp6->index, hop_limit);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket_ipv6(name, mc6_addr, GENERAL_PORT, &udp6->index, hop_limit);
+	gfd = open_socket_ipv6(iface->bind, mc6_addr, GENERAL_PORT, &udp6->index, hop_limit);
 	if (gfd < 0)
 		goto no_general;
 

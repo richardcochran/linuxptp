@@ -225,11 +225,11 @@ static int raw_open(struct transport *t, struct interface *iface,
 	if (sk_interface_macaddr(name, &raw->src_addr))
 		goto no_mac;
 
-	efd = open_socket(name, 1, ptp_dst_mac, p2p_dst_mac);
+	efd = open_socket(iface->bind, 1, ptp_dst_mac, p2p_dst_mac);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, 0, ptp_dst_mac, p2p_dst_mac);
+	gfd = open_socket(iface->bind, 0, ptp_dst_mac, p2p_dst_mac);
 	if (gfd < 0)
 		goto no_general;
 
