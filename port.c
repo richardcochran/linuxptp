@@ -1110,10 +1110,12 @@ static void port_slave_priority_warning(struct port *p)
 static void port_synchronize(struct port *p,
 			     tmv_t ingress_ts,
 			     struct timestamp origin_ts,
-			     Integer64 correction1, Integer64 correction2)
+			     Integer64 correction1, Integer64 correction2,
+			     Integer8 sync_interval)
 {
-	enum servo_state state;
+	enum servo_state state, last_state;
 	tmv_t t1, t1c, t2, c1, c2;
+	struct servo *s;
 
 	port_set_sync_rx_tmo(p);
 
@@ -1123,10 +1125,20 @@ static void port_synchronize(struct port *p,
 	c2 = correction_to_tmv(correction2);
 	t1c = tmv_add(t1, tmv_add(c1, c2));
 
+	s = clock_servo(p->clock);
+	last_state = clock_servo_state(p->clock);
 	state = clock_synchronize(p->clock, t2, t1c);
 	switch (state) {
 	case SERVO_UNLOCKED:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+		if (servo_offset_threshold(s) != 0 &&
+		    sync_interval != p->initialLogSyncInterval) {
+			p->logPdelayReqInterval = p->logMinPdelayReqInterval;
+			p->logSyncInterval = p->initialLogSyncInterval;
+			port_tx_interval_request(p, SIGNAL_NO_CHANGE,
+						 SIGNAL_SET_INITIAL,
+						 SIGNAL_NO_CHANGE);
+		}
 		break;
 	case SERVO_JUMP:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
@@ -1138,6 +1150,23 @@ static void port_synchronize(struct port *p,
 		break;
 	case SERVO_LOCKED:
 		port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
+		break;
+	case SERVO_LOCKED_STABLE:
+		if (last_state == SERVO_LOCKED) {
+			p->logPdelayReqInterval = p->operLogPdelayReqInterval;
+			p->logSyncInterval = p->operLogSyncInterval;
+			port_tx_interval_request(p, SIGNAL_NO_CHANGE,
+						 p->logSyncInterval,
+						 SIGNAL_NO_CHANGE);
+			port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
+		} else if (sync_interval != p->operLogSyncInterval) {
+			/*
+			 * The most likely reason for this to happen is the
+			 * master daemon re-initialized due to some fault.
+			 */
+			servo_reset(s);
+			port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+		}
 		break;
 	}
 }
@@ -1192,7 +1221,8 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			syn = p->last_syncfup;
 			port_synchronize(p, syn->hwts.ts, m->ts.pdu,
 					 syn->header.correction,
-					 m->header.correction);
+					 m->header.correction,
+					 m->header.logMessageInterval);
 			msg_put(p->last_syncfup);
 			p->syfu = SF_EMPTY;
 			break;
@@ -1211,7 +1241,8 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			fup = p->last_syncfup;
 			port_synchronize(p, m->hwts.ts, fup->ts.pdu,
 					 m->header.correction,
-					 fup->header.correction);
+					 fup->header.correction,
+					 m->header.logMessageInterval);
 			msg_put(p->last_syncfup);
 			p->syfu = SF_EMPTY;
 			break;
@@ -1613,8 +1644,10 @@ int port_initialize(struct port *p)
 	p->localPriority           = config_get_int(cfg, p->name, "G.8275.portDS.localPriority");
 	p->initialLogSyncInterval  = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logSyncInterval         = p->initialLogSyncInterval;
+	p->operLogSyncInterval     = config_get_int(cfg, p->name, "operLogSyncInterval");
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
 	p->logPdelayReqInterval    = p->logMinPdelayReqInterval;
+	p->operLogPdelayReqInterval = config_get_int(cfg, p->name, "operLogPdelayReqInterval");
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
 	p->min_neighbor_prop_delay = config_get_int(cfg, p->name, "min_neighbor_prop_delay");
 
@@ -2224,7 +2257,8 @@ void process_sync(struct port *p, struct ptp_message *m)
 
 	if (one_step(m)) {
 		port_synchronize(p, m->hwts.ts, m->ts.pdu,
-				 m->header.correction, 0);
+				 m->header.correction, 0,
+				 m->header.logMessageInterval);
 		flush_last_sync(p);
 		return;
 	}

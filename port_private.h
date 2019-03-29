@@ -115,9 +115,11 @@ struct port {
 	UInteger8           transportSpecific;
 	UInteger8           localPriority;
 	Integer8            initialLogSyncInterval;
+	Integer8	    operLogSyncInterval;
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;
+	Integer8            operLogPdelayReqInterval;
 	Integer8            logPdelayReqInterval;
 	UInteger32          neighborPropDelayThresh;
 	int                 follow_up_info;

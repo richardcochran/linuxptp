@@ -1690,6 +1690,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 		tsproc_reset(c->tsproc, 0);
 		break;
 	case SERVO_LOCKED:
+	case SERVO_LOCKED_STABLE:
 		clockadj_set_freq(c->clkid, -adj);
 		if (c->clkid == CLOCK_REALTIME) {
 			sysclk_set_sync();

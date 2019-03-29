@@ -619,6 +619,7 @@ static void update_clock(struct node *node, struct clock *clock,
 			clockcheck_step(clock->sanity_check, -offset);
 		/* Fall through. */
 	case SERVO_LOCKED:
+	case SERVO_LOCKED_STABLE:
 		clockadj_set_freq(clock->clkid, -ppb);
 		if (clock->clkid == CLOCK_REALTIME)
 			sysclk_set_sync();

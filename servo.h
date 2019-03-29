@@ -57,6 +57,12 @@ enum servo_state {
 	 * The servo is tracking the master clock.
 	 */
 	SERVO_LOCKED,
+
+	/**
+	 * The Servo has stabilized. The last 'servo_num_offset_values' values
+	 * of the estimated threshold are less than servo_offset_threshold.
+	 */
+	SERVO_LOCKED_STABLE,
 };
 
 /**
@@ -122,5 +128,12 @@ double servo_rate_ratio(struct servo *servo);
  *                will be deleted, 0 when it passed.
  */
 void servo_leap(struct servo *servo, int leap);
+
+/**
+ * Get the offset threshold for triggering the interval change request.
+ * @param servo   Pointer to a servo obtained via @ref servo_create().
+ * @return        The offset threshold set by the user.
+ */
+int servo_offset_threshold(struct servo *servo);
 
 #endif

@@ -161,6 +161,13 @@ The mean time interval between Sync messages. A shorter interval may improve
 accuracy of the local clock. It's specified as a power of two in seconds.
 The default is 0 (1 second).
 .TP
+.B operLogSyncInterval
+The mean time interval between Sync messages. This value is only used by the
+slave device when interval_update_timer is enabled. Slave will send this
+interval to the master to switch to. This is done via a signaling message after
+interval_update_timer expires. It's specified as a power of two in seconds. The
+default value is 0 (1 second).
+.TP
 .B logMinDelayReqInterval
 The minimum permitted mean time interval between Delay_Req messages. A shorter
 interval makes ptp4l react faster to the changes in the path delay. It's
@@ -171,6 +178,13 @@ The default is 0 (1 second).
 The minimum permitted mean time interval between Pdelay_Req messages. It's
 specified as a power of two in seconds.
 The default is 0 (1 second).
+.TP
+.B operLogPdelayReqInterval
+The mean time interval between Pdelay Request messages. This value is only used
+by the slave device when interval_update_timer is enabled. Slave will switch to
+the interval specified by this config option after the interval_update_timer
+expires. It's specified as a power of two in seconds. The default value is 0 (1
+second).
 .TP
 .B announceReceiptTimeout
 The number of missed Announce messages before the last Announce messages
@@ -715,6 +729,22 @@ This will disable source port identity checking for Sync and Follow_Up
 messages. This is useful when the announce messages are disabled in the master
 and the slave does not have any way to know it's identity. The default is 0
 (disabled).
+.TP
+.B servo_num_offset_values
+The number of offset values calculated in previously received Sync messages to
+consider when adjusting the Sync and Pdelay request intervals. More information
+provided in the description of 'offset_threshold'. The default value is 10.
+.TP
+.B servo_offset_threshold
+This value is used by the slave for adjusting the intervals for Sync and Pdelay
+request messages. The slave will check the last 'num_offset_values' offsets and
+if all those offsets are less than the offset_threshold, it will adjust both
+the intervals. The Sync interval is adjusted via the signaling mechanism and
+the pdelay request interval is just adjusted locally. The new values to use for
+sync message intervals and pdelay request intervals can be indicated by
+operLogSyncInterval and operLogPdelayReqInterval respectively. This mechanism
+is currently only supported when BMCA == 'noop'. The default
+value of offset_threshold is 0 (disabled).
 
 .SH UNICAST DISCOVERY OPTIONS
 
