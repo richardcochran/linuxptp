@@ -100,6 +100,7 @@ struct port {
 	int bmca;
 	int inhibit_announce;
 	int ignore_source_id;
+	int inhibit_delay_req;
 	/* portDS */
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/

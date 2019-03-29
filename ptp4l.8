@@ -186,6 +186,11 @@ the interval specified by this config option after the interval_update_timer
 expires. It's specified as a power of two in seconds. The default value is 0 (1
 second).
 .TP
+.B inhibit_delay_req
+Don't send any delay requests. This will need the asCapable config option to be
+set to 'true'. This is useful when running as a designated master who does not
+need to calculate offset from slave. The default is 0 (disabled).
+.TP
 .B announceReceiptTimeout
 The number of missed Announce messages before the last Announce messages
 expires.

@@ -1056,6 +1056,10 @@ int port_set_announce_tmo(struct port *p)
 
 int port_set_delay_tmo(struct port *p)
 {
+	if (p->inhibit_delay_req) {
+		return 0;
+	}
+
 	if (p->delayMechanism == DM_P2P) {
 		return set_tmo_log(p->fda.fd[FD_DELAY_TIMER], 1,
 			       p->logPdelayReqInterval);
@@ -1655,6 +1659,12 @@ int port_initialize(struct port *p)
 		p->asCapable = ALWAYS_CAPABLE;
 	} else {
 		p->asCapable = NOT_CAPABLE;
+	}
+
+	p->inhibit_delay_req = config_get_int(cfg, p->name, "inhibit_delay_req");
+	if (p->inhibit_delay_req && p->asCapable != ALWAYS_CAPABLE) {
+		pr_err("inhibit_delay_req can only be set when asCapable == 'true'.");
+		return -1;
 	}
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
