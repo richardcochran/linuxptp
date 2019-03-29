@@ -241,8 +241,8 @@ static int unicast_service_reply(struct port *p, struct ptp_message *dst,
 	struct ptp_message *msg;
 	int err;
 
-	msg = port_signaling_construct(p, &dst->address,
-				       &dst->header.sourcePortIdentity);
+	msg = port_signaling_uc_construct(p, &dst->address,
+					  &dst->header.sourcePortIdentity);
 	if (!msg) {
 		return -1;
 	}

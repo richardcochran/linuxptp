@@ -68,7 +68,7 @@ static int unicast_client_announce(struct port *p,
 	struct ptp_message *msg;
 	int err;
 
-	msg = port_signaling_construct(p, &dst->address, &dst->portIdentity);
+	msg = port_signaling_uc_construct(p, &dst->address, &dst->portIdentity);
 	if (!msg) {
 		return -1;
 	}
@@ -129,7 +129,7 @@ static int unicast_client_peer_renew(struct port *p)
 	peer->renewal_tmo = 0;
 	pr_debug("port %d: time to renew P2P unicast subscription", portnum(p));
 
-	msg = port_signaling_construct(p, &peer->address, &peer->portIdentity);
+	msg = port_signaling_uc_construct(p, &peer->address, &peer->portIdentity);
 	if (!msg) {
 		return -1;
 	}
@@ -165,7 +165,7 @@ static int unicast_client_renew(struct port *p,
 	dst->renewal_tmo = 0;
 	pr_debug("port %d: time to renew unicast subscriptions", portnum(p));
 
-	msg = port_signaling_construct(p, &dst->address, &dst->portIdentity);
+	msg = port_signaling_uc_construct(p, &dst->address, &dst->portIdentity);
 	if (!msg) {
 		return -1;
 	}
@@ -225,7 +225,7 @@ static int unicast_client_sydy(struct port *p,
 	struct ptp_message *msg;
 	int err;
 
-	msg = port_signaling_construct(p, &dst->address, &dst->portIdentity);
+	msg = port_signaling_uc_construct(p, &dst->address, &dst->portIdentity);
 	if (!msg) {
 		return -1;
 	}
@@ -285,7 +285,7 @@ int unicast_client_cancel(struct port *p, struct ptp_message *m,
 	ucma->granted &= ~(1 << mtype);
 
 	/* Respond with ACK. */
-	msg = port_signaling_construct(p, &ucma->address, &ucma->portIdentity);
+	msg = port_signaling_uc_construct(p, &ucma->address, &ucma->portIdentity);
 	if (!msg) {
 		return -1;
 	}

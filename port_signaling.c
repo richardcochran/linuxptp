@@ -28,9 +28,8 @@ static struct PortIdentity wildcard = {
 	.portNumber = 0xffff,
 };
 
-struct ptp_message *port_signaling_construct(struct port *p,
-					     struct address *address,
-					     struct PortIdentity *tpid)
+static struct ptp_message *port_signaling_construct(struct port *p,
+						    struct PortIdentity *tpid)
 {
 	struct ptp_message *msg;
 
@@ -48,6 +47,21 @@ struct ptp_message *port_signaling_construct(struct port *p,
 	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = 0x7F;
 	msg->signaling.targetPortIdentity = *tpid;
+
+	return msg;
+}
+
+struct ptp_message *port_signaling_uc_construct(struct port *p,
+						struct address *address,
+						struct PortIdentity *tpid)
+{
+	struct ptp_message *msg;
+
+	msg = port_signaling_construct(p, tpid);
+	if (!msg) {
+		return NULL;
+	}
+
 	msg->header.flagField[0] |= UNICAST;
 	msg->address = *address;
 

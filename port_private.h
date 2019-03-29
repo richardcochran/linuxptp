@@ -169,9 +169,9 @@ int port_set_delay_tmo(struct port *p);
 int port_set_qualification_tmo(struct port *p);
 void port_show_transition(struct port *p, enum port_state next,
 			  enum fsm_event event);
-struct ptp_message *port_signaling_construct(struct port *p,
-					     struct address *address,
-					     struct PortIdentity *tpid);
+struct ptp_message *port_signaling_uc_construct(struct port *p,
+						struct address *address,
+						struct PortIdentity *tpid);
 int port_tx_announce(struct port *p, struct address *dst);
 int port_tx_sync(struct port *p, struct address *dst);
 int process_announce(struct port *p, struct ptp_message *m);
