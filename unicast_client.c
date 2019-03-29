@@ -133,7 +133,7 @@ static int unicast_client_peer_renew(struct port *p)
 	if (!msg) {
 		return -1;
 	}
-	err = attach_request(msg, p->logMinPdelayReqInterval, PDELAY_RESP,
+	err = attach_request(msg, p->logPdelayReqInterval, PDELAY_RESP,
 			     p->unicast_req_duration);
 	if (err) {
 		goto out;
@@ -392,7 +392,7 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 			unicast_client_set_renewal(p,
 				&p->unicast_master_table->peer_addr,
 				g->durationField);
-			p->logMinPdelayReqInterval = g->logInterMessagePeriod;
+			p->logPdelayReqInterval = g->logInterMessagePeriod;
 			return;
 		default:
 			break;

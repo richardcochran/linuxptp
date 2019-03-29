@@ -116,6 +116,7 @@ struct port {
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;
+	Integer8            logPdelayReqInterval;
 	UInteger32          neighborPropDelayThresh;
 	int                 follow_up_info;
 	int                 freq_est_interval;

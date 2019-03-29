@@ -1025,7 +1025,7 @@ static void port_nrate_calculate(struct port *p, tmv_t origin, tmv_t ingress)
 
 static void port_nrate_initialize(struct port *p)
 {
-	int shift = p->freq_est_interval - p->logMinPdelayReqInterval;
+	int shift = p->freq_est_interval - p->logPdelayReqInterval;
 
 	if (shift < 0)
 		shift = 0;
@@ -1058,7 +1058,7 @@ int port_set_delay_tmo(struct port *p)
 {
 	if (p->delayMechanism == DM_P2P) {
 		return set_tmo_log(p->fda.fd[FD_DELAY_TIMER], 1,
-			       p->logMinPdelayReqInterval);
+			       p->logPdelayReqInterval);
 	} else {
 		return set_tmo_random(p->fda.fd[FD_DELAY_TIMER], 0, 2,
 				p->logMinDelayReqInterval);
@@ -1254,7 +1254,7 @@ static int port_pdelay_request(struct port *p)
 	msg->header.sequenceId         = p->seqnum.delayreq++;
 	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
-		p->logMinPdelayReqInterval : 0x7f;
+		p->logPdelayReqInterval : 0x7f;
 
 	if (unicast_client_enabled(p) && p->unicast_master_table->peer_name) {
 		msg->address = p->unicast_master_table->peer_addr.address;
@@ -1612,6 +1612,7 @@ int port_initialize(struct port *p)
 	p->localPriority           = config_get_int(cfg, p->name, "G.8275.portDS.localPriority");
 	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
+	p->logPdelayReqInterval    = p->logMinPdelayReqInterval;
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
 	p->min_neighbor_prop_delay = config_get_int(cfg, p->name, "min_neighbor_prop_delay");
 
