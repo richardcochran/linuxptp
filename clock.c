@@ -1835,3 +1835,13 @@ double clock_rate_ratio(struct clock *c)
 	}
 	return servo_rate_ratio(c->servo);
 }
+
+struct servo *clock_servo(struct clock *c)
+{
+	return c->servo;
+}
+
+enum servo_state clock_servo_state(struct clock *c)
+{
+	return c->servo_state;
+}

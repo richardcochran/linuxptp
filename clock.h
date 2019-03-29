@@ -254,6 +254,20 @@ void clock_set_sde(struct clock *c, int sde);
 int clock_poll(struct clock *c);
 
 /**
+ * Obtain the servo struct.
+ * @param c The clock instance.
+ * @return  A pointer to the clock's servo.
+ */
+struct servo *clock_servo(struct clock *c);
+
+/**
+ * Obtain the current state of clock's servo.
+ * @param c The clock instance.
+ * @return  The current state of the clock's servo.
+ */
+enum servo_state clock_servo_state(struct clock *c);
+
+/**
  * Obtain the slave-only flag from a clock's default data set.
  * @param c  The clock instance.
  * @return   The value of the clock's slave-only flag.
