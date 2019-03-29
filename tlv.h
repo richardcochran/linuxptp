@@ -230,6 +230,18 @@ struct follow_up_info_tlv {
 	Integer32     scaledLastGmPhaseChange;
 } PACKED;
 
+struct msg_interval_req_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Octet         id[3];
+	Octet         subtype[3];
+	Integer8      linkDelayInterval;
+	Integer8      timeSyncInterval;
+	Integer8      announceInterval;
+	Octet         flags;
+	Octet         reserved[2];
+} PACKED;
+
 struct time_status_np {
 	int64_t       master_offset; /*nanoseconds*/
 	int64_t       ingress_time;  /*nanoseconds*/

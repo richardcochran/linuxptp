@@ -517,6 +517,10 @@ static int org_post_recv(struct organization_tlv *org)
 			scaled_ns_n2h(&f->lastGmPhaseChange);
 			f->scaledLastGmPhaseChange = ntohl(f->scaledLastGmPhaseChange);
 			break;
+
+		case 2:
+			if (org->length + sizeof(struct TLV) != sizeof(struct msg_interval_req_tlv))
+				goto bad_length;
 		}
 	}
 	return 0;

@@ -57,6 +57,12 @@
 #define TIME_TRACEABLE (1<<4)
 #define FREQ_TRACEABLE (1<<5)
 
+/*
+ * Signaling interval special values. For more info look at 802.1AS table 10-11
+ */
+#define SIGNAL_NO_CHANGE   -128
+#define SIGNAL_SET_INITIAL 126
+
 enum timestamp_type {
 	TS_SOFTWARE,
 	TS_HARDWARE,

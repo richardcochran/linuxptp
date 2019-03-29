@@ -17,7 +17,9 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA.
  */
+#include "port.h"
 #include "port_private.h"
+#include "print.h"
 #include "unicast_client.h"
 #include "unicast_service.h"
 
@@ -68,9 +70,43 @@ struct ptp_message *port_signaling_uc_construct(struct port *p,
 	return msg;
 }
 
+static int8_t set_interval(int8_t current_interval,
+			   int8_t new_interval,
+			   int8_t initial_interval)
+{
+	switch (new_interval) {
+	case SIGNAL_NO_CHANGE:
+		return current_interval;
+	case SIGNAL_SET_INITIAL:
+		return initial_interval;
+	default:
+		return new_interval;
+	}
+}
+
+static int process_interval_request(struct port *p,
+				    struct msg_interval_req_tlv *r)
+{
+
+	p->logAnnounceInterval = set_interval(p->logAnnounceInterval,
+					      r->announceInterval,
+					      p->initialLogAnnounceInterval);
+
+	p->logSyncInterval = set_interval(p->logSyncInterval,
+					  r->timeSyncInterval,
+					  p->initialLogSyncInterval);
+
+	p->logPdelayReqInterval = set_interval(p->logPdelayReqInterval,
+					       r->linkDelayInterval,
+					       p->logMinPdelayReqInterval);
+
+	return 0;
+}
+
 int process_signaling(struct port *p, struct ptp_message *m)
 {
 	struct tlv_extra *extra;
+	struct msg_interval_req_tlv *r;
 	int err = 0, result;
 
 	switch (p->state) {
@@ -122,7 +158,58 @@ int process_signaling(struct port *p, struct ptp_message *m)
 
 		case TLV_ACKNOWLEDGE_CANCEL_UNICAST_TRANSMISSION:
 			break;
+
+		case TLV_ORGANIZATION_EXTENSION:
+			r = (struct msg_interval_req_tlv *) extra->tlv;
+
+			if (0 == memcmp(r->id, ieee8021_id, sizeof(ieee8021_id)) &&
+			    r->subtype[0] == 0 && r->subtype[1] == 0 && r->subtype[2] == 2)
+				err = process_interval_request(p, r);
+			break;
 		}
 	}
+	return err;
+}
+
+int port_tx_interval_request(struct port *p,
+			     Integer8 announceInterval,
+			     Integer8 timeSyncInterval,
+			     Integer8 linkDelayInterval)
+{
+	struct msg_interval_req_tlv *mir;
+	struct PortIdentity tpid;
+	struct ptp_message *msg;
+	struct tlv_extra *extra;
+	int err;
+
+	if (!port_capable(p)) {
+		return 0;
+	}
+	memset(&tpid, 0xff, sizeof(tpid));
+	msg = port_signaling_construct(p, &tpid);
+	if (!msg) {
+		return -1;
+	}
+	extra = msg_tlv_append(msg, sizeof(*mir));
+	if (!extra) {
+		err = -1;
+		goto out;
+	}
+	mir = (struct msg_interval_req_tlv *) extra->tlv;
+	mir->type = TLV_ORGANIZATION_EXTENSION;
+	mir->length = sizeof(*mir) - sizeof(mir->type) - sizeof(mir->length);
+	memcpy(mir->id, ieee8021_id, sizeof(ieee8021_id));
+	mir->subtype[2] = 2;
+	mir->timeSyncInterval = timeSyncInterval;
+	mir->announceInterval = announceInterval;
+	mir->linkDelayInterval = linkDelayInterval;
+	mir->flags = 0;
+
+	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
+	if (err) {
+		pr_err("port %hu: send signaling failed", portnum(p));
+	}
+out:
+	msg_put(msg);
 	return err;
 }

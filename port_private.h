@@ -107,12 +107,14 @@ struct port {
 	enum as_capable     asCapable;
 	Integer8            logMinDelayReqInterval;
 	TimeInterval        peerMeanPathDelay;
+	Integer8            initialLogAnnounceInterval;
 	Integer8            logAnnounceInterval;
 	UInteger8           announceReceiptTimeout;
 	int                 announce_span;
 	UInteger8           syncReceiptTimeout;
 	UInteger8           transportSpecific;
 	UInteger8           localPriority;
+	Integer8            initialLogSyncInterval;
 	Integer8            logSyncInterval;
 	Enumeration8        delayMechanism;
 	Integer8            logMinPdelayReqInterval;
@@ -174,6 +176,10 @@ struct ptp_message *port_signaling_uc_construct(struct port *p,
 						struct address *address,
 						struct PortIdentity *tpid);
 int port_tx_announce(struct port *p, struct address *dst);
+int port_tx_interval_request(struct port *p,
+			     Integer8 announceInterval,
+			     Integer8 timeSyncInterval,
+			     Integer8 linkDelayInterval);
 int port_tx_sync(struct port *p, struct address *dst);
 int process_announce(struct port *p, struct ptp_message *m);
 void process_delay_resp(struct port *p, struct ptp_message *m);

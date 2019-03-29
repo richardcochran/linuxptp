@@ -1601,7 +1601,8 @@ int port_initialize(struct port *p)
 	p->last_fault_type         = FT_UNSPECIFIED;
 	p->logMinDelayReqInterval  = config_get_int(cfg, p->name, "logMinDelayReqInterval");
 	p->peerMeanPathDelay       = 0;
-	p->logAnnounceInterval     = config_get_int(cfg, p->name, "logAnnounceInterval");
+	p->initialLogAnnounceInterval = config_get_int(cfg, p->name, "logAnnounceInterval");
+	p->logAnnounceInterval     = p->initialLogAnnounceInterval;
 	p->inhibit_announce        = config_get_int(cfg, p->name, "inhibit_announce");
 	p->ignore_source_id        = config_get_int(cfg, p->name, "ignore_source_id");
 	p->announceReceiptTimeout  = config_get_int(cfg, p->name, "announceReceiptTimeout");
@@ -1610,7 +1611,8 @@ int port_initialize(struct port *p)
 	p->transportSpecific     <<= 4;
 	p->match_transport_specific = !config_get_int(cfg, p->name, "ignore_transport_specific");
 	p->localPriority           = config_get_int(cfg, p->name, "G.8275.portDS.localPriority");
-	p->logSyncInterval         = config_get_int(cfg, p->name, "logSyncInterval");
+	p->initialLogSyncInterval  = config_get_int(cfg, p->name, "logSyncInterval");
+	p->logSyncInterval         = p->initialLogSyncInterval;
 	p->logMinPdelayReqInterval = config_get_int(cfg, p->name, "logMinPdelayReqInterval");
 	p->logPdelayReqInterval    = p->logMinPdelayReqInterval;
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
