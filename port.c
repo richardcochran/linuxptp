@@ -55,7 +55,6 @@ enum syfu_event {
 	FUP_MATCH,
 };
 
-static int port_capable(struct port *p);
 static int port_is_ieee8021as(struct port *p);
 static void port_nrate_initialize(struct port *p);
 
@@ -602,7 +601,7 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 	return 0;
 }
 
-static int port_capable(struct port *p)
+int port_capable(struct port *p)
 {
 	if (!port_is_ieee8021as(p)) {
 		/* Normal 1588 ports are always capable. */

@@ -157,6 +157,7 @@ void delay_req_prune(struct port *p);
 void fc_clear(struct foreign_clock *fc);
 void flush_delay_req(struct port *p);
 void flush_last_sync(struct port *p);
+int port_capable(struct port *p);
 int port_clr_tmo(int fd);
 int port_delay_request(struct port *p);
 void port_disable(struct port *p);
