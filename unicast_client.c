@@ -25,13 +25,6 @@
 #define E2E_SYDY_MASK	(1 << ANNOUNCE | 1 << SYNC | 1 << DELAY_RESP)
 #define P2P_SYDY_MASK	(1 << ANNOUNCE | 1 << SYNC)
 
-static struct PortIdentity wildcard = {
-	.clockIdentity = {
-		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-	},
-	.portNumber = 0xffff,
-};
-
 static int attach_ack(struct ptp_message *msg, uint8_t message_type_flags)
 {
 	struct ack_cancel_unicast_xmit_tlv *ack;
@@ -99,10 +92,6 @@ static struct unicast_master_address *unicast_client_ok(struct port *p,
 	struct unicast_master_address *ucma;
 
 	if (!unicast_client_enabled(p)) {
-		return NULL;
-	}
-	if (!pid_eq(&m->signaling.targetPortIdentity, &p->portIdentity) &&
-	    !pid_eq(&m->signaling.targetPortIdentity, &wildcard)) {
 		return NULL;
 	}
 	STAILQ_FOREACH(ucma, &p->unicast_master_table->addrs, list) {

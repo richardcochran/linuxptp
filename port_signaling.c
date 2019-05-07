@@ -21,6 +21,13 @@
 #include "unicast_client.h"
 #include "unicast_service.h"
 
+static struct PortIdentity wildcard = {
+	.clockIdentity = {
+		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+	},
+	.portNumber = 0xffff,
+};
+
 struct ptp_message *port_signaling_construct(struct port *p,
 					     struct address *address,
 					     struct PortIdentity *tpid)
@@ -65,6 +72,12 @@ int process_signaling(struct port *p, struct ptp_message *m)
 	case PS_UNCALIBRATED:
 	case PS_SLAVE:
 		break;
+	}
+
+	/* Ignore signaling messages not addressed to this port. */
+	if (!pid_eq(&m->signaling.targetPortIdentity, &p->portIdentity) &&
+	    !pid_eq(&m->signaling.targetPortIdentity, &wildcard)) {
+		return 0;
 	}
 
 	TAILQ_FOREACH(extra, &m->tlv_list, list) {
