@@ -2934,7 +2934,8 @@ err:
 	msg_put(msg);
 }
 
-struct port *port_open(int phc_index,
+struct port *port_open(const char *phc_device,
+		       int phc_index,
 		       enum timestamp_type timestamping,
 		       int number,
 		       struct interface *interface,
@@ -2998,6 +2999,11 @@ struct port *port_open(int phc_index,
 		if (p->jbod) {
 			pr_warning("port %d: just a bunch of devices", number);
 			p->phc_index = interface->ts_info.phc_index;
+		} else if (phc_device) {
+			pr_warning("port %d: taking %s from the command line, "
+				   "not the attached ptp%d", number, phc_device,
+				   interface->ts_info.phc_index);
+			p->phc_index = phc_index;
 		} else {
 			pr_err("port %d: PHC device mismatch", number);
 			pr_err("port %d: /dev/ptp%d requested, ptp%d attached",

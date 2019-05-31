@@ -192,6 +192,7 @@ void port_notify_event(struct port *p, enum notification event);
 
 /**
  * Open a network port.
+ * @param phc_device    The name of PHC device as found on the command line.
  * @param phc_index     The PHC device index for the network device.
  * @param timestamping  The timestamping mode for this port.
  * @param number	An arbitrary number assigned to this port.
@@ -199,7 +200,8 @@ void port_notify_event(struct port *p, enum notification event);
  * @param clock         A pointer to the system PTP clock.
  * @return A pointer to an open port on success, or NULL otherwise.
  */
-struct port *port_open(int phc_index,
+struct port *port_open(const char *phc_device,
+		       int phc_index,
 		       enum timestamp_type timestamping,
 		       int number,
 		       struct interface *interface,

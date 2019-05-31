@@ -771,8 +771,8 @@ struct currentDS *clock_current_dataset(struct clock *c)
 	return &c->cur;
 }
 
-static int clock_add_port(struct clock *c, int phc_index,
-			  enum timestamp_type timestamping,
+static int clock_add_port(struct clock *c, const char *phc_device,
+			  int phc_index, enum timestamp_type timestamping,
 			  struct interface *iface)
 {
 	struct port *p, *piter, *lastp = NULL;
@@ -780,7 +780,8 @@ static int clock_add_port(struct clock *c, int phc_index,
 	if (clock_resize_pollfd(c, c->nports + 1)) {
 		return -1;
 	}
-	p = port_open(phc_index, timestamping, ++c->last_port_number, iface, c);
+	p = port_open(phc_device, phc_index, timestamping,
+		      ++c->last_port_number, iface, c);
 	if (!p) {
 		/* No need to shrink pollfd */
 		return -1;
@@ -1136,7 +1137,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	/* Create the UDS interface. */
-	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
+	c->uds_port = port_open(phc_device, phc_index, timestamping, 0, udsif, c);
 	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
 		return NULL;
@@ -1145,7 +1146,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 	/* Create the ports. */
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
-		if (clock_add_port(c, phc_index, timestamping, iface)) {
+		if (clock_add_port(c, phc_device, phc_index, timestamping, iface)) {
 			pr_err("failed to open port %s", iface->name);
 			return NULL;
 		}
