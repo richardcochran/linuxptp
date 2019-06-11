@@ -61,6 +61,7 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 {
 	struct ifreq ifreq;
 	struct hwtstamp_config cfg;
+	int orig_rx_filter;
 	int err;
 
 	init_ifreq(&ifreq, &cfg, device);
@@ -84,14 +85,14 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 		break;
 	case HWTS_FILTER_NORMAL:
 		cfg.tx_type   = tx_type;
-		cfg.rx_filter = rx_filter;
+		cfg.rx_filter = orig_rx_filter = rx_filter;
 		err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
 		if (err < 0) {
 			pr_info("driver rejected most general HWTSTAMP filter");
 
 			init_ifreq(&ifreq, &cfg, device);
 			cfg.tx_type   = tx_type;
-			cfg.rx_filter = rx_filter2;
+			cfg.rx_filter = orig_rx_filter = rx_filter2;
 
 			err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
 			if (err < 0) {
@@ -99,6 +100,8 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 				return err;
 			}
 		}
+		if (cfg.rx_filter == HWTSTAMP_FILTER_SOME)
+			cfg.rx_filter = orig_rx_filter;
 		break;
 	}
 
