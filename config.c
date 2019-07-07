@@ -19,6 +19,7 @@
 #include <ctype.h>
 #include <float.h>
 #include <limits.h>
+#include <linux/ptp_clock.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -169,6 +170,13 @@ static struct config_enum delay_mech_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum extts_polarity_enu[] = {
+	{ "rising",  PTP_RISING_EDGE  },
+	{ "falling", PTP_FALLING_EDGE },
+	{ "both",    PTP_RISING_EDGE | PTP_FALLING_EDGE },
+	{ NULL, 0 },
+};
+
 static struct config_enum hwts_filter_enu[] = {
 	{ "normal",  HWTS_FILTER_NORMAL  },
 	{ "check",   HWTS_FILTER_CHECK   },
@@ -297,6 +305,12 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("timeSource", INTERNAL_OSCILLATOR, 0x10, 0xfe),
 	GLOB_ITEM_ENU("time_stamping", TS_HARDWARE, timestamping_enu),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
+	PORT_ITEM_INT("ts2phc.channel", 0, 0, INT_MAX),
+	PORT_ITEM_INT("ts2phc.extts_correction", 0, INT_MIN, INT_MAX),
+	PORT_ITEM_ENU("ts2phc.extts_polarity", PTP_RISING_EDGE, extts_polarity_enu),
+	PORT_ITEM_INT("ts2phc.master", 0, 0, 1),
+	PORT_ITEM_INT("ts2phc.pin_index", 0, 0, INT_MAX),
+	GLOB_ITEM_INT("ts2phc.pulsewidth", 500000000, 1000000, 999000000),
 	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),
 	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
