@@ -104,6 +104,14 @@ char *pid2str(struct PortIdentity *id);
 char *portaddr2str(struct PortAddress *addr);
 
 /**
+ * Opens a dynamic posix clock by name.
+ * @param device     The PHC character device or network interface to open.
+ * @param phc_index  Returns the PHC index, if any.
+ * @return           A valid clock ID on success or CLOCK_INVALID otherwise.
+ */
+clockid_t posix_clock_open(char *device, int *phc_index);
+
+/**
  * Compare two port identities for equality.
  *
  * @param a  First port identity.

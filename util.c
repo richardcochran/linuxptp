@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "address.h"
+#include "phc.h"
 #include "print.h"
 #include "sk.h"
 #include "util.h"
@@ -169,6 +170,39 @@ char *portaddr2str(struct PortAddress *addr)
 	}
 	bin2str_impl(addr->address, align16(&addr->addressLength), buf, sizeof(buf));
 	return buf;
+}
+
+clockid_t posix_clock_open(char *device, int *phc_index)
+{
+	struct sk_ts_info ts_info;
+	char phc_device[19];
+	int clkid;
+
+	/* check if device is CLOCK_REALTIME */
+	if (!strcasecmp(device, "CLOCK_REALTIME")) {
+		return CLOCK_REALTIME;
+	}
+	/* check if device is valid phc device */
+	clkid = phc_open(device);
+	if (clkid != CLOCK_INVALID) {
+		return clkid;
+	}
+	/* check if device is a valid ethernet device */
+	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
+		pr_err("unknown clock %s: %m", device);
+		return CLOCK_INVALID;
+	}
+	if (ts_info.phc_index < 0) {
+		pr_err("interface %s does not have a PHC", device);
+		return CLOCK_INVALID;
+	}
+	snprintf(phc_device, sizeof(phc_device), "/dev/ptp%d", ts_info.phc_index);
+	clkid = phc_open(phc_device);
+	if (clkid == CLOCK_INVALID) {
+		pr_err("cannot open %s for %s: %m", phc_device, device);
+	}
+	*phc_index = ts_info.phc_index;
+	return clkid;
 }
 
 int str2addr(enum transport_type type, const char *s, struct address *addr)

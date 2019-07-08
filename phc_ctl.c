@@ -110,39 +110,6 @@ static int64_t calculate_offset(struct timespec *ts1,
 	return offset;
 }
 
-static clockid_t clock_open(char *device)
-{
-	struct sk_ts_info ts_info;
-	char phc_device[19];
-	int clkid;
-
-	/* check if device is CLOCK_REALTIME */
-	if (!strcasecmp(device, "CLOCK_REALTIME"))
-		return CLOCK_REALTIME;
-
-	/* check if device is valid phc device */
-	clkid = phc_open(device);
-	if (clkid != CLOCK_INVALID)
-		return clkid;
-
-	/* check if device is a valid ethernet device */
-	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
-		pr_err("unknown clock %s: %m", device);
-		return CLOCK_INVALID;
-	}
-
-	if (ts_info.phc_index < 0) {
-		pr_err("interface %s does not have a PHC", device);
-		return CLOCK_INVALID;
-	}
-
-	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
-	clkid = phc_open(phc_device);
-	if (clkid == CLOCK_INVALID)
-		pr_err("cannot open %s for %s: %m", phc_device, device);
-	return clkid;
-}
-
 static void usage(const char *progname)
 {
 	fprintf(stderr,
@@ -503,10 +470,10 @@ static int run_cmds(clockid_t clkid, int cmdc, char *cmdv[])
 
 int main(int argc, char *argv[])
 {
-	const char *progname;
+	int c, cmdc, junk, print_level = LOG_INFO, result;
 	char **cmdv, *default_cmdv[] = { "caps" };
-	int c, result, cmdc;
-	int print_level = LOG_INFO, verbose = 1, use_syslog = 1;
+	int use_syslog = 1, verbose = 1;
+	const char *progname;
 	clockid_t clkid;
 
 	install_handler(SIGALRM, handle_alarm);
@@ -558,7 +525,7 @@ int main(int argc, char *argv[])
 		cmdc = argc - optind - 1;
 	}
 
-	clkid = clock_open(argv[optind]);
+	clkid = posix_clock_open(argv[optind], &junk);
 	if (clkid == CLOCK_INVALID)
 		return -1;
 

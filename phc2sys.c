@@ -135,40 +135,6 @@ static int run_pmc_port_properties(struct node *node, int timeout,
 				   unsigned int port,
 				   int *state, int *tstamping, char *iface);
 
-static clockid_t clock_open(char *device, int *phc_index)
-{
-	struct sk_ts_info ts_info;
-	char phc_device[19];
-	int clkid;
-
-	/* check if device is CLOCK_REALTIME */
-	if (!strcasecmp(device, "CLOCK_REALTIME"))
-		return CLOCK_REALTIME;
-
-	/* check if device is valid phc device */
-	clkid = phc_open(device);
-	if (clkid != CLOCK_INVALID)
-		return clkid;
-
-	/* check if device is a valid ethernet device */
-	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
-		fprintf(stderr, "unknown clock %s: %m\n", device);
-		return CLOCK_INVALID;
-	}
-
-	if (ts_info.phc_index < 0) {
-		fprintf(stderr, "interface %s does not have a PHC\n", device);
-		return CLOCK_INVALID;
-	}
-
-	sprintf(phc_device, "/dev/ptp%d", ts_info.phc_index);
-	clkid = phc_open(phc_device);
-	if (clkid == CLOCK_INVALID)
-		fprintf(stderr, "cannot open %s: %m\n", device);
-	*phc_index = ts_info.phc_index;
-	return clkid;
-}
-
 static struct servo *servo_add(struct node *node, struct clock *clock)
 {
 	double ppb;
@@ -210,7 +176,7 @@ static struct clock *clock_add(struct node *node, char *device)
 	int phc_index = -1;
 
 	if (device) {
-		clkid = clock_open(device, &phc_index);
+		clkid = posix_clock_open(device, &phc_index);
 		if (clkid == CLOCK_INVALID)
 			return NULL;
 	}
@@ -371,7 +337,7 @@ static void clock_reinit(struct node *node, struct clock *clock, int new_state)
 		/* Check if phc index changed */
 		if (!sk_get_ts_info(clock->device, &ts_info) &&
 		    clock->phc_index != ts_info.phc_index) {
-			clkid = clock_open(clock->device, &phc_index);
+			clkid = posix_clock_open(clock->device, &phc_index);
 			if (clkid == CLOCK_INVALID)
 				return;
 

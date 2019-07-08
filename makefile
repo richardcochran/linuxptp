@@ -55,10 +55,10 @@ all: $(PRG)
 
 ptp4l: $(OBJ)
 
-nsm: config.o filter.o hash.o mave.o mmedian.o msg.o nsm.o print.o raw.o \
+nsm: config.o filter.o hash.o mave.o mmedian.o msg.o nsm.o phc.o print.o raw.o \
  rtnl.o sk.o transport.o tlv.o tsproc.o udp.o udp6.o uds.o util.o version.o
 
-pmc: config.o hash.o msg.o pmc.o pmc_common.o print.o raw.o sk.o tlv.o \
+pmc: config.o hash.o msg.o phc.o pmc.o pmc_common.o print.o raw.o sk.o tlv.o \
  transport.o udp.o udp6.o uds.o util.o version.o
 
 phc2sys: clockadj.o clockcheck.o config.o hash.o linreg.o msg.o ntpshm.o \
@@ -69,14 +69,14 @@ hwstamp_ctl: hwstamp_ctl.o version.o
 
 phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
 
-snmp4lptp: config.o hash.o msg.o pmc_common.o print.o raw.o sk.o \
+snmp4lptp: config.o hash.o msg.o phc.o pmc_common.o print.o raw.o sk.o \
  snmp4lptp.o tlv.o transport.o udp.o udp6.o uds.o util.o
 	$(CC) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $(snmplib) -o $@
 
 snmp4lptp.o: snmp4lptp.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(snmpflg) -c $<
 
-timemaster: print.o rtnl.o sk.o timemaster.o util.o version.o
+timemaster: phc.o print.o rtnl.o sk.o timemaster.o util.o version.o
 
 version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 
