@@ -1790,7 +1790,8 @@ static void handle_state_decision_event(struct clock *c)
 			event = EV_NONE;
 			break;
 		case PS_GRAND_MASTER:
-			pr_notice("assuming the grand master role");
+			pr_notice("port %d: assuming the grand master role",
+				  port_number(piter));
 			clock_update_grandmaster(c);
 			event = EV_RS_GRAND_MASTER;
 			break;
