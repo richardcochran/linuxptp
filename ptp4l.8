@@ -384,6 +384,13 @@ The default is 1 (enabled).
 .B slaveOnly
 The local clock is a slave-only clock if enabled. The default is 0 (disabled).
 .TP
+.B socket_priority
+Configure the SO_PRIORITY of sockets. This is to support cases where a user
+wants to route ptp4l traffic using Linux qdiscs for the purpose of traffic
+shaping. This option is only available with the IEEE 802.3 transport (the
+\fB-2\fP option) and is silently ignored when using the UDP IPv4/6 network
+transports. Must be in the range of 0 to 15, inclusive. The default is 0.
+.TP
 .B gmCapable
 If this option is enabled, then the local clock is able to become grand master.
 This is only for use with 802.1AS clocks and has no effect on 1588 clocks.
