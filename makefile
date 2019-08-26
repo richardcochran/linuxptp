@@ -23,12 +23,14 @@ VER     = -DVER=$(version)
 CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
 PRG	= ptp4l hwstamp_ctl nsm phc2sys phc_ctl pmc timemaster
-OBJ     = bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
-e2e_tc.o fault.o filter.o fsm.o hash.o linreg.o mave.o mmedian.o msg.o ntpshm.o \
-nullf.o phc.o pi.o port.o port_signaling.o pqueue.o print.o ptp4l.o p2p_tc.o \
-raw.o rtnl.o servo.o sk.o stats.o tc.o telecom.o tlv.o transport.o tsproc.o \
-udp.o udp6.o uds.o unicast_client.o unicast_fsm.o unicast_service.o util.o \
-version.o
+FILTERS	= filter.o mave.o mmedian.o
+SERVOS	= linreg.o ntpshm.o nullf.o pi.o servo.o
+TRANSP	= raw.o transport.o udp.o udp6.o uds.o
+OBJ	= bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
+ e2e_tc.o fault.o $(FILTERS) fsm.o hash.o msg.o phc.o port.o port_signaling.o \
+ pqueue.o print.o ptp4l.o p2p_tc.o rtnl.o $(SERVOS) sk.o stats.o tc.o \
+ $(TRANSP) telecom.o tlv.o tsproc.o unicast_client.o unicast_fsm.o \
+ unicast_service.o util.o version.o
 
 OBJECTS	= $(OBJ) hwstamp_ctl.o nsm.o phc2sys.o phc_ctl.o pmc.o pmc_common.o \
  sysoff.o timemaster.o
@@ -55,22 +57,22 @@ all: $(PRG)
 
 ptp4l: $(OBJ)
 
-nsm: config.o filter.o hash.o mave.o mmedian.o msg.o nsm.o phc.o print.o raw.o \
- rtnl.o sk.o transport.o tlv.o tsproc.o udp.o udp6.o uds.o util.o version.o
+nsm: config.o $(FILTERS) hash.o msg.o nsm.o phc.o print.o \
+ rtnl.o sk.o $(TRANSP) tlv.o tsproc.o util.o version.o
 
-pmc: config.o hash.o msg.o phc.o pmc.o pmc_common.o print.o raw.o sk.o tlv.o \
- transport.o udp.o udp6.o uds.o util.o version.o
+pmc: config.o hash.o msg.o phc.o pmc.o pmc_common.o print.o sk.o tlv.o \
+ $(TRANSP) util.o version.o
 
-phc2sys: clockadj.o clockcheck.o config.o hash.o linreg.o msg.o ntpshm.o \
- nullf.o phc.o phc2sys.o pi.o pmc_common.o print.o raw.o servo.o sk.o stats.o \
- sysoff.o tlv.o transport.o udp.o udp6.o uds.o util.o version.o
+phc2sys: clockadj.o clockcheck.o config.o hash.o msg.o \
+ phc.o phc2sys.o pmc_common.o print.o $(SERVOS) sk.o stats.o \
+ sysoff.o tlv.o $(TRANSP) util.o version.o
 
 hwstamp_ctl: hwstamp_ctl.o version.o
 
 phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
 
-snmp4lptp: config.o hash.o msg.o phc.o pmc_common.o print.o raw.o sk.o \
- snmp4lptp.o tlv.o transport.o udp.o udp6.o uds.o util.o
+snmp4lptp: config.o hash.o msg.o phc.o pmc_common.o print.o sk.o \
+ snmp4lptp.o tlv.o $(TRANSP) util.o
 	$(CC) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $(snmplib) -o $@
 
 snmp4lptp.o: snmp4lptp.c
