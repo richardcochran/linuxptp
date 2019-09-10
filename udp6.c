@@ -39,14 +39,19 @@
 
 #define EVENT_PORT        319
 #define GENERAL_PORT      320
+
+/* The 0x0e in second byte is substituted with udp6_scope at runtime. */
 #define PTP_PRIMARY_MCAST_IP6ADDR "FF0E:0:0:0:0:0:0:181"
 #define PTP_PDELAY_MCAST_IP6ADDR  "FF02:0:0:0:0:0:0:6B"
+
+enum { MC_PRIMARY, MC_PDELAY };
 
 struct udp6 {
 	struct transport t;
 	int index;
 	struct address ip;
 	struct address mac;
+	struct in6_addr mc6_addr[2];
 };
 
 static int is_link_local(struct in6_addr *addr)
@@ -155,10 +160,6 @@ no_socket:
 	return -1;
 }
 
-enum { MC_PRIMARY, MC_PDELAY };
-
-static struct in6_addr mc6_addr[2];
-
 static int udp6_open(struct transport *t, struct interface *iface,
 		     struct fdarray *fda, enum timestamp_type ts_type)
 {
@@ -174,19 +175,24 @@ static int udp6_open(struct transport *t, struct interface *iface,
 	udp6->ip.len = 0;
 	sk_interface_addr(name, AF_INET6, &udp6->ip);
 
-	if (1 != inet_pton(AF_INET6, PTP_PRIMARY_MCAST_IP6ADDR, &mc6_addr[MC_PRIMARY]))
+	if (1 != inet_pton(AF_INET6, PTP_PRIMARY_MCAST_IP6ADDR,
+			   &udp6->mc6_addr[MC_PRIMARY]))
 		return -1;
 
-	mc6_addr[MC_PRIMARY].s6_addr[1] = config_get_int(t->cfg, name, "udp6_scope");
+	udp6->mc6_addr[MC_PRIMARY].s6_addr[1] = config_get_int(t->cfg, name,
+							       "udp6_scope");
 
-	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR, &mc6_addr[MC_PDELAY]))
+	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR,
+			   &udp6->mc6_addr[MC_PDELAY]))
 		return -1;
 
-	efd = open_socket_ipv6(name, mc6_addr, EVENT_PORT, &udp6->index, hop_limit);
+	efd = open_socket_ipv6(name, udp6->mc6_addr, EVENT_PORT, &udp6->index,
+			       hop_limit);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket_ipv6(name, mc6_addr, GENERAL_PORT, &udp6->index, hop_limit);
+	gfd = open_socket_ipv6(name, udp6->mc6_addr, GENERAL_PORT, &udp6->index,
+			       hop_limit);
 	if (gfd < 0)
 		goto no_general;
 
@@ -249,8 +255,8 @@ static int udp6_send(struct transport *t, struct fdarray *fda,
 	if (!addr) {
 		memset(&addr_buf, 0, sizeof(addr_buf));
 		addr_buf.sin6.sin6_family = AF_INET6;
-		addr_buf.sin6.sin6_addr =  peer ? mc6_addr[MC_PDELAY] :
-						  mc6_addr[MC_PRIMARY];
+		addr_buf.sin6.sin6_addr =  peer ? udp6->mc6_addr[MC_PDELAY] :
+						  udp6->mc6_addr[MC_PRIMARY];
 		if (is_link_local(&addr_buf.sin6.sin6_addr))
 			addr_buf.sin6.sin6_scope_id = udp6->index;
 
