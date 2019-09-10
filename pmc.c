@@ -69,6 +69,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct tlv_extra *extra;
 	struct portDS *p;
 	struct port_ds_np *pnp;
+	struct port_stats_np *pcp;
 
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
@@ -321,6 +322,52 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "asCapable               %d",
 			pnp->neighborPropDelayThresh,
 			pnp->asCapable ? 1 : 0);
+		break;
+	case TLV_PORT_STATS_NP:
+		pcp = (struct port_stats_np *) mgt->data;
+		fprintf(fp, "PORT_STATS_NP "
+			IFMT "portIdentity              %s"
+			IFMT "rx_Sync                   %" PRIu64
+			IFMT "rx_Delay_Req              %" PRIu64
+			IFMT "rx_Pdelay_Req             %" PRIu64
+			IFMT "rx_Pdelay_Resp            %" PRIu64
+			IFMT "rx_Follow_Up              %" PRIu64
+			IFMT "rx_Delay_Resp             %" PRIu64
+			IFMT "rx_Pdelay_Resp_Follow_Up  %" PRIu64
+			IFMT "rx_Announce               %" PRIu64
+			IFMT "rx_Signaling              %" PRIu64
+			IFMT "rx_Management             %" PRIu64
+			IFMT "tx_Sync                   %" PRIu64
+			IFMT "tx_Delay_Req              %" PRIu64
+			IFMT "tx_Pdelay_Req             %" PRIu64
+			IFMT "tx_Pdelay_Resp            %" PRIu64
+			IFMT "tx_Follow_Up              %" PRIu64
+			IFMT "tx_Delay_Resp             %" PRIu64
+			IFMT "tx_Pdelay_Resp_Follow_Up  %" PRIu64
+			IFMT "tx_Announce               %" PRIu64
+			IFMT "tx_Signaling              %" PRIu64
+			IFMT "tx_Management             %" PRIu64,
+			pid2str(&pcp->portIdentity),
+			pcp->stats.rxMsgType[SYNC],
+			pcp->stats.rxMsgType[DELAY_REQ],
+			pcp->stats.rxMsgType[PDELAY_REQ],
+			pcp->stats.rxMsgType[PDELAY_RESP],
+			pcp->stats.rxMsgType[FOLLOW_UP],
+			pcp->stats.rxMsgType[DELAY_RESP],
+			pcp->stats.rxMsgType[PDELAY_RESP_FOLLOW_UP],
+			pcp->stats.rxMsgType[ANNOUNCE],
+			pcp->stats.rxMsgType[SIGNALING],
+			pcp->stats.rxMsgType[MANAGEMENT],
+			pcp->stats.txMsgType[SYNC],
+			pcp->stats.txMsgType[DELAY_REQ],
+			pcp->stats.txMsgType[PDELAY_REQ],
+			pcp->stats.txMsgType[PDELAY_RESP],
+			pcp->stats.txMsgType[FOLLOW_UP],
+			pcp->stats.txMsgType[DELAY_RESP],
+			pcp->stats.txMsgType[PDELAY_RESP_FOLLOW_UP],
+			pcp->stats.txMsgType[ANNOUNCE],
+			pcp->stats.txMsgType[SIGNALING],
+			pcp->stats.txMsgType[MANAGEMENT]);
 		break;
 	case TLV_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;

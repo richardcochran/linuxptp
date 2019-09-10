@@ -92,6 +92,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct grandmaster_settings_np *gsn;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_stats_np *psn;
 	struct mgmt_clock_description *cd;
 	int extra_len = 0, len;
 	uint8_t *buf;
@@ -286,6 +287,14 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		extra_len = sizeof(struct port_properties_np);
 		extra_len += ppn->interface.length;
 		break;
+	case TLV_PORT_STATS_NP:
+		if (data_len < sizeof(struct port_stats_np))
+			goto bad_length;
+		psn = (struct port_stats_np *)m->data;
+		psn->portIdentity.portNumber =
+			ntohs(psn->portIdentity.portNumber);
+		extra_len = sizeof(struct port_stats_np);
+		break;
 	case TLV_SAVE_IN_NON_VOLATILE_STORAGE:
 	case TLV_RESET_NON_VOLATILE_STORAGE:
 	case TLV_INITIALIZE:
@@ -319,6 +328,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct grandmaster_settings_np *gsn;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_stats_np *psn;
 	struct mgmt_clock_description *cd;
 	switch (m->id) {
 	case TLV_CLOCK_DESCRIPTION:
@@ -390,6 +400,11 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	case TLV_PORT_PROPERTIES_NP:
 		ppn = (struct port_properties_np *)m->data;
 		ppn->portIdentity.portNumber = htons(ppn->portIdentity.portNumber);
+		break;
+	case TLV_PORT_STATS_NP:
+		psn = (struct port_stats_np *)m->data;
+		psn->portIdentity.portNumber =
+			htons(psn->portIdentity.portNumber);
 		break;
 	}
 }

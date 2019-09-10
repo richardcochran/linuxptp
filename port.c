@@ -788,6 +788,7 @@ static int port_management_fill_response(struct port *target,
 	struct management_tlv_datum *mtd;
 	struct clock_description *desc;
 	struct port_properties_np *ppn;
+	struct port_stats_np *psn;
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
 	struct tlv_extra *extra;
@@ -942,6 +943,12 @@ static int port_management_fill_response(struct port *target,
 		ppn->timestamping = target->timestamping;
 		ptp_text_set(&ppn->interface, target->iface->ts_label);
 		datalen = sizeof(*ppn) + ppn->interface.length;
+		break;
+	case TLV_PORT_STATS_NP:
+		psn = (struct port_stats_np *)tlv->data;
+		psn->portIdentity = target->portIdentity;
+		psn->stats = target->stats;
+		datalen = sizeof(*psn);
 		break;
 	default:
 		/* The caller should *not* respond to this message. */

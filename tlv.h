@@ -105,6 +105,7 @@ enum management_action {
 #define TLV_LOG_MIN_PDELAY_REQ_INTERVAL			0x6001
 #define TLV_PORT_DATA_SET_NP				0xC002
 #define TLV_PORT_PROPERTIES_NP				0xC004
+#define TLV_PORT_STATS_NP				0xC005
 
 /* Management error ID values */
 #define TLV_RESPONSE_TOO_BIG				0x0001
@@ -278,6 +279,11 @@ struct port_properties_np {
 	uint8_t port_state;
 	uint8_t timestamping;
 	struct PTPText interface;
+} PACKED;
+
+struct port_stats_np {
+	struct PortIdentity portIdentity;
+	struct PortStats stats;
 } PACKED;
 
 #define PROFILE_ID_LEN 6
