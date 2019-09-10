@@ -580,6 +580,16 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 	return 0;
 }
 
+static void port_stats_inc_rx(struct port *p, const struct ptp_message *msg)
+{
+	p->stats.rxMsgType[msg_type(msg)]++;
+}
+
+static void port_stats_inc_tx(struct port *p, const struct ptp_message *msg)
+{
+	p->stats.txMsgType[msg_type(msg)]++;
+}
+
 static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 				 enum transport_event event)
 {
@@ -595,6 +605,7 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 	if (cnt <= 0) {
 		return -1;
 	}
+	port_stats_inc_tx(p, msg);
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
@@ -2627,6 +2638,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		msg_put(msg);
 		return EV_NONE;
 	}
+	port_stats_inc_rx(p, msg);
 	if (port_ignore(p, msg)) {
 		msg_put(msg);
 		return EV_NONE;
@@ -2691,14 +2703,22 @@ int port_forward(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, msg);
-	return cnt <= 0 ? -1 : 0;
+	if (cnt <= 0) {
+		return -1;
+	}
+	port_stats_inc_tx(p, msg);
+	return 0;
 }
 
 int port_forward_to(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
 	cnt = transport_sendto(p->trp, &p->fda, TRANS_GENERAL, msg);
-	return cnt <= 0 ? -1 : 0;
+	if (cnt <= 0) {
+		return -1;
+	}
+	port_stats_inc_tx(p, msg);
+	return 0;
 }
 
 int port_prepare_and_send(struct port *p, struct ptp_message *msg,
@@ -2717,6 +2737,7 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 	if (cnt <= 0) {
 		return -1;
 	}
+	port_stats_inc_tx(p, msg);
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
