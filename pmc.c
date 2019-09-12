@@ -69,6 +69,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct tlv_extra *extra;
 	struct portDS *p;
 	struct port_ds_np *pnp;
+	struct port_properties_np *ppn;
 	struct port_stats_np *pcp;
 
 	if (msg_type(msg) != MANAGEMENT) {
@@ -322,6 +323,21 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "asCapable               %d",
 			pnp->neighborPropDelayThresh,
 			pnp->asCapable ? 1 : 0);
+		break;
+	case TLV_PORT_PROPERTIES_NP:
+		ppn = (struct port_properties_np *) mgt->data;
+		if (ppn->port_state > PS_SLAVE) {
+			ppn->port_state = 0;
+		}
+		fprintf(fp, "PORT_PROPERTIES_NP "
+			IFMT "portIdentity            %s"
+			IFMT "portState               %s"
+			IFMT "timestamping            %s"
+			IFMT "interface               %s",
+			pid2str(&ppn->portIdentity),
+			ps_str[ppn->port_state],
+			ts_str(ppn->timestamping),
+			text2str(&ppn->interface));
 		break;
 	case TLV_PORT_STATS_NP:
 		pcp = (struct port_stats_np *) mgt->data;

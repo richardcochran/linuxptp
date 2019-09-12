@@ -121,6 +121,7 @@ struct management_id idtab[] = {
 	{ "LOG_MIN_PDELAY_REQ_INTERVAL", TLV_LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
 	{ "PORT_DATA_SET_NP", TLV_PORT_DATA_SET_NP, do_set_action },
 	{ "PORT_STATS_NP", TLV_PORT_STATS_NP, do_get_action },
+	{ "PORT_PROPERTIES_NP", TLV_PORT_PROPERTIES_NP, do_get_action },
 };
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str)
