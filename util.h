@@ -42,6 +42,13 @@ extern const char *ps_str[];
 extern const char *ev_str[];
 
 /**
+ * Gets a human-readable string for a given timestamp type.
+ * @param ts    Timestamp type.
+ * @return      Human-readable rendering if TS is valid, otherwise "???".
+ */
+const char *ts_str(enum timestamp_type ts);
+
+/**
  * Compares two binary addresses for equality.
  * @param type  One of the enumerated transport types.
  * @param a     One address to compare.
