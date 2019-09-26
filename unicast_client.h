@@ -37,7 +37,13 @@ int unicast_client_cancel(struct port *p, struct ptp_message *m,
  * @param port   The port in question.
  * @return       Zero on success, non-zero otherwise.
  */
-int unicast_client_claim_table(struct port *port);
+int unicast_client_initialize(struct port *port);
+
+/**
+ * Frees all of the resources associated with a port's unicast client.
+ * @param p      The port in question.
+ */
+void unicast_client_cleanup(struct port *p);
 
 /**
  * Tests whether a unicast master table is associated with a given port.

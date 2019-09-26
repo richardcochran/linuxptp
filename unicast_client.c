@@ -17,6 +17,8 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335 USA.
  */
+#include <stdlib.h>
+
 #include "port.h"
 #include "port_private.h"
 #include "print.h"
@@ -250,6 +252,45 @@ out:
 	return err;
 }
 
+static void free_master_table(struct unicast_master_table *table)
+{
+	struct unicast_master_address *address;
+
+	while ((address = STAILQ_FIRST(&table->addrs))) {
+		STAILQ_REMOVE_HEAD(&table->addrs, list);
+		free(address);
+	}
+	free(table->peer_name);
+	free(table);
+}
+
+static struct unicast_master_table *
+clone_master_table(struct unicast_master_table *table)
+{
+	struct unicast_master_address *address, *cloned_address;
+	struct unicast_master_table *cloned_table;
+
+	cloned_table = malloc(sizeof(*cloned_table));
+	if (!cloned_table)
+		return NULL;
+	*cloned_table = *table;
+	STAILQ_INIT(&cloned_table->addrs);
+	memset(&cloned_table->list, 0, sizeof(cloned_table->list));
+	if (table->peer_name)
+		cloned_table->peer_name = strdup(table->peer_name);
+
+	STAILQ_FOREACH(address, &table->addrs, list) {
+		cloned_address = malloc(sizeof(*cloned_address));
+		if (!cloned_address) {
+			free_master_table(cloned_table);
+			return NULL;
+		}
+		*cloned_address = *address;
+		STAILQ_INSERT_TAIL(&cloned_table->addrs, cloned_address, list);
+	}
+	return cloned_table;
+}
+
 /* public methods */
 
 int unicast_client_cancel(struct port *p, struct ptp_message *m,
@@ -302,7 +343,7 @@ out:
 	return err;
 }
 
-int unicast_client_claim_table(struct port *p)
+int unicast_client_initialize(struct port *p)
 {
 	struct unicast_master_address *master, *peer;
 	struct config *cfg = clock_config(p->clock);
@@ -322,9 +363,9 @@ int unicast_client_claim_table(struct port *p)
 		pr_err("port %d: no table with id %d", portnum(p), table_id);
 		return -1;
 	}
-	if (table->port) {
-		pr_err("port %d: table %d already claimed by port %d",
-		       portnum(p), table_id, table->port);
+	table = clone_master_table(table);
+	if (!table) {
+		pr_err("low memory");
 		return -1;
 	}
 	peer = &table->peer_addr;
@@ -332,6 +373,7 @@ int unicast_client_claim_table(struct port *p)
 					 table->peer_name, &peer->address)) {
 		pr_err("port %d: bad peer address: %s",
 		       portnum(p), table->peer_name);
+		free_master_table(table);
 		return -1;
 	}
 	STAILQ_FOREACH(master, &table->addrs, list) {
@@ -350,6 +392,12 @@ int unicast_client_claim_table(struct port *p)
 	p->unicast_req_duration =
 		config_get_int(cfg, p->name, "unicast_req_duration");
 	return 0;
+}
+
+void unicast_client_cleanup(struct port *p)
+{
+	if (p->unicast_master_table)
+		free_master_table(p->unicast_master_table);
 }
 
 int unicast_client_enabled(struct port *p)

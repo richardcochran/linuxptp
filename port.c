@@ -2311,6 +2311,7 @@ void port_close(struct port *p)
 		rtnl_close(p->fda.fd[FD_RTNL]);
 	}
 
+	unicast_client_cleanup(p);
 	unicast_service_cleanup(p);
 	transport_destroy(p->trp);
 	tsproc_destroy(p->tsproc);
@@ -3039,25 +3040,25 @@ struct port *port_open(const char *phc_device,
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_VERSION;
 
-	if (number && unicast_client_claim_table(p)) {
+	if (number && unicast_client_initialize(p)) {
 		goto err_transport;
 	}
 	if (unicast_client_enabled(p) &&
 	    config_set_section_int(cfg, p->name, "hybrid_e2e", 1)) {
-		goto err_transport;
+		goto err_uc_client;
 	}
 	if (number && unicast_service_initialize(p)) {
-		goto err_transport;
+		goto err_uc_client;
 	}
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 
 	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P) {
 		pr_err("port %d: P2P TC needs P2P ports", number);
-		goto err_transport;
+		goto err_uc_service;
 	}
 	if (number && type == CLOCK_TYPE_E2E && p->delayMechanism != DM_E2E) {
 		pr_err("port %d: E2E TC needs E2E ports", number);
-		goto err_transport;
+		goto err_uc_service;
 	}
 	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
 		pr_warning("port %d: hybrid_e2e only works with E2E", number);
@@ -3083,7 +3084,7 @@ struct port *port_open(const char *phc_device,
 				  config_get_int(cfg, p->name, "delay_filter_length"));
 	if (!p->tsproc) {
 		pr_err("Failed to create time stamp processor");
-		goto err_transport;
+		goto err_uc_service;
 	}
 	p->nrate.ratio = 1.0;
 
@@ -3100,6 +3101,10 @@ struct port *port_open(const char *phc_device,
 
 err_tsproc:
 	tsproc_destroy(p->tsproc);
+err_uc_service:
+	unicast_service_cleanup(p);
+err_uc_client:
+	unicast_client_cleanup(p);
 err_transport:
 	transport_destroy(p->trp);
 err_port:
