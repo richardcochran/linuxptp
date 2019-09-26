@@ -3036,24 +3036,24 @@ struct port *port_open(int phc_index,
 	p->versionNumber = PTP_VERSION;
 
 	if (number && unicast_client_claim_table(p)) {
-		goto err_port;
+		goto err_transport;
 	}
 	if (unicast_client_enabled(p) &&
 	    config_set_section_int(cfg, p->name, "hybrid_e2e", 1)) {
-		goto err_port;
+		goto err_transport;
 	}
 	if (number && unicast_service_initialize(p)) {
-		goto err_port;
+		goto err_transport;
 	}
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 
 	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P) {
 		pr_err("port %d: P2P TC needs P2P ports", number);
-		goto err_port;
+		goto err_transport;
 	}
 	if (number && type == CLOCK_TYPE_E2E && p->delayMechanism != DM_E2E) {
 		pr_err("port %d: E2E TC needs E2E ports", number);
-		goto err_port;
+		goto err_transport;
 	}
 	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
 		pr_warning("port %d: hybrid_e2e only works with E2E", number);
