@@ -1137,7 +1137,6 @@ static void port_synchronize(struct port *p,
 {
 	enum servo_state state, last_state;
 	tmv_t t1, t1c, t2, c1, c2;
-	struct servo *s;
 
 	port_set_sync_rx_tmo(p);
 
@@ -1147,13 +1146,12 @@ static void port_synchronize(struct port *p,
 	c2 = correction_to_tmv(correction2);
 	t1c = tmv_add(t1, tmv_add(c1, c2));
 
-	s = clock_servo(p->clock);
 	last_state = clock_servo_state(p->clock);
 	state = clock_synchronize(p->clock, t2, t1c);
 	switch (state) {
 	case SERVO_UNLOCKED:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
-		if (servo_offset_threshold(s) != 0 &&
+		if (servo_offset_threshold(clock_servo(p->clock)) != 0 &&
 		    sync_interval != p->initialLogSyncInterval) {
 			p->logPdelayReqInterval = p->logMinPdelayReqInterval;
 			p->logSyncInterval = p->initialLogSyncInterval;
@@ -1186,7 +1184,7 @@ static void port_synchronize(struct port *p,
 			 * The most likely reason for this to happen is the
 			 * master daemon re-initialized due to some fault.
 			 */
-			servo_reset(s);
+			servo_reset(clock_servo(p->clock));
 			port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
 		}
 		break;
