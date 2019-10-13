@@ -111,6 +111,12 @@ char *pid2str(struct PortIdentity *id);
 char *portaddr2str(struct PortAddress *addr);
 
 /**
+ * Closes a dynamic posix clock.
+ * @param clock  A clock ID obtained via posix_clock_close().
+ */
+void posix_clock_close(clockid_t clock);
+
+/**
  * Opens a dynamic posix clock by name.
  * @param device     The PHC character device or network interface to open.
  * @param phc_index  Returns the PHC index, if any.

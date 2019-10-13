@@ -190,6 +190,14 @@ char *portaddr2str(struct PortAddress *addr)
 	return buf;
 }
 
+void posix_clock_close(clockid_t clock)
+{
+	if (clock == CLOCK_REALTIME) {
+		return;
+	}
+	phc_close(clock);
+}
+
 clockid_t posix_clock_open(const char *device, int *phc_index)
 {
 	struct sk_ts_info ts_info;

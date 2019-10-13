@@ -341,7 +341,7 @@ static void clock_reinit(struct node *node, struct clock *clock, int new_state)
 			if (clkid == CLOCK_INVALID)
 				return;
 
-			phc_close(clock->clkid);
+			posix_clock_close(clock->clkid);
 			clock->clkid = clkid;
 			clock->phc_index = phc_index;
 

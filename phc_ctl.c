@@ -531,6 +531,7 @@ int main(int argc, char *argv[])
 
 	/* pass the remaining arguments to the run_cmds loop */
 	result = run_cmds(clkid, cmdc, cmdv);
+	posix_clock_close(clkid);
 	if (result < -1) {
 		/* show usage when command fails */
 		usage(progname);
