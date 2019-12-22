@@ -23,9 +23,10 @@
 #ifndef HAVE_MISSING_H
 #define HAVE_MISSING_H
 
-#include <time.h>
+#include <linux/ptp_clock.h>
 #include <sys/syscall.h>
 #include <sys/timex.h>
+#include <time.h>
 #include <unistd.h>
 
 #ifndef ADJ_TAI
@@ -58,6 +59,63 @@ enum _missing_hwtstamp_tx_types {
 enum {
 	HWTSTAMP_TX_ONESTEP_P2P = 3,
 };
+#endif
+
+#ifdef PTP_EXTTS_REQUEST2
+#define PTP_EXTTS_REQUEST_FAILED "PTP_EXTTS_REQUEST2 failed: %m"
+#else
+#define PTP_EXTTS_REQUEST_FAILED "PTP_EXTTS_REQUEST failed: %m"
+#define PTP_EXTTS_REQUEST2 PTP_EXTTS_REQUEST
+#endif
+
+#ifdef PTP_PEROUT_REQUEST2
+#define PTP_PEROUT_REQUEST_FAILED "PTP_PEROUT_REQUEST2 failed: %m"
+#else
+#define PTP_PEROUT_REQUEST_FAILED "PTP_PEROUT_REQUEST failed: %m"
+#define PTP_PEROUT_REQUEST2 PTP_PEROUT_REQUEST
+#endif
+
+#ifndef PTP_PIN_SETFUNC
+
+/* from Linux kernel version 5.4 */
+struct compat_ptp_clock_caps {
+	int max_adj;   /* Maximum frequency adjustment in parts per billon. */
+	int n_alarm;   /* Number of programmable alarms. */
+	int n_ext_ts;  /* Number of external time stamp channels. */
+	int n_per_out; /* Number of programmable periodic signals. */
+	int pps;       /* Whether the clock supports a PPS callback. */
+	int n_pins;    /* Number of input/output pins. */
+	/* Whether the clock supports precise system-device cross timestamps */
+	int cross_timestamping;
+	int rsv[13];   /* Reserved for future use. */
+};
+
+#define ptp_clock_caps compat_ptp_clock_caps
+
+enum ptp_pin_function {
+	PTP_PF_NONE,
+	PTP_PF_EXTTS,
+	PTP_PF_PEROUT,
+	PTP_PF_PHYSYNC,
+};
+
+struct ptp_pin_desc {
+	char name[64];
+	unsigned int index;
+	unsigned int func;
+	unsigned int chan;
+	unsigned int rsv[5];
+};
+
+#define PTP_PIN_SETFUNC    _IOW(PTP_CLK_MAGIC, 7, struct ptp_pin_desc)
+
+#endif /*!PTP_PIN_SETFUNC*/
+
+#ifdef PTP_PIN_SETFUNC2
+#define PTP_PIN_SETFUNC_FAILED "PTP_PIN_SETFUNC2 failed: %m"
+#else
+#define PTP_PIN_SETFUNC_FAILED "PTP_PIN_SETFUNC failed: %m"
+#define PTP_PIN_SETFUNC2 PTP_PIN_SETFUNC
 #endif
 
 #ifndef LIST_FOREACH_SAFE
