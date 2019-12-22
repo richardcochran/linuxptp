@@ -168,7 +168,7 @@ int sysoff_probe(int fd, int n_samples)
 
 #else /* !PTP_SYS_OFFSET */
 
-int sysoff_measure(int fd, int n_samples,
+int sysoff_measure(int fd, int method, int n_samples,
 		   int64_t *result, uint64_t *ts, int64_t *delay)
 {
 	return SYSOFF_COMPILE_TIME_MISSING;
