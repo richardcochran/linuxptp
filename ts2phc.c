@@ -45,6 +45,8 @@ static void usage(char *progname)
 		" -s [dev|name]  source of the PPS signal\n"
 		"                may take any of the following forms:\n"
 		"                    generic   - an external 1-PPS without ToD information\n"
+		"                    /dev/ptp0 - a local PTP Hardware Clock (PHC)\n"
+		"                    eth0      - a local PTP Hardware Clock (PHC)\n"
 		" -v             prints the software version and exits\n"
 		"\n",
 		progname);
@@ -179,7 +181,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	pps_type = TS2PHC_MASTER_GENERIC;
+	if (!strcasecmp(pps_source, "generic")) {
+		pps_type = TS2PHC_MASTER_GENERIC;
+	} else {
+		pps_type = TS2PHC_MASTER_PHC;
+	}
 	master = ts2phc_master_create(cfg, pps_source, pps_type);
 	if (!master) {
 		fprintf(stderr, "failed to create master\n");

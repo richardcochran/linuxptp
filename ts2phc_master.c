@@ -5,6 +5,7 @@
  */
 #include "ts2phc_generic_master.h"
 #include "ts2phc_master_private.h"
+#include "ts2phc_phc_master.h"
 
 struct ts2phc_master *ts2phc_master_create(struct config *cfg, const char *dev,
 					   enum ts2phc_master_type type)
@@ -18,6 +19,7 @@ struct ts2phc_master *ts2phc_master_create(struct config *cfg, const char *dev,
 	case TS2PHC_MASTER_NMEA:
 		break;
 	case TS2PHC_MASTER_PHC:
+		master = ts2phc_phc_master_create(cfg, dev);
 		break;
 	}
 	return master;
