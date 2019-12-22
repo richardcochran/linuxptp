@@ -16,15 +16,15 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <errno.h>
 #include <fcntl.h>
+#include <linux/ptp_clock.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <linux/ptp_clock.h>
 
 #include "phc.h"
 
@@ -98,6 +98,25 @@ int phc_max_adj(clockid_t clkid)
 		max = MAX_PPB_32;
 
 	return max;
+}
+
+int phc_number_pins(clockid_t clkid)
+{
+	struct ptp_clock_caps caps;
+
+	if (phc_get_caps(clkid, &caps)) {
+		return 0;
+	}
+	return caps.n_pins;
+}
+
+int phc_pin_setfunc(clockid_t clkid, struct ptp_pin_desc *desc)
+{
+	int err = ioctl(CLOCKID_TO_FD(clkid), PTP_PIN_SETFUNC2, desc);
+	if (err) {
+		fprintf(stderr, PTP_PIN_SETFUNC_FAILED "\n");
+	}
+	return err;
 }
 
 int phc_has_pps(clockid_t clkid)

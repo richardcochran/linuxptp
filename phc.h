@@ -47,6 +47,27 @@ void phc_close(clockid_t clkid);
 int phc_max_adj(clockid_t clkid);
 
 /**
+ * Queries the number of programmable pins of a PTP hardware clock device.
+ *
+ * @param clkid A clock ID obtained using phc_open().
+ *
+ * @return The number of pins supported by the clock.
+ */
+int phc_number_pins(clockid_t clkid);
+
+/**
+ * Configures a pin of a PTP hardware clock device.
+ *
+ * @param clkid  A clock ID obtained using phc_open().
+ *
+ * @param desc   Pointer to a pin descriptor with the 'index', 'func',
+ *               and 'chan' fields set.
+ *
+ * @return Zero on success, non-zero otherwise.
+ */
+int phc_pin_setfunc(clockid_t clkid, struct ptp_pin_desc *desc);
+
+/**
  * Checks whether the given PTP hardware clock device supports PPS output.
  *
  * @param clkid A clock ID obtained using phc_open().
