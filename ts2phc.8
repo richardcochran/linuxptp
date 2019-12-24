@@ -1,0 +1,217 @@
+.TH TS2PHC 8 "December 2019" "linuxptp"
+.SH NAME
+ts2phc - Synchronizes one or more PTP Hardware Clocks using external time stamps.
+
+.SH SYNOPSIS
+.B ts2phc
+[
+.B \-hmqv
+] [
+.BI \-c " device|name"
+] [
+.BI \-f " config"
+] [
+.BI \-l " print-level"
+] [
+.BI \-s " device|name"
+] [
+.I long-options
+]
+.I .\|.\|.
+
+.SH DESCRIPTION
+.B ts2phc
+synchronizes PTP Hardware Clocks (PHC) to external time stamp signals.
+A single source may be used to distribute time to one or more PHC devices.
+
+.SH OPTIONS
+.TP
+.BI \-c " device|name"
+Specifies a PHC slave clock to be synchronized.
+The clock may be identified by its character device (like /dev/ptp0)
+or its associated network interface (like eth0).
+This option may be given multiple times.
+.TP
+.BI \-f " config"
+Read configuration from the specified file.
+No configuration file is read by default.
+.TP
+.BI \-h
+Displays the command line help summary.
+.TP
+.BI \-l " print-level"
+Sets the maximum syslog level of messages which should be printed or
+sent to the system logger. The default is 6 (LOG_INFO).
+.TP
+.B \-m
+Prints log messages to the standard output.
+.TP
+.B \-q
+Prevents sending log messages to the system logger.
+.TP
+.BI \-s " device|name"
+Specifies the source of the PPS signal.
+Use the key word "generic" for an external 1-PPS without ToD information.
+When using a master PHC, the clock may be identified by its character
+device (like /dev/ptp0) or its associated network interface (like
+eth0).
+Use the key word "nmea" for an external 1-PPS from a GPS providing ToD
+information via the RMC NMEA sentence.
+.TP
+.B \-v
+Prints the software version and exits.
+
+.SH LONG OPTIONS
+
+Each and every configuration file option (see below) may also appear
+as a "long" style command line argument.  For example, the use_syslog
+option may be set using either of these two forms.
+
+.RS
+\f(CW\-\-use_syslog 1   \-\-use_syslog=1\fP
+.RE
+
+Option values given on the command line override values in the global
+section of the configuration file.
+
+.SH CONFIGURATION FILE
+
+The configuration file is divided into sections. Each section starts with a
+line containing its name enclosed in brackets and it follows with settings.
+Each setting is placed on a separate line, it contains the name of the
+option and the value separated by whitespace characters. Empty lines and lines
+starting with # are ignored.
+
+There are two different section types.
+
+.TP
+.B 1.
+The global section (indicated as
+.BR [global] )
+sets the program options and default slave clock options. Other
+sections are clock specific sections, and they override the default
+options.
+.TP
+.B 2.
+Slave clock sections give the name of the configured slave (e.g.
+.BR [eth0] ).
+Slave clocks specified in the configuration file need not be specified
+with the
+.B \-c
+command line option.
+
+.SH GLOBAL OPTIONS
+
+.TP
+.B first_step_threshold
+The maximum offset, specified in seconds, that the servo will correct
+by changing the clock frequency instead of stepping the clock. This is
+only applied on the first update. When set to 0.0, the servo will not
+step the clock on start.
+The default is 0.00002 (20 microseconds).
+.TP
+.B free_running
+When set to 1, no the slave clock will be adjusted.
+This option can be useful in test scenarios, for example to determine
+how well synchronized a group of local clocks are to each other.
+The default is 0 (adjust the slave clocks).
+.TP
+.B logging_level
+The maximum logging level of messages which should be printed.
+The default is 6 (LOG_INFO).
+.TP
+.B max_frequency
+The maximum allowed frequency adjustment of the clock in parts per
+billion.  This is an additional limit to the maximum allowed by the
+hardware. When set to 0, the hardware limit will be used.
+The default is 900000000 (90%).
+.TP
+.B message_tag
+The tag which is added to all messages printed to the standard output
+or system log.  The default is an empty string (which cannot be set in
+the configuration file as the option requires an argument).
+.TP
+.B step_threshold
+The maximum offset, specified in seconds, that the servo will correct
+by changing the clock frequency instead of stepping the clock. When
+set to 0.0, the servo will never step the clock except on start.
+The default is 0.0.
+.TP
+.B ts2phc.nmea_remote_host, ts2phc.nmea_remote_port
+Specifies the serial port character device providing ToD information
+when using the "nmea" PPS signal source.  Note that if these two
+options are both specified, then the given remote connection will be
+used in preference to the configured serial port.
+These options default to the empty string, that is, not specified.
+.TP
+.B ts2phc.nmea_serialport
+Specifies the serial port character device providing ToD information
+when using the "nmea" PPS signal source.  Note that if the options,
+ts2phc.nmea_remote_host and ts2phc.nmea_remote_port, are both
+specified, then the given remote connection will be used in preference
+to the configured serial port.
+The default is "/dev/ttyS0".
+.TP
+.B ts2phc.pulsewidth
+The expected pulse width of the external PPS signal in nanoseconds.
+When 'ts2phc.extts_polarity' is "both", the given pulse width is used
+to detect and discard the time stamp of the unwanted edge.
+The supported range is 1000000 to 990000000 nanoseconds.
+The default is 500000000 nanoseconds.
+.TP
+.B use_syslog
+Print messages to the system log if enabled.  The default is 1 (enabled).
+.TP
+.B verbose
+Print messages to the standard output if enabled.  The default is 0 (disabled).
+
+.SH SLAVE CLOCK OPTIONS
+
+.TP
+.B ts2phc.channel
+The external time stamping or periodic output channel to be used.
+Some PHC devices feature programmable pins and one or more time
+stamping channels.  This option allows selecting a particular channel
+to be used.  When using a PHC device as the PPS source, this option
+selects the periodic output channel.
+The default is channel 0.
+.TP
+.B ts2phc.extts_correction
+The value, in nanoseconds, to be added to each PPS time stamp.
+The default is 0 (no correction).
+.TP
+.B ts2phc.extts_polarity
+The polarity of the external PPS signal, either "rising" or "falling".
+Some PHC devices always time stamp both edges.  Setting this option to
+"both" will allow the ts2phc program to work with such devices by
+detecting and ignoring the unwanted edge.  In this case be sure to
+set 'ts2phc.pulsewidth' to the correct value.
+The default is "rising".
+.TP
+.B ts2phc.master
+Setting this option to 1 configures the given PHC device as the source
+of the PPS signal.
+The default is 0 for the slave role.
+.TP
+.B ts2phc.pin_index
+The pin index to be used.
+Some PHC devices feature programmable pins, and this option allows
+configuration of a particular pin for the external time stamping or
+periodic output function.
+The default is pin index 0.
+
+.SH WARNING
+
+Be cautious when sharing the same configuration file between ptp4l,
+phc2sys, and ts2phc.  Keep in mind that values specified in the
+configuration file take precedence over the default values.  If an
+option which is common to the other programs is set in the
+configuration file, then the value will be applied to all the programs
+using the file, and this might not be what is expected.
+
+It is recommended to use separate configuration files for ptp4l,
+phc2sys, and ts2phc in order to avoid any unexpected behavior.
+
+.SH SEE ALSO
+.BR phc2sys (8)
+.BR ptp4l (8)
