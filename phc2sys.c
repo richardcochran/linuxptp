@@ -770,8 +770,8 @@ static int do_loop(struct node *node, int subscriptions)
 						   node->phc_readings,
 						   &offset, &ts, &delay) < 0)
 					return -1;
-				ts += offset;
 				offset = -offset;
+				ts += offset;
 			} else {
 				/* use phc */
 				if (!read_phc(node->master->clkid, clock->clkid,
