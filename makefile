@@ -21,13 +21,13 @@ DEBUG	=
 CC	= $(CROSS_COMPILE)gcc
 VER     = -DVER=$(version)
 CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
-LDLIBS	= -lm -lrt $(EXTRA_LDFLAGS)
+LDLIBS	= -lm -lrt -pthread $(EXTRA_LDFLAGS)
 PRG	= ptp4l hwstamp_ctl nsm phc2sys phc_ctl pmc timemaster ts2phc
 FILTERS	= filter.o mave.o mmedian.o
 SERVOS	= linreg.o ntpshm.o nullf.o pi.o servo.o
 TRANSP	= raw.o transport.o udp.o udp6.o uds.o
-TS2PHC	= ts2phc.o ts2phc_generic_master.o ts2phc_master.o ts2phc_phc_master.o \
- ts2phc_slave.o
+TS2PHC	= ts2phc.o lstab.o nmea.o serial.o sock.o ts2phc_generic_master.o \
+ ts2phc_master.o ts2phc_phc_master.o ts2phc_nmea_master.o ts2phc_slave.o
 OBJ	= bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
  e2e_tc.o fault.o $(FILTERS) fsm.o hash.o interface.o msg.o phc.o port.o \
  port_signaling.o pqueue.o print.o ptp4l.o p2p_tc.o rtnl.o $(SERVOS) sk.o \
