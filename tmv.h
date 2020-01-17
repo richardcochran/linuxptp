@@ -143,6 +143,16 @@ static inline tmv_t timespec_to_tmv(struct timespec ts)
 	return t;
 }
 
+static inline struct timespec tmv_to_timespec(tmv_t t)
+{
+	struct timespec ts;
+
+	ts.tv_sec  = t.ns / NS_PER_SEC;
+	ts.tv_nsec = t.ns % NS_PER_SEC;
+
+	return ts;
+}
+
 static inline tmv_t timestamp_to_tmv(struct timestamp ts)
 {
 	tmv_t t;
