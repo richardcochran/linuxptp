@@ -128,6 +128,7 @@ struct port {
 	int                 hybrid_e2e;
 	int                 master_only;
 	int                 match_transport_specific;
+	int                 msg_interval_request;
 	int                 min_neighbor_prop_delay;
 	int                 net_sync_monitor;
 	int                 path_trace_enabled;

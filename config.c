@@ -271,6 +271,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_STR("manufacturerIdentity", "00:00:00"),
 	GLOB_ITEM_INT("max_frequency", 900000000, 0, INT_MAX),
 	PORT_ITEM_INT("min_neighbor_prop_delay", -20000000, INT_MIN, -1),
+	PORT_ITEM_INT("msg_interval_request", 0, 0, 1),
 	PORT_ITEM_INT("neighborPropDelayThresh", 20000000, 0, INT_MAX),
 	PORT_ITEM_INT("net_sync_monitor", 0, 0, 1),
 	PORT_ITEM_ENU("network_transport", TRANS_UDP_IPV4, nw_trans_enu),

@@ -1131,6 +1131,30 @@ static void port_slave_priority_warning(struct port *p)
 	pr_warning("port %hu: defaultDS.priority1 probably misconfigured", n);
 }
 
+static void message_interval_request(struct port *p,
+				     enum servo_state last_state,
+				     Integer8 sync_interval)
+{
+	if (!p->msg_interval_request)
+		return;
+
+	if (last_state == SERVO_LOCKED) {
+		p->logPdelayReqInterval = p->operLogPdelayReqInterval;
+		p->logSyncInterval = p->operLogSyncInterval;
+		port_tx_interval_request(p, SIGNAL_NO_CHANGE,
+					 p->logSyncInterval,
+					 SIGNAL_NO_CHANGE);
+		port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
+	} else if (sync_interval != p->operLogSyncInterval) {
+		/*
+		 * The most likely reason for this to happen is the
+		 * master daemon re-initialized due to some fault.
+		 */
+		servo_reset(clock_servo(p->clock));
+		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
+	}
+}
+
 static void port_synchronize(struct port *p,
 			     tmv_t ingress_ts,
 			     struct timestamp origin_ts,
@@ -1174,21 +1198,7 @@ static void port_synchronize(struct port *p,
 		port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
 		break;
 	case SERVO_LOCKED_STABLE:
-		if (last_state == SERVO_LOCKED) {
-			p->logPdelayReqInterval = p->operLogPdelayReqInterval;
-			p->logSyncInterval = p->operLogSyncInterval;
-			port_tx_interval_request(p, SIGNAL_NO_CHANGE,
-						 p->logSyncInterval,
-						 SIGNAL_NO_CHANGE);
-			port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
-		} else if (sync_interval != p->operLogSyncInterval) {
-			/*
-			 * The most likely reason for this to happen is the
-			 * master daemon re-initialized due to some fault.
-			 */
-			servo_reset(clock_servo(p->clock));
-			port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
-		}
+		message_interval_request(p, last_state, sync_interval);
 		break;
 	}
 }
@@ -3029,6 +3039,7 @@ struct port *port_open(const char *phc_device,
 	p->announce_span = transport == TRANS_UDS ? 0 : ANNOUNCE_SPAN;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
+	p->msg_interval_request = config_get_int(cfg, p->name, "msg_interval_request");
 	p->net_sync_monitor = config_get_int(cfg, p->name, "net_sync_monitor");
 	p->path_trace_enabled = config_get_int(cfg, p->name, "path_trace_enabled");
 	p->tc_spanning_tree = config_get_int(cfg, p->name, "tc_spanning_tree");
