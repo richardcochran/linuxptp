@@ -1775,6 +1775,7 @@ static void handle_state_decision_event(struct clock *c)
 			tsproc_set_delay(c->tsproc, c->initial_delay);
 		c->ingress_ts = tmv_zero();
 		c->path_delay = c->initial_delay;
+		c->master_local_rr = 1.0;
 		c->nrr = 1.0;
 		fresh_best = 1;
 	}
