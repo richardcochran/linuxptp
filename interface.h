@@ -7,6 +7,7 @@
 #ifndef HAVE_INTERFACE_H
 #define HAVE_INTERFACE_H
 
+#include <stdbool.h>
 #include <sys/queue.h>
 #include "sk.h"
 
@@ -73,5 +74,12 @@ void interface_set_label(struct interface *iface, const char *label);
  * @param name   The desired name for the interface.
  */
 void interface_set_name(struct interface *iface, const char *name);
+
+/**
+ * Tests whether an interface's time stamping information is valid or not.
+ * @param iface  The interface of interest.
+ * @return       True if the time stamping information is valid, false otherwise.
+ */
+bool interface_tsinfo_valid(struct interface *iface);
 
 #endif

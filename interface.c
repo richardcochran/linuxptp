@@ -42,3 +42,8 @@ void interface_set_name(struct interface *iface, const char *name)
 {
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
 }
+
+bool interface_tsinfo_valid(struct interface *iface)
+{
+	return iface->ts_info.valid ? true : false;
+}
