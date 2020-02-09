@@ -20,6 +20,8 @@
 #ifndef HAVE_RTNL_H
 #define HAVE_RTNL_H
 
+#include <net/if.h>
+
 typedef void (*rtnl_callback)(void *ctx, int linkup, int ts_index);
 
 /**
@@ -37,7 +39,7 @@ int rtnl_close(int fd);
  *                  at least IF_NAMESIZE bytes long.
  * @return          Zero on success, or -1 on error.
  */
-int rtnl_get_ts_device(const char *device, char *ts_device);
+int rtnl_get_ts_device(const char *device, char ts_device[IF_NAMESIZE]);
 
 /**
  * Request the link status from the kernel.

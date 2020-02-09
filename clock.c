@@ -846,6 +846,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 			   const char *phc_device)
 {
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
+	char ts_label[IF_NAMESIZE], phc[32], *tmp;
 	enum timestamp_type timestamping;
 	int fadj = 0, max_adj = 0, sw_ts;
 	int phc_index, required_modes = 0;
@@ -853,7 +854,6 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	const char *uds_ifname;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
-	char phc[32], *tmp;
 	struct interface *iface, *udsif = &c->uds_interface;
 	struct timespec ts;
 	int sfl;
@@ -951,7 +951,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->timestamping = timestamping;
 	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
-		rtnl_get_ts_device(interface_name(iface), iface->ts_label);
+		memset(ts_label, 0, sizeof(ts_label));
+		rtnl_get_ts_device(interface_name(iface), ts_label);
+		interface_set_label(iface, ts_label);
 		interface_ensure_tslabel(iface);
 		interface_get_tsinfo(iface);
 		if (iface->ts_info.valid &&

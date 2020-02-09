@@ -87,7 +87,7 @@ static void rtnl_get_ts_device_callback(void *ctx, int linkup, int ts_index)
 	*dst = ts_index;
 }
 
-int rtnl_get_ts_device(const char *device, char *ts_device)
+int rtnl_get_ts_device(const char *device, char ts_device[IF_NAMESIZE])
 {
 	int err, fd;
 	int ts_index = -1;

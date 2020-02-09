@@ -2500,7 +2500,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	/* ts_label changed */
 	old_ts_label = interface_label(p->iface);
 	if (if_indextoname(ts_index, ts_label) && strcmp(old_ts_label, ts_label)) {
-		strncpy(p->iface->ts_label, ts_label, MAX_IFNAME_SIZE);
+		interface_set_label(p->iface, ts_label);
 		p->link_status |= TS_LABEL_CHANGED;
 		pr_notice("port %hu: ts label changed to %s", portnum(p), ts_label);
 	}

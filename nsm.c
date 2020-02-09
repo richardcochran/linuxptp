@@ -262,13 +262,16 @@ static void nsm_help(FILE *fp)
 static int nsm_open(struct nsm *nsm, struct config *cfg)
 {
 	enum transport_type transport;
+	char ts_label[IF_NAMESIZE];
 	const char *ifname, *name;
 	struct interface *iface;
 	int count = 0;
 
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
 		ifname = interface_name(iface);
-		rtnl_get_ts_device(ifname, iface->ts_label);
+		memset(ts_label, 0, sizeof(ts_label));
+		rtnl_get_ts_device(ifname, ts_label);
+		interface_set_label(iface, ts_label);
 		interface_ensure_tslabel(iface);
 		count++;
 	}
