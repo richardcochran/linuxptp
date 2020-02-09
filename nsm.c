@@ -269,9 +269,7 @@ static int nsm_open(struct nsm *nsm, struct config *cfg)
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
 		ifname = interface_name(iface);
 		rtnl_get_ts_device(ifname, iface->ts_label);
-		if (iface->ts_label[0] == '\0') {
-			strncpy(iface->ts_label, ifname, MAX_IFNAME_SIZE);
-		}
+		interface_ensure_tslabel(iface);
 		count++;
 	}
 	if (count != 1) {

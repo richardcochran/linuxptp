@@ -842,16 +842,6 @@ int clock_required_modes(struct clock *c)
 	return required_modes;
 }
 
-/*
- * If we do not have a slave or the rtnl query failed, then use our
- * own interface name as the time stamping interface name.
- */
-static void ensure_ts_label(struct interface *iface)
-{
-	if (iface->ts_label[0] == '\0')
-		strncpy(iface->ts_label, interface_name(iface), MAX_IFNAME_SIZE);
-}
-
 struct clock *clock_create(enum clock_type type, struct config *config,
 			   const char *phc_device)
 {
@@ -961,7 +951,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		rtnl_get_ts_device(interface_name(iface), iface->ts_label);
-		ensure_ts_label(iface);
+		interface_ensure_tslabel(iface);
 		interface_get_tsinfo(iface);
 		if (iface->ts_info.valid &&
 		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
