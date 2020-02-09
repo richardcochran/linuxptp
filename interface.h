@@ -25,6 +25,13 @@ struct interface {
 };
 
 /**
+ * Populate the time stamping information of a given interface.
+ * @param iface  The interface of interest.
+ * @return       zero on success, negative on failure.
+ */
+int interface_get_tsinfo(struct interface *iface);
+
+/**
  * Obtain the time stamping label of a network interface.  This can be
  * different from the name of the interface when bonding is in effect.
  *
