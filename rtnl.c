@@ -87,7 +87,7 @@ static void rtnl_get_ts_device_callback(void *ctx, int linkup, int ts_index)
 	*dst = ts_index;
 }
 
-int rtnl_get_ts_device(char *device, char *ts_device)
+int rtnl_get_ts_device(const char *device, char *ts_device)
 {
 	int err, fd;
 	int ts_index = -1;
@@ -112,7 +112,7 @@ no_info:
 	return err;
 }
 
-int rtnl_link_query(int fd, char *device)
+int rtnl_link_query(int fd, const char *device)
 {
 	struct sockaddr_nl sa;
 	struct msghdr msg;
@@ -227,7 +227,7 @@ static int rtnl_linkinfo_parse(int master_index, struct rtattr *rta)
 	return index;
 }
 
-int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx)
+int rtnl_link_status(int fd, const char *device, rtnl_callback cb, void *ctx)
 {
 	struct rtattr *tb[IFLA_MAX+1];
 	struct ifinfomsg *info = NULL;

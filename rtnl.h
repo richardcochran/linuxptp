@@ -37,7 +37,7 @@ int rtnl_close(int fd);
  *                  at least IF_NAMESIZE bytes long.
  * @return          Zero on success, or -1 on error.
  */
-int rtnl_get_ts_device(char *device, char *ts_device);
+int rtnl_get_ts_device(const char *device, char *ts_device);
 
 /**
  * Request the link status from the kernel.
@@ -45,7 +45,7 @@ int rtnl_get_ts_device(char *device, char *ts_device);
  * @param device Interface name. Request all iface's status if set NULL.
  * @return       Zero on success, non-zero otherwise.
  */
-int rtnl_link_query(int fd, char *device);
+int rtnl_link_query(int fd, const char *device);
 
 /**
  * Read kernel messages looking for a link up/down events.
@@ -55,7 +55,7 @@ int rtnl_link_query(int fd, char *device);
  * @param ctx    Private context passed to the callback.
  * @return       Zero on success, non-zero otherwise.
  */
-int rtnl_link_status(int fd, char *device, rtnl_callback cb, void *ctx);
+int rtnl_link_status(int fd, const char *device, rtnl_callback cb, void *ctx);
 
 /**
  * Open a RT netlink socket for monitoring link state.
