@@ -6,6 +6,13 @@
  */
 #include "interface.h"
 
+void interface_ensure_tslabel(struct interface *iface)
+{
+	if (!iface->ts_label[0]) {
+		strncpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
+	}
+}
+
 int interface_get_tsinfo(struct interface *iface)
 {
 	return sk_get_ts_info(iface->ts_label, &iface->ts_info);
