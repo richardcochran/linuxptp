@@ -350,7 +350,7 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		goto failed;
 	}
 
-	strncpy(iface.name, iface_name, MAX_IFNAME_SIZE);
+	interface_set_name(&iface, iface_name);
 	interface_ensure_tslabel(&iface);
 
 	if (transport_open(pmc->transport, &iface,

@@ -850,6 +850,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	int fadj = 0, max_adj = 0, sw_ts;
 	int phc_index, required_modes = 0;
 	struct clock *c = &the_clock;
+	const char *uds_ifname;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
 	char phc[32], *tmp;
@@ -999,8 +1000,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	/* Configure the UDS. */
-	snprintf(udsif->name, sizeof(udsif->name), "%s",
-		 config_get_string(config, NULL, "uds_address"));
+	uds_ifname = config_get_string(config, NULL, "uds_address");
+	interface_set_name(udsif, uds_ifname);
 	if (config_set_section_int(config, interface_name(udsif),
 				   "announceReceiptTimeout", 0)) {
 		return NULL;

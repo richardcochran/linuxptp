@@ -835,7 +835,7 @@ struct interface *config_create_interface(const char *name, struct config *cfg)
 		return NULL;
 	}
 
-	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	interface_set_name(iface, name);
 	STAILQ_INSERT_TAIL(&cfg->interfaces, iface, list);
 	cfg->n_interfaces++;
 
