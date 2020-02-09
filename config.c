@@ -775,15 +775,15 @@ int config_read(const char *name, struct config *cfg)
 		if (parse_setting_line(line, &option, &value)) {
 			fprintf(stderr, "could not parse line %d in %s section\n",
 				line_num, current_section == GLOBAL_SECTION ?
-				"global" : current_port->name);
+				"global" : interface_name(current_port));
 			goto parse_error;
 		}
 
 		check_deprecated_options(&option);
 
 		parser_res = parse_item(cfg, 0, current_section == GLOBAL_SECTION ?
-					NULL : current_port->name, option, value);
-
+					NULL : interface_name(current_port),
+					option, value);
 		switch (parser_res) {
 		case PARSED_OK:
 			break;
@@ -791,7 +791,7 @@ int config_read(const char *name, struct config *cfg)
 			fprintf(stderr, "unknown option %s at line %d in %s section\n",
 				option, line_num,
 				current_section == GLOBAL_SECTION ? "global" :
-				current_port->name);
+				interface_name(current_port));
 			goto parse_error;
 		case BAD_VALUE:
 			fprintf(stderr, "%s is a bad value for option %s at line %d\n",
@@ -820,10 +820,12 @@ parse_error:
 struct interface *config_create_interface(const char *name, struct config *cfg)
 {
 	struct interface *iface;
+	const char *ifname;
 
 	/* only create each interface once (by name) */
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
-		if (0 == strncmp(name, iface->name, MAX_IFNAME_SIZE))
+		ifname = interface_name(iface);
+		if (0 == strncmp(name, ifname, MAX_IFNAME_SIZE))
 			return iface;
 	}
 

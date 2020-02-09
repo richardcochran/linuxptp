@@ -1717,10 +1717,13 @@ int port_initialize(struct port *p)
 		if (p->bmca == BMCA_NOOP) {
 			port_set_delay_tmo(p);
 		}
-		if (p->fda.fd[FD_RTNL] == -1)
+		if (p->fda.fd[FD_RTNL] == -1) {
 			p->fda.fd[FD_RTNL] = rtnl_open();
-		if (p->fda.fd[FD_RTNL] >= 0)
-			rtnl_link_query(p->fda.fd[FD_RTNL], p->iface->name);
+		}
+		if (p->fda.fd[FD_RTNL] >= 0) {
+			const char *ifname = interface_name(p->iface);
+			rtnl_link_query(p->fda.fd[FD_RTNL], ifname);
+		}
 	}
 
 	port_nrate_initialize(p);
@@ -2974,10 +2977,10 @@ struct port *port_open(const char *phc_device,
 	}
 
 	p->phc_index = phc_index;
-	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
-	transport = config_get_int(cfg, interface->name, "network_transport");
-	p->master_only = config_get_int(cfg, interface->name, "masterOnly");
-	p->bmca = config_get_int(cfg, interface->name, "BMCA");
+	p->jbod = config_get_int(cfg, interface_name(interface), "boundary_clock_jbod");
+	transport = config_get_int(cfg, interface_name(interface), "network_transport");
+	p->master_only = config_get_int(cfg, interface_name(interface), "masterOnly");
+	p->bmca = config_get_int(cfg, interface_name(interface), "BMCA");
 
 	if (p->bmca == BMCA_NOOP && transport != TRANS_UDS) {
 		if (p->master_only) {
@@ -3013,7 +3016,7 @@ struct port *port_open(const char *phc_device,
 		}
 	}
 
-	p->name = interface->name;
+	p->name = interface_name(interface);
 	p->iface = interface;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;

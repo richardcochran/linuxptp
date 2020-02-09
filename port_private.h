@@ -60,7 +60,7 @@ struct tc_txd {
 
 struct port {
 	LIST_ENTRY(port) list;
-	char *name;
+	const char *name;
 	struct interface *iface;
 	struct clock *clock;
 	struct transport *trp;

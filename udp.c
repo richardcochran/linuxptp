@@ -154,9 +154,9 @@ static int udp_open(struct transport *t, struct interface *iface,
 		    struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct udp *udp = container_of(t, struct udp, t);
+	const char *name = interface_name(iface);
 	uint8_t event_dscp, general_dscp;
 	int efd, gfd, ttl;
-	char *name = iface->name;
 
 	ttl = config_get_int(t->cfg, name, "udp_ttl");
 	udp->mac.len = 0;

@@ -262,14 +262,15 @@ static void nsm_help(FILE *fp)
 static int nsm_open(struct nsm *nsm, struct config *cfg)
 {
 	enum transport_type transport;
+	const char *ifname, *name;
 	struct interface *iface;
-	const char *name;
 	int count = 0;
 
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
-		rtnl_get_ts_device(iface->name, iface->ts_label);
+		ifname = interface_name(iface);
+		rtnl_get_ts_device(ifname, iface->ts_label);
 		if (iface->ts_label[0] == '\0') {
-			strncpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
+			strncpy(iface->ts_label, ifname, MAX_IFNAME_SIZE);
 		}
 		count++;
 	}
@@ -278,7 +279,7 @@ static int nsm_open(struct nsm *nsm, struct config *cfg)
 		return -1;
 	}
 	iface = STAILQ_FIRST(&cfg->interfaces);
-	nsm->name = name = iface->name;
+	nsm->name = name = interface_name(iface);
 	nsm->cfg = cfg;
 
 	transport = config_get_int(cfg, name, "network_transport");

@@ -164,9 +164,9 @@ static int udp6_open(struct transport *t, struct interface *iface,
 		     struct fdarray *fda, enum timestamp_type ts_type)
 {
 	struct udp6 *udp6 = container_of(t, struct udp6, t);
+	const char *name = interface_name(iface);
 	uint8_t event_dscp, general_dscp;
 	int efd, gfd, hop_limit;
-	char *name = iface->name;
 
 	hop_limit = config_get_int(t->cfg, name, "udp_ttl");
 	udp6->mac.len = 0;
