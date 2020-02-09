@@ -710,7 +710,7 @@ static struct option *config_alloc_longopts(void)
 	return opts;
 }
 
-int config_read(char *name, struct config *cfg)
+int config_read(const char *name, struct config *cfg)
 {
 	enum config_section current_section = UNKNOWN_SECTION;
 	enum parser_result parser_res;
@@ -817,7 +817,7 @@ parse_error:
 	return -2;
 }
 
-struct interface *config_create_interface(char *name, struct config *cfg)
+struct interface *config_create_interface(const char *name, struct config *cfg)
 {
 	struct interface *iface;
 

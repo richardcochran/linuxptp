@@ -60,8 +60,8 @@ struct config {
 	STAILQ_HEAD(ucmtab_head, unicast_master_table) unicast_master_tables;
 };
 
-int config_read(char *name, struct config *cfg);
-struct interface *config_create_interface(char *name, struct config *cfg);
+int config_read(const char *name, struct config *cfg);
+struct interface *config_create_interface(const char *name, struct config *cfg);
 void config_destroy(struct config *cfg);
 
 /* New, hash table based methods: */
