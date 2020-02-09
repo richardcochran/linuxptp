@@ -54,6 +54,13 @@ const char *interface_label(struct interface *iface);
 const char *interface_name(struct interface *iface);
 
 /**
+ * Set the time stamping label of a given interface.
+ * @param iface  The interface of interest.
+ * @param name   The desired label for the interface.
+ */
+void interface_set_label(struct interface *iface, const char *label);
+
+/**
  * Set the name of a given interface.
  * @param iface  The interface of interest.
  * @param name   The desired name for the interface.
