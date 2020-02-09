@@ -27,10 +27,10 @@ FILTERS	= filter.o mave.o mmedian.o
 SERVOS	= linreg.o ntpshm.o nullf.o pi.o servo.o
 TRANSP	= raw.o transport.o udp.o udp6.o uds.o
 OBJ	= bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
- e2e_tc.o fault.o $(FILTERS) fsm.o hash.o msg.o phc.o port.o port_signaling.o \
- pqueue.o print.o ptp4l.o p2p_tc.o rtnl.o $(SERVOS) sk.o stats.o tc.o \
- $(TRANSP) telecom.o tlv.o tsproc.o unicast_client.o unicast_fsm.o \
- unicast_service.o util.o version.o
+ e2e_tc.o fault.o $(FILTERS) fsm.o hash.o interface.o msg.o phc.o port.o \
+ port_signaling.o pqueue.o print.o ptp4l.o p2p_tc.o rtnl.o $(SERVOS) sk.o \
+ stats.o tc.o $(TRANSP) telecom.o tlv.o tsproc.o unicast_client.o \
+ unicast_fsm.o unicast_service.o util.o version.o
 
 OBJECTS	= $(OBJ) hwstamp_ctl.o nsm.o phc2sys.o phc_ctl.o pmc.o pmc_common.o \
  sysoff.o timemaster.o

@@ -24,5 +24,12 @@ struct interface {
 	struct sk_ts_info ts_info;
 };
 
+/**
+ * Obtains the name of a network interface.
+ * @param iface  The interface of interest.
+ * @return       The device name of the network interface.
+ */
+const char *interface_name(struct interface *iface);
+
 #endif
 
