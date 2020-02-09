@@ -54,6 +54,13 @@ const char *interface_label(struct interface *iface);
 const char *interface_name(struct interface *iface);
 
 /**
+ * Obtains the index of a PTP Hardware Clock device from a network interface.
+ * @param iface  The interface of interest.
+ * @return       The PHC index of the interface.
+ */
+int interface_phc_index(struct interface *iface);
+
+/**
  * Set the time stamping label of a given interface.
  * @param iface  The interface of interest.
  * @param name   The desired label for the interface.

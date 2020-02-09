@@ -28,6 +28,11 @@ const char *interface_name(struct interface *iface)
 	return iface->name;
 }
 
+int interface_phc_index(struct interface *iface)
+{
+	return iface->ts_info.phc_index;
+}
+
 void interface_set_label(struct interface *iface, const char *label)
 {
 	strncpy(iface->ts_label, label, MAX_IFNAME_SIZE);
