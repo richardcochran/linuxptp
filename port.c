@@ -2511,7 +2511,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		interface_get_tsinfo(p->iface);
 
 		/* Only switch phc with HW time stamping mode */
-		if (p->iface->ts_info.valid &&
+		if (interface_tsinfo_valid(p->iface) &&
 		    interface_phc_index(p->iface) >= 0) {
 			required_modes = clock_required_modes(p->clock);
 			if ((p->iface->ts_info.so_timestamping & required_modes) != required_modes) {
@@ -3001,7 +3001,7 @@ struct port *port_open(const char *phc_device,
 
 	if (transport == TRANS_UDS) {
 		; /* UDS cannot have a PHC. */
-	} else if (!interface->ts_info.valid) {
+	} else if (!interface_tsinfo_valid(interface)) {
 		pr_warning("port %d: get_ts_info not supported", number);
 	} else if (phc_index >= 0 &&
 		   phc_index != interface_phc_index(interface)) {

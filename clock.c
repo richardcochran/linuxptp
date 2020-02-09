@@ -956,7 +956,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		interface_set_label(iface, ts_label);
 		interface_ensure_tslabel(iface);
 		interface_get_tsinfo(iface);
-		if (iface->ts_info.valid &&
+		if (interface_tsinfo_valid(iface) &&
 		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
 			pr_err("interface '%s' does not support requested timestamping mode",
 			       interface_name(iface));
@@ -975,7 +975,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index)) {
 			phc_index = -1;
 		}
-	} else if (iface->ts_info.valid) {
+	} else if (interface_tsinfo_valid(iface)) {
 		phc_index = interface_phc_index(iface);
 	} else {
 		pr_err("PTP device not specified and automatic determination"
