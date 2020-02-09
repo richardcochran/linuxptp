@@ -2508,7 +2508,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	/* Both link down/up and change ts_label may change phc index. */
 	if (p->link_status & LINK_UP &&
 	    (p->link_status & LINK_STATE_CHANGED || p->link_status & TS_LABEL_CHANGED)) {
-		sk_get_ts_info(interface_label(p->iface), &p->iface->ts_info);
+		interface_get_tsinfo(p->iface);
 
 		/* Only switch phc with HW time stamping mode */
 		if (p->iface->ts_info.valid && p->iface->ts_info.phc_index >= 0) {

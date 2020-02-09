@@ -962,7 +962,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		rtnl_get_ts_device(interface_name(iface), iface->ts_label);
 		ensure_ts_label(iface);
-		sk_get_ts_info(interface_label(iface), &iface->ts_info);
+		interface_get_tsinfo(iface);
 		if (iface->ts_info.valid &&
 		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
 			pr_err("interface '%s' does not support requested timestamping mode",
