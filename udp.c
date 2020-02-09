@@ -179,7 +179,7 @@ static int udp_open(struct transport *t, struct interface *iface,
 	if (gfd < 0)
 		goto no_general;
 
-	if (sk_timestamping_init(efd, iface->ts_label, ts_type, TRANS_UDP_IPV4))
+	if (sk_timestamping_init(efd, interface_label(iface), ts_type, TRANS_UDP_IPV4))
 		goto no_timestamping;
 
 	if (sk_general_init(gfd))

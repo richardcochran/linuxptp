@@ -213,9 +213,10 @@ static int raw_open(struct transport *t, struct interface *iface,
 	unsigned char ptp_dst_mac[MAC_LEN];
 	unsigned char p2p_dst_mac[MAC_LEN];
 	int efd, gfd, socket_priority;
-	char *str, *name;
+	const char *name;
+	char *str;
 
-	name = iface->ts_label;
+	name = interface_label(iface);
 	str = config_get_string(t->cfg, name, "ptp_dst_mac");
 	if (str2mac(str, ptp_dst_mac)) {
 		pr_err("invalid ptp_dst_mac %s", str);

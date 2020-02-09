@@ -792,6 +792,7 @@ static int port_management_fill_response(struct port *target,
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
 	struct tlv_extra *extra;
+	const char *ts_label;
 	struct portDS *pds;
 	uint16_t u16;
 	uint8_t *buf;
@@ -941,7 +942,8 @@ static int port_management_fill_response(struct port *target,
 		else
 			ppn->port_state = target->state;
 		ppn->timestamping = target->timestamping;
-		ptp_text_set(&ppn->interface, target->iface->ts_label);
+		ts_label = interface_label(target->iface);
+		ptp_text_set(&ppn->interface, ts_label);
 		datalen = sizeof(*ppn) + ppn->interface.length;
 		break;
 	case TLV_PORT_STATS_NP:
@@ -2482,10 +2484,10 @@ static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 
 void port_link_status(void *ctx, int linkup, int ts_index)
 {
-	struct port *p = ctx;
-	int link_state;
 	char ts_label[MAX_IFNAME_SIZE + 1] = {0};
-	int required_modes;
+	int link_state, required_modes;
+	const char *old_ts_label;
+	struct port *p = ctx;
 
 	link_state = linkup ? LINK_UP : LINK_DOWN;
 	if (p->link_status & link_state) {
@@ -2496,7 +2498,8 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	}
 
 	/* ts_label changed */
-	if (if_indextoname(ts_index, ts_label) && strcmp(p->iface->ts_label, ts_label)) {
+	old_ts_label = interface_label(p->iface);
+	if (if_indextoname(ts_index, ts_label) && strcmp(old_ts_label, ts_label)) {
 		strncpy(p->iface->ts_label, ts_label, MAX_IFNAME_SIZE);
 		p->link_status |= TS_LABEL_CHANGED;
 		pr_notice("port %hu: ts label changed to %s", portnum(p), ts_label);
@@ -2505,7 +2508,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	/* Both link down/up and change ts_label may change phc index. */
 	if (p->link_status & LINK_UP &&
 	    (p->link_status & LINK_STATE_CHANGED || p->link_status & TS_LABEL_CHANGED)) {
-		sk_get_ts_info(p->iface->ts_label, &p->iface->ts_info);
+		sk_get_ts_info(interface_label(p->iface), &p->iface->ts_info);
 
 		/* Only switch phc with HW time stamping mode */
 		if (p->iface->ts_info.valid && p->iface->ts_info.phc_index >= 0) {
@@ -2513,7 +2516,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 			if ((p->iface->ts_info.so_timestamping & required_modes) != required_modes) {
 				pr_err("interface '%s' does not support requested "
 				       "timestamping mode, set link status down by force.",
-				       p->iface->ts_label);
+				       interface_label(p->iface));
 				p->link_status = LINK_DOWN | LINK_STATE_CHANGED;
 			} else if (p->phc_index != p->iface->ts_info.phc_index) {
 				p->phc_index = p->iface->ts_info.phc_index;
