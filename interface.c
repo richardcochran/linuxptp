@@ -27,3 +27,8 @@ const char *interface_name(struct interface *iface)
 {
 	return iface->name;
 }
+
+void interface_set_name(struct interface *iface, const char *name)
+{
+	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+}

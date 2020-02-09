@@ -53,5 +53,11 @@ const char *interface_label(struct interface *iface);
  */
 const char *interface_name(struct interface *iface);
 
-#endif
+/**
+ * Set the name of a given interface.
+ * @param iface  The interface of interest.
+ * @param name   The desired name for the interface.
+ */
+void interface_set_name(struct interface *iface, const char *name);
 
+#endif
