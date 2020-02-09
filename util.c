@@ -190,7 +190,7 @@ char *portaddr2str(struct PortAddress *addr)
 	return buf;
 }
 
-clockid_t posix_clock_open(char *device, int *phc_index)
+clockid_t posix_clock_open(const char *device, int *phc_index)
 {
 	struct sk_ts_info ts_info;
 	char phc_device[19];

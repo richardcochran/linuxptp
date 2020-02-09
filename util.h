@@ -116,7 +116,7 @@ char *portaddr2str(struct PortAddress *addr);
  * @param phc_index  Returns the PHC index, if any.
  * @return           A valid clock ID on success or CLOCK_INVALID otherwise.
  */
-clockid_t posix_clock_open(char *device, int *phc_index);
+clockid_t posix_clock_open(const char *device, int *phc_index);
 
 /**
  * Compare two port identities for equality.
