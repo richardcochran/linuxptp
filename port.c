@@ -2511,15 +2511,16 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		interface_get_tsinfo(p->iface);
 
 		/* Only switch phc with HW time stamping mode */
-		if (p->iface->ts_info.valid && p->iface->ts_info.phc_index >= 0) {
+		if (p->iface->ts_info.valid &&
+		    interface_phc_index(p->iface) >= 0) {
 			required_modes = clock_required_modes(p->clock);
 			if ((p->iface->ts_info.so_timestamping & required_modes) != required_modes) {
 				pr_err("interface '%s' does not support requested "
 				       "timestamping mode, set link status down by force.",
 				       interface_label(p->iface));
 				p->link_status = LINK_DOWN | LINK_STATE_CHANGED;
-			} else if (p->phc_index != p->iface->ts_info.phc_index) {
-				p->phc_index = p->iface->ts_info.phc_index;
+			} else if (p->phc_index != interface_phc_index(p->iface)) {
+				p->phc_index = interface_phc_index(p->iface);
 
 				if (clock_switch_phc(p->clock, p->phc_index)) {
 					p->last_fault_type = FT_SWITCH_PHC;
@@ -3002,19 +3003,21 @@ struct port *port_open(const char *phc_device,
 		; /* UDS cannot have a PHC. */
 	} else if (!interface->ts_info.valid) {
 		pr_warning("port %d: get_ts_info not supported", number);
-	} else if (phc_index >= 0 && phc_index != interface->ts_info.phc_index) {
+	} else if (phc_index >= 0 &&
+		   phc_index != interface_phc_index(interface)) {
 		if (p->jbod) {
 			pr_warning("port %d: just a bunch of devices", number);
-			p->phc_index = interface->ts_info.phc_index;
+			p->phc_index = interface_phc_index(interface);
 		} else if (phc_device) {
 			pr_warning("port %d: taking %s from the command line, "
 				   "not the attached ptp%d", number, phc_device,
-				   interface->ts_info.phc_index);
+				   interface_phc_index(interface));
 			p->phc_index = phc_index;
 		} else {
 			pr_err("port %d: PHC device mismatch", number);
 			pr_err("port %d: /dev/ptp%d requested, ptp%d attached",
-			       number, phc_index, interface->ts_info.phc_index);
+			       number, phc_index,
+			       interface_phc_index(interface));
 			goto err_port;
 		}
 	}

@@ -976,7 +976,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 			phc_index = -1;
 		}
 	} else if (iface->ts_info.valid) {
-		phc_index = iface->ts_info.phc_index;
+		phc_index = interface_phc_index(iface);
 	} else {
 		pr_err("PTP device not specified and automatic determination"
 		       " is not supported. Please specify PTP device.");
