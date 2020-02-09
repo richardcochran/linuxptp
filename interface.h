@@ -25,6 +25,15 @@ struct interface {
 };
 
 /**
+ * Obtain the time stamping label of a network interface.  This can be
+ * different from the name of the interface when bonding is in effect.
+ *
+ * @param iface  The interface of interest.
+ * @return       The time stamping device name of the network interface.
+ */
+const char *interface_label(struct interface *iface);
+
+/**
  * Obtains the name of a network interface.
  * @param iface  The interface of interest.
  * @return       The device name of the network interface.

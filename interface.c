@@ -6,6 +6,11 @@
  */
 #include "interface.h"
 
+const char *interface_label(struct interface *iface)
+{
+	return iface->ts_label;
+}
+
 const char *interface_name(struct interface *iface)
 {
 	return iface->name;
