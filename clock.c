@@ -957,7 +957,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		interface_ensure_tslabel(iface);
 		interface_get_tsinfo(iface);
 		if (interface_tsinfo_valid(iface) &&
-		    ((iface->ts_info.so_timestamping & required_modes) != required_modes)) {
+		    !interface_tsmodes_supported(iface, required_modes)) {
 			pr_err("interface '%s' does not support requested timestamping mode",
 			       interface_name(iface));
 			return NULL;

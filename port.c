@@ -2514,7 +2514,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		if (interface_tsinfo_valid(p->iface) &&
 		    interface_phc_index(p->iface) >= 0) {
 			required_modes = clock_required_modes(p->clock);
-			if ((p->iface->ts_info.so_timestamping & required_modes) != required_modes) {
+			if (!interface_tsmodes_supported(p->iface, required_modes)) {
 				pr_err("interface '%s' does not support requested "
 				       "timestamping mode, set link status down by force.",
 				       interface_label(p->iface));
