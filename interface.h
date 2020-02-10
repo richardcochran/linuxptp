@@ -82,4 +82,12 @@ void interface_set_name(struct interface *iface, const char *name);
  */
 bool interface_tsinfo_valid(struct interface *iface);
 
+/**
+ * Tests whether an interface supports a set of given time stamping modes.
+ * @param iface  The interface of interest.
+ * @param modes  Bit mask of SOF_TIMESTAMPING_ flags.
+ * @return       True if the time stamping modes are supported, false otherwise.
+ */
+bool interface_tsmodes_supported(struct interface *iface, int modes);
+
 #endif

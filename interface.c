@@ -47,3 +47,11 @@ bool interface_tsinfo_valid(struct interface *iface)
 {
 	return iface->ts_info.valid ? true : false;
 }
+
+bool interface_tsmodes_supported(struct interface *iface, int modes)
+{
+	if ((iface->ts_info.so_timestamping & modes) == modes) {
+		return true;
+	}
+	return false;
+}
