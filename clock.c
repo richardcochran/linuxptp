@@ -122,7 +122,7 @@ struct clock {
 	struct clock_stats stats;
 	int stats_interval;
 	struct clockcheck *sanity_check;
-	struct interface uds_interface;
+	struct interface *udsif;
 	LIST_HEAD(clock_subscribers_head, clock_subscriber) subscribers;
 };
 
@@ -259,6 +259,7 @@ void clock_destroy(struct clock *c)
 {
 	struct port *p, *tmp;
 
+	interface_destroy(c->udsif);
 	clock_flush_subscriptions(c);
 	LIST_FOREACH_SAFE(p, &c->ports, list, tmp) {
 		clock_remove_port(c, p);
@@ -854,7 +855,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	const char *uds_ifname;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
-	struct interface *iface, *udsif = &c->uds_interface;
+	struct interface *iface;
 	struct timespec ts;
 	int sfl;
 
@@ -1003,20 +1004,20 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 	/* Configure the UDS. */
 	uds_ifname = config_get_string(config, NULL, "uds_address");
-	interface_set_name(udsif, uds_ifname);
-	if (config_set_section_int(config, interface_name(udsif),
+	c->udsif = interface_create(uds_ifname);
+	if (config_set_section_int(config, interface_name(c->udsif),
 				   "announceReceiptTimeout", 0)) {
 		return NULL;
 	}
-	if (config_set_section_int(config, interface_name(udsif),
+	if (config_set_section_int(config, interface_name(c->udsif),
 				    "delay_mechanism", DM_AUTO)) {
 		return NULL;
 	}
-	if (config_set_section_int(config, interface_name(udsif),
+	if (config_set_section_int(config, interface_name(c->udsif),
 				    "network_transport", TRANS_UDS)) {
 		return NULL;
 	}
-	if (config_set_section_int(config, interface_name(udsif),
+	if (config_set_section_int(config, interface_name(c->udsif),
 				   "delay_filter_length", 1)) {
 		return NULL;
 	}
@@ -1131,7 +1132,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	/* Create the UDS interface. */
-	c->uds_port = port_open(phc_device, phc_index, timestamping, 0, udsif, c);
+	c->uds_port = port_open(phc_device, phc_index, timestamping, 0, c->udsif, c);
 	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
 		return NULL;
