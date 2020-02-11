@@ -829,13 +829,11 @@ struct interface *config_create_interface(const char *name, struct config *cfg)
 			return iface;
 	}
 
-	iface = calloc(1, sizeof(struct interface));
+	iface = interface_create(name);
 	if (!iface) {
 		fprintf(stderr, "cannot allocate memory for a port\n");
 		return NULL;
 	}
-
-	interface_set_name(iface, name);
 	STAILQ_INSERT_TAIL(&cfg->interfaces, iface, list);
 	cfg->n_interfaces++;
 
@@ -906,7 +904,7 @@ void config_destroy(struct config *cfg)
 
 	while ((iface = STAILQ_FIRST(&cfg->interfaces))) {
 		STAILQ_REMOVE_HEAD(&cfg->interfaces, list);
-		free(iface);
+		interface_destroy(iface);
 	}
 	while ((table = STAILQ_FIRST(&cfg->unicast_master_tables))) {
 		while ((address = STAILQ_FIRST(&table->addrs))) {
