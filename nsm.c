@@ -35,6 +35,10 @@
 #define IFMT		"\n\t\t"
 #define NSM_NFD		3
 
+struct interface {
+	STAILQ_ENTRY(interface) list;
+};
+
 struct nsm {
 	struct config		*cfg;
 	struct fdarray		fda;

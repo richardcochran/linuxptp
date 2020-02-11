@@ -32,6 +32,10 @@
 #include "print.h"
 #include "util.h"
 
+struct interface {
+	STAILQ_ENTRY(interface) list;
+};
+
 enum config_section {
 	GLOBAL_SECTION,
 	UC_MTAB_SECTION,

@@ -17,13 +17,8 @@
 #error if_namesize larger than expected.
 #endif
 
-/** Defines a network interface, with PTP options. */
-struct interface {
-	STAILQ_ENTRY(interface) list;
-	char name[MAX_IFNAME_SIZE + 1];
-	char ts_label[MAX_IFNAME_SIZE + 1];
-	struct sk_ts_info ts_info;
-};
+/** Opaque type */
+struct interface;
 
 /**
  * Creates an instance of an interface.
