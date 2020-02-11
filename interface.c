@@ -35,7 +35,7 @@ void interface_destroy(struct interface *iface)
 void interface_ensure_tslabel(struct interface *iface)
 {
 	if (!iface->ts_label[0]) {
-		strncpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
+		memcpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
 	}
 }
 
