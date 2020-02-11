@@ -26,6 +26,19 @@ struct interface {
 };
 
 /**
+ * Creates an instance of an interface.
+ * @param name  The device which indentifies this interface.
+ * @return      A pointer to an interface instance on success, NULL otherwise.
+ */
+struct interface *interface_create(const char *name);
+
+/**
+ * Destroys an instance of an interface.
+ * @param iface  A pointer obtained via interface_create().
+ */
+void interface_destroy(struct interface *iface);
+
+/**
  * Ensures that an interface has a proper time stamping label.
  * @param iface  The interface of interest.
  */

@@ -4,7 +4,26 @@
  * @note Copyright (C) 2020 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
+#include <stdlib.h>
 #include "interface.h"
+
+struct interface *interface_create(const char *name)
+{
+	struct interface *iface;
+
+	iface = calloc(1, sizeof(struct interface));
+	if (!iface) {
+		return NULL;
+	}
+	interface_set_name(iface, name);
+
+	return iface;
+}
+
+void interface_destroy(struct interface *iface)
+{
+	free(iface);
+}
 
 void interface_ensure_tslabel(struct interface *iface)
 {
