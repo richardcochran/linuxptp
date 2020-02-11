@@ -77,13 +77,6 @@ int interface_phc_index(struct interface *iface);
 void interface_set_label(struct interface *iface, const char *label);
 
 /**
- * Set the name of a given interface.
- * @param iface  The interface of interest.
- * @param name   The desired name for the interface.
- */
-void interface_set_name(struct interface *iface, const char *name);
-
-/**
  * Tests whether an interface's time stamping information is valid or not.
  * @param iface  The interface of interest.
  * @return       True if the time stamping information is valid, false otherwise.

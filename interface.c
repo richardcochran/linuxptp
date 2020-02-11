@@ -22,7 +22,7 @@ struct interface *interface_create(const char *name)
 	if (!iface) {
 		return NULL;
 	}
-	interface_set_name(iface, name);
+	strncpy(iface->name, name, MAX_IFNAME_SIZE);
 
 	return iface;
 }
@@ -62,11 +62,6 @@ int interface_phc_index(struct interface *iface)
 void interface_set_label(struct interface *iface, const char *label)
 {
 	strncpy(iface->ts_label, label, MAX_IFNAME_SIZE);
-}
-
-void interface_set_name(struct interface *iface, const char *name)
-{
-	strncpy(iface->name, name, MAX_IFNAME_SIZE);
 }
 
 bool interface_tsinfo_valid(struct interface *iface)
