@@ -313,6 +313,7 @@ struct pmc {
 	struct PortIdentity target;
 
 	struct transport *transport;
+	struct interface *iface;
 	struct fdarray fdarray;
 	int zero_length_gets;
 };
@@ -322,10 +323,7 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       UInteger8 domain_number, UInteger8 transport_specific,
 		       int zero_datalen)
 {
-	struct interface iface;
 	struct pmc *pmc;
-
-	memset(&iface, 0, sizeof(iface));
 
 	pmc = calloc(1, sizeof *pmc);
 	if (!pmc)
@@ -350,18 +348,24 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		goto failed;
 	}
 
-	interface_set_name(&iface, iface_name);
-	interface_ensure_tslabel(&iface);
+	pmc->iface = interface_create(iface_name);
+	if (!pmc->iface) {
+		pr_err("failed to create interface");
+		goto failed;
+	}
+	interface_ensure_tslabel(pmc->iface);
 
-	if (transport_open(pmc->transport, &iface,
+	if (transport_open(pmc->transport, pmc->iface,
 			   &pmc->fdarray, TS_SOFTWARE)) {
 		pr_err("failed to open transport");
-		goto failed;
+		goto no_trans_open;
 	}
 	pmc->zero_length_gets = zero_datalen ? 1 : 0;
 
 	return pmc;
 
+no_trans_open:
+	interface_destroy(pmc->iface);
 failed:
 	if (pmc->transport)
 		transport_destroy(pmc->transport);
@@ -372,6 +376,7 @@ failed:
 void pmc_destroy(struct pmc *pmc)
 {
 	transport_close(pmc->transport, &pmc->fdarray);
+	interface_destroy(pmc->iface);
 	transport_destroy(pmc->transport);
 	free(pmc);
 }
