@@ -735,8 +735,10 @@ static int do_loop(struct node *node, int subscriptions)
 				reconfigure(node);
 			}
 		}
-		if (!node->master)
+		if (!node->master) {
+			sysclk_set_unsync();
 			continue;
+		}
 
 		LIST_FOREACH(clock, &node->dst_clocks, dst_list) {
 			if (!update_needed(clock))

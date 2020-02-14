@@ -182,3 +182,14 @@ void sysclk_set_sync(void)
 	if (clock_adjtime(clkid, &tx) < 0)
 		pr_err("failed to set clock status and maximum error: %m");
 }
+
+void sysclk_set_unsync(void)
+{
+	clockid_t clkid = CLOCK_REALTIME;
+	struct timex tx;
+	memset(&tx, 0, sizeof(tx));
+	tx.modes = ADJ_STATUS;
+	tx.status = STA_UNSYNC;
+	if (clock_adjtime(clkid, &tx) < 0)
+		pr_err("failed to set clock status: %m");
+}
