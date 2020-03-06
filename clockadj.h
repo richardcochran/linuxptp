@@ -80,9 +80,4 @@ int sysclk_max_freq(void);
  * the real-time clock (RTC) to it.
  */
 void sysclk_set_sync(void);
-
-/**
- * Mark the system clock as unsynchronized.
- */
-void sysclk_set_unsync(void);
 #endif
