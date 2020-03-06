@@ -145,9 +145,9 @@ static void remove_subscriber(struct clock_subscriber *s)
 static void clock_update_subscription(struct clock *c, struct ptp_message *req,
 				      uint8_t *bitmask, uint16_t duration)
 {
-	struct clock_subscriber *s;
-	int i, remove = 1;
+	struct clock_subscriber *s, *tmp;
 	struct timespec now;
+	int i, remove = 1;
 
 	for (i = 0; i < EVENT_BITMASK_CNT; i++) {
 		if (bitmask[i]) {
@@ -156,12 +156,11 @@ static void clock_update_subscription(struct clock *c, struct ptp_message *req,
 		}
 	}
 
-	LIST_FOREACH(s, &c->subscribers, list) {
+	LIST_FOREACH_SAFE(s, &c->subscribers, list, tmp) {
 		if (pid_eq(&s->targetPortIdentity,
 			   &req->header.sourcePortIdentity)) {
-			/* Found, update the transport address and event
-			 * mask. */
 			if (!remove) {
+				/* Update transport address and event mask. */
 				s->addr = req->address;
 				memcpy(s->events, bitmask, EVENT_BITMASK_CNT);
 				clock_gettime(CLOCK_MONOTONIC, &now);
