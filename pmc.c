@@ -38,6 +38,7 @@
 static struct pmc *pmc;
 
 #define IFMT "\n\t\t"
+#define P41 ((double)(1ULL << 41))
 
 static char *text2str(struct PTPText *text)
 {

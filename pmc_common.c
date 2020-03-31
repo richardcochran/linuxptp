@@ -27,6 +27,11 @@
 #include "util.h"
 #include "pmc_common.h"
 
+#define BAD_ACTION   -1
+#define BAD_ID       -1
+#define AMBIGUOUS_ID -2
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 /*
    Field                  Len  Type
   --------------------------------------------------------
