@@ -28,6 +28,7 @@
 
 #include "ds.h"
 #include "fsm.h"
+#include "notification.h"
 #include "pmc_common.h"
 #include "print.h"
 #include "tlv.h"
@@ -56,22 +57,23 @@ static char *bin2str(Octet *data, int len)
 
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
-	int action;
-	struct TLV *tlv;
-	struct management_tlv *mgt;
+	struct grandmaster_settings_np *gsn;
+	struct mgmt_clock_description *cd;
+	struct subscribe_events_np *sen;
 	struct management_tlv_datum *mtd;
+	struct port_properties_np *ppn;
+	struct timePropertiesDS *tp;
+	struct management_tlv *mgt;
+	struct time_status_np *tsn;
+	struct port_stats_np *pcp;
+	struct tlv_extra *extra;
+	struct port_ds_np *pnp;
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
-	struct timePropertiesDS *tp;
-	struct time_status_np *tsn;
-	struct grandmaster_settings_np *gsn;
-	struct mgmt_clock_description *cd;
-	struct tlv_extra *extra;
 	struct portDS *p;
-	struct port_ds_np *pnp;
-	struct port_properties_np *ppn;
-	struct port_stats_np *pcp;
+	struct TLV *tlv;
+	int action;
 
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
@@ -294,6 +296,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			gsn->time_flags & TIME_TRACEABLE ? 1 : 0,
 			gsn->time_flags & FREQ_TRACEABLE ? 1 : 0,
 			gsn->time_source);
+		break;
+	case TLV_SUBSCRIBE_EVENTS_NP:
+		sen = (struct subscribe_events_np *) mgt->data;
+		fprintf(fp, "SUBSCRIBE_EVENTS_NP "
+			IFMT "duration          %hu"
+			IFMT "NOTIFY_PORT_STATE %s",
+			sen->duration,
+			(sen->bitmask[0] & 1 << NOTIFY_PORT_STATE) ? "on" : "off");
 		break;
 	case TLV_PORT_DATA_SET:
 		p = (struct portDS *) mgt->data;
