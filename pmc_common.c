@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "notification.h"
 #include "print.h"
 #include "tlv.h"
 #include "transport.h"
@@ -106,6 +107,7 @@ struct management_id idtab[] = {
 	{ "PRIMARY_DOMAIN", TLV_PRIMARY_DOMAIN, not_supported },
 	{ "TIME_STATUS_NP", TLV_TIME_STATUS_NP, do_get_action },
 	{ "GRANDMASTER_SETTINGS_NP", TLV_GRANDMASTER_SETTINGS_NP, do_set_action },
+	{ "SUBSCRIBE_EVENTS_NP", TLV_SUBSCRIBE_EVENTS_NP, do_set_action },
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", TLV_NULL_MANAGEMENT, null_management },
 	{ "CLOCK_DESCRIPTION", TLV_CLOCK_DESCRIPTION, do_get_action },
@@ -139,12 +141,13 @@ static void do_get_action(struct pmc *pmc, int action, int index, char *str)
 
 static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 {
+	int cnt, code = idtab[index].code, freq_traceable, leap_59, leap_61,
+		ptp_timescale, time_traceable, utc_off_valid;
 	struct grandmaster_settings_np gsn;
 	struct management_tlv_datum mtd;
+	struct subscribe_events_np sen;
 	struct port_ds_np pnp;
-	int cnt, code = idtab[index].code;
-	int leap_61, leap_59, utc_off_valid;
-	int ptp_timescale, time_traceable, freq_traceable;
+	char onoff[4] = {0};
 
 	switch (action) {
 	case GET:
@@ -214,6 +217,22 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 		if (freq_traceable)
 			gsn.time_flags |= FREQ_TRACEABLE;
 		pmc_send_set_action(pmc, code, &gsn, sizeof(gsn));
+		break;
+	case TLV_SUBSCRIBE_EVENTS_NP:
+		memset(&sen, 0, sizeof(sen));
+		cnt = sscanf(str, " %*s %*s "
+			     "duration %hu "
+			     "NOTIFY_PORT_STATE %3s ",
+			     &sen.duration, onoff);
+		if (cnt != 2) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		if (!strcasecmp(onoff, "on")) {
+			sen.bitmask[0] = 1 << NOTIFY_PORT_STATE;
+		}
+		pmc_send_set_action(pmc, code, &sen, sizeof(sen));
 		break;
 	case TLV_PORT_DATA_SET_NP:
 		cnt = sscanf(str, " %*s %*s "
