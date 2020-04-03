@@ -18,8 +18,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <errno.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "notification.h"
 #include "print.h"
@@ -353,13 +355,16 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 	if (!pmc)
 		return NULL;
 
-	if (transport_type != TRANS_UDS &&
-	    generate_clock_identity(&pmc->port_identity.clockIdentity,
-				    iface_name)) {
-		pr_err("failed to generate a clock identity");
-		goto failed;
+	if (transport_type == TRANS_UDS) {
+		pmc->port_identity.portNumber = getpid();
+	} else {
+		if (generate_clock_identity(&pmc->port_identity.clockIdentity,
+					    iface_name)) {
+			pr_err("failed to generate a clock identity");
+			goto failed;
+		}
+		pmc->port_identity.portNumber = 1;
 	}
-	pmc->port_identity.portNumber = 1;
 	pmc_target_all(pmc);
 
 	pmc->boundary_hops = boundary_hops;
