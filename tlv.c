@@ -53,6 +53,20 @@ static void scaled_ns_h2n(ScaledNs *sns)
 	sns->fractional_nanoseconds = htons(sns->fractional_nanoseconds);
 }
 
+static void timestamp_host2net(struct Timestamp *t)
+{
+	HTONL(t->seconds_lsb);
+	HTONS(t->seconds_msb);
+	HTONL(t->nanoseconds);
+}
+
+static void timestamp_net2host(struct Timestamp *t)
+{
+	NTOHL(t->seconds_lsb);
+	NTOHS(t->seconds_msb);
+	NTOHL(t->nanoseconds);
+}
+
 static uint16_t flip16(uint16_t *p)
 {
 	uint16_t v;
@@ -80,11 +94,16 @@ static int64_t net2host64_unaligned(int64_t *p)
 	return v;
 }
 
+static size_t tlv_array_count(struct TLV *tlv, size_t base_size, size_t item_size)
+{
+	return (tlv->length - base_size) / item_size;
+}
+
 static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_size)
 {
 	size_t expected_length, n_items;
 
-	n_items = (tlv->length - base_size) / item_size;
+	n_items = tlv_array_count(tlv, base_size, item_size);
 
 	expected_length = base_size + n_items * item_size;
 
@@ -575,6 +594,57 @@ static void org_pre_send(struct organization_tlv *org)
 	}
 }
 
+static int slave_rx_sync_timing_data_post_revc(struct tlv_extra *extra)
+{
+	struct slave_rx_sync_timing_data_tlv *slave_data =
+		(struct slave_rx_sync_timing_data_tlv *) extra->tlv;
+	size_t base_size = sizeof(slave_data->sourcePortIdentity), n_items;
+	struct slave_rx_sync_timing_record *record;
+
+	if (tlv_array_invalid(extra->tlv, base_size, sizeof(*record))) {
+		return -EBADMSG;
+	}
+	n_items = tlv_array_count(extra->tlv, base_size, sizeof(*record));
+	record = slave_data->record;
+
+	NTOHS(slave_data->sourcePortIdentity.portNumber);
+
+	while (n_items) {
+		NTOHS(record->sequenceId);
+		timestamp_net2host(&record->syncOriginTimestamp);
+		net2host64_unaligned(&record->totalCorrectionField);
+		NTOHL(record->scaledCumulativeRateOffset);
+		timestamp_net2host(&record->syncEventIngressTimestamp);
+		n_items--;
+		record++;
+	}
+
+	return 0;
+}
+
+static void slave_rx_sync_timing_data_pre_send(struct tlv_extra *extra)
+{
+	struct slave_rx_sync_timing_data_tlv *slave_data =
+		(struct slave_rx_sync_timing_data_tlv *) extra->tlv;
+	size_t base_size = sizeof(slave_data->sourcePortIdentity), n_items;
+	struct slave_rx_sync_timing_record *record;
+
+	n_items = tlv_array_count(extra->tlv, base_size, sizeof(*record));
+	record = slave_data->record;
+
+	HTONS(slave_data->sourcePortIdentity.portNumber);
+
+	while (n_items) {
+		HTONS(record->sequenceId);
+		timestamp_host2net(&record->syncOriginTimestamp);
+		host2net64_unaligned(&record->totalCorrectionField);
+		HTONL(record->scaledCumulativeRateOffset);
+		timestamp_host2net(&record->syncEventIngressTimestamp);
+		n_items--;
+		record++;
+	}
+}
+
 static int unicast_message_type_valid(uint8_t message_type)
 {
 	message_type >>= 4;
@@ -743,7 +813,10 @@ int tlv_post_recv(struct tlv_extra *extra)
 	case TLV_L1_SYNC:
 	case TLV_PORT_COMMUNICATION_AVAILABILITY:
 	case TLV_PROTOCOL_ADDRESS:
+		break;
 	case TLV_SLAVE_RX_SYNC_TIMING_DATA:
+		result = slave_rx_sync_timing_data_post_revc(extra);
+		break;
 	case TLV_SLAVE_RX_SYNC_COMPUTED_DATA:
 	case TLV_SLAVE_TX_EVENT_TIMESTAMPS:
 	case TLV_CUMULATIVE_RATE_RATIO:
@@ -800,7 +873,10 @@ void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)
 	case TLV_L1_SYNC:
 	case TLV_PORT_COMMUNICATION_AVAILABILITY:
 	case TLV_PROTOCOL_ADDRESS:
+		break;
 	case TLV_SLAVE_RX_SYNC_TIMING_DATA:
+		slave_rx_sync_timing_data_pre_send(extra);
+		break;
 	case TLV_SLAVE_RX_SYNC_COMPUTED_DATA:
 	case TLV_SLAVE_TX_EVENT_TIMESTAMPS:
 	case TLV_CUMULATIVE_RATE_RATIO:

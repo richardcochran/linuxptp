@@ -224,6 +224,11 @@ struct path_trace_tlv {
 	struct ClockIdentity cid[0];
 } PACKED;
 
+static inline unsigned int path_length(struct path_trace_tlv *p)
+{
+	return p->length / sizeof(struct ClockIdentity);
+}
+
 struct request_unicast_xmit_tlv {
 	Enumeration16   type;
 	UInteger16      length;
@@ -232,10 +237,25 @@ struct request_unicast_xmit_tlv {
 	UInteger32      durationField;
 } PACKED;
 
-static inline unsigned int path_length(struct path_trace_tlv *p)
-{
-	return p->length / sizeof(struct ClockIdentity);
-}
+struct slave_rx_sync_timing_record {
+	UInteger16          sequenceId;
+	struct Timestamp    syncOriginTimestamp;
+	TimeInterval        totalCorrectionField;
+	Integer32           scaledCumulativeRateOffset;
+	struct Timestamp    syncEventIngressTimestamp;
+} PACKED;
+
+struct slave_rx_sync_timing_data_tlv {
+	Enumeration16        type;
+	UInteger16           length;
+	struct PortIdentity  sourcePortIdentity;
+	struct slave_rx_sync_timing_record record[0];
+} PACKED;
+
+#define SLAVE_RX_SYNC_TIMING_MAX \
+	((sizeof(struct message_data) - sizeof(struct signaling_msg) -	\
+	  sizeof(struct slave_rx_sync_timing_data_tlv)) /		\
+	 sizeof(struct slave_rx_sync_timing_record))
 
 typedef struct Integer96 {
 	uint16_t nanoseconds_msb;
