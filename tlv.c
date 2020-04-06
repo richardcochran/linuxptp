@@ -18,6 +18,7 @@
  */
 #include <arpa/inet.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -77,6 +78,17 @@ static int64_t net2host64_unaligned(int64_t *p)
 	v = net2host64(v);
 	memcpy(p, &v, sizeof(v));
 	return v;
+}
+
+static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_size)
+{
+	size_t expected_length, n_items;
+
+	n_items = (tlv->length - base_size) / item_size;
+
+	expected_length = base_size + n_items * item_size;
+
+	return (tlv->length == expected_length) ? false : true;
 }
 
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
@@ -678,11 +690,10 @@ void tlv_extra_recycle(struct tlv_extra *extra)
 
 int tlv_post_recv(struct tlv_extra *extra)
 {
-	int result = 0;
-	struct management_tlv *mgt;
 	struct management_error_status *mes;
 	struct TLV *tlv = extra->tlv;
-	struct path_trace_tlv *ptt;
+	struct management_tlv *mgt;
+	int result = 0;
 
 	switch (tlv->type) {
 	case TLV_MANAGEMENT:
@@ -712,9 +723,8 @@ int tlv_post_recv(struct tlv_extra *extra)
 		result = unicast_negotiation_post_recv(extra);
 		break;
 	case TLV_PATH_TRACE:
-		ptt = (struct path_trace_tlv *) tlv;
-		if (path_length(ptt) > PATH_TRACE_MAX) {
-			ptt->length = PATH_TRACE_MAX * sizeof(struct ClockIdentity);
+		if (tlv_array_invalid(tlv, 0, sizeof(struct ClockIdentity))) {
+			goto bad_length;
 		}
 		break;
 	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
