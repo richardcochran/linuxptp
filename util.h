@@ -131,7 +131,8 @@ clockid_t posix_clock_open(const char *device, int *phc_index);
  * @param b  Second port identity.
  * @return   1 if identities are equal, 0 otherwise.
  */
-static inline int pid_eq(struct PortIdentity *a, struct PortIdentity *b)
+static inline int pid_eq(const struct PortIdentity *a,
+			 const struct PortIdentity *b)
 {
 	return memcmp(a, b, sizeof(*a)) == 0;
 }
