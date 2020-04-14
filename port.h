@@ -210,6 +210,9 @@ struct port *port_open(const char *phc_device,
 		       struct interface *interface,
 		       struct clock *clock);
 
+struct ptp_message *port_signaling_construct(struct port *p,
+					     const struct PortIdentity *tpid);
+
 /**
  * Returns a port's current state.
  * @param port  A port instance.

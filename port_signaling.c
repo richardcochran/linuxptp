@@ -30,8 +30,8 @@ const struct PortIdentity wildcard_pid = {
 	.portNumber = 0xffff,
 };
 
-static struct ptp_message *port_signaling_construct(struct port *p,
-						    struct PortIdentity *tpid)
+struct ptp_message *port_signaling_construct(struct port *p,
+					     const struct PortIdentity *tpid)
 {
 	struct ptp_message *msg;
 
