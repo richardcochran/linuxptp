@@ -23,7 +23,7 @@
 #include "unicast_client.h"
 #include "unicast_service.h"
 
-static struct PortIdentity wildcard = {
+const struct PortIdentity wildcard_pid = {
 	.clockIdentity = {
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 	},
@@ -126,7 +126,7 @@ int process_signaling(struct port *p, struct ptp_message *m)
 
 	/* Ignore signaling messages not addressed to this port. */
 	if (!pid_eq(&m->signaling.targetPortIdentity, &p->portIdentity) &&
-	    !pid_eq(&m->signaling.targetPortIdentity, &wildcard)) {
+	    !pid_eq(&m->signaling.targetPortIdentity, &wildcard_pid)) {
 		return 0;
 	}
 

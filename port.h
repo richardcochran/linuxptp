@@ -33,6 +33,9 @@ struct clock;
 /** Opaque type. */
 struct port;
 
+/** The port identity that matches any port. */
+extern const struct PortIdentity wildcard_pid;
+
 /**
  * Returns the dataset from a port's best foreign clock record, if any
  * has yet been discovered. This function does not bring the returned
