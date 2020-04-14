@@ -764,6 +764,12 @@ to the SERVO_LOCKED_STABLE state.  The transition occurs once the last
 'servo_num_offset_values' offsets are all below the threshold value.
 The default value of offset_threshold is 0 (disabled).
 .TP
+.B slave_event_monitor
+Specifies the address of a UNIX domain socket for slave event
+monitoring.  A local client bound to this address will receive
+SLAVE_RX_SYNC_TIMING_DATA and SLAVE_DELAY_TIMING_DATA_NP TLVs.
+The default is the empty string (disabled).
+.TP
 .B write_phase_mode
 This option enables using the "write phase" feature of a PTP Hardware
 Clock.  If supported by the device, this mode uses the hardware's
