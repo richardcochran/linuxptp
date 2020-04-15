@@ -24,6 +24,7 @@
 #include "as_capable.h"
 #include "clock.h"
 #include "fsm.h"
+#include "monitor.h"
 #include "msg.h"
 #include "tmv.h"
 
@@ -150,6 +151,8 @@ struct port {
 	/* unicast service mode */
 	struct unicast_service *unicast_service;
 	int inhibit_multicast_service;
+	/* slave event monitoring */
+	struct monitor *slave_event_monitor;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)

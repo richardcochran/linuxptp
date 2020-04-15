@@ -1156,6 +1156,7 @@ static void message_interval_request(struct port *p,
 }
 
 static void port_synchronize(struct port *p,
+			     uint16_t seqid,
 			     tmv_t ingress_ts,
 			     struct timestamp origin_ts,
 			     Integer64 correction1, Integer64 correction2,
@@ -1171,6 +1172,17 @@ static void port_synchronize(struct port *p,
 	c1 = correction_to_tmv(correction1);
 	c2 = correction_to_tmv(correction2);
 	t1c = tmv_add(t1, tmv_add(c1, c2));
+
+	switch (p->state) {
+	case PS_UNCALIBRATED:
+	case PS_SLAVE:
+		monitor_sync(p->slave_event_monitor,
+			     clock_parent_identity(p->clock), seqid,
+			     t1, tmv_add(c1, c2), t2);
+		break;
+	default:
+		break;
+	}
 
 	last_state = clock_servo_state(p->clock);
 	state = clock_synchronize(p->clock, t2, t1c);
@@ -1251,7 +1263,8 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			break;
 		case FUP_MATCH:
 			syn = p->last_syncfup;
-			port_synchronize(p, syn->hwts.ts, m->ts.pdu,
+			port_synchronize(p, syn->header.sequenceId,
+					 syn->hwts.ts, m->ts.pdu,
 					 syn->header.correction,
 					 m->header.correction,
 					 m->header.logMessageInterval);
@@ -1271,7 +1284,8 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			break;
 		case SYNC_MATCH:
 			fup = p->last_syncfup;
-			port_synchronize(p, m->hwts.ts, fup->ts.pdu,
+			port_synchronize(p, fup->header.sequenceId,
+					 m->hwts.ts, fup->ts.pdu,
 					 m->header.correction,
 					 fup->header.correction,
 					 m->header.logMessageInterval);
@@ -2297,7 +2311,8 @@ void process_sync(struct port *p, struct ptp_message *m)
 	m->header.correction += p->asymmetry;
 
 	if (one_step(m)) {
-		port_synchronize(p, m->hwts.ts, m->ts.pdu,
+		port_synchronize(p, m->header.sequenceId,
+				 m->hwts.ts, m->ts.pdu,
 				 m->header.correction, 0,
 				 m->header.logMessageInterval);
 		flush_last_sync(p);
@@ -3061,6 +3076,7 @@ struct port *port_open(const char *phc_device,
 	p->state = PS_INITIALIZING;
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_VERSION;
+	p->slave_event_monitor = clock_slave_monitor(clock);
 
 	if (number && unicast_client_initialize(p)) {
 		goto err_transport;
