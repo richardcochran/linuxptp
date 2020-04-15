@@ -131,6 +131,7 @@ struct clock {
 	struct clockcheck *sanity_check;
 	struct interface *udsif;
 	LIST_HEAD(clock_subscribers_head, clock_subscriber) subscribers;
+	struct monitor *slave_event_monitor;
 };
 
 struct clock the_clock;
@@ -271,6 +272,7 @@ void clock_destroy(struct clock *c)
 	LIST_FOREACH_SAFE(p, &c->ports, list, tmp) {
 		clock_remove_port(c, p);
 	}
+	monitor_destroy(c->slave_event_monitor);
 	port_close(c->uds_port);
 	free(c->pollfd);
 	if (c->clkid != CLOCK_REALTIME) {
@@ -1185,6 +1187,12 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 	clock_fda_changed(c);
 
+	c->slave_event_monitor = monitor_create(config, c->uds_port);
+	if (!c->slave_event_monitor) {
+		pr_err("failed to create slave event monitor");
+		return NULL;
+	}
+
 	/* Create the ports. */
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		if (clock_add_port(c, phc_device, phc_index, timestamping, iface)) {
@@ -1624,6 +1632,11 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 
 	if (c->stats.delay)
 		stats_add_value(c->stats.delay, tmv_dbl(ppd));
+}
+
+struct monitor *clock_slave_monitor(struct clock *c)
+{
+	return c->slave_event_monitor;
 }
 
 int clock_slave_only(struct clock *c)

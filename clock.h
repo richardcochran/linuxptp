@@ -23,6 +23,7 @@
 #include "dm.h"
 #include "ds.h"
 #include "config.h"
+#include "monitor.h"
 #include "notification.h"
 #include "servo.h"
 #include "tlv.h"
@@ -266,6 +267,13 @@ struct servo *clock_servo(struct clock *c);
  * @return  The current state of the clock's servo.
  */
 enum servo_state clock_servo_state(struct clock *c);
+
+/**
+ * Obtain the slave monitor instance from a clock.
+ * @param c The clock instance.
+ * @return  The slave monitor associated with the clock.
+ */
+struct monitor *clock_slave_monitor(struct clock *c);
 
 /**
  * Obtain the slave-only flag from a clock's default data set.
