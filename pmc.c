@@ -55,6 +55,59 @@ static char *bin2str(Octet *data, int len)
 	return bin2str_impl(data, len, buf, sizeof(buf));
 }
 
+#define SHOW_TIMESTAMP(ts) \
+	((uint64_t)ts.seconds_lsb) | (((uint64_t)ts.seconds_msb) << 32), ts.nanoseconds
+
+static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
+				    FILE *fp)
+{
+	fprintf(fp,
+		IFMT "sequenceId                 %hu"
+		IFMT "syncOriginTimestamp        %" PRId64 ".%09u"
+		IFMT "totalCorrectionField       %" PRId64
+		IFMT "scaledCumulativeRateOffset %u"
+		IFMT "syncEventIngressTimestamp  %" PRId64 ".%09u",
+		record->sequenceId,
+		SHOW_TIMESTAMP(record->syncOriginTimestamp),
+		record->totalCorrectionField << 16,
+		record->scaledCumulativeRateOffset,
+		SHOW_TIMESTAMP(record->syncEventIngressTimestamp));
+}
+
+static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
+{
+	struct slave_rx_sync_timing_record *sync_record;
+	struct slave_rx_sync_timing_data_tlv *srstd;
+	struct tlv_extra *extra;
+	int i, cnt;
+
+	fprintf(fp, "\t%s seq %hu %s ",
+		pid2str(&msg->header.sourcePortIdentity),
+		msg->header.sequenceId, "SIGNALING");
+
+	TAILQ_FOREACH(extra, &msg->tlv_list, list) {
+		switch (extra->tlv->type) {
+		case TLV_SLAVE_RX_SYNC_TIMING_DATA:
+			srstd = (struct slave_rx_sync_timing_data_tlv *) extra->tlv;
+			cnt = (srstd->length - sizeof(srstd->sourcePortIdentity)) /
+				sizeof(*sync_record);
+			fprintf(fp, "SLAVE_RX_SYNC_TIMING_DATA N %d "
+				IFMT "sourcePortIdentity         %s",
+				cnt, pid2str(&srstd->sourcePortIdentity));
+			sync_record = srstd->record;
+			for (i = 0; i < cnt; i++) {
+				pmc_show_rx_sync_timing(sync_record, fp);
+				sync_record++;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	fprintf(fp, "\n");
+	fflush(fp);
+}
+
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
 	struct grandmaster_settings_np *gsn;
@@ -75,6 +128,10 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct TLV *tlv;
 	int action;
 
+	if (msg_type(msg) == SIGNALING) {
+		pmc_show_signaling(msg, fp);
+		return;
+	}
 	if (msg_type(msg) != MANAGEMENT) {
 		return;
 	}
