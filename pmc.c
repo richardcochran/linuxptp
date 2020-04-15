@@ -58,6 +58,20 @@ static char *bin2str(Octet *data, int len)
 #define SHOW_TIMESTAMP(ts) \
 	((uint64_t)ts.seconds_lsb) | (((uint64_t)ts.seconds_msb) << 32), ts.nanoseconds
 
+static void pmc_show_delay_timing(struct slave_delay_timing_record *record,
+				  FILE *fp)
+{
+	fprintf(fp,
+		IFMT "sequenceId                 %hu"
+		IFMT "delayOriginTimestamp       %" PRId64 ".%09u"
+		IFMT "totalCorrectionField       %" PRId64
+		IFMT "delayResponseTimestamp     %" PRId64 ".%09u",
+		record->sequenceId,
+		SHOW_TIMESTAMP(record->delayOriginTimestamp),
+		record->totalCorrectionField << 16,
+		SHOW_TIMESTAMP(record->delayResponseTimestamp));
+}
+
 static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
 				    FILE *fp)
 {
@@ -77,7 +91,9 @@ static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
 static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 {
 	struct slave_rx_sync_timing_record *sync_record;
+	struct slave_delay_timing_record *delay_record;
 	struct slave_rx_sync_timing_data_tlv *srstd;
+	struct slave_delay_timing_data_tlv *sdtdt;
 	struct tlv_extra *extra;
 	int i, cnt;
 
@@ -98,6 +114,19 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 			for (i = 0; i < cnt; i++) {
 				pmc_show_rx_sync_timing(sync_record, fp);
 				sync_record++;
+			}
+			break;
+		case TLV_SLAVE_DELAY_TIMING_DATA_NP:
+			sdtdt = (struct slave_delay_timing_data_tlv *) extra->tlv;
+			cnt = (sdtdt->length - sizeof(sdtdt->sourcePortIdentity)) /
+				sizeof(*delay_record);
+			fprintf(fp, "SLAVE_DELAY_TIMING_DATA_NP N %d "
+				IFMT "sourcePortIdentity         %s",
+				cnt, pid2str(&sdtdt->sourcePortIdentity));
+			delay_record = sdtdt->record;
+			for (i = 0; i < cnt; i++) {
+				pmc_show_delay_timing(delay_record, fp);
+				delay_record++;
 			}
 			break;
 		default:
