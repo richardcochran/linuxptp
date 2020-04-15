@@ -50,6 +50,7 @@
 #define TLV_SLAVE_RX_SYNC_TIMING_DATA			0x8004
 #define TLV_SLAVE_RX_SYNC_COMPUTED_DATA			0x8005
 #define TLV_SLAVE_TX_EVENT_TIMESTAMPS			0x8006
+#define TLV_SLAVE_DELAY_TIMING_DATA_NP			0x7F00
 #define TLV_CUMULATIVE_RATE_RATIO			0x8007
 #define TLV_PAD						0x8008
 #define TLV_AUTHENTICATION				0x8009
@@ -236,6 +237,25 @@ struct request_unicast_xmit_tlv {
 	Integer8        logInterMessagePeriod;
 	UInteger32      durationField;
 } PACKED;
+
+struct slave_delay_timing_record {
+	UInteger16          sequenceId;
+	struct Timestamp    delayOriginTimestamp;
+	TimeInterval        totalCorrectionField;
+	struct Timestamp    delayResponseTimestamp;
+} PACKED;
+
+struct slave_delay_timing_data_tlv {
+	Enumeration16        type;
+	UInteger16           length;
+	struct PortIdentity  sourcePortIdentity;
+	struct slave_delay_timing_record record[0];
+} PACKED;
+
+#define SLAVE_DELAY_TIMING_MAX \
+	((sizeof(struct message_data) - sizeof(struct signaling_msg) -	\
+	  sizeof(struct slave_delay_timing_data_tlv)) /		\
+	 sizeof(struct slave_delay_timing_record))
 
 struct slave_rx_sync_timing_record {
 	UInteger16          sequenceId;

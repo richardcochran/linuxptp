@@ -594,6 +594,55 @@ static void org_pre_send(struct organization_tlv *org)
 	}
 }
 
+static int slave_delay_timing_data_post_revc(struct tlv_extra *extra)
+{
+	struct slave_delay_timing_data_tlv *slave_delay =
+		(struct slave_delay_timing_data_tlv *) extra->tlv;
+	size_t base_size = sizeof(slave_delay->sourcePortIdentity), n_items;
+	struct slave_delay_timing_record *record;
+
+	if (tlv_array_invalid(extra->tlv, base_size, sizeof(*record))) {
+		return -EBADMSG;
+	}
+	n_items = tlv_array_count(extra->tlv, base_size, sizeof(*record));
+	record = slave_delay->record;
+
+	NTOHS(slave_delay->sourcePortIdentity.portNumber);
+
+	while (n_items) {
+		NTOHS(record->sequenceId);
+		timestamp_net2host(&record->delayOriginTimestamp);
+		net2host64_unaligned(&record->totalCorrectionField);
+		timestamp_net2host(&record->delayResponseTimestamp);
+		n_items--;
+		record++;
+	}
+
+	return 0;
+}
+
+static void slave_delay_timing_data_pre_send(struct tlv_extra *extra)
+{
+	struct slave_delay_timing_data_tlv *slave_delay =
+		(struct slave_delay_timing_data_tlv *) extra->tlv;
+	size_t base_size = sizeof(slave_delay->sourcePortIdentity), n_items;
+	struct slave_delay_timing_record *record;
+
+	n_items = tlv_array_count(extra->tlv, base_size, sizeof(*record));
+	record = slave_delay->record;
+
+	HTONS(slave_delay->sourcePortIdentity.portNumber);
+
+	while (n_items) {
+		HTONS(record->sequenceId);
+		timestamp_host2net(&record->delayOriginTimestamp);
+		host2net64_unaligned(&record->totalCorrectionField);
+		timestamp_host2net(&record->delayResponseTimestamp);
+		n_items--;
+		record++;
+	}
+}
+
 static int slave_rx_sync_timing_data_post_revc(struct tlv_extra *extra)
 {
 	struct slave_rx_sync_timing_data_tlv *slave_data =
@@ -819,6 +868,10 @@ int tlv_post_recv(struct tlv_extra *extra)
 		break;
 	case TLV_SLAVE_RX_SYNC_COMPUTED_DATA:
 	case TLV_SLAVE_TX_EVENT_TIMESTAMPS:
+		break;
+	case TLV_SLAVE_DELAY_TIMING_DATA_NP:
+		result = slave_delay_timing_data_post_revc(extra);
+		break;
 	case TLV_CUMULATIVE_RATE_RATIO:
 	case TLV_PAD:
 	case TLV_AUTHENTICATION:
@@ -879,6 +932,10 @@ void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)
 		break;
 	case TLV_SLAVE_RX_SYNC_COMPUTED_DATA:
 	case TLV_SLAVE_TX_EVENT_TIMESTAMPS:
+		break;
+	case TLV_SLAVE_DELAY_TIMING_DATA_NP:
+		slave_delay_timing_data_pre_send(extra);
+		break;
 	case TLV_CUMULATIVE_RATE_RATIO:
 	case TLV_PAD:
 	case TLV_AUTHENTICATION:
