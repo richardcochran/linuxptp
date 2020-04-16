@@ -1952,6 +1952,9 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 	t4 = timestamp_to_tmv(m->ts.pdu);
 	t4c = tmv_sub(t4, c3);
 
+	monitor_delay(p->slave_event_monitor, clock_parent_identity(p->clock),
+		      m->header.sequenceId, t3, c3, t4);
+
 	clock_path_delay(p->clock, t3, t4c);
 
 	TAILQ_REMOVE(&p->delay_req, req, list);
