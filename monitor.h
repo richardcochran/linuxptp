@@ -14,6 +14,9 @@ struct monitor;
 
 struct monitor *monitor_create(struct config *config, struct port *dst);
 
+int monitor_delay(struct monitor *monitor, struct PortIdentity source_pid,
+		  uint16_t seqid, tmv_t t3, tmv_t corr, tmv_t t4);
+
 void monitor_destroy(struct monitor *monitor);
 
 int monitor_sync(struct monitor *monitor, struct PortIdentity source_pid,

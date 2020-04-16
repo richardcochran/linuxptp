@@ -21,6 +21,8 @@ struct monitor_message {
 struct monitor {
 	struct port *dst_port;
 	struct slave_rx_sync_timing_data_tlv *sync_tlv;
+	struct slave_delay_timing_data_tlv *delay_tlv;
+	struct monitor_message delay;
 	struct monitor_message sync;
 };
 
@@ -79,6 +81,23 @@ static struct tlv_extra *monitor_init_message(struct monitor_message *mm,
 	return extra;
 }
 
+static int monitor_init_delay(struct monitor *monitor, struct address address)
+{
+	const size_t tlv_size = sizeof(struct slave_delay_timing_data_tlv) +
+		sizeof(struct slave_delay_timing_record) * RECORDS_PER_MESSAGE;
+	struct tlv_extra *extra;
+
+	extra = monitor_init_message(&monitor->delay, monitor->dst_port,
+				     TLV_SLAVE_DELAY_TIMING_DATA_NP, tlv_size,
+				     address);
+	if (!extra) {
+		return -1;
+	}
+	monitor->delay_tlv = (struct slave_delay_timing_data_tlv *) extra->tlv;
+
+	return 0;
+}
+
 static int monitor_init_sync(struct monitor *monitor, struct address address)
 {
 	const size_t tlv_size = sizeof(struct slave_rx_sync_timing_data_tlv) +
@@ -120,7 +139,12 @@ struct monitor *monitor_create(struct config *config, struct port *dst)
 
 	monitor->dst_port = dst;
 
+	if (monitor_init_delay(monitor, address)) {
+		free(monitor);
+		return NULL;
+	}
 	if (monitor_init_sync(monitor, address)) {
+		msg_put(monitor->delay.msg);
 		free(monitor);
 		return NULL;
 	}
@@ -128,8 +152,44 @@ struct monitor *monitor_create(struct config *config, struct port *dst)
 	return monitor;
 }
 
+int monitor_delay(struct monitor *monitor, struct PortIdentity source_pid,
+		  uint16_t seqid, tmv_t t3, tmv_t corr, tmv_t t4)
+{
+	struct slave_delay_timing_record *record;
+	struct ptp_message *msg;
+
+	if (!monitor_active(monitor)) {
+		return 0;
+	}
+
+	msg = monitor->delay.msg;
+
+	if (!pid_eq(&monitor->delay_tlv->sourcePortIdentity, &source_pid)) {
+		/* There was a change in remote master. Drop stale records. */
+		memcpy(&monitor->delay_tlv->sourcePortIdentity, &source_pid,
+		       sizeof(monitor->delay_tlv->sourcePortIdentity));
+		monitor->delay.count = 0;
+	}
+
+	record = monitor->delay_tlv->record + monitor->delay.count;
+	record->sequenceId                  = seqid;
+	record->delayOriginTimestamp        = tmv_to_Timestamp(t3);
+	record->totalCorrectionField        = tmv_to_TimeInterval(corr);
+	record->delayResponseTimestamp      = tmv_to_Timestamp(t4);
+
+	monitor->delay.count++;
+	if (monitor->delay.count == monitor->delay.records_per_msg) {
+		monitor->delay.count = 0;
+		return monitor_forward(monitor->dst_port, msg);
+	}
+	return 0;
+}
+
 void monitor_destroy(struct monitor *monitor)
 {
+	if (monitor->delay.msg) {
+		msg_put(monitor->delay.msg);
+	}
 	if (monitor->sync.msg) {
 		msg_put(monitor->sync.msg);
 	}
