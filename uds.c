@@ -119,8 +119,8 @@ static int uds_send(struct transport *t, struct fdarray *fda,
 		addr = &uds->address;
 
 	cnt = sendto(fd, buf, buflen, 0, &addr->sa, addr->len);
-	if (cnt <= 0 && errno != ECONNREFUSED) {
-		pr_err("uds: sendto failed: %m");
+	if (cnt < 1) {
+		return -errno;
 	}
 	return cnt;
 }
@@ -144,4 +144,3 @@ struct transport *uds_transport_create(void)
 	uds->t.release = uds_release;
 	return &uds->t;
 }
-
