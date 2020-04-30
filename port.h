@@ -94,7 +94,7 @@ int port_forward(struct port *p, struct ptp_message *msg);
  * Forward a message on a given port to the address stored in the message.
  * @param port    A pointer previously obtained via port_open().
  * @param msg     The message to send. Must be in network byte order.
- * @return        Zero on success, non-zero otherwise.
+ * @return        Zero on success, negative errno value otherwise.
  */
 int port_forward_to(struct port *p, struct ptp_message *msg);
 

@@ -2737,8 +2737,10 @@ int port_forward_to(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
 	cnt = transport_sendto(p->trp, &p->fda, TRANS_GENERAL, msg);
-	if (cnt <= 0) {
-		return -1;
+	if (cnt < 0) {
+		return cnt;
+	} else if (!cnt) {
+		return -EIO;
 	}
 	port_stats_inc_tx(p, msg);
 	return 0;
