@@ -70,7 +70,7 @@ int transport_recv(struct transport *t, int fd, struct ptp_message *msg);
  * @param fda	The array of descriptors filled in by transport_open.
  * @param event	One of the @ref transport_event enumeration values.
  * @param msg	The message to send.
- * @return	Number of bytes send, or negative value in case of an error.
+ * @return	Number of bytes sent, or negative value in case of an error.
  */
 int transport_send(struct transport *t, struct fdarray *fda,
 		   enum transport_event event, struct ptp_message *msg);
@@ -83,7 +83,7 @@ int transport_send(struct transport *t, struct fdarray *fda,
  * @param fda	The array of descriptors filled in by transport_open.
  * @param event	One of the @ref transport_event enumeration values.
  * @param msg	The message to send.
- * @return	Number of bytes send, or negative value in case of an error.
+ * @return	Number of bytes sent, or negative value in case of an error.
  */
 int transport_peer(struct transport *t, struct fdarray *fda,
 		   enum transport_event event, struct ptp_message *msg);
@@ -96,7 +96,7 @@ int transport_peer(struct transport *t, struct fdarray *fda,
  * @param event	One of the @ref transport_event enumeration values.
  * @param msg	The message to send. The address of the destination has to
  *		be set in the address field.
- * @return	Number of bytes send, or negative value in case of an error.
+ * @return	Number of bytes sent, or negative value in case of an error.
  */
 int transport_sendto(struct transport *t, struct fdarray *fda,
 		     enum transport_event event, struct ptp_message *msg);
