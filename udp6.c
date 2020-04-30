@@ -271,7 +271,7 @@ static int udp6_send(struct transport *t, struct fdarray *fda,
 	cnt = sendto(fd, buf, len, 0, &addr->sa, sizeof(addr->sin6));
 	if (cnt < 1) {
 		pr_err("sendto failed: %m");
-		return cnt;
+		return -errno;
 	}
 	/*
 	 * Get the time stamp right away.
