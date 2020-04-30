@@ -354,7 +354,7 @@ int sk_receive(int fd, void *buf, int buflen,
 			             "timed out while polling for tx timestamp");
 			pr_err("increasing tx_timestamp_timeout may correct "
 			       "this issue, but it is likely caused by a driver bug");
-			return res;
+			return -errno;
 		} else if (!(pfd.revents & sk_revents)) {
 			pr_err("poll for tx timestamp woke up on non ERR event");
 			return -1;
@@ -362,24 +362,24 @@ int sk_receive(int fd, void *buf, int buflen,
 	}
 
 	cnt = recvmsg(fd, &msg, flags);
-	if (cnt < 0)
+	if (cnt < 0) {
 		pr_err("recvmsg%sfailed: %m",
 		       flags == MSG_ERRQUEUE ? " tx timestamp " : " ");
-
+	}
 	for (cm = CMSG_FIRSTHDR(&msg); cm != NULL; cm = CMSG_NXTHDR(&msg, cm)) {
 		level = cm->cmsg_level;
 		type  = cm->cmsg_type;
 		if (SOL_SOCKET == level && SO_TIMESTAMPING == type) {
 			if (cm->cmsg_len < sizeof(*ts) * 3) {
 				pr_warning("short SO_TIMESTAMPING message");
-				return -1;
+				return -EMSGSIZE;
 			}
 			ts = (struct timespec *) CMSG_DATA(cm);
 		}
 		if (SOL_SOCKET == level && SO_TIMESTAMPNS == type) {
 			if (cm->cmsg_len < sizeof(*sw)) {
 				pr_warning("short SO_TIMESTAMPNS message");
-				return -1;
+				return -EMSGSIZE;
 			}
 			sw = (struct timespec *) CMSG_DATA(cm);
 			hwts->sw = timespec_to_tmv(*sw);
@@ -391,7 +391,7 @@ int sk_receive(int fd, void *buf, int buflen,
 
 	if (!ts) {
 		memset(&hwts->ts, 0, sizeof(hwts->ts));
-		return cnt;
+		return cnt < 1 ? -errno : cnt;
 	}
 
 	switch (hwts->type) {
@@ -407,7 +407,7 @@ int sk_receive(int fd, void *buf, int buflen,
 		hwts->ts = timespec_to_tmv(ts[1]);
 		break;
 	}
-	return cnt;
+	return cnt < 1 ? -errno : cnt;
 }
 
 int sk_set_priority(int fd, int family, uint8_t dscp)
