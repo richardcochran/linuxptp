@@ -336,8 +336,7 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 
 	cnt = send(fd, ptr, len, 0);
 	if (cnt < 1) {
-		pr_err("send failed: %d %m", errno);
-		return cnt;
+		return -errno;
 	}
 	/*
 	 * Get the time stamp right away.
