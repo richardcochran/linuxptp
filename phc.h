@@ -77,4 +77,14 @@ int phc_pin_setfunc(clockid_t clkid, struct ptp_pin_desc *desc);
  */
 int phc_has_pps(clockid_t clkid);
 
+/**
+ * Checks whether the given PTP hardware clock device supports write phase mode.
+ *
+ * @param clkid A clock ID obtained using phc_open().
+ *
+ * @return Zero if write phase mode is not supported by the clock, non-zero
+ * otherwise.
+ */
+int phc_has_writephase(clockid_t clkid);
+
 #endif

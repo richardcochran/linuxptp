@@ -127,3 +127,13 @@ int phc_has_pps(clockid_t clkid)
 		return 0;
 	return caps.pps;
 }
+
+int phc_has_writephase(clockid_t clkid)
+{
+	struct ptp_clock_caps caps;
+
+	if (phc_get_caps(clkid, &caps)) {
+		return 0;
+	}
+	return caps.adjust_phase;
+}

@@ -22,6 +22,7 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/queue.h>
 
 #include "address.h"
@@ -102,6 +103,7 @@ struct clock {
 	int sde;
 	int free_running;
 	int freq_est_interval;
+	int write_phase_mode;
 	int grand_master_capable; /* for 802.1AS only */
 	int utc_timescale;
 	int utc_offset_set;
@@ -1028,6 +1030,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->config = config;
 	c->free_running = config_get_int(config, NULL, "free_running");
 	c->freq_est_interval = config_get_int(config, NULL, "freq_est_interval");
+	c->write_phase_mode = config_get_int(config, NULL, "write_phase_mode");
 	c->grand_master_capable = config_get_int(config, NULL, "gmCapable");
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
 	c->utc_offset = config_get_int(config, NULL, "utc_offset");
@@ -1076,6 +1079,12 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		   and return 0. Set the frequency back to make sure fadj is
 		   the actual frequency of the clock. */
 		clockadj_set_freq(c->clkid, fadj);
+
+		/* Disable write phase mode if not implemented by driver */
+		if (c->write_phase_mode && !phc_has_writephase(c->clkid)) {
+			pr_err("clock does not support write phase mode");
+			return NULL;
+		}
 	}
 	c->servo = servo_create(c->config, servo, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
@@ -1632,10 +1641,22 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	return 0;
 }
 
+static void clock_synchronize_locked(struct clock *c, double adj)
+{
+	clockadj_set_freq(c->clkid, -adj);
+	if (c->clkid == CLOCK_REALTIME) {
+		sysclk_set_sync();
+	}
+	if (c->sanity_check) {
+		clockcheck_set_freq(c->sanity_check, -adj);
+	}
+}
+
 enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 {
-	double adj, weight;
 	enum servo_state state = SERVO_UNLOCKED;
+	double adj, weight;
+	int64_t offset;
 
 	c->ingress_ts = ingress;
 
@@ -1659,18 +1680,10 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 		return clock_no_adjust(c, ingress, origin);
 	}
 
-	adj = servo_sample(c->servo, tmv_to_nanoseconds(c->master_offset),
-			   tmv_to_nanoseconds(ingress), weight, &state);
+	offset = tmv_to_nanoseconds(c->master_offset);
+	adj = servo_sample(c->servo, offset, tmv_to_nanoseconds(ingress),
+			   weight, &state);
 	c->servo_state = state;
-
-	if (c->stats.max_count > 1) {
-		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), adj);
-	} else {
-		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
-			"path delay %9" PRId64,
-			tmv_to_nanoseconds(c->master_offset), state, adj,
-			tmv_to_nanoseconds(c->path_delay));
-	}
 
 	tsproc_set_clock_rate_ratio(c->tsproc, clock_rate_ratio(c));
 
@@ -1689,16 +1702,27 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 		tsproc_reset(c->tsproc, 0);
 		break;
 	case SERVO_LOCKED:
+		clock_synchronize_locked(c, adj);
+		break;
 	case SERVO_LOCKED_STABLE:
-		clockadj_set_freq(c->clkid, -adj);
-		if (c->clkid == CLOCK_REALTIME) {
-			sysclk_set_sync();
-		}
-		if (c->sanity_check) {
-			clockcheck_set_freq(c->sanity_check, -adj);
+		if (c->write_phase_mode) {
+			clockadj_set_phase(c->clkid, -offset);
+			adj = 0;
+		} else {
+			clock_synchronize_locked(c, adj);
 		}
 		break;
 	}
+
+	if (c->stats.max_count > 1) {
+		clock_stats_update(&c->stats, tmv_dbl(c->master_offset), adj);
+	} else {
+		pr_info("master offset %10" PRId64 " s%d freq %+7.0f "
+			"path delay %9" PRId64,
+			tmv_to_nanoseconds(c->master_offset), state, adj,
+			tmv_to_nanoseconds(c->path_delay));
+	}
+
 	return state;
 }
 

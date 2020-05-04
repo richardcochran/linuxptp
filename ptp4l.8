@@ -763,6 +763,12 @@ The offset threshold used in order to transition from the SERVO_LOCKED
 to the SERVO_LOCKED_STABLE state.  The transition occurs once the last
 'servo_num_offset_values' offsets are all below the threshold value.
 The default value of offset_threshold is 0 (disabled).
+.TP
+.B write_phase_mode
+This option enables using the "write phase" feature of a PTP Hardware
+Clock.  If supported by the device, this mode uses the hardware's
+built in phase offset control instead of frequency offset control.
+The default value is 0 (disabled).
 
 .SH UNICAST DISCOVERY OPTIONS
 

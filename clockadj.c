@@ -79,6 +79,18 @@ double clockadj_get_freq(clockid_t clkid)
 	return f;
 }
 
+void clockadj_set_phase(clockid_t clkid, long offset)
+{
+	struct timex tx;
+	memset(&tx, 0, sizeof(tx));
+
+	tx.modes = ADJ_OFFSET | ADJ_NANO;
+	tx.offset = offset;
+	if (clock_adjtime(clkid, &tx) < 0) {
+		pr_err("failed to set the clock offset: %m");
+	}
+}
+
 void clockadj_step(clockid_t clkid, int64_t step)
 {
 	struct timex tx;

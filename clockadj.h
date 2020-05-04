@@ -44,6 +44,13 @@ void clockadj_set_freq(clockid_t clkid, double freq);
 double clockadj_get_freq(clockid_t clkid);
 
 /**
+ * Set clock's phase offset.
+ * @param clkid  A clock ID obtained using phc_open() or CLOCK_REALTIME.
+ * @param offset The phase offset in nanoseconds.
+ */
+void clockadj_set_phase(clockid_t clkid, long offset);
+
+/**
  * Step clock's time.
  * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @param step  The time step in nanoseconds.

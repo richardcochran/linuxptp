@@ -24,6 +24,7 @@
 #define HAVE_MISSING_H
 
 #include <linux/ptp_clock.h>
+#include <linux/version.h>
 #include <sys/syscall.h>
 #include <sys/timex.h>
 #include <time.h>
@@ -75,9 +76,9 @@ enum {
 #define PTP_PEROUT_REQUEST2 PTP_PEROUT_REQUEST
 #endif
 
-#ifndef PTP_PIN_SETFUNC
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
 
-/* from Linux kernel version 5.4 */
+/* from upcoming Linux kernel version 5.8 */
 struct compat_ptp_clock_caps {
 	int max_adj;   /* Maximum frequency adjustment in parts per billon. */
 	int n_alarm;   /* Number of programmable alarms. */
@@ -87,10 +88,16 @@ struct compat_ptp_clock_caps {
 	int n_pins;    /* Number of input/output pins. */
 	/* Whether the clock supports precise system-device cross timestamps */
 	int cross_timestamping;
-	int rsv[13];   /* Reserved for future use. */
+	/* Whether the clock supports adjust phase */
+	int adjust_phase;
+	int rsv[12];   /* Reserved for future use. */
 };
 
 #define ptp_clock_caps compat_ptp_clock_caps
+
+#endif /*LINUX_VERSION_CODE < 5.8*/
+
+#ifndef PTP_PIN_SETFUNC
 
 enum ptp_pin_function {
 	PTP_PF_NONE,
