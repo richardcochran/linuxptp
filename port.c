@@ -412,7 +412,7 @@ static int follow_up_info_append(struct ptp_message *m)
 
 static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 {
-	struct timePropertiesDS *tp = clock_time_properties(p->clock);
+	struct timePropertiesDS tp = clock_time_properties(p->clock);
 	struct ClockIdentity cid = clock_identity(p->clock), pid;
 	struct currentDS *cds = clock_current_dataset(p->clock);
 	struct parent_ds *dad = clock_parent_ds(p->clock);
@@ -468,7 +468,7 @@ static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 
 	memcpy(&extra->foot->parent, &dad->pds, sizeof(extra->foot->parent));
 	memcpy(&extra->foot->current, cds, sizeof(extra->foot->current));
-	memcpy(&extra->foot->timeprop, tp, sizeof(extra->foot->timeprop));
+	memcpy(&extra->foot->timeprop, &tp, sizeof(extra->foot->timeprop));
 	memcpy(&extra->foot->lastsync, &last_sync, sizeof(extra->foot->lastsync));
 
 	return 0;
@@ -1407,7 +1407,7 @@ out:
 
 int port_tx_announce(struct port *p, struct address *dst)
 {
-	struct timePropertiesDS *tp = clock_time_properties(p->clock);
+	struct timePropertiesDS tp = clock_time_properties(p->clock);
 	struct parent_ds *dad = clock_parent_ds(p->clock);
 	struct ptp_message *msg;
 	int err;
@@ -1434,19 +1434,19 @@ int port_tx_announce(struct port *p, struct address *dst)
 	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = p->logAnnounceInterval;
 
-	msg->header.flagField[1] = tp->flags;
+	msg->header.flagField[1] = tp.flags;
 
 	if (dst) {
 		msg->address = *dst;
 		msg->header.flagField[0] |= UNICAST;
 	}
-	msg->announce.currentUtcOffset        = tp->currentUtcOffset;
+	msg->announce.currentUtcOffset        = tp.currentUtcOffset;
 	msg->announce.grandmasterPriority1    = dad->pds.grandmasterPriority1;
 	msg->announce.grandmasterClockQuality = dad->pds.grandmasterClockQuality;
 	msg->announce.grandmasterPriority2    = dad->pds.grandmasterPriority2;
 	msg->announce.grandmasterIdentity     = dad->pds.grandmasterIdentity;
 	msg->announce.stepsRemoved            = clock_steps_removed(p->clock);
-	msg->announce.timeSource              = tp->timeSource;
+	msg->announce.timeSource              = tp.timeSource;
 
 	if (p->path_trace_enabled && path_trace_append(p, msg, dad)) {
 		pr_err("port %hu: append path trace failed", portnum(p));

@@ -56,6 +56,7 @@
 #define PTP_TIMESCALE  (1<<3)
 #define TIME_TRACEABLE (1<<4)
 #define FREQ_TRACEABLE (1<<5)
+#define SYNC_UNCERTAIN (1<<6)
 
 /*
  * Signaling interval special values. For more info look at 802.1AS table 10-11

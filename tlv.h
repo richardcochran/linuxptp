@@ -84,6 +84,7 @@ enum management_action {
 #define TLV_TIME_STATUS_NP				0xC000
 #define TLV_GRANDMASTER_SETTINGS_NP			0xC001
 #define TLV_SUBSCRIBE_EVENTS_NP				0xC003
+#define TLV_SYNCHRONIZATION_UNCERTAIN_NP		0xC006
 
 /* Port management ID values */
 #define TLV_NULL_MANAGEMENT				0x0000
@@ -115,6 +116,11 @@ enum management_action {
 #define TLV_NOT_SETABLE					0x0005
 #define TLV_NOT_SUPPORTED				0x0006
 #define TLV_GENERAL_ERROR				0xFFFE
+
+/* Values for the SYNCHRONIZATION_UNCERTAIN_NP management TLV */
+#define SYNC_UNCERTAIN_DONTCARE	0xff
+#define SYNC_UNCERTAIN_FALSE	0
+#define SYNC_UNCERTAIN_TRUE	1
 
 #define CANCEL_UNICAST_MAINTAIN_REQUEST	(1 << 0)
 #define CANCEL_UNICAST_MAINTAIN_GRANT	(1 << 1)

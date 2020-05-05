@@ -103,6 +103,7 @@ struct clock {
 	int sde;
 	int free_running;
 	int freq_est_interval;
+	int local_sync_uncertain;
 	int write_phase_mode;
 	int grand_master_capable; /* for 802.1AS only */
 	int utc_timescale;
@@ -137,6 +138,7 @@ struct clock the_clock;
 static void handle_state_decision_event(struct clock *c);
 static int clock_resize_pollfd(struct clock *c, int new_nports);
 static void clock_remove_port(struct clock *c, struct port *p);
+static void clock_stats_display(struct clock_stats *s);
 
 static void remove_subscriber(struct clock_subscriber *s)
 {
@@ -446,6 +448,11 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		clock_get_subscription(c, req, sen->bitmask, &sen->duration);
 		datalen = sizeof(*sen);
 		break;
+	case TLV_SYNCHRONIZATION_UNCERTAIN_NP:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = c->local_sync_uncertain;
+		datalen = sizeof(*mtd);
+		break;
 	default:
 		/* The caller should *not* respond to this message. */
 		tlv_extra_recycle(extra);
@@ -519,6 +526,21 @@ static int clock_management_set(struct clock *c, struct port *p,
 		clock_update_subscription(c, req, sen->bitmask, sen->duration);
 		respond = 1;
 		break;
+	case TLV_SYNCHRONIZATION_UNCERTAIN_NP:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		switch (mtd->val) {
+		case SYNC_UNCERTAIN_DONTCARE:
+		case SYNC_UNCERTAIN_FALSE:
+		case SYNC_UNCERTAIN_TRUE:
+			/* Display stats on change of local_sync_uncertain */
+			if (c->local_sync_uncertain != mtd->val
+			    && stats_get_num_values(c->stats.offset))
+				clock_stats_display(&c->stats);
+			c->local_sync_uncertain = mtd->val;
+			respond = 1;
+			break;
+		}
+		break;
 	}
 	if (respond && !clock_management_get_response(c, p, id, req))
 		pr_err("failed to send management set response");
@@ -528,13 +550,18 @@ static int clock_management_set(struct clock *c, struct port *p,
 static void clock_stats_update(struct clock_stats *s,
 			       double offset, double freq)
 {
-	struct stats_result offset_stats, freq_stats, delay_stats;
-
 	stats_add_value(s->offset, offset);
 	stats_add_value(s->freq, freq);
 
 	if (stats_get_num_values(s->offset) < s->max_count)
 		return;
+
+	clock_stats_display(s);
+}
+
+static void clock_stats_display(struct clock_stats *s)
+{
+	struct stats_result offset_stats, freq_stats, delay_stats;
 
 	stats_get_result(s->offset, &offset_stats);
 	stats_get_result(s->freq, &freq_stats);
@@ -1030,6 +1057,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->config = config;
 	c->free_running = config_get_int(config, NULL, "free_running");
 	c->freq_est_interval = config_get_int(config, NULL, "freq_est_interval");
+	c->local_sync_uncertain = SYNC_UNCERTAIN_DONTCARE;
 	c->write_phase_mode = config_get_int(config, NULL, "write_phase_mode");
 	c->grand_master_capable = config_get_int(config, NULL, "gmCapable");
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
@@ -1429,6 +1457,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case TLV_TIME_STATUS_NP:
 	case TLV_GRANDMASTER_SETTINGS_NP:
 	case TLV_SUBSCRIBE_EVENTS_NP:
+	case TLV_SYNCHRONIZATION_UNCERTAIN_NP:
 		clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
 		break;
 	default:
@@ -1751,9 +1780,22 @@ void clock_sync_interval(struct clock *c, int n)
 	servo_sync_interval(c->servo, n < 0 ? 1.0 / (1 << -n) : 1 << n);
 }
 
-struct timePropertiesDS *clock_time_properties(struct clock *c)
+struct timePropertiesDS clock_time_properties(struct clock *c)
 {
-	return &c->tds;
+	struct timePropertiesDS tds = c->tds;
+
+	switch (c->local_sync_uncertain) {
+	case SYNC_UNCERTAIN_DONTCARE:
+		tds.flags &= ~SYNC_UNCERTAIN;
+		break;
+	case SYNC_UNCERTAIN_FALSE:
+		/* Pass the upstream value, if any. */
+		break;
+	case SYNC_UNCERTAIN_TRUE:
+		tds.flags |= SYNC_UNCERTAIN;
+		break;
+	}
+	return tds;
 }
 
 void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds)

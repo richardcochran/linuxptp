@@ -320,9 +320,9 @@ void clock_sync_interval(struct clock *c, int n);
 /**
  * Obtain a clock's time properties data set.
  * @param c  The clock instance.
- * @return   A pointer to the time properties data set of the clock.
+ * @return   A copy of the clock's time properties data set.
  */
-struct timePropertiesDS *clock_time_properties(struct clock *c);
+struct timePropertiesDS clock_time_properties(struct clock *c);
 
 /**
  * Update a clock's time properties data set.
