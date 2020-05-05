@@ -110,6 +110,7 @@ struct management_id idtab[] = {
 	{ "TIME_STATUS_NP", TLV_TIME_STATUS_NP, do_get_action },
 	{ "GRANDMASTER_SETTINGS_NP", TLV_GRANDMASTER_SETTINGS_NP, do_set_action },
 	{ "SUBSCRIBE_EVENTS_NP", TLV_SUBSCRIBE_EVENTS_NP, do_set_action },
+	{ "SYNCHRONIZATION_UNCERTAIN_NP", TLV_SYNCHRONIZATION_UNCERTAIN_NP, do_set_action },
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", TLV_NULL_MANAGEMENT, null_management },
 	{ "CLOCK_DESCRIPTION", TLV_CLOCK_DESCRIPTION, do_get_action },
@@ -235,6 +236,27 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			sen.bitmask[0] = 1 << NOTIFY_PORT_STATE;
 		}
 		pmc_send_set_action(pmc, code, &sen, sizeof(sen));
+		break;
+	case TLV_SYNCHRONIZATION_UNCERTAIN_NP:
+		cnt = sscanf(str,  " %*s %*s %hhu", &mtd.val);
+		if (cnt != 1) {
+			fprintf(stderr, "%s SET needs 1 value\n",
+				idtab[index].name);
+			break;
+		}
+		switch (mtd.val) {
+		case SYNC_UNCERTAIN_DONTCARE:
+		case SYNC_UNCERTAIN_FALSE:
+		case SYNC_UNCERTAIN_TRUE:
+			pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+			break;
+		default:
+			fprintf(stderr, "\nusage: set SYNCHRONIZATION_UNCERTAIN_NP "
+				"%hhu (false), %hhu (true), or %hhu (don't care)\n\n",
+				SYNC_UNCERTAIN_FALSE,
+				SYNC_UNCERTAIN_TRUE,
+				SYNC_UNCERTAIN_DONTCARE);
+		}
 		break;
 	case TLV_PORT_DATA_SET_NP:
 		cnt = sscanf(str, " %*s %*s "

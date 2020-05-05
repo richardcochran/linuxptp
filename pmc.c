@@ -305,6 +305,11 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			sen->duration,
 			(sen->bitmask[0] & 1 << NOTIFY_PORT_STATE) ? "on" : "off");
 		break;
+	case TLV_SYNCHRONIZATION_UNCERTAIN_NP:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "SYNCHRONIZATION_UNCERTAIN_NP "
+			IFMT "uncertain %hhu", mtd->val);
+		break;
 	case TLV_PORT_DATA_SET:
 		p = (struct portDS *) mgt->data;
 		if (p->portState > PS_SLAVE) {
