@@ -589,10 +589,16 @@ static void clock_stats_display(struct clock_stats *s)
 static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 					tmv_t origin)
 {
-	double fui;
-	double ratio, freq;
 	struct freq_estimator *f = &c->fest;
-	enum servo_state state = SERVO_UNLOCKED;
+	double freq, fui, ratio;
+	enum servo_state state;
+
+	if (c->local_sync_uncertain == SYNC_UNCERTAIN_FALSE) {
+		state = SERVO_LOCKED;
+	} else {
+		state = SERVO_UNLOCKED;
+	}
+
 	/*
 	 * The ratio of the local clock freqency to the master clock
 	 * is estimated by:
