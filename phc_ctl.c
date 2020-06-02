@@ -197,8 +197,8 @@ static int do_set(clockid_t clkid, int cmdc, char *cmdv[])
 			strerror(errno));
 		return -1;
 	} else {
-		pr_notice("set clock time to %ld.%09ld or %s",
-			ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
+		pr_notice("set clock time to %lld.%09ld or %s",
+			(long long)ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
 	}
 
 	return args_to_eat;
@@ -215,8 +215,8 @@ static int do_get(clockid_t clkid, int cmdc, char *cmdv[])
 
 		return -1;
 	} else {
-		pr_notice("clock time is %ld.%09lu or %s",
-			ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
+		pr_notice("clock time is %lld.%09lu or %s",
+			(long long)ts.tv_sec, ts.tv_nsec, ctime(&ts.tv_sec));
 	}
 
 	/* get operation does not require any arguments */

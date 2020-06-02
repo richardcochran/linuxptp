@@ -209,9 +209,9 @@ static void unicast_service_extend(struct unicast_client_address *client,
 	tmo = now.tv_sec + req->durationField;
 	if (tmo > client->grant_tmo) {
 		client->grant_tmo = tmo;
-		pr_debug("%s grant of 0x%x extended to %ld",
+		pr_debug("%s grant of 0x%x extended to %lld",
 			 pid2str(&client->portIdentity),
-			 client->message_types, tmo);
+			 client->message_types, (long long)tmo);
 	}
 }
 
@@ -226,8 +226,8 @@ static int unicast_service_rearm_timer(struct port *p)
 	interval = pqueue_peek(p->unicast_service->queue);
 	if (interval) {
 		tmo.it_value = interval->tmo;
-		pr_debug("arming timer tmo={%ld,%ld}",
-			 interval->tmo.tv_sec, interval->tmo.tv_nsec);
+		pr_debug("arming timer tmo={%lld,%ld}",
+			 (long long)interval->tmo.tv_sec, interval->tmo.tv_nsec);
 	} else {
 		pr_debug("stopping unicast service timer");
 	}
@@ -499,8 +499,8 @@ int unicast_service_timer(struct port *p)
 
 	while ((interval = pqueue_peek(p->unicast_service->queue)) != NULL) {
 
-		pr_debug("peek i={2^%d} tmo={%ld,%ld}", interval->log_period,
-			 interval->tmo.tv_sec, interval->tmo.tv_nsec);
+		pr_debug("peek i={2^%d} tmo={%lld,%ld}", interval->log_period,
+			 (long long)interval->tmo.tv_sec, interval->tmo.tv_nsec);
 
 		if (timespec_compare(&now, &interval->tmo) > 0) {
 			break;
@@ -519,8 +519,8 @@ int unicast_service_timer(struct port *p)
 		}
 
 		interval_increment(interval);
-		pr_debug("next i={2^%d} tmo={%ld,%ld}", interval->log_period,
-			 interval->tmo.tv_sec, interval->tmo.tv_nsec);
+		pr_debug("next i={2^%d} tmo={%lld,%ld}", interval->log_period,
+			 (long long)interval->tmo.tv_sec, interval->tmo.tv_nsec);
 		pqueue_insert(p->unicast_service->queue, interval);
 	}
 

@@ -207,7 +207,7 @@ static void unicast_client_set_renewal(struct port *p,
 				       long duration)
 {
 	struct timespec now;
-	long tmo;
+	time_t tmo;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &now)) {
 		pr_err("clock_gettime failed: %m");
@@ -217,7 +217,7 @@ static void unicast_client_set_renewal(struct port *p,
 	tmo = now.tv_sec + duration;
 	if (!master->renewal_tmo || tmo < master->renewal_tmo) {
 		master->renewal_tmo = tmo;
-		pr_debug("port %d: renewal timeout at %ld", portnum(p), tmo);
+		pr_debug("port %d: renewal timeout at %lld", portnum(p), (long long)tmo);
 	}
 }
 
