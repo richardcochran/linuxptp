@@ -210,7 +210,7 @@ no_event:
 static int udp_recv(struct transport *t, int fd, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts)
 {
-	return sk_receive(fd, buf, buflen, addr, hwts, 0);
+	return sk_receive(fd, buf, buflen, addr, hwts, MSG_DONTWAIT);
 }
 
 static int udp_send(struct transport *t, struct fdarray *fda,
