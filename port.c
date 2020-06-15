@@ -1215,6 +1215,23 @@ static void port_synchronize(struct port *p,
 	}
 }
 
+static void port_syfufsm_print_mismatch(struct port *p, enum syfu_event event,
+					struct ptp_message *m)
+{
+	int expected_msgtype;
+
+	if (event == SYNC_MISMATCH)
+		expected_msgtype = FOLLOW_UP;
+	else
+		expected_msgtype = SYNC;
+
+	pr_debug("port %hu: have %s %hu, expecting %s but got %s %hu, dropping",
+		 portnum(p), msg_type_string(msg_type(p->last_syncfup)),
+		 p->last_syncfup->header.sequenceId,
+		 msg_type_string(expected_msgtype),
+		 msg_type_string(msg_type(m)), m->header.sequenceId);
+}
+
 /*
  * Handle out of order packets. The network stack might
  * provide the follow up _before_ the sync message. After all,
@@ -1249,6 +1266,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 	case SF_HAVE_SYNC:
 		switch (event) {
 		case SYNC_MISMATCH:
+			port_syfufsm_print_mismatch(p, event, m);
 			msg_put(p->last_syncfup);
 			msg_get(m);
 			p->last_syncfup = m;
@@ -1256,6 +1274,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 		case SYNC_MATCH:
 			break;
 		case FUP_MISMATCH:
+			port_syfufsm_print_mismatch(p, event, m);
 			msg_put(p->last_syncfup);
 			msg_get(m);
 			p->last_syncfup = m;
@@ -1277,6 +1296,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 	case SF_HAVE_FUP:
 		switch (event) {
 		case SYNC_MISMATCH:
+			port_syfufsm_print_mismatch(p, event, m);
 			msg_put(p->last_syncfup);
 			msg_get(m);
 			p->last_syncfup = m;
@@ -1293,6 +1313,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			p->syfu = SF_EMPTY;
 			break;
 		case FUP_MISMATCH:
+			port_syfufsm_print_mismatch(p, event, m);
 			msg_put(p->last_syncfup);
 			msg_get(m);
 			p->last_syncfup = m;
