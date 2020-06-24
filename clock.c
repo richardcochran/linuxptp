@@ -1559,8 +1559,14 @@ int clock_poll(struct clock *c)
 	LIST_FOREACH(p, &c->ports, list) {
 		/* Let the ports handle their events. */
 		for (i = 0; i < N_POLLFD; i++) {
-			if (cur[i].revents & (POLLIN|POLLPRI)) {
-				event = port_event(p, i);
+			if (cur[i].revents & (POLLIN|POLLPRI|POLLERR)) {
+				if (cur[i].revents & POLLERR) {
+					pr_err("port %d: unexpected socket error",
+					       port_number(p));
+					event = EV_FAULT_DETECTED;
+				} else {
+					event = port_event(p, i);
+				}
 				if (EV_STATE_DECISION_EVENT == event) {
 					c->sde = 1;
 				}
