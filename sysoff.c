@@ -27,8 +27,6 @@
 
 #define NS_PER_SEC 1000000000LL
 
-#ifdef PTP_SYS_OFFSET
-
 static int64_t pctns(struct ptp_clock_time *t)
 {
 	return t->sec * NS_PER_SEC + t->nsec;
@@ -36,7 +34,6 @@ static int64_t pctns(struct ptp_clock_time *t)
 
 static int sysoff_precise(int fd, int64_t *result, uint64_t *ts)
 {
-#ifdef PTP_SYS_OFFSET_PRECISE
 	struct ptp_sys_offset_precise pso;
 	memset(&pso, 0, sizeof(pso));
 	if (ioctl(fd, PTP_SYS_OFFSET_PRECISE, &pso)) {
@@ -46,9 +43,6 @@ static int sysoff_precise(int fd, int64_t *result, uint64_t *ts)
 	*result = pctns(&pso.sys_realtime) - pctns(&pso.device);
 	*ts = pctns(&pso.sys_realtime);
 	return SYSOFF_PRECISE;
-#else
-	return SYSOFF_COMPILE_TIME_MISSING;
-#endif
 }
 
 static int64_t sysoff_estimate(struct ptp_clock_time *pct, int extended,
@@ -99,7 +93,6 @@ static int64_t sysoff_estimate(struct ptp_clock_time *pct, int extended,
 static int sysoff_extended(int fd, int n_samples,
 			   int64_t *result, uint64_t *ts, int64_t *delay)
 {
-#ifdef PTP_SYS_OFFSET_EXTENDED
 	struct ptp_sys_offset_extended pso;
 	memset(&pso, 0, sizeof(pso));
 	pso.n_samples = n_samples;
@@ -109,9 +102,6 @@ static int sysoff_extended(int fd, int n_samples,
 	}
 	*result = sysoff_estimate(&pso.ts[0][0], 1, n_samples, ts, delay);
 	return SYSOFF_EXTENDED;
-#else
-	return SYSOFF_COMPILE_TIME_MISSING;
-#endif
 }
 
 static int sysoff_basic(int fd, int n_samples,
@@ -140,7 +130,7 @@ int sysoff_measure(int fd, int method, int n_samples,
 	case SYSOFF_BASIC:
 		return sysoff_basic(fd, n_samples, result, ts, delay);
 	}
-	return SYSOFF_COMPILE_TIME_MISSING;
+	return SYSOFF_RUN_TIME_MISSING;
 }
 
 int sysoff_probe(int fd, int n_samples)
@@ -164,18 +154,3 @@ int sysoff_probe(int fd, int n_samples)
 
 	return SYSOFF_RUN_TIME_MISSING;
 }
-
-#else /* !PTP_SYS_OFFSET */
-
-int sysoff_measure(int fd, int method, int n_samples,
-		   int64_t *result, uint64_t *ts, int64_t *delay)
-{
-	return SYSOFF_COMPILE_TIME_MISSING;
-}
-
-int sysoff_probe(int fd, int n_samples)
-{
-	return SYSOFF_COMPILE_TIME_MISSING;
-}
-
-#endif /* PTP_SYS_OFFSET */

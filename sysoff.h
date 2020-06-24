@@ -19,9 +19,9 @@
  */
 
 #include <stdint.h>
+#include "missing.h"
 
 enum {
-	SYSOFF_COMPILE_TIME_MISSING = -2,
 	SYSOFF_RUN_TIME_MISSING = -1,
 	SYSOFF_PRECISE,
 	SYSOFF_EXTENDED,
