@@ -314,6 +314,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_STR("ts2phc.nmea_serialport", "/dev/ttyS0"),
 	PORT_ITEM_INT("ts2phc.pin_index", 0, 0, INT_MAX),
 	GLOB_ITEM_INT("ts2phc.pulsewidth", 500000000, 1000000, 999000000),
+	PORT_ITEM_INT("ts2phc.master_clkout_enabled", 1, 0, 1),
 	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),
 	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),

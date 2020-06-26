@@ -159,6 +159,12 @@ to detect and discard the time stamp of the unwanted edge.
 The supported range is 1000000 to 990000000 nanoseconds.
 The default is 500000000 nanoseconds.
 .TP
+.B ts2phc.master_clkout_enabled
+Enables the periodic clock output on the master device.
+This setting lets other processes to control the state of clock outputs.
+The supported values are 1 (enabled) or 0 (disabled).
+The default is 1 (enabled).
+.TP
 .B use_syslog
 Print messages to the system log if enabled.  The default is 1 (enabled).
 .TP

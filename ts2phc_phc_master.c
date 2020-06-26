@@ -21,6 +21,7 @@ struct ts2phc_phc_master {
 	clockid_t clkid;
 	int channel;
 	int fd;
+	int clkout_enabled;
 };
 
 static int ts2phc_phc_master_activate(struct config *cfg, const char *dev,
@@ -29,6 +30,12 @@ static int ts2phc_phc_master_activate(struct config *cfg, const char *dev,
 	struct ptp_perout_request perout_request;
 	struct ptp_pin_desc desc;
 	struct timespec ts;
+
+	master->clkout_enabled = config_get_int(cfg, dev, "ts2phc.master_clkout_enabled");
+
+	if(!master->clkout_enabled) {
+		return 0;
+	}
 
 	memset(&desc, 0, sizeof(desc));
 
@@ -64,6 +71,10 @@ static void ts2phc_phc_master_destroy(struct ts2phc_master *master)
 	struct ts2phc_phc_master *m =
 		container_of(master, struct ts2phc_phc_master, master);
 	struct ptp_perout_request perout_request;
+
+	if(!m->clkout_enabled) {
+		return;
+	}
 
 	memset(&perout_request, 0, sizeof(perout_request));
 	perout_request.index = m->channel;
