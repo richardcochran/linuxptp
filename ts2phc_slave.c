@@ -240,6 +240,7 @@ static void ts2phc_slave_destroy(struct ts2phc_slave *slave)
 	if (ioctl(slave->fd, PTP_EXTTS_REQUEST2, &extts)) {
 		pr_err(PTP_EXTTS_REQUEST_FAILED);
 	}
+	servo_destroy(slave->servo);
 	posix_clock_close(slave->clk);
 	free(slave->name);
 	free(slave);
