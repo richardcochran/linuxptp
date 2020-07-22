@@ -223,7 +223,7 @@ no_ext_ts:
 no_pin_func:
 	servo_destroy(slave->servo);
 no_servo:
-	close(slave->fd);
+	posix_clock_close(slave->clk);
 no_posix_clock:
 	free(slave->name);
 	free(slave);
