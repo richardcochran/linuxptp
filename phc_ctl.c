@@ -320,12 +320,16 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 		"  %d programable alarms\n"
 		"  %d external time stamp channels\n"
 		"  %d programmable periodic signals\n"
-		"  %s pulse per second support",
+		"  %d configurable input/output pins\n"
+		"  %s pulse per second support\n"
+		"  %s cross timestamping support\n",
 		caps.max_adj,
 		caps.n_alarm,
 		caps.n_ext_ts,
 		caps.n_per_out,
-		caps.pps ? "has" : "doesn't have");
+		caps.n_pins,
+		caps.pps ? "has" : "doesn't have",
+		caps.cross_timestamping ? "has" : "doesn't have");
 	return 0;
 }
 
