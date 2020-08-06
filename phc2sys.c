@@ -1570,11 +1570,6 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
-	if (priv.servo_type == CLOCK_SERVO_NTPSHM) {
-		priv.kernel_leap = 0;
-		priv.sanity_freq_limit = 0;
-	}
-
 	print_set_progname(progname);
 	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
 	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
