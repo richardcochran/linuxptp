@@ -220,9 +220,6 @@ static struct clock *clock_add(struct phc2sys_private *priv, char *device)
 		}
 	}
 
-	if (clkid != CLOCK_INVALID)
-		c->servo = servo_add(priv, c);
-
 	if (clkid != CLOCK_INVALID && clkid != CLOCK_REALTIME)
 		c->sysoff_method = sysoff_probe(CLOCKID_TO_FD(clkid),
 						priv->phc_readings);
@@ -317,7 +314,6 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 	int phc_index = -1, phc_switched = 0;
 	int state, timestamping, ret = -1;
 	struct port *p;
-	struct servo *servo;
 	struct sk_ts_info ts_info;
 	char iface[IFNAMSIZ];
 	clockid_t clkid = CLOCK_INVALID;
@@ -349,10 +345,9 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 			clock->clkid = clkid;
 			clock->phc_index = phc_index;
 
-			servo = servo_add(priv, clock);
-			if (servo) {
+			if (clock->servo) {
 				servo_destroy(clock->servo);
-				clock->servo = servo;
+				clock->servo = NULL;
 			}
 
 			phc_switched = 1;
@@ -360,7 +355,8 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 	}
 
 	if (new_state == PS_MASTER || phc_switched) {
-		servo_reset(clock->servo);
+		if (clock->servo)
+			servo_reset(clock->servo);
 		clock->servo_state = SERVO_UNLOCKED;
 
 		if (clock->offset_stats) {
@@ -571,6 +567,12 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 	enum servo_state state;
 	double ppb;
 
+	if (!clock->servo) {
+		clock->servo = servo_add(priv, clock);
+		if (!clock->servo)
+			return;
+	}
+
 	if (clock_handle_leap(priv, clock, offset, ts))
 		return;
 
@@ -755,11 +757,6 @@ static int do_loop(struct phc2sys_private *priv, int subscriptions)
 			     clock->phc_index == priv->master->phc_index) ||
 			    !strcmp(clock->device, priv->master->device))
 				continue;
-
-			if (!clock->servo) {
-				pr_err("cannot update clock without servo");
-				return -1;
-			}
 
 			if (clock->clkid == CLOCK_REALTIME &&
 			    priv->master->sysoff_method >= 0) {
@@ -1652,6 +1649,7 @@ int main(int argc, char *argv[])
 	if (pps_fd >= 0) {
 		/* only one destination clock allowed with PPS until we
 		 * implement a mean to specify PTP port to PPS mapping */
+		dst->servo = servo_add(&priv, dst);
 		servo_sync_interval(dst->servo, 1.0);
 		r = do_pps_loop(&priv, dst, pps_fd);
 	} else {
