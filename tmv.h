@@ -20,6 +20,7 @@
 #ifndef HAVE_TMV_H
 #define HAVE_TMV_H
 
+#include <linux/ptp_clock.h>
 #include <time.h>
 
 #include "ddt.h"
@@ -157,6 +158,13 @@ static inline tmv_t timestamp_to_tmv(struct timestamp ts)
 {
 	tmv_t t;
 	t.ns = ts.sec * NS_PER_SEC + ts.nsec;
+	return t;
+}
+
+static inline tmv_t pct_to_tmv(struct ptp_clock_time pct)
+{
+	tmv_t t;
+	t.ns = pct.sec * NS_PER_SEC + pct.nsec;
 	return t;
 }
 
