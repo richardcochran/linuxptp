@@ -112,6 +112,13 @@ static inline int64_t tmv_to_nanoseconds(tmv_t x)
 	return x.ns;
 }
 
+static inline tmv_t nanoseconds_to_tmv(int64_t ns)
+{
+	tmv_t t;
+	t.ns = ns;
+	return t;
+}
+
 static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
 {
 	if (x.ns < (int64_t)MIN_TMV_TO_TIMEINTERVAL) {
