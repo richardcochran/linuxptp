@@ -211,6 +211,16 @@ clockid_t posix_clock_open(const char *device, int *phc_index)
 	/* check if device is valid phc device */
 	clkid = phc_open(device);
 	if (clkid != CLOCK_INVALID) {
+		if (!strncmp(device, "/dev/ptp", strlen("/dev/ptp"))) {
+			int r = get_ranged_int(device + strlen("/dev/ptp"),
+					       phc_index, 0, 65535);
+			if (r) {
+				fprintf(stderr,
+					"failed to parse PHC index from %s\n",
+					device);
+				return -1;
+			}
+		}
 		return clkid;
 	}
 	/* check if device is a valid ethernet device */
