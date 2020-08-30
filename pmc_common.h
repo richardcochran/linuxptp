@@ -22,6 +22,7 @@
 #define HAVE_PMC_COMMON_H
 
 #include "config.h"
+#include "fsm.h"
 #include "msg.h"
 #include "transport.h"
 
@@ -48,5 +49,39 @@ void pmc_target_all(struct pmc *pmc);
 
 const char *pmc_action_string(int action);
 int pmc_do_command(struct pmc *pmc, char *str);
+
+struct pmc_node;
+
+typedef int pmc_node_recv_subscribed_t(struct pmc_node *node,
+				       struct ptp_message *msg,
+				       int excluded);
+
+struct pmc_node {
+	struct pmc *pmc;
+	int pmc_ds_requested;
+	uint64_t pmc_last_update;
+	int sync_offset;
+	int leap;
+	int utc_offset_traceable;
+	int clock_identity_set;
+	struct ClockIdentity clock_identity;
+	pmc_node_recv_subscribed_t *recv_subscribed;
+};
+
+int init_pmc_node(struct config *cfg, struct pmc_node *node, const char *uds,
+		  pmc_node_recv_subscribed_t *recv_subscribed);
+void close_pmc_node(struct pmc_node *node);
+int update_pmc_node(struct pmc_node *node, int subscribe);
+int run_pmc_subscribe(struct pmc_node *node, int timeout);
+int run_pmc_clock_identity(struct pmc_node *node, int timeout);
+int run_pmc_wait_sync(struct pmc_node *node, int timeout);
+int run_pmc_get_number_ports(struct pmc_node *node, int timeout);
+void run_pmc_events(struct pmc_node *node);
+int run_pmc_port_properties(struct pmc_node *node, int timeout,
+			    unsigned int port, int *state,
+			    int *tstamping, char *iface);
+int run_pmc_get_utc_offset(struct pmc_node *node, int timeout);
+int get_mgt_id(struct ptp_message *msg);
+void *get_mgt_data(struct ptp_message *msg);
 
 #endif

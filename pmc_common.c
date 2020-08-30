@@ -18,6 +18,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <errno.h>
+#include <net/if.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -55,6 +57,13 @@
 #define EMPTY_CLOCK_DESCRIPTION 22
 /* Includes one extra byte to make length even. */
 #define EMPTY_PTP_TEXT 2
+
+#define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
+#define PMC_SUBSCRIBE_DURATION 180	/* 3 minutes */
+/* Note that PMC_SUBSCRIBE_DURATION has to be longer than
+ * PMC_UPDATE_INTERVAL otherwise subscription will time out before it is
+ * renewed.
+ */
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str);
 static void do_set_action(struct pmc *pmc, int action, int index, char *str);
@@ -710,4 +719,332 @@ int pmc_do_command(struct pmc *pmc, char *str)
 	idtab[id].func(pmc, action, id, str);
 
 	return 0;
+}
+
+static void send_subscription(struct pmc_node *node)
+{
+	struct subscribe_events_np sen;
+
+	memset(&sen, 0, sizeof(sen));
+	sen.duration = PMC_SUBSCRIBE_DURATION;
+	sen.bitmask[0] = 1 << NOTIFY_PORT_STATE;
+	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
+}
+
+static int check_clock_identity(struct pmc_node *node, struct ptp_message *msg)
+{
+	if (!node->clock_identity_set)
+		return 1;
+	return cid_eq(&node->clock_identity,
+		       &msg->header.sourcePortIdentity.clockIdentity);
+}
+
+static int is_msg_mgt(struct ptp_message *msg)
+{
+	struct TLV *tlv;
+
+	if (msg_type(msg) != MANAGEMENT)
+		return 0;
+	if (management_action(msg) != RESPONSE)
+		return 0;
+	if (msg_tlv_count(msg) != 1)
+		return 0;
+	tlv = (struct TLV *) msg->management.suffix;
+	if (tlv->type == TLV_MANAGEMENT)
+		return 1;
+	if (tlv->type == TLV_MANAGEMENT_ERROR_STATUS)
+		return -1;
+	return 0;
+}
+
+int get_mgt_id(struct ptp_message *msg)
+{
+	struct management_tlv *mgt;
+
+	mgt = (struct management_tlv *) msg->management.suffix;
+	return mgt->id;
+}
+
+void *get_mgt_data(struct ptp_message *msg)
+{
+	struct management_tlv *mgt;
+
+	mgt = (struct management_tlv *) msg->management.suffix;
+	return mgt->data;
+}
+
+static int get_mgt_err_id(struct ptp_message *msg)
+{
+	struct management_error_status *mgt;
+
+	mgt = (struct management_error_status *)msg->management.suffix;
+	return mgt->id;
+}
+
+/* Return values:
+ * 1: success
+ * 0: timeout
+ * -1: error reported by the other side
+ * -2: local error, fatal
+ */
+static int run_pmc(struct pmc_node *node, int timeout, int ds_id,
+		   struct ptp_message **msg)
+{
+#define N_FD 1
+	struct pollfd pollfd[N_FD];
+	int cnt, res;
+
+	while (1) {
+		pollfd[0].fd = pmc_get_transport_fd(node->pmc);
+		pollfd[0].events = POLLIN|POLLPRI;
+		if (!node->pmc_ds_requested && ds_id >= 0)
+			pollfd[0].events |= POLLOUT;
+
+		cnt = poll(pollfd, N_FD, timeout);
+		if (cnt < 0) {
+			pr_err("poll failed");
+			return -2;
+		}
+		if (!cnt) {
+			/* Request the data set again in the next run. */
+			node->pmc_ds_requested = 0;
+			return 0;
+		}
+
+		/* Send a new request if there are no pending messages. */
+		if ((pollfd[0].revents & POLLOUT) &&
+		    !(pollfd[0].revents & (POLLIN|POLLPRI))) {
+			switch (ds_id) {
+			case TLV_SUBSCRIBE_EVENTS_NP:
+				send_subscription(node);
+				break;
+			default:
+				pmc_send_get_action(node->pmc, ds_id);
+				break;
+			}
+			node->pmc_ds_requested = 1;
+		}
+
+		if (!(pollfd[0].revents & (POLLIN|POLLPRI)))
+			continue;
+
+		*msg = pmc_recv(node->pmc);
+
+		if (!*msg)
+			continue;
+
+		if (!check_clock_identity(node, *msg)) {
+			msg_put(*msg);
+			*msg = NULL;
+			continue;
+		}
+
+		res = is_msg_mgt(*msg);
+		if (res < 0 && get_mgt_err_id(*msg) == ds_id) {
+			node->pmc_ds_requested = 0;
+			return -1;
+		}
+		if (res <= 0 || node->recv_subscribed(node, *msg, ds_id) ||
+		    get_mgt_id(*msg) != ds_id) {
+			msg_put(*msg);
+			*msg = NULL;
+			continue;
+		}
+		node->pmc_ds_requested = 0;
+		return 1;
+	}
+}
+
+int run_pmc_wait_sync(struct pmc_node *node, int timeout)
+{
+	struct ptp_message *msg;
+	Enumeration8 portState;
+	void *data;
+	int res;
+
+	while (1) {
+		res = run_pmc(node, timeout, TLV_PORT_DATA_SET, &msg);
+		if (res <= 0)
+			return res;
+
+		data = get_mgt_data(msg);
+		portState = ((struct portDS *)data)->portState;
+		msg_put(msg);
+
+		switch (portState) {
+		case PS_MASTER:
+		case PS_SLAVE:
+			return 1;
+		}
+		/* try to get more data sets (for other ports) */
+		node->pmc_ds_requested = 1;
+	}
+}
+
+int run_pmc_get_utc_offset(struct pmc_node *node, int timeout)
+{
+	struct ptp_message *msg;
+	int res;
+	struct timePropertiesDS *tds;
+
+	res = run_pmc(node, timeout, TLV_TIME_PROPERTIES_DATA_SET, &msg);
+	if (res <= 0)
+		return res;
+
+	tds = (struct timePropertiesDS *)get_mgt_data(msg);
+	if (tds->flags & PTP_TIMESCALE) {
+		node->sync_offset = tds->currentUtcOffset;
+		if (tds->flags & LEAP_61)
+			node->leap = 1;
+		else if (tds->flags & LEAP_59)
+			node->leap = -1;
+		else
+			node->leap = 0;
+		node->utc_offset_traceable = tds->flags & UTC_OFF_VALID &&
+					     tds->flags & TIME_TRACEABLE;
+	} else {
+		node->sync_offset = 0;
+		node->leap = 0;
+		node->utc_offset_traceable = 0;
+	}
+	msg_put(msg);
+	return 1;
+}
+
+int run_pmc_get_number_ports(struct pmc_node *node, int timeout)
+{
+	struct ptp_message *msg;
+	int res;
+	struct defaultDS *dds;
+
+	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
+	if (res <= 0)
+		return res;
+
+	dds = (struct defaultDS *)get_mgt_data(msg);
+	res = dds->numberPorts;
+	msg_put(msg);
+	return res;
+}
+
+int run_pmc_subscribe(struct pmc_node *node, int timeout)
+{
+	struct ptp_message *msg;
+	int res;
+
+	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
+	if (res <= 0)
+		return res;
+	msg_put(msg);
+	return 1;
+}
+
+void run_pmc_events(struct pmc_node *node)
+{
+	struct ptp_message *msg;
+
+	run_pmc(node, 0, -1, &msg);
+}
+
+int run_pmc_port_properties(struct pmc_node *node, int timeout,
+			    unsigned int port, int *state,
+			    int *tstamping, char *iface)
+{
+	struct ptp_message *msg;
+	int res, len;
+	struct port_properties_np *ppn;
+
+	pmc_target_port(node->pmc, port);
+	while (1) {
+		res = run_pmc(node, timeout, TLV_PORT_PROPERTIES_NP, &msg);
+		if (res <= 0)
+			goto out;
+
+		ppn = get_mgt_data(msg);
+		if (ppn->portIdentity.portNumber != port) {
+			msg_put(msg);
+			continue;
+		}
+
+		*state = ppn->port_state;
+		*tstamping = ppn->timestamping;
+		len = ppn->interface.length;
+		if (len > IFNAMSIZ - 1)
+			len = IFNAMSIZ - 1;
+		memcpy(iface, ppn->interface.text, len);
+		iface[len] = '\0';
+
+		msg_put(msg);
+		res = 1;
+		break;
+	}
+out:
+	pmc_target_all(node->pmc);
+	return res;
+}
+
+int run_pmc_clock_identity(struct pmc_node *node, int timeout)
+{
+	struct ptp_message *msg;
+	struct defaultDS *dds;
+	int res;
+
+	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
+	if (res <= 0)
+		return res;
+
+	dds = (struct defaultDS *)get_mgt_data(msg);
+	memcpy(&node->clock_identity, &dds->clockIdentity,
+	       sizeof(struct ClockIdentity));
+	node->clock_identity_set = 1;
+	msg_put(msg);
+	return 1;
+}
+
+/* Returns: -1 in case of error, 0 otherwise */
+int update_pmc_node(struct pmc_node *node, int subscribe)
+{
+	struct timespec tp;
+	uint64_t ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
+		pr_err("failed to read clock: %m");
+		return -1;
+	}
+	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
+
+	if (node->pmc &&
+	    !(ts > node->pmc_last_update &&
+	      ts - node->pmc_last_update < PMC_UPDATE_INTERVAL)) {
+		if (subscribe)
+			run_pmc_subscribe(node, 0);
+		if (run_pmc_get_utc_offset(node, 0) > 0)
+			node->pmc_last_update = ts;
+	}
+
+	return 0;
+}
+
+int init_pmc_node(struct config *cfg, struct pmc_node *node, const char *uds,
+		  pmc_node_recv_subscribed_t *recv_subscribed)
+{
+	node->pmc = pmc_create(cfg, TRANS_UDS, uds, 0,
+			       config_get_int(cfg, NULL, "domainNumber"),
+			       config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
+	if (!node->pmc) {
+		pr_err("failed to create pmc");
+		return -1;
+	}
+	node->recv_subscribed = recv_subscribed;
+
+	return 0;
+}
+
+void close_pmc_node(struct pmc_node *node)
+{
+	if (!node->pmc)
+		return;
+
+	pmc_destroy(node->pmc);
+	node->pmc = NULL;
 }
