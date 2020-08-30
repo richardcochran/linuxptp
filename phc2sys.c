@@ -818,13 +818,17 @@ static int is_msg_mgt(struct ptp_message *msg)
 
 static int get_mgt_id(struct ptp_message *msg)
 {
-	struct management_tlv *mgt = (struct management_tlv *) msg->management.suffix;
+	struct management_tlv *mgt;
+
+	mgt = (struct management_tlv *) msg->management.suffix;
 	return mgt->id;
 }
 
 static void *get_mgt_data(struct ptp_message *msg)
 {
-	struct management_tlv *mgt = (struct management_tlv *) msg->management.suffix;
+	struct management_tlv *mgt;
+
+	mgt = (struct management_tlv *) msg->management.suffix;
 	return mgt->data;
 }
 
