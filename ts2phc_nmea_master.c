@@ -210,8 +210,8 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 
 struct ts2phc_master *ts2phc_nmea_master_create(struct config *cfg, const char *dev)
 {
+	const char *leapfile = config_get_string(cfg, NULL, "leapfile");
 	struct ts2phc_nmea_master *master;
-	const char *leapfile = NULL;	// TODO - read from config.
 	int err;
 
 	master = calloc(1, sizeof(*master));
