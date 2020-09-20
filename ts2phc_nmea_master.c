@@ -190,7 +190,11 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 		lstab_error = 0;
 		break;
 	case LSTAB_UNKNOWN:
+		pr_err("nmea: unable to find utc time in leap second table");
+		lstab_error = -1;
+		break;
 	case LSTAB_AMBIGUOUS:
+		pr_err("nmea: utc time stamp is ambiguous");
 		lstab_error = -1;
 		break;
 	}
