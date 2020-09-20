@@ -220,6 +220,7 @@ struct ts2phc_master *ts2phc_nmea_master_create(struct config *cfg, const char *
 	}
 	master->lstab = lstab_create(leapfile);
 	if (!master->lstab) {
+		free(master);
 		return NULL;
 	}
 	master->master.destroy = ts2phc_nmea_master_destroy;
@@ -229,6 +230,7 @@ struct ts2phc_master *ts2phc_nmea_master_create(struct config *cfg, const char *
 	err = pthread_create(&master->worker, NULL, monitor_nmea_status, master);
 	if (err) {
 		pr_err("failed to create worker thread: %s", strerror(err));
+		lstab_destroy(master->lstab);
 		free(master);
 		return NULL;
 	}
