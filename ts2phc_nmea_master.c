@@ -172,6 +172,11 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 
 	pthread_mutex_unlock(&m->mutex);
 
+	if (!fix_valid) {
+		pr_debug("nmea: no valid rmc fix");
+		return -1;
+	}
+
 	delay_t1 = rmc;
 	pr_debug("nmea delay: %" PRId64 " ns",
 		 tmv_to_nanoseconds(tmv_sub(delay_t2, delay_t1)));
@@ -200,7 +205,7 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 	}
 	ts->tv_sec += tai_offset;
 
-	return fix_valid ? lstab_error : -1;
+	return lstab_error;
 }
 
 struct ts2phc_master *ts2phc_nmea_master_create(struct config *cfg, const char *dev)
