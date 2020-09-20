@@ -7,6 +7,9 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "lstab.h"
@@ -26,6 +29,8 @@
 struct ts2phc_nmea_master {
 	struct ts2phc_master master;
 	struct config *config;
+	const char *leapfile;
+	time_t lsfile_mtime;
 	struct lstab *lstab;
 	pthread_t worker;
 	/* Protects anonymous struct fields, below, from concurrent access. */
@@ -138,6 +143,34 @@ static void *monitor_nmea_status(void *arg)
 	return NULL;
 }
 
+static int update_leapsecond_table(struct ts2phc_nmea_master *master)
+{
+	struct stat statbuf;
+	int err;
+
+	if (!master->leapfile) {
+		return 0;
+	}
+	err = stat(master->leapfile, &statbuf);
+	if (err) {
+		pr_err("nmea: file status failed on %s: %m", master->leapfile);
+		return -1;
+	}
+	if (master->lsfile_mtime == statbuf.st_mtim.tv_sec) {
+		return 0;
+	}
+	pr_info("nmea: updating leap seconds file");
+	if (master->lstab) {
+		lstab_destroy(master->lstab);
+	}
+	master->lstab = lstab_create(master->leapfile);
+	if (!master->lstab) {
+		return -1;
+	}
+	master->lsfile_mtime = statbuf.st_mtim.tv_sec;
+	return 0;
+}
+
 static void ts2phc_nmea_master_destroy(struct ts2phc_master *master)
 {
 	struct ts2phc_nmea_master *m =
@@ -189,6 +222,11 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 	utc_time /= (int64_t) 1000000000;
 	*ts = tmv_to_timespec(rmc);
 
+	if (update_leapsecond_table(m)) {
+		pr_err("nmea: failed to update leap seconds table");
+		return -1;
+	}
+
 	result = lstab_utc2tai(m->lstab, utc_time, &tai_offset);
 	switch (result) {
 	case LSTAB_OK:
@@ -210,18 +248,28 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 
 struct ts2phc_master *ts2phc_nmea_master_create(struct config *cfg, const char *dev)
 {
-	const char *leapfile = config_get_string(cfg, NULL, "leapfile");
 	struct ts2phc_nmea_master *master;
+	struct stat statbuf;
 	int err;
 
 	master = calloc(1, sizeof(*master));
 	if (!master) {
 		return NULL;
 	}
-	master->lstab = lstab_create(leapfile);
+	master->leapfile = config_get_string(cfg, NULL, "leapfile");
+	master->lstab = lstab_create(master->leapfile);
 	if (!master->lstab) {
 		free(master);
 		return NULL;
+	}
+	if (master->leapfile) {
+		err = stat(master->leapfile, &statbuf);
+		if (err) {
+			lstab_destroy(master->lstab);
+			free(master);
+			return NULL;
+		}
+		master->lsfile_mtime = statbuf.st_mtim.tv_sec;
 	}
 	master->master.destroy = ts2phc_nmea_master_destroy;
 	master->master.getppstime = ts2phc_nmea_master_getppstime;
