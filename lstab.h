@@ -54,7 +54,7 @@ enum lstab_result {
 /**
  * Returns the TAI - UTC offset for a given UTC time value.
  * @param lstab       A pointer obtained via lstab_create().
- * @param utctime     The UTC time value of interest.
+ * @param utctime     The UTC time value of interest, in seconds.
  * @param tai_offset  Pointer to a buffer to hold the result.
  * @return            One of the lstab_result enumeration values.
  */

@@ -181,6 +181,7 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 	//
 	rmc = tmv_add(rmc, tmv_sub(local_t2, local_t1));
 	utc_time = tmv_to_nanoseconds(rmc);
+	utc_time /= (int64_t) 1000000000;
 	*ts = tmv_to_timespec(rmc);
 
 	result = lstab_utc2tai(m->lstab, utc_time, &tai_offset);
