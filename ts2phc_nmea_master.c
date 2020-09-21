@@ -24,6 +24,7 @@
 #include "util.h"
 
 #define BAUD		9600
+#define MAX_RMC_AGE	5000000000ULL
 #define NMEA_TMO	2000 /*milliseconds*/
 
 struct ts2phc_nmea_master {
@@ -186,7 +187,7 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 {
 	struct ts2phc_nmea_master *m =
 		container_of(master, struct ts2phc_nmea_master, master);
-	tmv_t delay_t1, delay_t2, local_t1, local_t2, rmc;
+	tmv_t delay_t1, delay_t2, duration_since_rmc, local_t1, local_t2, rmc;
 	int lstab_error = 0, tai_offset = 0;
 	enum lstab_result result;
 	struct timespec now;
@@ -214,10 +215,12 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 	pr_debug("nmea delay: %" PRId64 " ns",
 		 tmv_to_nanoseconds(tmv_sub(delay_t2, delay_t1)));
 
-	//
-	// TODO - check that (local_t2 - local_t1) is smaller than X.
-	//
-	rmc = tmv_add(rmc, tmv_sub(local_t2, local_t1));
+	duration_since_rmc = tmv_sub(local_t2, local_t1);
+	if (tmv_to_nanoseconds(duration_since_rmc) > MAX_RMC_AGE) {
+		pr_err("nmea: rmc time stamp stale");
+		return -1;
+	}
+	rmc = tmv_add(rmc, duration_since_rmc);
 	utc_time = tmv_to_nanoseconds(rmc);
 	utc_time /= (int64_t) 1000000000;
 	*ts = tmv_to_timespec(rmc);
