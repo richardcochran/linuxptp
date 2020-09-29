@@ -262,12 +262,23 @@ enum {
 
 #define TFD_TIMER_ABSTIME (1 << 0)
 
+/*
+ * clock_nanosleep is supported in uclic-ng since v1.0.31 even without threads.
+ */
+#if defined __USE_XOPEN2K && defined __UCLIBC_HAS_ADVANCED_REALTIME__
+
+#include <sys/time.h>
+
+#else
+
 static inline int clock_nanosleep(clockid_t clock_id, int flags,
 				  const struct timespec *request,
 				  struct timespec *remain)
 {
 	return syscall(__NR_clock_nanosleep, clock_id, flags, request, remain);
 }
+
+#endif
 
 static inline int timerfd_create(int clockid, int flags)
 {
