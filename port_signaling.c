@@ -29,6 +29,12 @@ const struct PortIdentity wildcard_pid = {
 	},
 	.portNumber = 0xffff,
 };
+const struct PortIdentity wildcard_pid2 = {
+	.clockIdentity = {
+		{0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	.portNumber = 0x0000,
+};
 
 struct ptp_message *port_signaling_construct(struct port *p,
 					     const struct PortIdentity *tpid)
@@ -126,6 +132,7 @@ int process_signaling(struct port *p, struct ptp_message *m)
 
 	/* Ignore signaling messages not addressed to this port. */
 	if (!pid_eq(&m->signaling.targetPortIdentity, &p->portIdentity) &&
+	    !pid_eq(&m->signaling.targetPortIdentity, &wildcard_pid2) &&
 	    !pid_eq(&m->signaling.targetPortIdentity, &wildcard_pid)) {
 		return 0;
 	}
