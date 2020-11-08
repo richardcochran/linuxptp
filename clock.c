@@ -1114,8 +1114,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		/* Due to a bug in older kernels, the reading may silently fail
 		   and return 0. Set the frequency back to make sure fadj is
 		   the actual frequency of the clock. */
-		clockadj_set_freq(c->clkid, fadj);
-
+		if (!c->free_running) {
+			clockadj_set_freq(c->clkid, fadj);
+		}
 		/* Disable write phase mode if not implemented by driver */
 		if (c->write_phase_mode && !phc_has_writephase(c->clkid)) {
 			pr_err("clock does not support write phase mode");

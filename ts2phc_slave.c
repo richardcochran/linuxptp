@@ -186,8 +186,9 @@ static struct ts2phc_slave *ts2phc_slave_create(struct config *cfg, const char *
 	/* Due to a bug in older kernels, the reading may silently fail
 	   and return 0. Set the frequency back to make sure fadj is
 	   the actual frequency of the clock. */
-	clockadj_set_freq(slave->clk, fadj);
-
+	if (!slave->no_adj) {
+		clockadj_set_freq(slave->clk, fadj);
+	}
 	max_adj = phc_max_adj(slave->clk);
 
 	slave->servo = servo_create(cfg, servo, -fadj, max_adj, 0);
