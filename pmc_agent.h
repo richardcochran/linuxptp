@@ -22,29 +22,17 @@
 #ifndef HAVE_PMC_AGENT_H
 #define HAVE_PMC_AGENT_H
 
+#include <stdbool.h>
+
 #include "pmc_common.h"
 
 struct pmc_agent;
 
-typedef int pmc_node_recv_subscribed_t(struct pmc_agent *agent,
-				       struct ptp_message *msg,
+typedef int pmc_node_recv_subscribed_t(void *context, struct ptp_message *msg,
 				       int excluded);
 
-struct pmc_agent {
-	struct pmc *pmc;
-	int pmc_ds_requested;
-	uint64_t pmc_last_update;
-	int sync_offset;
-	int leap;
-	int utc_offset_traceable;
-	int clock_identity_set;
-	struct ClockIdentity clock_identity;
-	pmc_node_recv_subscribed_t *recv_subscribed;
-};
-
 int init_pmc_node(struct config *cfg, struct pmc_agent *agent, const char *uds,
-		  pmc_node_recv_subscribed_t *recv_subscribed);
-void close_pmc_node(struct pmc_agent *agent);
+		  pmc_node_recv_subscribed_t *recv_subscribed, void *context);
 int update_pmc_node(struct pmc_agent *agent, int subscribe);
 int run_pmc_subscribe(struct pmc_agent *agent, int timeout);
 int run_pmc_clock_identity(struct pmc_agent *agent, int timeout);
@@ -58,5 +46,45 @@ int run_pmc_get_utc_offset(struct pmc_agent *agent, int timeout);
 int get_mgt_id(struct ptp_message *msg);
 void *get_mgt_data(struct ptp_message *msg);
 
-#endif
 
+/**
+ * Creates an instance of a PMC agent.
+ * @return  Pointer to a PMC instance on success, NULL otherwise.
+ */
+struct pmc_agent *pmc_agent_create(void);
+
+/**
+ * Destroys an instance of a PMC agent.
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ */
+void pmc_agent_destroy(struct pmc_agent *agent);
+
+/**
+ * Gets the current leap adjustment.
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @return       The leap adjustment in seconds, either 1, 0, or -1.
+ */
+int pmc_agent_get_leap(struct pmc_agent *agent);
+
+/**
+ * Gets the TAI-UTC offset.
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @return       Current offset in seconds.
+ */
+int pmc_agent_get_sync_offset(struct pmc_agent *agent);
+
+/**
+ * Sets the TAI-UTC offset.
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @param offset Desired offset in seconds.
+ */
+void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset);
+
+/**
+ * Tests whether the current UTC offset is traceable.
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @return       True is the offset is traceable, false otherwise.
+ */
+bool pmc_agent_utc_offset_traceable(struct pmc_agent *agent);
+
+#endif

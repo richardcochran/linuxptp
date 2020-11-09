@@ -103,7 +103,7 @@ struct phc2sys_private {
 	int forced_sync_offset;
 	int kernel_leap;
 	int state_changed;
-	struct pmc_agent node;
+	struct pmc_agent *node;
 	LIST_HEAD(port_head, port) ports;
 	LIST_HEAD(clock_head, clock) clocks;
 	LIST_HEAD(dst_clock_head, clock) dst_clocks;
@@ -301,7 +301,7 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 
 	LIST_FOREACH(p, &priv->ports, list) {
 		if (p->clock == clock) {
-			ret = run_pmc_port_properties(&priv->node, 1000, p->number,
+			ret = run_pmc_port_properties(priv->node, 1000, p->number,
 					              &state, &timestamping,
 						      iface);
 			if (ret > 0)
@@ -642,7 +642,7 @@ static int do_pps_loop(struct phc2sys_private *priv, struct clock *clock,
 
 	if (src == CLOCK_INVALID) {
 		/* The sync offset can't be applied with PPS alone. */
-		priv->node.sync_offset = 0;
+		pmc_agent_set_sync_offset(priv->node, 0);
 	} else {
 		enable_pps_output(priv->master->clkid);
 	}
@@ -673,7 +673,7 @@ static int do_pps_loop(struct phc2sys_private *priv, struct clock *clock,
 			pps_offset = pps_ts - phc_ts;
 		}
 
-		if (update_pmc_node(&priv->node, 0) < 0)
+		if (update_pmc_node(priv->node, 0) < 0)
 			continue;
 		update_clock(priv, clock, pps_offset, pps_ts, -1);
 	}
@@ -710,15 +710,15 @@ static int do_loop(struct phc2sys_private *priv, int subscriptions)
 
 	while (is_running()) {
 		clock_nanosleep(CLOCK_MONOTONIC, 0, &interval, NULL);
-		if (update_pmc_node(&priv->node, subscriptions) < 0)
+		if (update_pmc_node(priv->node, subscriptions) < 0)
 			continue;
 
 		if (subscriptions) {
-			run_pmc_events(&priv->node);
+			run_pmc_events(priv->node);
 			if (priv->state_changed) {
 				/* force getting offset, as it may have
 				 * changed after the port state change */
-				if (run_pmc_get_utc_offset(&priv->node, 1000) <= 0) {
+				if (run_pmc_get_utc_offset(priv->node, 1000) <= 0) {
 					pr_err("failed to get UTC offset");
 					continue;
 				}
@@ -799,13 +799,10 @@ static int clock_compute_state(struct phc2sys_private *priv,
 	return state;
 }
 
-#define node_to_phc2sys(node) \
-	container_of(node, struct phc2sys_private, node)
-
-static int phc2sys_recv_subscribed(struct pmc_agent *node,
-				   struct ptp_message *msg, int excluded)
+static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
+				   int excluded)
 {
-	struct phc2sys_private *priv = node_to_phc2sys(node);
+	struct phc2sys_private *priv = (struct phc2sys_private *) context;
 	int mgt_id, state;
 	struct portDS *pds;
 	struct port *port;
@@ -852,7 +849,7 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 	while (1) {
 		if (!is_running())
 			return -1;
-		res = run_pmc_clock_identity(&priv->node, 1000);
+		res = run_pmc_clock_identity(priv->node, 1000);
 		if (res < 0)
 			return -1;
 		if (res > 0)
@@ -861,20 +858,20 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 		pr_notice("Waiting for ptp4l...");
 	}
 
-	number_ports = run_pmc_get_number_ports(&priv->node, 1000);
+	number_ports = run_pmc_get_number_ports(priv->node, 1000);
 	if (number_ports <= 0) {
 		pr_err("failed to get number of ports");
 		return -1;
 	}
 
-	res = run_pmc_subscribe(&priv->node, 1000);
+	res = run_pmc_subscribe(priv->node, 1000);
 	if (res <= 0) {
 		pr_err("failed to subscribe");
 		return -1;
 	}
 
 	for (i = 1; i <= number_ports; i++) {
-		res = run_pmc_port_properties(&priv->node, 1000, i, &state,
+		res = run_pmc_port_properties(priv->node, 1000, i, &state,
 					      &timestamping, iface);
 		if (res == -1) {
 			/* port does not exist, ignore the port */
@@ -911,7 +908,7 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 	}
 
 	/* get initial offset */
-	if (run_pmc_get_utc_offset(&priv->node, 1000) <= 0) {
+	if (run_pmc_get_utc_offset(priv->node, 1000) <= 0) {
 		pr_err("failed to get UTC offset");
 		return -1;
 	}
@@ -922,9 +919,9 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 static int clock_handle_leap(struct phc2sys_private *priv, struct clock *clock,
 			     int64_t offset, uint64_t ts)
 {
-	int clock_leap, node_leap = priv->node.leap;
+	int clock_leap, node_leap = pmc_agent_get_leap(priv->node);
 
-	clock->sync_offset = priv->node.sync_offset;
+	clock->sync_offset = pmc_agent_get_sync_offset(priv->node);
 
 	if ((node_leap || clock->leap_set) &&
 	    clock->is_utc != priv->master->is_utc) {
@@ -965,7 +962,7 @@ static int clock_handle_leap(struct phc2sys_private *priv, struct clock *clock,
 		}
 	}
 
-	if (priv->node.utc_offset_traceable &&
+	if (pmc_agent_utc_offset_traceable(priv->node) &&
 	    clock->utc_offset_set != clock->sync_offset) {
 		if (clock->clkid == CLOCK_REALTIME)
 			sysclk_set_tai_offset(clock->sync_offset);
@@ -1020,11 +1017,12 @@ int main(int argc, char *argv[])
 {
 	char *config = NULL, *dst_name = NULL, *progname, *src_name = NULL;
 	char uds_local[MAX_IFNAME_SIZE + 1];
+	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment, offset;
+	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0;
+	int wait_sync = 0;
 	struct clock *src, *dst;
 	struct config *cfg;
 	struct option *opts;
-	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment;
-	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0, wait_sync = 0;
 	double phc_rate, tmp;
 	struct phc2sys_private priv = {
 		.phc_readings = 5,
@@ -1035,6 +1033,10 @@ int main(int argc, char *argv[])
 
 	cfg = phc2sys_config = config_create();
 	if (!cfg) {
+		return -1;
+	}
+	priv.node = pmc_agent_create();
+	if (!priv.node) {
 		return -1;
 	}
 
@@ -1128,9 +1130,10 @@ int main(int argc, char *argv[])
 				goto end;
 			break;
 		case 'O':
-			if (get_arg_val_i(c, optarg, &priv.node.sync_offset,
-					  INT_MIN, INT_MAX))
+			if (get_arg_val_i(c, optarg, &offset, INT_MIN, INT_MAX)) {
 				goto end;
+			}
+			pmc_agent_set_sync_offset(priv.node, offset);
 			priv.forced_sync_offset = -1;
 			break;
 		case 'L':
@@ -1247,8 +1250,8 @@ int main(int argc, char *argv[])
 		 getpid());
 
 	if (autocfg) {
-		if (init_pmc_node(cfg, &priv.node, uds_local,
-				  phc2sys_recv_subscribed))
+		if (init_pmc_node(cfg, priv.node, uds_local,
+				  phc2sys_recv_subscribed, &priv))
 			goto end;
 		if (auto_init_ports(&priv, rt) < 0)
 			goto end;
@@ -1285,12 +1288,12 @@ int main(int argc, char *argv[])
 	r = -1;
 
 	if (wait_sync) {
-		if (init_pmc_node(cfg, &priv.node, uds_local,
-				  phc2sys_recv_subscribed))
+		if (init_pmc_node(cfg, priv.node, uds_local,
+				  phc2sys_recv_subscribed, &priv))
 			goto end;
 
 		while (is_running()) {
-			r = run_pmc_wait_sync(&priv.node, 1000);
+			r = run_pmc_wait_sync(priv.node, 1000);
 			if (r < 0)
 				goto end;
 			if (r > 0)
@@ -1300,7 +1303,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (!priv.forced_sync_offset) {
-			r = run_pmc_get_utc_offset(&priv.node, 1000);
+			r = run_pmc_get_utc_offset(priv.node, 1000);
 			if (r <= 0) {
 				pr_err("failed to get UTC offset");
 				goto end;
@@ -1309,8 +1312,10 @@ int main(int argc, char *argv[])
 
 		if (priv.forced_sync_offset ||
 		    (src->clkid != CLOCK_REALTIME && dst->clkid != CLOCK_REALTIME) ||
-		    src->clkid == CLOCK_INVALID)
-			close_pmc_node(&priv.node);
+		    src->clkid == CLOCK_INVALID) {
+			pmc_agent_destroy(priv.node);
+			priv.node = NULL;
+		}
 	}
 
 	if (pps_fd >= 0) {
@@ -1324,7 +1329,9 @@ int main(int argc, char *argv[])
 	}
 
 end:
-	close_pmc_node(&priv.node);
+	if (priv.node) {
+		pmc_agent_destroy(priv.node);
+	}
 	clock_cleanup(&priv);
 	port_cleanup(&priv);
 	config_destroy(cfg);

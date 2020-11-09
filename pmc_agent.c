@@ -19,6 +19,7 @@
  */
 #include <net/if.h>
 #include <poll.h>
+#include <stdlib.h>
 
 #include "notification.h"
 #include "pmc_agent.h"
@@ -31,6 +32,22 @@
  * PMC_UPDATE_INTERVAL otherwise subscription will time out before it is
  * renewed.
  */
+
+struct pmc_agent {
+	struct pmc *pmc;
+	uint64_t pmc_last_update;
+
+	struct ClockIdentity clock_identity;
+	int clock_identity_set;
+	int leap;
+	int pmc_ds_requested;
+	int sync_offset;
+	int utc_offset_traceable;
+
+	/* Callback on message reception */
+	pmc_node_recv_subscribed_t *recv_subscribed;
+	void *recv_context;
+};
 
 static void send_subscription(struct pmc_agent *node)
 {
@@ -155,7 +172,8 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 			node->pmc_ds_requested = 0;
 			return -1;
 		}
-		if (res <= 0 || node->recv_subscribed(node, *msg, ds_id) ||
+		if (res <= 0 ||
+		    node->recv_subscribed(node->recv_context, *msg, ds_id) ||
 		    get_mgt_id(*msg) != ds_id) {
 			msg_put(*msg);
 			*msg = NULL;
@@ -337,7 +355,7 @@ int update_pmc_node(struct pmc_agent *node, int subscribe)
 }
 
 int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
-		  pmc_node_recv_subscribed_t *recv_subscribed)
+		  pmc_node_recv_subscribed_t *recv_subscribed, void *context)
 {
 	node->pmc = pmc_create(cfg, TRANS_UDS, uds, 0,
 			       config_get_int(cfg, NULL, "domainNumber"),
@@ -347,15 +365,41 @@ int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 		return -1;
 	}
 	node->recv_subscribed = recv_subscribed;
+	node->recv_context = context;
 
 	return 0;
 }
 
-void close_pmc_node(struct pmc_agent *node)
+struct pmc_agent *pmc_agent_create(void)
 {
-	if (!node->pmc)
-		return;
+	struct pmc_agent *agent = calloc(1, sizeof(*agent));
+	return agent;
+}
 
-	pmc_destroy(node->pmc);
-	node->pmc = NULL;
+void pmc_agent_destroy(struct pmc_agent *agent)
+{
+	if (agent->pmc) {
+		pmc_destroy(agent->pmc);
+	}
+	free(agent);
+}
+
+int pmc_agent_get_leap(struct pmc_agent *agent)
+{
+	return agent->leap;
+}
+
+int pmc_agent_get_sync_offset(struct pmc_agent *agent)
+{
+	return agent->sync_offset;
+}
+
+void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset)
+{
+	agent->sync_offset = offset;
+}
+
+bool pmc_agent_utc_offset_traceable(struct pmc_agent *agent)
+{
+	return agent->utc_offset_traceable;
 }
