@@ -808,7 +808,7 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 	struct port *port;
 	struct clock *clock;
 
-	mgt_id = get_mgt_id(msg);
+	mgt_id = management_tlv_id(msg);
 	if (mgt_id == excluded)
 		return 0;
 	switch (mgt_id) {

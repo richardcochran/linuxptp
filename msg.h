@@ -248,6 +248,18 @@ static inline uint8_t management_action(struct ptp_message *m)
 }
 
 /**
+ * Obtain the ID field from the TLV in a management message.
+ * @param m  A management message.
+ * @return   The value of the ID field.
+ */
+static inline int management_tlv_id(struct ptp_message *m)
+{
+	struct management_tlv *mgt;
+	mgt = (struct management_tlv *) m->management.suffix;
+	return mgt->id;
+}
+
+/**
  * Test a given bit in a message's flag field.
  * @param m      Message to test.
  * @param index  Index into flag field, either 0 or 1.

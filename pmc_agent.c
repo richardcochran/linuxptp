@@ -85,14 +85,6 @@ static int is_msg_mgt(struct ptp_message *msg)
 	return 0;
 }
 
-int get_mgt_id(struct ptp_message *msg)
-{
-	struct management_tlv *mgt;
-
-	mgt = (struct management_tlv *) msg->management.suffix;
-	return mgt->id;
-}
-
 void *get_mgt_data(struct ptp_message *msg)
 {
 	struct management_tlv *mgt;
@@ -174,7 +166,7 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		}
 		if (res <= 0 ||
 		    node->recv_subscribed(node->recv_context, *msg, ds_id) ||
-		    get_mgt_id(*msg) != ds_id) {
+		    management_tlv_id(*msg) != ds_id) {
 			msg_put(*msg);
 			*msg = NULL;
 			continue;
