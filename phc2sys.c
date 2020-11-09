@@ -813,7 +813,7 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 		return 0;
 	switch (mgt_id) {
 	case TLV_PORT_DATA_SET:
-		pds = get_mgt_data(msg);
+		pds = management_tlv_data(msg);
 		port = port_get(priv, pds->portIdentity.portNumber);
 		if (!port) {
 			pr_info("received data for unknown port %s",

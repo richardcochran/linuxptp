@@ -43,7 +43,6 @@ int run_pmc_port_properties(struct pmc_agent *agent, int timeout,
 			    unsigned int port, int *state,
 			    int *tstamping, char *iface);
 int run_pmc_get_utc_offset(struct pmc_agent *agent, int timeout);
-void *get_mgt_data(struct ptp_message *msg);
 
 
 /**

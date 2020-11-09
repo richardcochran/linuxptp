@@ -85,14 +85,6 @@ static int is_msg_mgt(struct ptp_message *msg)
 	return 0;
 }
 
-void *get_mgt_data(struct ptp_message *msg)
-{
-	struct management_tlv *mgt;
-
-	mgt = (struct management_tlv *) msg->management.suffix;
-	return mgt->data;
-}
-
 static int get_mgt_err_id(struct ptp_message *msg)
 {
 	struct management_error_status *mgt;
@@ -188,7 +180,7 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 		if (res <= 0)
 			return res;
 
-		data = get_mgt_data(msg);
+		data = management_tlv_data(msg);
 		portState = ((struct portDS *)data)->portState;
 		msg_put(msg);
 
@@ -212,7 +204,7 @@ int run_pmc_get_utc_offset(struct pmc_agent *node, int timeout)
 	if (res <= 0)
 		return res;
 
-	tds = (struct timePropertiesDS *)get_mgt_data(msg);
+	tds = (struct timePropertiesDS *) management_tlv_data(msg);
 	if (tds->flags & PTP_TIMESCALE) {
 		node->sync_offset = tds->currentUtcOffset;
 		if (tds->flags & LEAP_61)
@@ -242,7 +234,7 @@ int run_pmc_get_number_ports(struct pmc_agent *node, int timeout)
 	if (res <= 0)
 		return res;
 
-	dds = (struct defaultDS *)get_mgt_data(msg);
+	dds = (struct defaultDS *) management_tlv_data(msg);
 	res = dds->numberPorts;
 	msg_put(msg);
 	return res;
@@ -281,7 +273,7 @@ int run_pmc_port_properties(struct pmc_agent *node, int timeout,
 		if (res <= 0)
 			goto out;
 
-		ppn = get_mgt_data(msg);
+		ppn = management_tlv_data(msg);
 		if (ppn->portIdentity.portNumber != port) {
 			msg_put(msg);
 			continue;
@@ -314,7 +306,7 @@ int run_pmc_clock_identity(struct pmc_agent *node, int timeout)
 	if (res <= 0)
 		return res;
 
-	dds = (struct defaultDS *)get_mgt_data(msg);
+	dds = (struct defaultDS *) management_tlv_data(msg);
 	memcpy(&node->clock_identity, &dds->clockIdentity,
 	       sizeof(struct ClockIdentity));
 	node->clock_identity_set = 1;

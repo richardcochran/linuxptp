@@ -248,6 +248,18 @@ static inline uint8_t management_action(struct ptp_message *m)
 }
 
 /**
+ * Obtain the data field from the TLV in a management message.
+ * @param m  A management message.
+ * @return   A pointer to the TLV data field.
+ */
+static inline void *management_tlv_data(struct ptp_message *msg)
+{
+	struct management_tlv *mgt;
+	mgt = (struct management_tlv *) msg->management.suffix;
+	return mgt->data;
+}
+
+/**
  * Obtain the ID field from the TLV in a management message.
  * @param m  A management message.
  * @return   The value of the ID field.
