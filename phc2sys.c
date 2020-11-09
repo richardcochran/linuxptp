@@ -47,7 +47,7 @@
 #include "ntpshm.h"
 #include "phc.h"
 #include "pi.h"
-#include "pmc_common.h"
+#include "pmc_agent.h"
 #include "print.h"
 #include "servo.h"
 #include "sk.h"

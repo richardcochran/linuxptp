@@ -34,8 +34,8 @@ OBJ	= bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
  sk.o stats.o tc.o $(TRANSP) telecom.o tlv.o tsproc.o unicast_client.o \
  unicast_fsm.o unicast_service.o util.o version.o
 
-OBJECTS	= $(OBJ) hwstamp_ctl.o nsm.o phc2sys.o phc_ctl.o pmc.o pmc_common.o \
- sysoff.o timemaster.o $(TS2PHC)
+OBJECTS	= $(OBJ) hwstamp_ctl.o nsm.o phc2sys.o phc_ctl.o pmc.o pmc_agent.o \
+ pmc_common.o sysoff.o timemaster.o $(TS2PHC)
 SRC	= $(OBJECTS:.o=.c)
 DEPEND	= $(OBJECTS:.o=.d)
 srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
@@ -59,7 +59,7 @@ pmc: config.o hash.o interface.o msg.o phc.o pmc.o pmc_common.o print.o sk.o \
  tlv.o $(TRANSP) util.o version.o
 
 phc2sys: clockadj.o clockcheck.o config.o hash.o interface.o msg.o \
- phc.o phc2sys.o pmc_common.o print.o $(SERVOS) sk.o stats.o \
+ phc.o phc2sys.o pmc_agent.o pmc_common.o print.o $(SERVOS) sk.o stats.o \
  sysoff.o tlv.o $(TRANSP) util.o version.o
 
 hwstamp_ctl: hwstamp_ctl.o version.o
