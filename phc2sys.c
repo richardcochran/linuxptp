@@ -103,7 +103,7 @@ struct phc2sys_private {
 	int forced_sync_offset;
 	int kernel_leap;
 	int state_changed;
-	struct pmc_node node;
+	struct pmc_agent node;
 	LIST_HEAD(port_head, port) ports;
 	LIST_HEAD(clock_head, clock) clocks;
 	LIST_HEAD(dst_clock_head, clock) dst_clocks;
@@ -802,7 +802,7 @@ static int clock_compute_state(struct phc2sys_private *priv,
 #define node_to_phc2sys(node) \
 	container_of(node, struct phc2sys_private, node)
 
-static int phc2sys_recv_subscribed(struct pmc_node *node,
+static int phc2sys_recv_subscribed(struct pmc_agent *node,
 				   struct ptp_message *msg, int excluded)
 {
 	struct phc2sys_private *priv = node_to_phc2sys(node);

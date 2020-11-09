@@ -32,7 +32,7 @@
  * renewed.
  */
 
-static void send_subscription(struct pmc_node *node)
+static void send_subscription(struct pmc_agent *node)
 {
 	struct subscribe_events_np sen;
 
@@ -42,7 +42,7 @@ static void send_subscription(struct pmc_node *node)
 	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
 
-static int check_clock_identity(struct pmc_node *node, struct ptp_message *msg)
+static int check_clock_identity(struct pmc_agent *node, struct ptp_message *msg)
 {
 	if (!node->clock_identity_set)
 		return 1;
@@ -98,7 +98,7 @@ static int get_mgt_err_id(struct ptp_message *msg)
  * -1: error reported by the other side
  * -2: local error, fatal
  */
-static int run_pmc(struct pmc_node *node, int timeout, int ds_id,
+static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		   struct ptp_message **msg)
 {
 #define N_FD 1
@@ -166,7 +166,7 @@ static int run_pmc(struct pmc_node *node, int timeout, int ds_id,
 	}
 }
 
-int run_pmc_wait_sync(struct pmc_node *node, int timeout)
+int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
 	Enumeration8 portState;
@@ -192,7 +192,7 @@ int run_pmc_wait_sync(struct pmc_node *node, int timeout)
 	}
 }
 
-int run_pmc_get_utc_offset(struct pmc_node *node, int timeout)
+int run_pmc_get_utc_offset(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
 	int res;
@@ -222,7 +222,7 @@ int run_pmc_get_utc_offset(struct pmc_node *node, int timeout)
 	return 1;
 }
 
-int run_pmc_get_number_ports(struct pmc_node *node, int timeout)
+int run_pmc_get_number_ports(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
 	int res;
@@ -238,7 +238,7 @@ int run_pmc_get_number_ports(struct pmc_node *node, int timeout)
 	return res;
 }
 
-int run_pmc_subscribe(struct pmc_node *node, int timeout)
+int run_pmc_subscribe(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
 	int res;
@@ -250,14 +250,14 @@ int run_pmc_subscribe(struct pmc_node *node, int timeout)
 	return 1;
 }
 
-void run_pmc_events(struct pmc_node *node)
+void run_pmc_events(struct pmc_agent *node)
 {
 	struct ptp_message *msg;
 
 	run_pmc(node, 0, -1, &msg);
 }
 
-int run_pmc_port_properties(struct pmc_node *node, int timeout,
+int run_pmc_port_properties(struct pmc_agent *node, int timeout,
 			    unsigned int port, int *state,
 			    int *tstamping, char *iface)
 {
@@ -294,7 +294,7 @@ out:
 	return res;
 }
 
-int run_pmc_clock_identity(struct pmc_node *node, int timeout)
+int run_pmc_clock_identity(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
 	struct defaultDS *dds;
@@ -313,7 +313,7 @@ int run_pmc_clock_identity(struct pmc_node *node, int timeout)
 }
 
 /* Returns: -1 in case of error, 0 otherwise */
-int update_pmc_node(struct pmc_node *node, int subscribe)
+int update_pmc_node(struct pmc_agent *node, int subscribe)
 {
 	struct timespec tp;
 	uint64_t ts;
@@ -336,7 +336,7 @@ int update_pmc_node(struct pmc_node *node, int subscribe)
 	return 0;
 }
 
-int init_pmc_node(struct config *cfg, struct pmc_node *node, const char *uds,
+int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed)
 {
 	node->pmc = pmc_create(cfg, TRANS_UDS, uds, 0,
@@ -351,7 +351,7 @@ int init_pmc_node(struct config *cfg, struct pmc_node *node, const char *uds,
 	return 0;
 }
 
-void close_pmc_node(struct pmc_node *node)
+void close_pmc_node(struct pmc_agent *node)
 {
 	if (!node->pmc)
 		return;
