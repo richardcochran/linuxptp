@@ -342,14 +342,16 @@ int update_pmc_node(struct pmc_agent *node)
 	struct timespec tp;
 	uint64_t ts;
 
+	if (!node->pmc) {
+		return 0;
+	}
 	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
 		pr_err("failed to read clock: %m");
 		return -1;
 	}
 	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
 
-	if (node->pmc &&
-	    !(ts > node->pmc_last_update &&
+	if (!(ts > node->pmc_last_update &&
 	      ts - node->pmc_last_update < PMC_UPDATE_INTERVAL)) {
 		if (node->stay_subscribed) {
 			renew_subscription(node, 0);
