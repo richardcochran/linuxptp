@@ -93,12 +93,11 @@ static int get_mgt_err_id(struct ptp_message *msg)
 	return mgt->id;
 }
 
-/* Return values:
- * 1: success
- * 0: timeout
- * -1: error reported by the other side
- * -2: local error, fatal
- */
+#define RUN_PMC_OKAY	 1
+#define RUN_PMC_TMO	 0
+#define RUN_PMC_NODEV	-1
+#define RUN_PMC_INTR	-2
+
 static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		   struct ptp_message **msg)
 {
@@ -115,12 +114,12 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		cnt = poll(pollfd, N_FD, timeout);
 		if (cnt < 0) {
 			pr_err("poll failed");
-			return -2;
+			return RUN_PMC_INTR;
 		}
 		if (!cnt) {
 			/* Request the data set again in the next run. */
 			node->pmc_ds_requested = 0;
-			return 0;
+			return RUN_PMC_TMO;
 		}
 
 		/* Send a new request if there are no pending messages. */
@@ -154,7 +153,7 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		res = is_msg_mgt(*msg);
 		if (res < 0 && get_mgt_err_id(*msg) == ds_id) {
 			node->pmc_ds_requested = 0;
-			return -1;
+			return RUN_PMC_NODEV;
 		}
 		if (res <= 0 ||
 		    node->recv_subscribed(node->recv_context, *msg, ds_id) ||
@@ -164,7 +163,7 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 			continue;
 		}
 		node->pmc_ds_requested = 0;
-		return 1;
+		return RUN_PMC_OKAY;
 	}
 }
 
