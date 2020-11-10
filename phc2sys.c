@@ -864,8 +864,8 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 		return -1;
 	}
 
-	res = run_pmc_subscribe(priv->node, 1000);
-	if (res <= 0) {
+	res = pmc_agent_subscribe(priv->node, 1000);
+	if (res) {
 		pr_err("failed to subscribe");
 		return -1;
 	}

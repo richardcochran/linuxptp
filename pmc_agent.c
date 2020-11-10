@@ -17,6 +17,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <errno.h>
 #include <net/if.h>
 #include <poll.h>
 #include <stdlib.h>
@@ -97,6 +98,26 @@ static int get_mgt_err_id(struct ptp_message *msg)
 #define RUN_PMC_TMO	 0
 #define RUN_PMC_NODEV	-1
 #define RUN_PMC_INTR	-2
+
+static bool is_run_pmc_error(int code)
+{
+	return code != RUN_PMC_OKAY;
+}
+
+static int run_pmc_err2errno(int code)
+{
+	switch (code) {
+	case RUN_PMC_TMO:
+		return -ETIMEDOUT;
+	case RUN_PMC_NODEV:
+		return -ENODEV;
+	case RUN_PMC_INTR:
+		return -EINTR;
+	case RUN_PMC_OKAY:
+	default:
+		return 0;
+	}
+}
 
 static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		   struct ptp_message **msg)
@@ -239,18 +260,6 @@ int run_pmc_get_number_ports(struct pmc_agent *node, int timeout)
 	return res;
 }
 
-int run_pmc_subscribe(struct pmc_agent *node, int timeout)
-{
-	struct ptp_message *msg;
-	int res;
-
-	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
-	if (res <= 0)
-		return res;
-	msg_put(msg);
-	return 1;
-}
-
 void run_pmc_events(struct pmc_agent *node)
 {
 	struct ptp_message *msg;
@@ -329,7 +338,7 @@ int update_pmc_node(struct pmc_agent *node, int subscribe)
 	    !(ts > node->pmc_last_update &&
 	      ts - node->pmc_last_update < PMC_UPDATE_INTERVAL)) {
 		if (subscribe)
-			run_pmc_subscribe(node, 0);
+			pmc_agent_subscribe(node, 0);
 		if (run_pmc_get_utc_offset(node, 0) > 0)
 			node->pmc_last_update = ts;
 	}
@@ -380,6 +389,19 @@ int pmc_agent_get_sync_offset(struct pmc_agent *agent)
 void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset)
 {
 	agent->sync_offset = offset;
+}
+
+int pmc_agent_subscribe(struct pmc_agent *node, int timeout)
+{
+	struct ptp_message *msg;
+	int res;
+
+	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
+	if (is_run_pmc_error(res)) {
+		return run_pmc_err2errno(res);
+	}
+	msg_put(msg);
+	return 0;
 }
 
 bool pmc_agent_utc_offset_traceable(struct pmc_agent *agent)
