@@ -673,7 +673,7 @@ static int do_pps_loop(struct phc2sys_private *priv, struct clock *clock,
 			pps_offset = pps_ts - phc_ts;
 		}
 
-		if (update_pmc_node(priv->node) < 0)
+		if (pmc_agent_update(priv->node) < 0)
 			continue;
 		update_clock(priv, clock, pps_offset, pps_ts, -1);
 	}
@@ -711,7 +711,7 @@ static int do_loop(struct phc2sys_private *priv, int subscriptions)
 	while (is_running()) {
 		clock_nanosleep(CLOCK_MONOTONIC, 0, &interval, NULL);
 
-		if (update_pmc_node(priv->node) < 0) {
+		if (pmc_agent_update(priv->node) < 0) {
 			continue;
 		}
 

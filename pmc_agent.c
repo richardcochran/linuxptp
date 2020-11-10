@@ -336,33 +336,6 @@ int run_pmc_clock_identity(struct pmc_agent *node, int timeout)
 	return 1;
 }
 
-/* Returns: -1 in case of error, 0 otherwise */
-int update_pmc_node(struct pmc_agent *node)
-{
-	struct timespec tp;
-	uint64_t ts;
-
-	if (!node->pmc) {
-		return 0;
-	}
-	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
-		pr_err("failed to read clock: %m");
-		return -1;
-	}
-	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
-
-	if (ts - node->pmc_last_update >= PMC_UPDATE_INTERVAL) {
-		if (node->stay_subscribed) {
-			renew_subscription(node, 0);
-		}
-		if (run_pmc_get_utc_offset(node, 0) > 0) {
-			node->pmc_last_update = ts;
-		}
-	}
-
-	return 0;
-}
-
 int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context)
 {
@@ -412,6 +385,32 @@ int pmc_agent_subscribe(struct pmc_agent *node, int timeout)
 {
 	node->stay_subscribed = true;
 	return renew_subscription(node, timeout);
+}
+
+int pmc_agent_update(struct pmc_agent *node)
+{
+	struct timespec tp;
+	uint64_t ts;
+
+	if (!node->pmc) {
+		return 0;
+	}
+	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
+		pr_err("failed to read clock: %m");
+		return -errno;
+	}
+	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
+
+	if (ts - node->pmc_last_update >= PMC_UPDATE_INTERVAL) {
+		if (node->stay_subscribed) {
+			renew_subscription(node, 0);
+		}
+		if (run_pmc_get_utc_offset(node, 0) > 0) {
+			node->pmc_last_update = ts;
+		}
+	}
+
+	return 0;
 }
 
 bool pmc_agent_utc_offset_traceable(struct pmc_agent *agent)

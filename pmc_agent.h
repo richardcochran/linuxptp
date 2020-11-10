@@ -33,7 +33,6 @@ typedef int pmc_node_recv_subscribed_t(void *context, struct ptp_message *msg,
 
 int init_pmc_node(struct config *cfg, struct pmc_agent *agent, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context);
-int update_pmc_node(struct pmc_agent *agent);
 int run_pmc_clock_identity(struct pmc_agent *agent, int timeout);
 int run_pmc_wait_sync(struct pmc_agent *agent, int timeout);
 int run_pmc_get_number_ports(struct pmc_agent *agent, int timeout);
@@ -84,6 +83,26 @@ void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset);
  * @return         Zero on success, negative error code otherwise.
  */
 int pmc_agent_subscribe(struct pmc_agent *agent, int timeout);
+
+/**
+ * Queries the local ptp4l instance to update the TAI-UTC offset and
+ * the current leap second flags.
+ *
+ * In addition:
+ *
+ * - Any active port state subscription will be renewed.
+ * - The port state notification callback might be invoked.
+ *
+ * This function should be called periodically at least once per
+ * minute to keep both the port state and the leap second flags up to
+ * date.  Note that the PMC agent rate limits the query to once per
+ * minute, and so the caller may safely invoke this method more often
+ * than that.
+ *
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @return       Zero on success, negative error code otherwise.
+ */
+int pmc_agent_update(struct pmc_agent *agent);
 
 /**
  * Tests whether the current UTC offset is traceable.
