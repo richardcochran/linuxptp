@@ -33,7 +33,7 @@ typedef int pmc_node_recv_subscribed_t(void *context, struct ptp_message *msg,
 
 int init_pmc_node(struct config *cfg, struct pmc_agent *agent, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context);
-int update_pmc_node(struct pmc_agent *agent, int subscribe);
+int update_pmc_node(struct pmc_agent *agent);
 int run_pmc_clock_identity(struct pmc_agent *agent, int timeout);
 int run_pmc_wait_sync(struct pmc_agent *agent, int timeout);
 int run_pmc_get_number_ports(struct pmc_agent *agent, int timeout);

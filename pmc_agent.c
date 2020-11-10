@@ -42,6 +42,7 @@ struct pmc_agent {
 	int clock_identity_set;
 	int leap;
 	int pmc_ds_requested;
+	bool stay_subscribed;
 	int sync_offset;
 	int utc_offset_traceable;
 
@@ -188,6 +189,19 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 	}
 }
 
+static int renew_subscription(struct pmc_agent *node, int timeout)
+{
+	struct ptp_message *msg;
+	int res;
+
+	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
+	if (is_run_pmc_error(res)) {
+		return run_pmc_err2errno(res);
+	}
+	msg_put(msg);
+	return 0;
+}
+
 int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
@@ -323,7 +337,7 @@ int run_pmc_clock_identity(struct pmc_agent *node, int timeout)
 }
 
 /* Returns: -1 in case of error, 0 otherwise */
-int update_pmc_node(struct pmc_agent *node, int subscribe)
+int update_pmc_node(struct pmc_agent *node)
 {
 	struct timespec tp;
 	uint64_t ts;
@@ -337,8 +351,9 @@ int update_pmc_node(struct pmc_agent *node, int subscribe)
 	if (node->pmc &&
 	    !(ts > node->pmc_last_update &&
 	      ts - node->pmc_last_update < PMC_UPDATE_INTERVAL)) {
-		if (subscribe)
-			pmc_agent_subscribe(node, 0);
+		if (node->stay_subscribed) {
+			renew_subscription(node, 0);
+		}
 		if (run_pmc_get_utc_offset(node, 0) > 0)
 			node->pmc_last_update = ts;
 	}
@@ -393,15 +408,8 @@ void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset)
 
 int pmc_agent_subscribe(struct pmc_agent *node, int timeout)
 {
-	struct ptp_message *msg;
-	int res;
-
-	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
-	if (is_run_pmc_error(res)) {
-		return run_pmc_err2errno(res);
-	}
-	msg_put(msg);
-	return 0;
+	node->stay_subscribed = true;
+	return renew_subscription(node, timeout);
 }
 
 bool pmc_agent_utc_offset_traceable(struct pmc_agent *agent)
