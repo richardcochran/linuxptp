@@ -351,8 +351,7 @@ int update_pmc_node(struct pmc_agent *node)
 	}
 	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
 
-	if (!(ts > node->pmc_last_update &&
-	      ts - node->pmc_last_update < PMC_UPDATE_INTERVAL)) {
+	if (!(ts - node->pmc_last_update < PMC_UPDATE_INTERVAL)) {
 		if (node->stay_subscribed) {
 			renew_subscription(node, 0);
 		}
