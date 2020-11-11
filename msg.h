@@ -260,7 +260,7 @@ static inline void *management_tlv_data(struct ptp_message *msg)
 }
 
 /**
- * Obtain the ID field from the TLV in a management message.
+ * Obtain the managementId field from the TLV in a management message.
  * @param m  A management message.
  * @return   The value of the ID field.
  */
