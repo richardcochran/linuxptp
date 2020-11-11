@@ -228,36 +228,6 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 	}
 }
 
-int run_pmc_get_utc_offset(struct pmc_agent *node, int timeout)
-{
-	struct ptp_message *msg;
-	int res;
-	struct timePropertiesDS *tds;
-
-	res = run_pmc(node, timeout, TLV_TIME_PROPERTIES_DATA_SET, &msg);
-	if (res <= 0)
-		return res;
-
-	tds = (struct timePropertiesDS *) management_tlv_data(msg);
-	if (tds->flags & PTP_TIMESCALE) {
-		node->sync_offset = tds->currentUtcOffset;
-		if (tds->flags & LEAP_61)
-			node->leap = 1;
-		else if (tds->flags & LEAP_59)
-			node->leap = -1;
-		else
-			node->leap = 0;
-		node->utc_offset_traceable = tds->flags & UTC_OFF_VALID &&
-					     tds->flags & TIME_TRACEABLE;
-	} else {
-		node->sync_offset = 0;
-		node->leap = 0;
-		node->utc_offset_traceable = 0;
-	}
-	msg_put(msg);
-	return 1;
-}
-
 int run_pmc_get_number_ports(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
@@ -384,6 +354,37 @@ int pmc_agent_get_sync_offset(struct pmc_agent *agent)
 	return agent->sync_offset;
 }
 
+int pmc_agent_query_utc_offset(struct pmc_agent *node, int timeout)
+{
+	struct timePropertiesDS *tds;
+	struct ptp_message *msg;
+	int res;
+
+	res = run_pmc(node, timeout, TLV_TIME_PROPERTIES_DATA_SET, &msg);
+	if (is_run_pmc_error(res)) {
+		return run_pmc_err2errno(res);
+	}
+
+	tds = (struct timePropertiesDS *) management_tlv_data(msg);
+	if (tds->flags & PTP_TIMESCALE) {
+		node->sync_offset = tds->currentUtcOffset;
+		if (tds->flags & LEAP_61)
+			node->leap = 1;
+		else if (tds->flags & LEAP_59)
+			node->leap = -1;
+		else
+			node->leap = 0;
+		node->utc_offset_traceable = tds->flags & UTC_OFF_VALID &&
+					     tds->flags & TIME_TRACEABLE;
+	} else {
+		node->sync_offset = 0;
+		node->leap = 0;
+		node->utc_offset_traceable = 0;
+	}
+	msg_put(msg);
+	return 0;
+}
+
 void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset)
 {
 	agent->sync_offset = offset;
@@ -413,7 +414,7 @@ int pmc_agent_update(struct pmc_agent *node)
 		if (node->stay_subscribed) {
 			renew_subscription(node, 0);
 		}
-		if (run_pmc_get_utc_offset(node, 0) > 0) {
+		if (!pmc_agent_query_utc_offset(node, 0)) {
 			node->pmc_last_update = ts;
 		}
 	}

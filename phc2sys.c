@@ -720,7 +720,7 @@ static int do_loop(struct phc2sys_private *priv, int subscriptions)
 			if (priv->state_changed) {
 				/* force getting offset, as it may have
 				 * changed after the port state change */
-				if (run_pmc_get_utc_offset(priv->node, 1000) <= 0) {
+				if (pmc_agent_query_utc_offset(priv->node, 1000)) {
 					pr_err("failed to get UTC offset");
 					continue;
 				}
@@ -910,7 +910,7 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 	}
 
 	/* get initial offset */
-	if (run_pmc_get_utc_offset(priv->node, 1000) <= 0) {
+	if (pmc_agent_query_utc_offset(priv->node, 1000)) {
 		pr_err("failed to get UTC offset");
 		return -1;
 	}
@@ -1305,8 +1305,8 @@ int main(int argc, char *argv[])
 		}
 
 		if (!priv.forced_sync_offset) {
-			r = run_pmc_get_utc_offset(priv.node, 1000);
-			if (r <= 0) {
+			r = pmc_agent_query_utc_offset(priv.node, 1000);
+			if (r) {
 				pr_err("failed to get UTC offset");
 				goto end;
 			}
