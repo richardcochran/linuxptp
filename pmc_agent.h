@@ -37,9 +37,6 @@ int run_pmc_clock_identity(struct pmc_agent *agent, int timeout);
 int run_pmc_wait_sync(struct pmc_agent *agent, int timeout);
 int run_pmc_get_number_ports(struct pmc_agent *agent, int timeout);
 void run_pmc_events(struct pmc_agent *agent);
-int run_pmc_port_properties(struct pmc_agent *agent, int timeout,
-			    unsigned int port, int *state,
-			    int *tstamping, char *iface);
 
 /**
  * Creates an instance of a PMC agent.
@@ -72,6 +69,25 @@ int pmc_agent_get_leap(struct pmc_agent *agent);
  * @return       Current offset in seconds.
  */
 int pmc_agent_get_sync_offset(struct pmc_agent *agent);
+
+/**
+ * Queries the port properties of a given port from the ptp4l service.
+ *
+ * In addition:
+ *
+ * - The port state notification callback might be invoked.
+ *
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @param timeout    Transmit and receive timeout in milliseconds.
+ * @param port       The port index of interest.
+ * @param state      Buffer to hold the returned port state.
+ * @param tstamping  Buffer to hold the returned time stamping flavor.
+ * @param iface      Buffer to hold the returned interface name.
+ * @return           Zero on success, negative error code otherwise.
+ */
+int pmc_agent_query_port_properties(struct pmc_agent *agent, int timeout,
+				    unsigned int port, int *state,
+				    int *tstamping, char *iface);
 
 /**
  * Queries the TAI-UTC offset and the current leap adjustment from the

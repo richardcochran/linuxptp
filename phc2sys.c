@@ -292,24 +292,26 @@ static struct port *port_add(struct phc2sys_private *priv, unsigned int number,
 static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 			 int new_state)
 {
-	int phc_index = -1, phc_switched = 0;
-	int state, timestamping, ret = -1;
+	int err = -1, phc_index = -1, phc_switched = 0, state, timestamping;
 	struct port *p;
 	struct sk_ts_info ts_info;
 	char iface[IFNAMSIZ];
 	clockid_t clkid = CLOCK_INVALID;
 
 	LIST_FOREACH(p, &priv->ports, list) {
-		if (p->clock == clock) {
-			ret = run_pmc_port_properties(priv->node, 1000, p->number,
-					              &state, &timestamping,
-						      iface);
-			if (ret > 0)
-				p->state = normalize_state(state);
+		if (p->clock != clock) {
+			continue;
 		}
+		err = pmc_agent_query_port_properties(priv->node, 1000,
+						      p->number, &state,
+						      &timestamping, iface);
+		if (!err) {
+			p->state = normalize_state(state);
+		}
+		break;
 	}
 
-	if (ret > 0 && timestamping != TS_SOFTWARE) {
+	if (!err && timestamping != TS_SOFTWARE) {
 		/* Check if device changed */
 		if (strcmp(clock->device, iface)) {
 			free(clock->device);
@@ -841,12 +843,12 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 
 static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 {
-	struct port *port;
-	struct clock *clock;
-	int number_ports, res;
-	unsigned int i;
+	int err, number_ports, res;
 	int state, timestamping;
 	char iface[IFNAMSIZ];
+	struct clock *clock;
+	struct port *port;
+	unsigned int i;
 
 	while (1) {
 		if (!is_running())
@@ -866,20 +868,21 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 		return -1;
 	}
 
-	res = pmc_agent_subscribe(priv->node, 1000);
-	if (res) {
+	err = pmc_agent_subscribe(priv->node, 1000);
+	if (err) {
 		pr_err("failed to subscribe");
 		return -1;
 	}
 
 	for (i = 1; i <= number_ports; i++) {
-		res = run_pmc_port_properties(priv->node, 1000, i, &state,
-					      &timestamping, iface);
-		if (res == -1) {
+		err = pmc_agent_query_port_properties(priv->node, 1000, i,
+						      &state, &timestamping,
+						      iface);
+		if (err == -ENODEV) {
 			/* port does not exist, ignore the port */
 			continue;
 		}
-		if (res <= 0) {
+		if (err) {
 			pr_err("failed to get port properties");
 			return -1;
 		}
