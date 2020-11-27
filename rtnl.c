@@ -375,7 +375,7 @@ static int genl_get_family_id(int fd, void *family_name)
 	return gf_id;
 }
 
-static int parase_team_list_option(struct rtattr *attr)
+static int parse_team_list_option(struct rtattr *attr)
 {
 	struct rtattr *tb[TEAM_ATTR_OPTION_MAX+1];
 	int len = RTA_PAYLOAD(attr);
@@ -456,7 +456,7 @@ static int get_team_active_iface(int master_index)
 			continue;
 
 		if (tb[TEAM_ATTR_LIST_OPTION]) {
-			index = parase_team_list_option(tb[TEAM_ATTR_LIST_OPTION]);
+			index = parse_team_list_option(tb[TEAM_ATTR_LIST_OPTION]);
 			break;
 		}
 	}
