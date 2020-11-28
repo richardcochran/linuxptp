@@ -33,7 +33,6 @@ typedef int pmc_node_recv_subscribed_t(void *context, struct ptp_message *msg,
 
 int init_pmc_node(struct config *cfg, struct pmc_agent *agent, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context);
-int run_pmc_clock_identity(struct pmc_agent *agent, int timeout);
 int run_pmc_wait_sync(struct pmc_agent *agent, int timeout);
 int run_pmc_get_number_ports(struct pmc_agent *agent, int timeout);
 void run_pmc_events(struct pmc_agent *agent);
@@ -69,6 +68,20 @@ int pmc_agent_get_leap(struct pmc_agent *agent);
  * @return       Current offset in seconds.
  */
 int pmc_agent_get_sync_offset(struct pmc_agent *agent);
+
+/**
+ * Queries the local clock's default data set from the ptp4l service.
+ * The result of the query will be cached inside of the agent.
+ *
+ * In addition:
+ *
+ * - The port state notification callback might be invoked.
+ *
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @param timeout  Transmit and receive timeout in milliseconds.
+ * @return         Zero on success, negative error code otherwise.
+ */
+int pmc_agent_query_dds(struct pmc_agent *agent, int timeout);
 
 /**
  * Queries the port properties of a given port from the ptp4l service.

@@ -843,23 +843,25 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 
 static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 {
-	int err, number_ports, res;
-	int state, timestamping;
+	int err, number_ports, state, timestamping;
 	char iface[IFNAMSIZ];
 	struct clock *clock;
 	struct port *port;
 	unsigned int i;
 
 	while (1) {
-		if (!is_running())
+		if (!is_running()) {
 			return -1;
-		res = run_pmc_clock_identity(priv->node, 1000);
-		if (res < 0)
-			return -1;
-		if (res > 0)
+		}
+		err = pmc_agent_query_dds(priv->node, 1000);
+		if (!err) {
 			break;
-		/* res == 0, timeout */
-		pr_notice("Waiting for ptp4l...");
+		}
+		if (err == -ETIMEDOUT) {
+			pr_notice("Waiting for ptp4l...");
+		} else {
+			return -1;
+		}
 	}
 
 	number_ports = run_pmc_get_number_ports(priv->node, 1000);

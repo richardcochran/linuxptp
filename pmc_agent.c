@@ -38,8 +38,8 @@ struct pmc_agent {
 	struct pmc *pmc;
 	uint64_t pmc_last_update;
 
-	struct ClockIdentity clock_identity;
-	int clock_identity_set;
+	struct defaultDS dds;
+	bool dds_valid;
 	int leap;
 	int pmc_ds_requested;
 	bool stay_subscribed;
@@ -63,10 +63,11 @@ static void send_subscription(struct pmc_agent *node)
 
 static int check_clock_identity(struct pmc_agent *node, struct ptp_message *msg)
 {
-	if (!node->clock_identity_set)
+	if (!node->dds_valid) {
 		return 1;
-	return cid_eq(&node->clock_identity,
-		       &msg->header.sourcePortIdentity.clockIdentity);
+	}
+	return cid_eq(&node->dds.clockIdentity,
+		      &msg->header.sourcePortIdentity.clockIdentity);
 }
 
 static int is_msg_mgt(struct ptp_message *msg)
@@ -251,24 +252,6 @@ void run_pmc_events(struct pmc_agent *node)
 	run_pmc(node, 0, -1, &msg);
 }
 
-int run_pmc_clock_identity(struct pmc_agent *node, int timeout)
-{
-	struct ptp_message *msg;
-	struct defaultDS *dds;
-	int res;
-
-	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
-	if (res <= 0)
-		return res;
-
-	dds = (struct defaultDS *) management_tlv_data(msg);
-	memcpy(&node->clock_identity, &dds->clockIdentity,
-	       sizeof(struct ClockIdentity));
-	node->clock_identity_set = 1;
-	msg_put(msg);
-	return 1;
-}
-
 int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context)
 {
@@ -315,6 +298,23 @@ int pmc_agent_get_leap(struct pmc_agent *agent)
 int pmc_agent_get_sync_offset(struct pmc_agent *agent)
 {
 	return agent->sync_offset;
+}
+
+int pmc_agent_query_dds(struct pmc_agent *node, int timeout)
+{
+	struct ptp_message *msg;
+	struct defaultDS *dds;
+	int res;
+
+	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
+	if (is_run_pmc_error(res)) {
+		return run_pmc_err2errno(res);
+	}
+	dds = (struct defaultDS *) management_tlv_data(msg);
+	memcpy(&node->dds, dds, sizeof(node->dds));
+	node->dds_valid = true;
+	msg_put(msg);
+	return 0;
 }
 
 int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
