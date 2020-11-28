@@ -1071,7 +1071,7 @@ int main(int argc, char *argv[])
 			rt++;
 			break;
 		case 'c':
-			dst_name = strdup(optarg);
+			dst_name = optarg;
 			break;
 		case 'd':
 			pps_fd = open(optarg, O_RDONLY);
@@ -1089,7 +1089,7 @@ int main(int argc, char *argv[])
 				"'-i' has been deprecated. please use '-s' instead.\n");
             /* fallthrough */
 		case 's':
-			src_name = strdup(optarg);
+			src_name = optarg;
 			break;
 		case 'E':
 			if (!strcasecmp(optarg, "pi")) {
@@ -1267,20 +1267,16 @@ int main(int argc, char *argv[])
 	}
 
 	src = clock_add(&priv, src_name);
-	free(src_name);
 	if (!src) {
-		fprintf(stderr,
-			"valid source clock must be selected.\n");
+		fprintf(stderr, "valid source clock must be selected.\n");
 		goto bad_usage;
 	}
 	src->state = PS_SLAVE;
 	priv.master = src;
 
 	dst = clock_add(&priv, dst_name ? dst_name : "CLOCK_REALTIME");
-	free(dst_name);
 	if (!dst) {
-		fprintf(stderr,
-			"valid destination clock must be selected.\n");
+		fprintf(stderr, "valid destination clock must be selected.\n");
 		goto bad_usage;
 	}
 	dst->state = PS_MASTER;
