@@ -229,22 +229,6 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 	}
 }
 
-int run_pmc_get_number_ports(struct pmc_agent *node, int timeout)
-{
-	struct ptp_message *msg;
-	int res;
-	struct defaultDS *dds;
-
-	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
-	if (res <= 0)
-		return res;
-
-	dds = (struct defaultDS *) management_tlv_data(msg);
-	res = dds->numberPorts;
-	msg_put(msg);
-	return res;
-}
-
 void run_pmc_events(struct pmc_agent *node)
 {
 	struct ptp_message *msg;
@@ -298,6 +282,14 @@ int pmc_agent_get_leap(struct pmc_agent *agent)
 int pmc_agent_get_sync_offset(struct pmc_agent *agent)
 {
 	return agent->sync_offset;
+}
+
+int pmc_agent_get_number_ports(struct pmc_agent *node)
+{
+	if (!node->dds_valid) {
+		return -1;
+	}
+	return node->dds.numberPorts;
 }
 
 int pmc_agent_query_dds(struct pmc_agent *node, int timeout)

@@ -864,7 +864,7 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 		}
 	}
 
-	number_ports = run_pmc_get_number_ports(priv->node, 1000);
+	number_ports = pmc_agent_get_number_ports(priv->node);
 	if (number_ports <= 0) {
 		pr_err("failed to get number of ports");
 		return -1;

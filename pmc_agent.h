@@ -34,7 +34,6 @@ typedef int pmc_node_recv_subscribed_t(void *context, struct ptp_message *msg,
 int init_pmc_node(struct config *cfg, struct pmc_agent *agent, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context);
 int run_pmc_wait_sync(struct pmc_agent *agent, int timeout);
-int run_pmc_get_number_ports(struct pmc_agent *agent, int timeout);
 void run_pmc_events(struct pmc_agent *agent);
 
 /**
@@ -61,6 +60,16 @@ void pmc_agent_disable(struct pmc_agent *agent);
  * @return       The leap adjustment in seconds, either 1, 0, or -1.
  */
 int pmc_agent_get_leap(struct pmc_agent *agent);
+
+/**
+ * Gets the number of local ports from the default data set.  Users
+ * should first call pmc_agent_query_dds() before invoking this
+ * function.
+ *
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @return       The non-negative number of ports, or -1 if unknown.
+ */
+int pmc_agent_get_number_ports(struct pmc_agent *agent);
 
 /**
  * Gets the TAI-UTC offset.
