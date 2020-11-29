@@ -366,6 +366,14 @@ void pmc_agent_destroy(struct pmc_agent *agent)
 	free(agent);
 }
 
+void pmc_agent_disable(struct pmc_agent *agent)
+{
+	if (agent->pmc) {
+		pmc_destroy(agent->pmc);
+	}
+	agent->pmc = NULL;
+}
+
 int pmc_agent_get_leap(struct pmc_agent *agent)
 {
 	return agent->leap;

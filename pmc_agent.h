@@ -56,6 +56,12 @@ struct pmc_agent *pmc_agent_create(void);
 void pmc_agent_destroy(struct pmc_agent *agent);
 
 /**
+ * Disconnects the PMC agent from the ptp4l service.
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ */
+void pmc_agent_disable(struct pmc_agent *agent);
+
+/**
  * Gets the current leap adjustment.
  * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
  * @return       The leap adjustment in seconds, either 1, 0, or -1.

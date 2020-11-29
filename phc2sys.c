@@ -1315,8 +1315,7 @@ int main(int argc, char *argv[])
 		if (priv.forced_sync_offset ||
 		    (src->clkid != CLOCK_REALTIME && dst->clkid != CLOCK_REALTIME) ||
 		    src->clkid == CLOCK_INVALID) {
-			pmc_agent_destroy(priv.node);
-			priv.node = NULL;
+			pmc_agent_disable(priv.node);
 		}
 	}
 
@@ -1331,9 +1330,7 @@ int main(int argc, char *argv[])
 	}
 
 end:
-	if (priv.node) {
-		pmc_agent_destroy(priv.node);
-	}
+	pmc_agent_destroy(priv.node);
 	clock_cleanup(&priv);
 	port_cleanup(&priv);
 	config_destroy(cfg);
