@@ -979,6 +979,11 @@ static int clock_handle_leap(struct phc2sys_private *priv, struct clock *clock,
 	return 0;
 }
 
+static bool hardpps_configured(int fd)
+{
+	return fd >= 0;
+}
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -1222,12 +1227,13 @@ int main(int argc, char *argv[])
 		return c;
 	}
 
-	if (autocfg && (src_name || dst_name || pps_fd >= 0 || wait_sync || priv.forced_sync_offset)) {
+	if (autocfg && (src_name || dst_name || hardpps_configured(pps_fd) ||
+			wait_sync || priv.forced_sync_offset)) {
 		fprintf(stderr,
 			"autoconfiguration cannot be mixed with manual config options.\n");
 		goto bad_usage;
 	}
-	if (!autocfg && pps_fd < 0 && !src_name) {
+	if (!autocfg && !hardpps_configured(pps_fd) && !src_name) {
 		fprintf(stderr,
 			"autoconfiguration or valid source clock must be selected.\n");
 		goto bad_usage;
@@ -1282,7 +1288,7 @@ int main(int argc, char *argv[])
 	dst->state = PS_MASTER;
 	LIST_INSERT_HEAD(&priv.dst_clocks, dst, dst_list);
 
-	if (pps_fd >= 0 && dst->clkid != CLOCK_REALTIME) {
+	if (hardpps_configured(pps_fd) && dst->clkid != CLOCK_REALTIME) {
 		fprintf(stderr,
 			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		goto bad_usage;
@@ -1320,7 +1326,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (pps_fd >= 0) {
+	if (hardpps_configured(pps_fd)) {
 		/* only one destination clock allowed with PPS until we
 		 * implement a mean to specify PTP port to PPS mapping */
 		dst->servo = servo_add(&priv, dst);
