@@ -1245,6 +1245,15 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
+	if (!dst_name) {
+		dst_name = "CLOCK_REALTIME";
+	}
+	if (hardpps_configured(pps_fd) && strcmp(dst_name, "CLOCK_REALTIME")) {
+		fprintf(stderr,
+			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
+		goto bad_usage;
+	}
+
 	print_set_progname(progname);
 	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
 	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
@@ -1280,19 +1289,13 @@ int main(int argc, char *argv[])
 	src->state = PS_SLAVE;
 	priv.master = src;
 
-	dst = clock_add(&priv, dst_name ? dst_name : "CLOCK_REALTIME");
+	dst = clock_add(&priv, dst_name);
 	if (!dst) {
 		fprintf(stderr, "valid destination clock must be selected.\n");
 		goto bad_usage;
 	}
 	dst->state = PS_MASTER;
 	LIST_INSERT_HEAD(&priv.dst_clocks, dst, dst_list);
-
-	if (hardpps_configured(pps_fd) && dst->clkid != CLOCK_REALTIME) {
-		fprintf(stderr,
-			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
-		goto bad_usage;
-	}
 
 	r = -1;
 
