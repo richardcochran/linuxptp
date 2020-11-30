@@ -153,7 +153,7 @@ static struct servo *servo_add(struct phc2sys_private *priv,
 	return servo;
 }
 
-static struct clock *clock_add(struct phc2sys_private *priv, char *device)
+static struct clock *clock_add(struct phc2sys_private *priv, const char *device)
 {
 	struct clock *c;
 	clockid_t clkid = CLOCK_INVALID;
@@ -984,6 +984,31 @@ static bool hardpps_configured(int fd)
 	return fd >= 0;
 }
 
+static int phc2sys_static_configuration(struct phc2sys_private *priv,
+					const char *src_name,
+					const char *dst_name)
+{
+	struct clock *src, *dst;
+
+	src = clock_add(priv, src_name);
+	if (!src) {
+		fprintf(stderr, "valid source clock must be selected.\n");
+		return -1;
+	}
+	src->state = PS_SLAVE;
+	priv->master = src;
+
+	dst = clock_add(priv, dst_name);
+	if (!dst) {
+		fprintf(stderr, "valid destination clock must be selected.\n");
+		return -1;
+	}
+	dst->state = PS_MASTER;
+	LIST_INSERT_HEAD(&priv->dst_clocks, dst, dst_list);
+
+	return 0;
+}
+
 static bool phc2sys_using_systemclock(struct phc2sys_private *priv)
 {
 	struct clock *c;
@@ -1044,7 +1069,6 @@ int main(int argc, char *argv[])
 	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment, offset;
 	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0;
 	int wait_sync = 0;
-	struct clock *src, *dst;
 	struct config *cfg;
 	struct option *opts;
 	double phc_rate, tmp;
@@ -1297,21 +1321,10 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	src = clock_add(&priv, src_name);
-	if (!src) {
-		fprintf(stderr, "valid source clock must be selected.\n");
-		goto bad_usage;
+	r = phc2sys_static_configuration(&priv, src_name, dst_name);
+	if (r) {
+		goto end;
 	}
-	src->state = PS_SLAVE;
-	priv.master = src;
-
-	dst = clock_add(&priv, dst_name);
-	if (!dst) {
-		fprintf(stderr, "valid destination clock must be selected.\n");
-		goto bad_usage;
-	}
-	dst->state = PS_MASTER;
-	LIST_INSERT_HEAD(&priv.dst_clocks, dst, dst_list);
 
 	r = -1;
 
@@ -1346,6 +1359,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (hardpps_configured(pps_fd)) {
+		struct clock *dst = LIST_FIRST(&priv.dst_clocks);
+
 		/* only one destination clock allowed with PPS until we
 		 * implement a mean to specify PTP port to PPS mapping */
 		dst->servo = servo_add(&priv, dst);
