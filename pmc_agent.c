@@ -229,13 +229,6 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 	}
 }
 
-void run_pmc_events(struct pmc_agent *node)
-{
-	struct ptp_message *msg;
-
-	run_pmc(node, 0, -1, &msg);
-}
-
 int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context)
 {

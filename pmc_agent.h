@@ -34,7 +34,6 @@ typedef int pmc_node_recv_subscribed_t(void *context, struct ptp_message *msg,
 int init_pmc_node(struct config *cfg, struct pmc_agent *agent, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context);
 int run_pmc_wait_sync(struct pmc_agent *agent, int timeout);
-void run_pmc_events(struct pmc_agent *agent);
 
 /**
  * Creates an instance of a PMC agent.
