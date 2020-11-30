@@ -1328,7 +1328,7 @@ int main(int argc, char *argv[])
 
 		if (priv.forced_sync_offset ||
 		    (src->clkid != CLOCK_REALTIME && dst->clkid != CLOCK_REALTIME) ||
-		    src->clkid == CLOCK_INVALID) {
+		    hardpps_configured(pps_fd)) {
 			pmc_agent_disable(priv.agent);
 		}
 	}
