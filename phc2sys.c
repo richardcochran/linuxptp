@@ -700,7 +700,7 @@ static int update_needed(struct clock *c)
 	return 0;
 }
 
-static int do_loop(struct phc2sys_private *priv, int subscriptions)
+static int do_loop(struct phc2sys_private *priv)
 {
 	struct timespec interval;
 	struct clock *clock;
@@ -716,18 +716,14 @@ static int do_loop(struct phc2sys_private *priv, int subscriptions)
 		if (pmc_agent_update(priv->agent) < 0) {
 			continue;
 		}
-
-		if (subscriptions) {
-			run_pmc_events(priv->agent);
-			if (priv->state_changed) {
-				/* force getting offset, as it may have
-				 * changed after the port state change */
-				if (pmc_agent_query_utc_offset(priv->agent, 1000)) {
-					pr_err("failed to get UTC offset");
-					continue;
-				}
-				reconfigure(priv);
+		if (priv->state_changed) {
+			/* force getting offset, as it may have
+			 * changed after the port state change */
+			if (pmc_agent_query_utc_offset(priv->agent, 1000)) {
+				pr_err("failed to get UTC offset");
+				continue;
 			}
+			reconfigure(priv);
 		}
 		if (!priv->master)
 			continue;
@@ -1317,7 +1313,7 @@ int main(int argc, char *argv[])
 			goto end;
 		if (auto_init_ports(&priv, rt) < 0)
 			goto end;
-		r = do_loop(&priv, 1);
+		r = do_loop(&priv);
 		goto end;
 	}
 
@@ -1367,7 +1363,7 @@ int main(int argc, char *argv[])
 		servo_sync_interval(dst->servo, 1.0);
 		r = do_pps_loop(&priv, dst, pps_fd);
 	} else {
-		r = do_loop(&priv, 0);
+		r = do_loop(&priv);
 	}
 
 end:
