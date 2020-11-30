@@ -141,11 +141,12 @@ void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset);
 int pmc_agent_subscribe(struct pmc_agent *agent, int timeout);
 
 /**
- * Queries the local ptp4l instance to update the TAI-UTC offset and
- * the current leap second flags.
+ * Polls for push notifications from the local ptp4l service.
  *
  * In addition:
  *
+ * - Queries the local ptp4l instance to update the TAI-UTC offset and
+ *   the current leap second flags.
  * - Any active port state subscription will be renewed.
  * - The port state notification callback might be invoked.
  *

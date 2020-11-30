@@ -390,6 +390,7 @@ int pmc_agent_subscribe(struct pmc_agent *node, int timeout)
 
 int pmc_agent_update(struct pmc_agent *node)
 {
+	struct ptp_message *msg;
 	struct timespec tp;
 	uint64_t ts;
 
@@ -410,6 +411,8 @@ int pmc_agent_update(struct pmc_agent *node)
 			node->pmc_last_update = ts;
 		}
 	}
+
+	run_pmc(node, 0, -1, &msg);
 
 	return 0;
 }
