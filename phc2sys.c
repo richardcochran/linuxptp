@@ -984,6 +984,18 @@ static bool hardpps_configured(int fd)
 	return fd >= 0;
 }
 
+static bool phc2sys_using_systemclock(struct phc2sys_private *priv)
+{
+	struct clock *c;
+
+	LIST_FOREACH(c, &priv->clocks, list) {
+		if (c->clkid == CLOCK_REALTIME) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -1327,7 +1339,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (priv.forced_sync_offset ||
-		    (src->clkid != CLOCK_REALTIME && dst->clkid != CLOCK_REALTIME) ||
+		    !phc2sys_using_systemclock(&priv) ||
 		    hardpps_configured(pps_fd)) {
 			pmc_agent_disable(priv.agent);
 		}
