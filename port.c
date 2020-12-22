@@ -3209,6 +3209,9 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 		next = p->state_machine(next, event, 0);
 	}
 
+	if (mdiff) {
+		unicast_client_state_changed(p);
+	}
 	if (next != p->state) {
 		port_show_transition(p, next, event);
 		p->state = next;
