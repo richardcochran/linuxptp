@@ -331,7 +331,7 @@ int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
 		iface[len] = '\0';
 
 		msg_put(msg);
-		res = 0;
+		res = RUN_PMC_OKAY;
 		break;
 	}
 out:
