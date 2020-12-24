@@ -348,6 +348,9 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 			stats_reset(clock->delay_stats);
 		}
 	}
+
+	pr_debug("%s: state change %s -> %s", clock->device,
+		 ps_str[clock->state], ps_str[new_state]);
 }
 
 static struct clock *find_dst_clock(struct phc2sys_private *priv,
