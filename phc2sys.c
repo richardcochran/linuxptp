@@ -419,19 +419,6 @@ static void reconfigure(struct phc2sys_private *priv)
 		}
 		last = c;
 	}
-	if (dst_cnt > 1 && !src) {
-		if (!rt || rt->dest_only) {
-			priv->master = last;
-			/* Reset to original state in next reconfiguration. */
-			priv->master->new_state = priv->master->state;
-			priv->master->state = PS_SLAVE;
-			if (rt)
-				rt->state = PS_SLAVE;
-			pr_info("no source, selecting %s as the default clock",
-				last->device);
-			return;
-		}
-	}
 	if (src_cnt > 1) {
 		pr_info("multiple master clocks available, postponing sync...");
 		priv->master = NULL;
@@ -447,6 +434,21 @@ static void reconfigure(struct phc2sys_private *priv)
 		priv->master = NULL;
 		return;
 	}
+
+	if (dst_cnt > 1 && !src) {
+		if (!rt || rt->dest_only) {
+			priv->master = last;
+			/* Reset to original state in next reconfiguration. */
+			priv->master->new_state = priv->master->state;
+			priv->master->state = PS_SLAVE;
+			if (rt)
+				rt->state = PS_SLAVE;
+			pr_info("no source, selecting %s as the default clock",
+				last->device);
+			return;
+		}
+	}
+
 	if ((!src_cnt && (!rt || rt->dest_only)) ||
 	    (!dst_cnt && !rt)) {
 		pr_info("nothing to synchronize");
