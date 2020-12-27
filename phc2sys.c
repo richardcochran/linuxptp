@@ -642,43 +642,34 @@ static int do_pps_loop(struct phc2sys_private *priv, struct clock *clock,
 		       int fd)
 {
 	int64_t pps_offset, phc_offset, phc_delay;
-	uint64_t pps_ts, phc_ts;
 	clockid_t src = priv->master->clkid;
+	uint64_t pps_ts, phc_ts;
 
 	priv->master->source_label = "pps";
-
-	if (src == CLOCK_INVALID) {
-		/* The sync offset can't be applied with PPS alone. */
-		pmc_agent_set_sync_offset(priv->agent, 0);
-	} else {
-		enable_pps_output(priv->master->clkid);
-	}
+	enable_pps_output(priv->master->clkid);
 
 	while (is_running()) {
 		if (!read_pps(fd, &pps_offset, &pps_ts)) {
 			continue;
 		}
-
-		/* If a PHC is available, use it to get the whole number
-		   of seconds in the offset and PPS for the rest. */
-		if (src != CLOCK_INVALID) {
-			if (!read_phc(src, clock->clkid, priv->phc_readings,
-				      &phc_offset, &phc_ts, &phc_delay))
-				return -1;
-
-			/* Convert the time stamp to the PHC time. */
-			phc_ts -= phc_offset;
-
-			/* Check if it is close to the start of the second. */
-			if (phc_ts % NS_PER_SEC > PHC_PPS_OFFSET_LIMIT) {
-				pr_warning("PPS is not in sync with PHC"
-					   " (0.%09lld)", phc_ts % NS_PER_SEC);
-				continue;
-			}
-
-			phc_ts = phc_ts / NS_PER_SEC * NS_PER_SEC;
-			pps_offset = pps_ts - phc_ts;
+		/*
+		 * Use the PHC to get the whole number of seconds in
+		 * the offset and PPS for the fractional part.
+		 */
+		if (!read_phc(src, clock->clkid, priv->phc_readings,
+			      &phc_offset, &phc_ts, &phc_delay)) {
+			return -1;
 		}
+		/* Convert the time stamp to the PHC time. */
+		phc_ts -= phc_offset;
+		/* Check if it is close to the start of the second. */
+		if (phc_ts % NS_PER_SEC > PHC_PPS_OFFSET_LIMIT) {
+			pr_warning("PPS is not in sync with PHC (0.%09lld)",
+				   phc_ts % NS_PER_SEC);
+			continue;
+		}
+		phc_ts = phc_ts / NS_PER_SEC * NS_PER_SEC;
+		pps_offset = pps_ts - phc_ts;
 
 		if (pmc_agent_update(priv->agent) < 0)
 			continue;
@@ -1290,8 +1281,8 @@ int main(int argc, char *argv[])
 			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		goto bad_usage;
 	}
-	if (hardpps_configured(pps_fd) && src_name) {
-		fprintf(stderr, "please specify -s or -d, but not both\n");
+	if (hardpps_configured(pps_fd) && !src_name) {
+		fprintf(stderr, "need PHC source (-s) for the PPS\n");
 		goto bad_usage;
 	}
 
