@@ -52,7 +52,7 @@ Manual configuration is also possible. When using manual configuration, two
 synchronization modes are supported, one uses a pulse per second (PPS)
 signal provided by the source clock and the other mode reads time from the
 source clock directly. Some clocks can be used in both modes, the mode which
-will synchronize the slave clock with better accuracy depends on hardware
+will synchronize the time sink with better accuracy depends on hardware
 and driver implementation.
 
 .SH OPTIONS
@@ -82,22 +82,22 @@ Read configuration from the specified file. No configuration file is read by
 default.
 .TP
 .BI \-d " pps-device"
-Specify the PPS device of the master clock (e.g. /dev/pps0). With this option
+Specify the PPS device of the source clock (e.g. /dev/pps0). With this option
 the PPS synchronization mode is used instead of the direct mode.  The
 matching PHC must be specified using the
 .B \-s
 command line option.
-This option can be used only with the system clock as the slave clock. Not
+This option can be used only with the system clock as the time sink. Not
 compatible with the
 .B \-a
 option.
 .TP
 .BI \-s " device"
-Specify the master clock by device (e.g. /dev/ptp0) or interface (e.g. eth0) or
+Specify the source clock by device (e.g. /dev/ptp0) or interface (e.g. eth0) or
 by name (e.g. CLOCK_REALTIME for the system clock). When this option is used
 together with the
 .B \-d
-option, the master clock is used only to correct the offset by whole number of
+option, the source clock is used only to correct the offset by whole number of
 seconds, which cannot be fixed with PPS alone. Not compatible with the
 .B \-a
 option. This option does not support bonded interface (e.g. bond0, team0). If
@@ -109,14 +109,14 @@ option can be used to track the active interface.
 .BI \-i " interface"
 Performs the exact same function as
 .B \-s
-for compatibility reasons. Previously enabled specifying master clock by network
+for compatibility reasons. Previously enabled specifying source clock by network
 interface. However, this can now be done using
 .B \-s
 and this option is no longer necessary. As such it has been deprecated, and
 should no longer be used.
 .TP
 .BI \-c " device"
-Specify the slave clock by device (e.g. /dev/ptp1) or interface (e.g. eth1) or
+Specify the time sink by device (e.g. /dev/ptp1) or interface (e.g. eth1) or
 by  name. The default is CLOCK_REALTIME (the system clock). Not compatible
 with the
 .B \-a
@@ -151,17 +151,17 @@ seconds. The value of 0.0 disables stepping on start. The default is 0.00002
 (20 microseconds).
 .TP
 .BI \-R " update-rate"
-Specify the slave clock update rate when running in the direct synchronization
+Specify the time sink update rate when running in the direct synchronization
 mode. The default is 1 per second.
 .TP
 .BI \-N " phc-num"
-Specify the number of master clock readings per one slave clock update. Only
-the fastest reading is used to update the slave clock, this is useful to
+Specify the number of source clock readings used for each time sink update.
+Only the fastest reading is used to update the clock.  This is useful to
 minimize the error caused by random delays in scheduling and bus utilization.
 The default is 5.
 .TP
 .BI \-O " offset"
-Specify the offset between the slave and master times in seconds. Not
+Specify the offset between the sink and source times in seconds. Not
 compatible with the
 .B \-a
 option.  See
@@ -192,7 +192,7 @@ The default is 0 (disabled).
 .B \-w
 Wait until ptp4l is in a synchronized state. If the
 .B \-O
-option is not used, also keep the offset between the slave and master
+option is not used, also keep the offset between the sink and source
 times updated according to the currentUtcOffset value obtained from ptp4l and
 the direction of the clock synchronization. Not compatible with the
 .B \-a
