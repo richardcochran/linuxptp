@@ -58,7 +58,7 @@ static void usage(char *progname)
 		"           (may be specified multiple times)\n"
 		" -p [dev]  Clock device to use, default auto\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
-		" -s        slave only mode (overrides configuration file)\n"
+		" -s        client only synchronization mode (overrides configuration file)\n"
 		" -l [num]  set the logging level to 'num'\n"
 		" -m        print messages to stdout\n"
 		" -q        do not print messages to the syslog\n"
