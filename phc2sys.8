@@ -1,4 +1,4 @@
-.TH PHC2SYS 8 "April 2018" "linuxptp"
+.TH PHC2SYS 8 "January 2021" "linuxptp"
 .SH NAME
 phc2sys \- synchronize two or more clocks
 
@@ -83,18 +83,10 @@ default.
 .TP
 .BI \-d " pps-device"
 Specify the PPS device of the master clock (e.g. /dev/pps0). With this option
-the PPS synchronization mode is used instead of the direct mode. As the PPS
-signal does not specify time and only marks start of a second, the slave clock
-should be already close to the correct time before
-.B phc2sys
-is started or the
+the PPS synchronization mode is used instead of the direct mode.  The
+matching PHC must be specified using the
 .B \-s
-option should be used too. With the
-.B \-s
-option the PPS signal of the master clock is enabled automatically, otherwise
-it has to be enabled before
-.B phc2sys
-is started (e.g. by running \f(CWecho 1 > /sys/class/ptp/ptp0/pps_enable\fP).
+command line option.
 This option can be used only with the system clock as the slave clock. Not
 compatible with the
 .B \-a
