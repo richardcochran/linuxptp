@@ -1,4 +1,4 @@
-.TH TS2PHC 8 "December 2019" "linuxptp"
+.TH TS2PHC 8 "January 2021" "linuxptp"
 .SH NAME
 ts2phc - Synchronizes one or more PTP Hardware Clocks using external time stamps.
 
@@ -27,7 +27,7 @@ A single source may be used to distribute time to one or more PHC devices.
 .SH OPTIONS
 .TP
 .BI \-c " device|name"
-Specifies a PHC slave clock to be synchronized.
+Specifies a PHC to be synchronized.
 The clock may be identified by its character device (like /dev/ptp0)
 or its associated network interface (like eth0).
 This option may be given multiple times.
@@ -52,7 +52,7 @@ Prevents sending log messages to the system logger.
 .BI \-s " device|name"
 Specifies the source of the PPS signal.
 Use the key word "generic" for an external 1-PPS without ToD information.
-When using a master PHC, the clock may be identified by its character
+When using a PHC as the time source, the clock may be identified by its character
 device (like /dev/ptp0) or its associated network interface (like
 eth0).
 Use the key word "nmea" for an external 1-PPS from a GPS providing ToD
@@ -88,14 +88,14 @@ There are two different section types.
 .B 1.
 The global section (indicated as
 .BR [global] )
-sets the program options and default slave clock options. Other
+sets the program options and the default time sink options. Other
 sections are clock specific sections, and they override the default
 options.
 .TP
 .B 2.
-Slave clock sections give the name of the configured slave (e.g.
+Time sink sections give the name of the configured PHC (e.g.
 .BR [eth0] ).
-Slave clocks specified in the configuration file need not be specified
+Time sinks specified in the configuration file need not be specified
 with the
 .B \-c
 command line option.
@@ -111,10 +111,10 @@ step the clock on start.
 The default is 0.00002 (20 microseconds).
 .TP
 .B free_running
-When set to 1, no the slave clock will be adjusted.
+When set to 1, no PHC will be adjusted.
 This option can be useful in test scenarios, for example to determine
 how well synchronized a group of local clocks are to each other.
-The default is 0 (adjust the slave clocks).
+The default is 0 (adjust the clocks).
 .TP
 .B leapfile
 The path to the current leap seconds definition file.
@@ -173,7 +173,7 @@ Print messages to the system log if enabled.  The default is 1 (enabled).
 .B verbose
 Print messages to the standard output if enabled.  The default is 0 (disabled).
 
-.SH SLAVE CLOCK OPTIONS
+.SH TIME SINK OPTIONS
 
 .TP
 .B ts2phc.channel
@@ -199,7 +199,7 @@ The default is "rising".
 .B ts2phc.master
 Setting this option to 1 configures the given PHC device as the source
 of the PPS signal.
-The default is 0 for the slave role.
+The default is 0 for the time sink role.
 .TP
 .B ts2phc.pin_index
 The pin index to be used.
