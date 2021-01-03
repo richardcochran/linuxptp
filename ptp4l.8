@@ -1,4 +1,4 @@
-.TH PTP4l 8 "April 2018" "linuxptp"
+.TH PTP4l 8 "January 2021" "linuxptp"
 .SH NAME
 ptp4l - PTP Boundary/Ordinary/Transparent Clock
 
@@ -145,13 +145,13 @@ See UNICAST DISCOVERY OPTIONS, below.
 .TP
 .B delayAsymmetry
 The time difference in nanoseconds of the transmit and receive
-paths. This value should be positive when the master-to-slave
-propagation time is longer and negative when the slave-to-master time
+paths. This value should be positive when the server-to-client
+propagation time is longer and negative when the client-to-server time
 is longer. The default is 0 nanoseconds.
 .TP
 .B logAnnounceInterval
 The mean time interval between Announce messages. A shorter interval makes
-ptp4l react faster to the changes in the master-slave hierarchy. The interval
+ptp4l react faster to the changes in the client/server hierarchy. The interval
 should be the same in the whole domain. It's specified as a power of two in
 seconds.
 The default is 1 (2 seconds).
@@ -164,7 +164,7 @@ The default is 0 (1 second).
 .B operLogSyncInterval
 The Sync message interval to be requested once the clock enters the
 SERVO_LOCKED_STABLE state.  If the 'msg_interval_request' option is
-set, then the local slave port will request the remote master to
+set, then the local client port will request the remote server to
 switch to the given message rate via a signaling message containing a
 Message interval request TLV.  This option is specified as a power of
 two in seconds, and default value is 0 (1 second).
@@ -183,14 +183,14 @@ The default is 0 (1 second).
 .B operLogPdelayReqInterval
 The Pdelay Request messages interval to be used once the clock enters
 the SERVO_LOCKED_STABLE state.  If the 'msg_interval_request' option
-is set, then the local slave port will adopt this rate when the local
+is set, then the local client port will adopt this rate when the local
 clock enters the "locked stable" state.  This option is specified as a
 power of two in seconds, and the default value is 0 (1 second).
 .TP
 .B inhibit_delay_req
 Don't send any delay requests. This will need the asCapable config option to be
-set to 'true'. This is useful when running as a designated master who does not
-need to calculate offset from slave. The default is 0 (disabled).
+set to 'true'. This is useful when running as a designated server who does not
+need to calculate offset from client. The default is 0 (disabled).
 .TP
 .B announceReceiptTimeout
 The number of missed Announce messages before the last Announce messages
@@ -244,9 +244,9 @@ The default is E2E.
 .TP
 .B hybrid_e2e
 Enables the "hybrid" delay mechanism from the draft Enterprise
-Profile. When enabled, ports in the slave state send their delay
-request messages to the unicast address taken from the master's
-announce message. Ports in the master state will reply to unicast
+Profile. When enabled, ports in the client state send their delay
+request messages to the unicast address taken from the server's
+announce message. Ports in the server state will reply to unicast
 delay requests using unicast delay responses. This option has no
 effect if the delay_mechanism is set to P2P.
 The default is 0 (disabled).
@@ -302,7 +302,7 @@ greater than this value the port is marked as not 802.1AS capable.
 .TP
 .B masterOnly
 Setting this option to one (1) prevents the port from entering the
-SLAVE state. In addition, the local clock will ignore Announce
+client state. In addition, the local clock will ignore Announce
 messages received on this port. This option's intended use is to
 support the Telecom Profiles according to ITU-T G.8265.1, G.8275.1,
 and G.8275.2. The default value is zero or false.
@@ -381,7 +381,7 @@ hardware time stamping.
 The default is 1 (enabled).
 .TP
 .B slaveOnly
-The local clock is a slave-only clock if enabled. The default is 0 (disabled).
+The local clock is a client-only clock if enabled. The default is 0 (disabled).
 .TP
 .B socket_priority
 Configure the SO_PRIORITY of sockets. This is to support cases where a user
@@ -396,13 +396,13 @@ This is only for use with 802.1AS clocks and has no effect on 1588 clocks.
 The default is 1 (enabled).
 .TP
 .B priority1
-The priority1 attribute of the local clock. It is used in the best master
+The priority1 attribute of the local clock. It is used in the PTP server
 selection algorithm, lower values take precedence. Must be in the range 0 to
 255.
 The default is 128.
 .TP
 .B priority2
-The priority2 attribute of the local clock. It is used in the best master
+The priority2 attribute of the local clock. It is used in the PTP server
 selection algorithm, lower values take precedence. Must be in the range 0 to
 255.
 The default is 128.
@@ -413,7 +413,7 @@ time distributed by the grandmaster clock.
 The default is 248.
 .TP
 .B clockAccuracy
-The clockAccuracy attribute of the local clock. It is used in the best master
+The clockAccuracy attribute of the local clock. It is used in the PTP server
 selection algorithm.
 The default is 0xFE.
 .TP
@@ -494,7 +494,7 @@ proper matching, the ptp4l program accepts out of order packets. This
 option adds an additional check using the software time stamps from
 the networking stack to verify that the sync message did arrive
 first. This option is only useful if you do not trust the sequence IDs
-generated by the master.
+generated by the server.
 The default is 0 (disabled).
 .TP
 .B clock_servo
@@ -717,30 +717,30 @@ asCapable is initialized to 'false' and will be set to 'true' after the
 relevant checks have passed. The default value is 'auto'.
 .TP
 .B BMCA
-This option enables use of static roles for master and slave devices instead of
-running the best master clock algorithm (BMCA) described in 1588 profile. This
-is useful when you know the roles of the devices in advance. When set to
+This option enables use of static roles for server and client devices
+instead of running the best master clock algorithm (BMCA) described in
+1588 profile. This can be used to speed up the start time for servers
+and clients when you know the roles of the devices in advance.  When set to
 \'noop', the traditional BMCA algorithm used by 1588 is skipped. masterOnly and
-slaveOnly will be used to determine master or slave role for the device. In a
+slaveOnly will be used to determine the server or client role for the device. In a
 bridge, slaveOnly (which is a global option) can be set to make all ports
-assume the slave role. masterOnly (which is a per-port config option) can then
-be used to set individual ports to take master role. BMCA is used in the
-Automotive profile to speed up the start time for grand master and slaves. The
-default value is 'ptp' which runs the BMCA related state machines.
+assume the client role. masterOnly (which is a per-port config option) can then
+be used to set individual ports to take on the server role.
+The default value is 'ptp' which runs the BMCA related state machines.
 .TP
 .B inhibit_announce
 This will disable the timer for announce messages (i.e. FD_MANNO_TIMER) and
 also the announce message timeout timer (i.e. FD_ANNOUNCE_TIMER). This is used
-by the Automotive profile as part of switching over to a static BMCA. if this
-option is enabled, ignore_source_id has to be enabled in the slave because it
-has no way to identify master identity in Sync and Follow_Up messages. The
+by the Automotive profile as part of switching over to a static BMCA.  If this
+option is enabled, ignore_source_id has to be enabled in the client because it
+has no way to identify the server in the Sync and Follow_Up messages. The
 default is 0 (disabled).
 .TP
 .B ignore_source_id
 This will disable source port identity checking for Sync and Follow_Up
-messages. This is useful when the announce messages are disabled in the master
-and the slave does not have any way to know it's identity. The default is 0
-(disabled).
+messages. This is useful when the announce messages are disabled in the server
+and the client does not have any way to know the server's identity.
+The default is 0 (disabled).
 .TP
 .B msg_interval_request
 This option, when set, will trigger an adjustment to the Sync and peer
@@ -766,8 +766,8 @@ to the SERVO_LOCKED_STABLE state.  The transition occurs once the last
 The default value of offset_threshold is 0 (disabled).
 .TP
 .B slave_event_monitor
-Specifies the address of a UNIX domain socket for slave event
-monitoring.  A local client bound to this address will receive
+Specifies the address of a UNIX domain socket for event
+monitoring.  A local monitoring client bound to this address will receive
 SLAVE_RX_SYNC_TIMING_DATA and SLAVE_DELAY_TIMING_DATA_NP TLVs.
 The default is the empty string (disabled).
 .TP
@@ -799,20 +799,22 @@ delay requests.
 .TP
 .B L2|UDPv4|UDPv6
 Each table entry specifies the transport type and network address of a
-potential remote master.  If multiple masters are specified, then
+potential remote server.  If multiple servers are specified, then
 unicast negotiation will be performed with each if them.
 
 .SH TIME SCALE USAGE
 
+When
 .B ptp4l
-as domain master either uses PTP or UTC time scale depending on time stamping
-mode.  In software and legacy time stamping modes it announces Arbitrary time
-scale mode, which is effectively UTC here, in hardware time stamping mode it
-announces use of PTP time scale.
+acts as the domain server, it either uses the PTP or the UTC time
+scale depending on time stamping mode.  In software and legacy time
+stamping modes it announces Arbitrary time scale mode, which is
+effectively UTC here.  In hardware time stamping mode it announces use
+of PTP time scale.
 
 When
 .B ptp4l
-is the domain master using hardware time stamping, it is up to
+is the domain server using hardware time stamping, it is up to
 .B phc2sys
 to maintain the correct offset between UTC and PTP times. See
 .BR phc2sys (8)
