@@ -414,22 +414,22 @@ or
 .B \-w
 is in effect or from command line when
 .B \-O
-is supplied.  Failure to maintain the correct offset can result in local system
-clock being off some seconds to domain master system clock when in slave mode,
-or incorect PTP time announced to the network in case the host is the domain
-master.
+is supplied.  Failure to maintain the correct offset can result in the
+local system clock being offset some whole number of seconds from the
+domain server's clock when in client mode, or incorect PTP time
+announced to the network in case the host is the domain server.
 
 .SH EXAMPLES
 
 Synchronize time automatically according to the current
 .B ptp4l
-state, synchronize the system clock to the remote master.
+state, synchronizing the system clock to the remote server.
 
 .RS
 \f(CWphc2sys \-a \-r\fP
 .RE
 
-Same as above, but when the host becomes the domain master, synchronize time
+Same as above, but when the host becomes the domain server, synchronize time
 in the domain to its system clock.
 
 .RS
@@ -442,13 +442,13 @@ Same as above, in an IEEE 802.1AS domain.
 \f(CWphc2sys \-a \-rr --transportSpecific=1\fP
 .RE
 
-The host is a domain master, PTP clock is synchronized to system clock and the
+The host is a domain server, PTP clock is synchronized to system clock and the
 time offset is obtained from
 .BR ptp4l .
 .B Phc2sys
 waits for
 .B ptp4l
-to get at least one port in master or slave mode before starting the
+to get at least one port in server or client mode before starting the
 synchronization.
 
 .RS
@@ -464,7 +464,7 @@ does not wait for
 \f(CWphc2sys \-c /dev/ptp0 \-s CLOCK_REALTIME \-O 35\fP
 .RE
 
-The host is in slave mode, system clock is synchronized from PTP clock,
+The host is in client mode, system clock is synchronized from PTP clock,
 .B phc2sys
 waits for
 .B ptp4l
