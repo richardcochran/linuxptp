@@ -829,7 +829,7 @@ static int add_ptp_source(struct ptp_domain *source,
 		extend_config_string(&config_file->content,
 				     source->ptp4l_settings);
 		string_appendf(&config_file->content,
-			       "slaveOnly 1\n"
+			       "clientOnly 1\n"
 			       "domainNumber %d\n"
 			       "uds_address %s\n"
 			       "message_tag %s\n",

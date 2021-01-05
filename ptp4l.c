@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 			req_phc = optarg;
 			break;
 		case 's':
-			if (config_set_int(cfg, "slaveOnly", 1)) {
+			if (config_set_int(cfg, "clientOnly", 1)) {
 				goto out;
 			}
 			break;

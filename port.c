@@ -3048,7 +3048,7 @@ struct port *port_open(const char *phc_device,
 		} else if (clock_slave_only(clock)) {
 			p->state_machine = designated_slave_fsm;
 		} else {
-			pr_err("Please enable at least one of masterOnly or slaveOnly when BMCA == noop.\n");
+			pr_err("Please enable at least one of masterOnly or clientOnly when BMCA == noop.\n");
 			goto err_port;
 		}
 	} else {

@@ -955,12 +955,12 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 	c->dds.domainNumber = config_get_int(config, NULL, "domainNumber");
 
-	if (config_get_int(config, NULL, "slaveOnly")) {
+	if (config_get_int(config, NULL, "clientOnly")) {
 		c->dds.flags |= DDS_SLAVE_ONLY;
 	}
 	if (!config_get_int(config, NULL, "gmCapable") &&
 	    c->dds.flags & DDS_SLAVE_ONLY) {
-		pr_err("Cannot mix 1588 slaveOnly with 802.1AS !gmCapable");
+		pr_err("Cannot mix 1588 clientOnly with 802.1AS !gmCapable");
 		return NULL;
 	}
 	if (!config_get_int(config, NULL, "gmCapable") ||
