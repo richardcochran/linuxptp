@@ -78,7 +78,7 @@ associated with a network interface.  This option specifies the PHC
 device (e.g. /dev/ptp0) to be used when running on legacy kernels.
 .TP
 .B \-s
-Enable the slaveOnly mode.
+Enable the clientOnly mode.
 .TP
 .BI \-l " print-level"
 Set the maximum syslog level of messages which should be printed or sent to
@@ -99,11 +99,11 @@ Display a help message.
 .SH LONG OPTIONS
 
 Each and every configuration file option (see below) may also appear
-as a "long" style command line argument.  For example, the slaveOnly
+as a "long" style command line argument.  For example, the clientOnly
 option may be set using either of these two forms.
 
 .RS
-\f(CW\-\-slaveOnly 1   \-\-slaveOnly=1\fP
+\f(CW\-\-clientOnly 1   \-\-clientOnly=1\fP
 .RE
 
 Option values given on the command line override values in the global
@@ -380,8 +380,12 @@ Enable two-step mode for sync messages. One-step mode can be used only with
 hardware time stamping.
 The default is 1 (enabled).
 .TP
-.B slaveOnly
+.B clientOnly
 The local clock is a client-only clock if enabled. The default is 0 (disabled).
+.TP
+.B slaveOnly
+This option is deprecated and will be removed in a future release.
+Use "clientOnly" instead.
 .TP
 .B socket_priority
 Configure the SO_PRIORITY of sockets. This is to support cases where a user
@@ -722,8 +726,8 @@ instead of running the best master clock algorithm (BMCA) described in
 1588 profile. This can be used to speed up the start time for servers
 and clients when you know the roles of the devices in advance.  When set to
 \'noop', the traditional BMCA algorithm used by 1588 is skipped. masterOnly and
-slaveOnly will be used to determine the server or client role for the device. In a
-bridge, slaveOnly (which is a global option) can be set to make all ports
+clientOnly will be used to determine the server or client role for the device. In a
+bridge, clientOnly (which is a global option) can be set to make all ports
 assume the client role. masterOnly (which is a per-port config option) can then
 be used to set individual ports to take on the server role.
 The default value is 'ptp' which runs the BMCA related state machines.
