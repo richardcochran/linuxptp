@@ -69,6 +69,7 @@ struct port {
 	struct fdarray fda;
 	int fault_fd;
 	int phc_index;
+	int phc_from_cmdline;
 
 	void (*dispatch)(struct port *p, enum fsm_event event, int mdiff);
 	enum fsm_event (*event)(struct port *p, int fd_index);

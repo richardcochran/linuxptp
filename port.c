@@ -2568,6 +2568,11 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 				       "timestamping mode, set link status down by force.",
 				       interface_label(p->iface));
 				p->link_status = LINK_DOWN | LINK_STATE_CHANGED;
+			} else if (p->phc_from_cmdline) {
+				pr_warning("port %d: taking /dev/ptp%d from the "
+					   "command line, not the attached ptp%d",
+					   portnum(p), p->phc_index,
+					   interface_phc_index(p->iface));
 			} else if (p->phc_index != interface_phc_index(p->iface)) {
 				p->phc_index = interface_phc_index(p->iface);
 
@@ -3064,6 +3069,7 @@ struct port *port_open(const char *phc_device,
 				   "not the attached ptp%d", number, phc_device,
 				   interface_phc_index(interface));
 			p->phc_index = phc_index;
+			p->phc_from_cmdline = 1;
 		} else {
 			pr_err("port %d: PHC device mismatch", number);
 			pr_err("port %d: /dev/ptp%d requested, ptp%d attached",
