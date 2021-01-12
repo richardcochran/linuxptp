@@ -1036,6 +1036,8 @@ int config_parse_option(struct config *cfg, const char *opt, const char *val)
 {
 	enum parser_result result;
 
+	check_deprecated_options(&opt);
+
 	result = parse_item(cfg, 1, NULL, opt, val);
 
 	switch (result) {
