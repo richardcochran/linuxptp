@@ -582,6 +582,10 @@ int handle_term_signals(void)
 		fprintf(stderr, "cannot handle SIGTERM\n");
 		return -1;
 	}
+	if (SIG_ERR == signal(SIGHUP, handle_int_quit_term)) {
+		fprintf(stderr, "cannot handle SIGHUP\n");
+		return -1;
+	}
 	return 0;
 }
 
