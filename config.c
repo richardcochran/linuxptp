@@ -268,7 +268,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("logMinPdelayReqInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("logSyncInterval", 0, INT8_MIN, INT8_MAX),
 	GLOB_ITEM_INT("logging_level", LOG_INFO, PRINT_LEVEL_MIN, PRINT_LEVEL_MAX),
-	PORT_ITEM_INT("masterOnly", 0, 0, 1),
+	PORT_ITEM_INT("masterOnly", 0, 0, 1), /*deprecated*/
 	GLOB_ITEM_INT("maxStepsRemoved", 255, 2, UINT8_MAX),
 	GLOB_ITEM_STR("message_tag", NULL),
 	GLOB_ITEM_STR("manufacturerIdentity", "00:00:00"),
@@ -298,6 +298,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_STR("p2p_dst_mac", "01:80:C2:00:00:0E"),
 	GLOB_ITEM_STR("revisionData", ";;"),
 	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),
+	PORT_ITEM_INT("serverOnly", 0, 0, 1),
 	GLOB_ITEM_INT("servo_num_offset_values", 10, 0, INT_MAX),
 	GLOB_ITEM_INT("servo_offset_threshold", 0, 0, INT_MAX),
 	GLOB_ITEM_STR("slave_event_monitor", ""),
@@ -711,6 +712,8 @@ static void check_deprecated_options(const char **option)
 		new_option = "first_step_threshold";
 	} else if (!strcmp(*option, "pi_max_frequency")) {
 		new_option = "max_frequency";
+	} else if (!strcmp(*option, "masterOnly")) {
+		new_option = "serverOnly";
 	} else if (!strcmp(*option, "slaveOnly")) {
 		new_option = "clientOnly";
 	}

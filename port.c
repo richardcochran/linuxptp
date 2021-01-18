@@ -3066,7 +3066,7 @@ struct port *port_open(const char *phc_device,
 
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface_name(interface), "boundary_clock_jbod");
-	p->master_only = config_get_int(cfg, interface_name(interface), "masterOnly");
+	p->master_only = config_get_int(cfg, interface_name(interface), "serverOnly");
 	p->bmca = config_get_int(cfg, interface_name(interface), "BMCA");
 	p->trp = transport_create(cfg, config_get_int(cfg,
 			      interface_name(interface), "network_transport"));
@@ -3080,7 +3080,7 @@ struct port *port_open(const char *phc_device,
 		} else if (clock_slave_only(clock)) {
 			p->state_machine = designated_slave_fsm;
 		} else {
-			pr_err("Please enable at least one of masterOnly or clientOnly when BMCA == noop.\n");
+			pr_err("Please enable at least one of serverOnly or clientOnly when BMCA == noop.\n");
 			goto err_transport;
 		}
 	} else {
