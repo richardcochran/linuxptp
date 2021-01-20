@@ -57,7 +57,7 @@ static void send_subscription(struct pmc_agent *node)
 
 	memset(&sen, 0, sizeof(sen));
 	sen.duration = PMC_SUBSCRIBE_DURATION;
-	sen.bitmask[0] = 1 << NOTIFY_PORT_STATE;
+	event_bitmask_set(sen.bitmask, NOTIFY_PORT_STATE, TRUE);
 	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
 

@@ -243,13 +243,11 @@ static void clock_prune_subscriptions(struct clock *c)
 void clock_send_notification(struct clock *c, struct ptp_message *msg,
 			     enum notification event)
 {
-	unsigned int event_pos = event / 8;
-	uint8_t mask = 1 << (event % 8);
 	struct port *uds = c->uds_port;
 	struct clock_subscriber *s;
 
 	LIST_FOREACH(s, &c->subscribers, list) {
-		if (!(s->events[event_pos] & mask))
+		if (!event_bitmask_get(s->events, event))
 			continue;
 		/* send event */
 		msg->header.sequenceId = htons(s->sequenceId);
@@ -1502,7 +1500,9 @@ void clock_notify_event(struct clock *c, enum notification event)
 	int id;
 
 	switch (event) {
-	/* set id */
+	case NOTIFY_TIME_SYNC:
+		id = TLV_TIME_STATUS_NP;
+		break;
 	default:
 		return;
 	}
@@ -1732,7 +1732,9 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->cur.offsetFromMaster = tmv_to_TimeInterval(c->master_offset);
 
 	if (c->free_running) {
-		return clock_no_adjust(c, ingress, origin);
+		state = clock_no_adjust(c, ingress, origin);
+		clock_notify_event(c, NOTIFY_TIME_SYNC);
+		return state;
 	}
 
 	offset = tmv_to_nanoseconds(c->master_offset);
@@ -1777,6 +1779,8 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 			tmv_to_nanoseconds(c->master_offset), state, adj,
 			tmv_to_nanoseconds(c->path_delay));
 	}
+
+	clock_notify_event(c, NOTIFY_TIME_SYNC);
 
 	return state;
 }

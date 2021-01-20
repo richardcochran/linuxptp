@@ -149,7 +149,8 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	struct management_tlv_datum mtd;
 	struct subscribe_events_np sen;
 	struct port_ds_np pnp;
-	char onoff[4] = {0};
+	char onoff_port_state[4] = "off";
+	char onoff_time_status[4] = "off";
 
 	switch (action) {
 	case GET:
@@ -223,16 +224,22 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	case TLV_SUBSCRIBE_EVENTS_NP:
 		memset(&sen, 0, sizeof(sen));
 		cnt = sscanf(str, " %*s %*s "
-			     "duration %hu "
-			     "NOTIFY_PORT_STATE %3s ",
-			     &sen.duration, onoff);
-		if (cnt != 2) {
-			fprintf(stderr, "%s SET needs 2 values\n",
+			     "duration          %hu "
+			     "NOTIFY_PORT_STATE %3s "
+			     "NOTIFY_TIME_SYNC  %3s ",
+			     &sen.duration,
+			     onoff_port_state,
+			     onoff_time_status);
+		if (cnt != 3) {
+			fprintf(stderr, "%s SET needs 3 values\n",
 				idtab[index].name);
 			break;
 		}
-		if (!strcasecmp(onoff, "on")) {
-			sen.bitmask[0] = 1 << NOTIFY_PORT_STATE;
+		if (!strcasecmp(onoff_port_state, "on")) {
+			event_bitmask_set(sen.bitmask, NOTIFY_PORT_STATE, TRUE);
+		}
+		if (!strcasecmp(onoff_time_status, "on")) {
+			event_bitmask_set(sen.bitmask, NOTIFY_TIME_SYNC, TRUE);
 		}
 		pmc_send_set_action(pmc, code, &sen, sizeof(sen));
 		break;
