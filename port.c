@@ -2372,6 +2372,7 @@ void port_close(struct port *p)
 	if (p->fault_fd >= 0) {
 		close(p->fault_fd);
 	}
+	free(p->log_name);
 	free(p);
 }
 
@@ -2823,6 +2824,11 @@ int port_number(struct port *p)
 	return portnum(p);
 }
 
+const char *port_log_name(struct port *p)
+{
+	return p->log_name;
+}
+
 int port_link_status_get(struct port *p)
 {
 	return !!(p->link_status & LINK_UP);
@@ -3018,6 +3024,12 @@ struct port *port_open(const char *phc_device,
 	memset(p, 0, sizeof(*p));
 	TAILQ_INIT(&p->tc_transmitted);
 
+	p->name = interface_name(interface);
+	if (asprintf(&p->log_name, "port %d (%s)", number, p->name) == -1) {
+		p->log_name = NULL;
+		goto err_port;
+	}
+
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
 	case CLOCK_TYPE_BOUNDARY:
@@ -3033,7 +3045,7 @@ struct port *port_open(const char *phc_device,
 		p->event = e2e_event;
 		break;
 	case CLOCK_TYPE_MANAGEMENT:
-		goto err_port;
+		goto err_log_name;
 	}
 
 	p->phc_index = phc_index;
@@ -3049,7 +3061,7 @@ struct port *port_open(const char *phc_device,
 			p->state_machine = designated_slave_fsm;
 		} else {
 			pr_err("Please enable at least one of masterOnly or clientOnly when BMCA == noop.\n");
-			goto err_port;
+			goto err_log_name;
 		}
 	} else {
 		p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
@@ -3075,11 +3087,10 @@ struct port *port_open(const char *phc_device,
 			pr_err("port %d: /dev/ptp%d requested, ptp%d attached",
 			       number, phc_index,
 			       interface_phc_index(interface));
-			goto err_port;
+			goto err_log_name;
 		}
 	}
 
-	p->name = interface_name(interface);
 	p->iface = interface;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
@@ -3098,7 +3109,7 @@ struct port *port_open(const char *phc_device,
 	p->clock = clock;
 	p->trp = transport_create(cfg, transport);
 	if (!p->trp) {
-		goto err_port;
+		goto err_log_name;
 	}
 	p->timestamping = timestamping;
 	p->portIdentity.clockIdentity = clock_identity(clock);
@@ -3175,6 +3186,8 @@ err_uc_client:
 	unicast_client_cleanup(p);
 err_transport:
 	transport_destroy(p->trp);
+err_log_name:
+	free(p->log_name);
 err_port:
 	free(p);
 	return NULL;

@@ -128,6 +128,13 @@ struct PortIdentity port_identity(struct port *p);
 int port_number(struct port *p);
 
 /**
+ * Obtain a port's name for logging purposes.
+ * @param p        A port instance.
+ * @return         Loggable name of 'p'.
+ */
+const char *port_log_name(struct port *p);
+
+/**
  * Obtain the link status of a port.
  * @param p        A port instance.
  * @return         One (1) if the link is up, zero otherwise.
