@@ -296,19 +296,19 @@ static int clock_fault_timeout(struct port *port, int set)
 	struct fault_interval i;
 
 	if (!set) {
-		pr_debug("clearing fault on port %d", port_number(port));
+		pr_debug("clearing fault on %s", port_log_name(port));
 		return port_set_fault_timer_lin(port, 0);
 	}
 
 	fault_interval(port, last_fault_type(port), &i);
 
 	if (i.type == FTMO_LINEAR_SECONDS) {
-		pr_debug("waiting %d seconds to clear fault on port %d",
-			 i.val, port_number(port));
+		pr_debug("waiting %d seconds to clear fault on %s",
+			 i.val, port_log_name(port));
 		return port_set_fault_timer_lin(port, i.val);
 	} else if (i.type == FTMO_LOG2_SECONDS) {
-		pr_debug("waiting 2^{%d} seconds to clear fault on port %d",
-			 i.val, port_number(port));
+		pr_debug("waiting 2^{%d} seconds to clear fault on %s",
+			 i.val, port_log_name(port));
 		return port_set_fault_timer_log(port, 1, i.val);
 	}
 
@@ -1360,8 +1360,8 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 		msg->management.boundaryHops--;
 		LIST_FOREACH(piter, &c->ports, list) {
 			if (clock_do_forward_mgmt(c, p, piter, msg, &msg_ready))
-				pr_err("port %d: management forward failed",
-				       port_number(piter));
+				pr_err("%s: management forward failed",
+				       port_log_name(piter));
 		}
 		if (clock_do_forward_mgmt(c, p, c->uds_port, msg, &msg_ready))
 			pr_err("uds port: management forward failed");
@@ -1562,8 +1562,8 @@ int clock_poll(struct clock *c)
 		for (i = 0; i < N_POLLFD; i++) {
 			if (cur[i].revents & (POLLIN|POLLPRI|POLLERR)) {
 				if (cur[i].revents & POLLERR) {
-					pr_err("port %d: unexpected socket error",
-					       port_number(p));
+					pr_err("%s: unexpected socket error",
+					       port_log_name(p));
 					event = EV_FAULT_DETECTED;
 				} else {
 					event = port_event(p, i);
@@ -1882,8 +1882,8 @@ static void handle_state_decision_event(struct clock *c)
 			event = EV_NONE;
 			break;
 		case PS_GRAND_MASTER:
-			pr_notice("port %d: assuming the grand master role",
-				  port_number(piter));
+			pr_notice("%s: assuming the grand master role",
+				  port_log_name(piter));
 			clock_update_grandmaster(c);
 			event = EV_RS_GRAND_MASTER;
 			break;

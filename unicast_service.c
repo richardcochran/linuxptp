@@ -252,7 +252,7 @@ static int unicast_service_reply(struct port *p, struct ptp_message *dst,
 	}
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err("port %hu: signaling message failed", portnum(p));
+		pr_err("%s: signaling message failed", p->log_name);
 	}
 out:
 	msg_put(msg);

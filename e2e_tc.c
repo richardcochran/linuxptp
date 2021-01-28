@@ -83,7 +83,7 @@ enum fsm_event e2e_event(struct port *p, int fd_index)
 	switch (fd_index) {
 	case FD_ANNOUNCE_TIMER:
 	case FD_SYNC_RX_TIMER:
-		pr_debug("port %hu: %s timeout", portnum(p),
+		pr_debug("%s: %s timeout", p->log_name,
 			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
 		if (p->best) {
 			fc_clear(p->best);
@@ -92,7 +92,7 @@ enum fsm_event e2e_event(struct port *p, int fd_index)
 		return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
 
 	case FD_DELAY_TIMER:
-		pr_debug("port %hu: delay timeout", portnum(p));
+		pr_debug("%s: delay timeout", p->log_name);
 		port_set_delay_tmo(p);
 		delay_req_prune(p);
 		tc_prune(p);
@@ -111,7 +111,7 @@ enum fsm_event e2e_event(struct port *p, int fd_index)
 		return event;
 
 	case FD_QUALIFICATION_TIMER:
-		pr_debug("port %hu: qualification timeout", portnum(p));
+		pr_debug("%s: qualification timeout", p->log_name);
 		return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 
 	case FD_MANNO_TIMER:
@@ -122,7 +122,7 @@ enum fsm_event e2e_event(struct port *p, int fd_index)
 		return EV_NONE;
 
 	case FD_RTNL:
-		pr_debug("port %hu: received link status notification", portnum(p));
+		pr_debug("%s: received link status notification", p->log_name);
 		rtnl_link_status(fd, p->name, port_link_status, p);
 		if (p->link_status == (LINK_UP|LINK_STATE_CHANGED)) {
 			return EV_FAULT_CLEARED;
@@ -142,7 +142,7 @@ enum fsm_event e2e_event(struct port *p, int fd_index)
 
 	cnt = transport_recv(p->trp, fd, msg);
 	if (cnt <= 0) {
-		pr_err("port %hu: recv message failed", portnum(p));
+		pr_err("%s: recv message failed", p->log_name);
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
 	}

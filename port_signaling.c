@@ -207,7 +207,7 @@ int port_tx_interval_request(struct port *p,
 
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
-		pr_err("port %hu: send signaling failed", portnum(p));
+		pr_err("%s: send signaling failed", p->log_name);
 	}
 out:
 	msg_put(msg);

@@ -126,8 +126,8 @@ static void tc_complete_request(struct port *q, struct port *p,
 		return;
 	}
 #ifdef DEBUG
-	pr_err("stash delay request from port %hd to %hd seqid %hu residence %lu",
-	       portnum(q), portnum(p), ntohs(req->header.sequenceId),
+	pr_err("stash delay request from %s to %s seqid %hu residence %lu",
+	       q->log_name, p->log_name, ntohs(req->header.sequenceId),
 	       (unsigned long) tmv_to_nanoseconds(residence));
 #endif
 	msg_get(req);
@@ -146,8 +146,8 @@ static void tc_complete_response(struct port *q, struct port *p,
 	int cnt;
 
 #ifdef DEBUG
-	pr_err("complete delay response from port %hd to %hd seqid %hu",
-	       portnum(q), portnum(p), ntohs(resp->header.sequenceId));
+	pr_err("complete delay response from %s to %s seqid %hu",
+	       q->log_name, p->log_name, ntohs(resp->header.sequenceId));
 #endif
 	TAILQ_FOREACH(txd, &q->tc_transmitted, list) {
 		type = tc_match_delay(portnum(p), resp, txd);
@@ -164,7 +164,7 @@ static void tc_complete_response(struct port *q, struct port *p,
 	resp->header.correction = host2net64(c2);
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, resp);
 	if (cnt <= 0) {
-		pr_err("tc failed to forward response on port %d", portnum(p));
+		pr_err("tc failed to forward response on %s", p->log_name);
 		port_dispatch(p, EV_FAULT_DETECTED, 0);
 	}
 	/* Restore original correction value for next egress port. */
@@ -225,7 +225,7 @@ static void tc_complete_syfup(struct port *q, struct port *p,
 	fup->header.correction = host2net64(c2);
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, fup);
 	if (cnt <= 0) {
-		pr_err("tc failed to forward follow up on port %d", portnum(p));
+		pr_err("tc failed to forward follow up on %s", p->log_name);
 		port_dispatch(p, EV_FAULT_DETECTED, 0);
 	}
 	/* Restore original correction value for next egress port. */
@@ -279,8 +279,8 @@ static int tc_fwd_event(struct port *q, struct ptp_message *msg)
 		}
 		cnt = transport_send(p->trp, &p->fda, TRANS_DEFER_EVENT, msg);
 		if (cnt <= 0) {
-			pr_err("failed to forward event from port %hd to %hd",
-				portnum(q), portnum(p));
+			pr_err("failed to forward event from %s to %s",
+				q->log_name, p->log_name);
 			port_dispatch(p, EV_FAULT_DETECTED, 0);
 		}
 	}
@@ -292,8 +292,8 @@ static int tc_fwd_event(struct port *q, struct ptp_message *msg)
 		}
 		err = transport_txts(&p->fda, msg);
 		if (err || !msg_sots_valid(msg)) {
-			pr_err("failed to fetch txts on port %hd to %hd event",
-				portnum(q), portnum(p));
+			pr_err("failed to fetch txts on %s to %s event",
+				q->log_name, p->log_name);
 			port_dispatch(p, EV_FAULT_DETECTED, 0);
 			continue;
 		}
@@ -397,8 +397,8 @@ int tc_forward(struct port *q, struct ptp_message *msg)
 		}
 		cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, msg);
 		if (cnt <= 0) {
-			pr_err("tc failed to forward message on port %d",
-			       portnum(p));
+			pr_err("tc failed to forward message on %s",
+			       p->log_name);
 			port_dispatch(p, EV_FAULT_DETECTED, 0);
 		}
 	}
