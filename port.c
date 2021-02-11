@@ -56,6 +56,7 @@ enum syfu_event {
 };
 
 static int port_is_ieee8021as(struct port *p);
+static int port_is_uds(struct port *p);
 static void port_nrate_initialize(struct port *p);
 
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
@@ -691,6 +692,9 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 {
 	struct ClockIdentity c1, c2;
 
+	if (port_is_uds(p) && msg_type(m) != MANAGEMENT) {
+		return 1;
+	}
 	if (incapable_ignore(p, m)) {
 		return 1;
 	}
