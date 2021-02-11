@@ -1422,6 +1422,11 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 			return changed;
 		break;
 	case COMMAND:
+		if (p != c->uds_port) {
+			/* Sorry, only allowed on the UDS port. */
+			clock_management_send_error(p, msg, TLV_NOT_SUPPORTED);
+			return changed;
+		}
 		break;
 	default:
 		return changed;
