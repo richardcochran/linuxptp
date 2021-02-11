@@ -771,6 +771,11 @@ static int port_is_ieee8021as(struct port *p)
 	return p->follow_up_info ? 1 : 0;
 }
 
+static int port_is_uds(struct port *p)
+{
+	return transport_type(p->trp) == TRANS_UDS;
+}
+
 static void port_management_send_error(struct port *p, struct port *ingress,
 				       struct ptp_message *msg, int error_id)
 {
@@ -1755,7 +1760,7 @@ int port_initialize(struct port *p)
 	}
 
 	/* No need to open rtnl socket on UDS port. */
-	if (transport_type(p->trp) != TRANS_UDS) {
+	if (!port_is_uds(p)) {
 		/*
 		 * The delay timer is usually started when the device
 		 * transitions to PS_LISTENING. But, we are skipping the state
@@ -3014,7 +3019,6 @@ struct port *port_open(const char *phc_device,
 	enum clock_type type = clock_type(clock);
 	struct config *cfg = clock_config(clock);
 	struct port *p = malloc(sizeof(*p));
-	enum transport_type transport;
 	int i;
 
 	if (!p) {
@@ -3050,24 +3054,28 @@ struct port *port_open(const char *phc_device,
 
 	p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface_name(interface), "boundary_clock_jbod");
-	transport = config_get_int(cfg, interface_name(interface), "network_transport");
 	p->master_only = config_get_int(cfg, interface_name(interface), "masterOnly");
 	p->bmca = config_get_int(cfg, interface_name(interface), "BMCA");
+	p->trp = transport_create(cfg, config_get_int(cfg,
+			      interface_name(interface), "network_transport"));
+	if (!p->trp) {
+		goto err_log_name;
+	}
 
-	if (p->bmca == BMCA_NOOP && transport != TRANS_UDS) {
+	if (p->bmca == BMCA_NOOP && !port_is_uds(p)) {
 		if (p->master_only) {
 			p->state_machine = designated_master_fsm;
 		} else if (clock_slave_only(clock)) {
 			p->state_machine = designated_slave_fsm;
 		} else {
 			pr_err("Please enable at least one of masterOnly or clientOnly when BMCA == noop.\n");
-			goto err_log_name;
+			goto err_transport;
 		}
 	} else {
 		p->state_machine = clock_slave_only(clock) ? ptp_slave_fsm : ptp_fsm;
 	}
 
-	if (transport == TRANS_UDS) {
+	if (port_is_uds(p)) {
 		; /* UDS cannot have a PHC. */
 	} else if (!interface_tsinfo_valid(interface)) {
 		pr_warning("%s: get_ts_info not supported", p->log_name);
@@ -3087,14 +3095,14 @@ struct port *port_open(const char *phc_device,
 			pr_err("%s: /dev/ptp%d requested, ptp%d attached",
 			       p->log_name, phc_index,
 			       interface_phc_index(interface));
-			goto err_log_name;
+			goto err_transport;
 		}
 	}
 
 	p->iface = interface;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
-	p->announce_span = transport == TRANS_UDS ? 0 : ANNOUNCE_SPAN;
+	p->announce_span = port_is_uds(p) ? 0 : ANNOUNCE_SPAN;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
 	p->msg_interval_request = config_get_int(cfg, p->name, "msg_interval_request");
@@ -3107,10 +3115,6 @@ struct port *port_open(const char *phc_device,
 	p->tx_timestamp_offset <<= 16;
 	p->link_status = LINK_UP;
 	p->clock = clock;
-	p->trp = transport_create(cfg, transport);
-	if (!p->trp) {
-		goto err_log_name;
-	}
 	p->timestamping = timestamping;
 	p->portIdentity.clockIdentity = clock_identity(clock);
 	p->portIdentity.portNumber = number;
@@ -3119,23 +3123,25 @@ struct port *port_open(const char *phc_device,
 	p->versionNumber = PTP_VERSION;
 	p->slave_event_monitor = clock_slave_monitor(clock);
 
-	if (number && unicast_client_initialize(p)) {
+	if (!port_is_uds(p) && unicast_client_initialize(p)) {
 		goto err_transport;
 	}
 	if (unicast_client_enabled(p) &&
 	    config_set_section_int(cfg, p->name, "hybrid_e2e", 1)) {
 		goto err_uc_client;
 	}
-	if (number && unicast_service_initialize(p)) {
+	if (!port_is_uds(p) && unicast_service_initialize(p)) {
 		goto err_uc_client;
 	}
 	p->hybrid_e2e = config_get_int(cfg, p->name, "hybrid_e2e");
 
-	if (number && type == CLOCK_TYPE_P2P && p->delayMechanism != DM_P2P) {
+	if (!port_is_uds(p) && type == CLOCK_TYPE_P2P &&
+	    p->delayMechanism != DM_P2P) {
 		pr_err("%s: P2P TC needs P2P ports", p->log_name);
 		goto err_uc_service;
 	}
-	if (number && type == CLOCK_TYPE_E2E && p->delayMechanism != DM_E2E) {
+	if (!port_is_uds(p) && type == CLOCK_TYPE_E2E &&
+	    p->delayMechanism != DM_E2E) {
 		pr_err("%s: E2E TC needs E2E ports", p->log_name);
 		goto err_uc_service;
 	}
@@ -3169,7 +3175,7 @@ struct port *port_open(const char *phc_device,
 
 	port_clear_fda(p, N_POLLFD);
 	p->fault_fd = -1;
-	if (number) {
+	if (!port_is_uds(p)) {
 		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, 0);
 		if (p->fault_fd < 0) {
 			pr_err("timerfd_create failed: %m");
