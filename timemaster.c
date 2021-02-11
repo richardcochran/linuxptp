@@ -712,7 +712,7 @@ static int add_ptp_source(struct ptp_domain *source,
 			  char **ntp_config, struct script *script)
 {
 	struct config_file *config_file;
-	char **command, *uds_path, **interfaces, *message_tag;
+	char **command, *uds_path, *uds_path2, **interfaces, *message_tag;
 	char ts_interface[IF_NAMESIZE];
 	int i, j, num_interfaces, *phc, *phcs, hw_ts, sw_ts;
 	struct sk_ts_info ts_info;
@@ -809,6 +809,8 @@ static int add_ptp_source(struct ptp_domain *source,
 
 		uds_path = string_newf("%s/ptp4l.%d.socket",
 				       config->rundir, *shm_segment);
+		uds_path2 = string_newf("%s/ptp4lro.%d.socket",
+					config->rundir, *shm_segment);
 
 		message_tag = string_newf("[%d", source->domain);
 		for (j = 0; interfaces[j]; j++)
@@ -832,8 +834,10 @@ static int add_ptp_source(struct ptp_domain *source,
 			       "clientOnly 1\n"
 			       "domainNumber %d\n"
 			       "uds_address %s\n"
+			       "uds_ro_address %s\n"
 			       "message_tag %s\n",
-			       source->domain, uds_path, message_tag);
+			       source->domain, uds_path, uds_path2,
+			       message_tag);
 
 		if (phcs[i] >= 0) {
 			/* HW time stamping */
@@ -868,6 +872,7 @@ static int add_ptp_source(struct ptp_domain *source,
 
 		free(message_tag);
 		free(uds_path);
+		free(uds_path2);
 		free(interfaces);
 	}
 
