@@ -134,6 +134,8 @@ struct clock {
 	struct interface *uds_ro_if;
 	LIST_HEAD(clock_subscribers_head, clock_subscriber) subscribers;
 	struct monitor *slave_event_monitor;
+	int step_window_counter;
+	int step_window;
 };
 
 struct clock the_clock;
@@ -1097,6 +1099,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
 	c->utc_offset = config_get_int(config, NULL, "utc_offset");
 	c->time_source = config_get_int(config, NULL, "timeSource");
+	c->step_window = config_get_int(config, NULL, "step_window");
 
 	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
@@ -1748,6 +1751,14 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	return 0;
 }
 
+static void clock_step_window(struct clock *c)
+{
+	if (!c->step_window) {
+		return;
+	}
+	c->step_window_counter = c->step_window;
+}
+
 static void clock_synchronize_locked(struct clock *c, double adj)
 {
 	clockadj_set_freq(c->clkid, -adj);
@@ -1764,6 +1775,14 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	enum servo_state state = SERVO_UNLOCKED;
 	double adj, weight;
 	int64_t offset;
+
+	if (c->step_window_counter) {
+		c->step_window_counter--;
+		pr_debug("skip sync after jump %d/%d",
+			 c->step_window - c->step_window_counter,
+			 c->step_window);
+		return c->servo_state;
+	}
 
 	c->ingress_ts = ingress;
 
@@ -1809,6 +1828,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 					-tmv_to_nanoseconds(c->master_offset));
 		}
 		tsproc_reset(c->tsproc, 0);
+		clock_step_window(c);
 		break;
 	case SERVO_LOCKED:
 		clock_synchronize_locked(c, adj);

@@ -705,6 +705,14 @@ one-second offset slowly by changing the clock frequency (unless the
 option is set to correct such offset by stepping).
 Relevant only with software time stamping. The default is 1 (enabled).
 .TP
+.B step_window
+When set, indicates the number of Sync events after a clock step that
+the clock will not do any frequency or step adjustments.
+This is used in situations where clock stepping is unable to happen
+instantaneously so there is a lag before the timestamps can settle
+properly to reflect the clock step.
+The default is 0 (disabled).
+.TP
 .B timeSource
 The time source is a single byte code that gives an idea of the kind
 of local clock in use. The value is purely informational, having no
