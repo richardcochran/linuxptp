@@ -391,7 +391,7 @@ int sk_receive(int fd, void *buf, int buflen,
 
 	if (!ts) {
 		memset(&hwts->ts, 0, sizeof(hwts->ts));
-		return cnt < 1 ? -errno : cnt;
+		return cnt < 0 ? -errno : cnt;
 	}
 
 	switch (hwts->type) {
@@ -407,7 +407,7 @@ int sk_receive(int fd, void *buf, int buflen,
 		hwts->ts = timespec_to_tmv(ts[1]);
 		break;
 	}
-	return cnt < 1 ? -errno : cnt;
+	return cnt < 0 ? -errno : cnt;
 }
 
 int sk_set_priority(int fd, int family, uint8_t dscp)
