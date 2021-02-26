@@ -1174,6 +1174,10 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 	c->initial_delay = dbl_tmv(config_get_int(config, NULL, "initial_delay"));
+	if (!tmv_is_zero(c->initial_delay)) {
+		tsproc_set_delay(c->tsproc, c->initial_delay);
+	}
+	c->path_delay = c->initial_delay;
 	c->master_local_rr = 1.0;
 	c->nrr = 1.0;
 	c->stats_interval = config_get_int(config, NULL, "summary_interval");
