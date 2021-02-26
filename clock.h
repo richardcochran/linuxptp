@@ -290,6 +290,13 @@ int clock_slave_only(struct clock *c);
 UInteger8 clock_max_steps_removed(struct clock *c);
 
 /**
+ * Obtain the clock class threshold field from a clock's default data set.
+ * @param c  The clock instance.
+ * @return   Configured clock class threshold value.
+ */
+UInteger8 clock_get_clock_class_threshold(struct clock *c);
+
+/**
  * Obtain the steps removed field from a clock's current data set.
  * @param c  The clock instance.
  * @return   The value of the clock's steps removed field.

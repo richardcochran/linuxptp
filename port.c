@@ -1870,6 +1870,14 @@ int process_announce(struct port *p, struct ptp_message *m)
 		return result;
 	}
 
+	if (m->announce.grandmasterClockQuality.clockClass >
+		clock_get_clock_class_threshold(p->clock)) {
+		pl_err(60, "%s: Master clock quality received is "
+			"greater than configured, ignoring master!",
+			p->log_name);
+		return result;
+	}
+
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
