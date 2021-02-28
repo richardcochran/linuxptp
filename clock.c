@@ -826,12 +826,22 @@ static int clock_add_port(struct clock *c, const char *phc_device,
 			  struct interface *iface)
 {
 	struct port *p, *piter, *lastp = NULL;
+	int port_number = config_get_int(c->config, interface_name(iface), "portNumber");
 
 	if (clock_resize_pollfd(c, c->nports + 2)) {
 		return -1;
 	}
+
+	if (port_number) {
+		c->last_port_number = (c->last_port_number > port_number ?
+		                       c->last_port_number : port_number) + 1;
+	} else {
+		port_number = ++c->last_port_number;
+	}
+
 	p = port_open(phc_device, phc_index, timestamping,
-		      ++c->last_port_number, iface, c);
+		      port_number, iface, c);
+
 	if (!p) {
 		/* No need to shrink pollfd */
 		return -1;
