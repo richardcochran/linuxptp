@@ -305,7 +305,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("slaveOnly", 0, 0, 1), /*deprecated*/
 	GLOB_ITEM_INT("socket_priority", 0, 0, 15),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
-	GLOB_ITEM_INT("step_window", 0, 0, INT_MAX),
+	PORT_ITEM_INT("step_window", 0, 0, INT_MAX),
 	GLOB_ITEM_INT("summary_interval", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_INT("syncReceiptTimeout", 0, 0, UINT8_MAX),
 	GLOB_ITEM_INT("tc_spanning_tree", 0, 0, 1),

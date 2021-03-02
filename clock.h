@@ -314,6 +314,7 @@ int clock_switch_phc(struct clock *c, int phc_index);
 /**
  * Provide a data point to synchronize the clock.
  * @param c            The clock instance to synchronize.
+ * @param p            The port instance that asks for synchronize.
  * @param ingress      The ingress time stamp on the sync message.
  * @param origin       The reported transmission time of the sync message,
                        including any corrections.
@@ -322,8 +323,8 @@ int clock_switch_phc(struct clock *c, int phc_index);
  *                     Pass zero in the case of one step operation.
  * @return             The state of the clock's servo.
  */
-enum servo_state clock_synchronize(struct clock *c, tmv_t ingress,
-				   tmv_t origin);
+enum servo_state clock_synchronize(struct clock *c, struct port *p,
+                                   tmv_t ingress, tmv_t origin);
 
 /**
  * Inform a slaved clock about the master's sync interval.

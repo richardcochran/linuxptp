@@ -189,6 +189,11 @@ int port_fault_fd(struct port *port)
 	return port->fault_fd;
 }
 
+int port_step_window(struct port *p)
+{
+	return p->step_window;
+}
+
 struct fdarray *port_fda(struct port *port)
 {
 	return &port->fda;
@@ -1194,7 +1199,7 @@ static void port_synchronize(struct port *p,
 	}
 
 	last_state = clock_servo_state(p->clock);
-	state = clock_synchronize(p->clock, t2, t1c);
+	state = clock_synchronize(p->clock, p, t2, t1c);
 	switch (state) {
 	case SERVO_UNLOCKED:
 		port_dispatch(p, EV_SYNCHRONIZATION_FAULT, 0);
@@ -3134,6 +3139,7 @@ struct port *port_open(const char *phc_device,
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_VERSION;
 	p->slave_event_monitor = clock_slave_monitor(clock);
+	p->step_window = config_get_int(cfg, interface_name(interface), "step_window");
 
 	if (!port_is_uds(p) && unicast_client_initialize(p)) {
 		goto err_transport;

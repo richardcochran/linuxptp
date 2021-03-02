@@ -253,6 +253,13 @@ struct fdarray *port_fda(struct port *port);
 int port_fault_fd(struct port *port);
 
 /**
+ * Return the step_window starting counter
+ * @param port	A port instance.
+ * @return	The step_window value.
+ */
+int port_step_window(struct port *p);
+
+/**
  * Utility function for setting or resetting a file descriptor timer.
  *
  * This function sets the timer 'fd' to the value M(2^N), where M is
