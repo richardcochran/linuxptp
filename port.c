@@ -3132,7 +3132,7 @@ struct port *port_open(const char *phc_device,
 	p->portIdentity.portNumber = number;
 	p->state = PS_INITIALIZING;
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
-	p->versionNumber = PTP_VERSION;
+	p->versionNumber = PTP_MAJOR_VERSION;
 	p->slave_event_monitor = clock_slave_monitor(clock);
 
 	if (!port_is_uds(p) && unicast_client_initialize(p)) {

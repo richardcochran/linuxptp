@@ -27,9 +27,6 @@
 #include "print.h"
 #include "tlv.h"
 
-#define VERSION_MASK 0x0f
-#define VERSION      0x02
-
 int assume_two_step = 0;
 
 /*
@@ -80,7 +77,7 @@ static void announce_post_recv(struct announce_msg *m)
 
 static int hdr_post_recv(struct ptp_header *m)
 {
-	if ((m->ver & VERSION_MASK) != VERSION)
+	if ((m->ver & MAJOR_VERSION_MASK) != PTP_MAJOR_VERSION)
 		return -EPROTO;
 	m->messageLength = ntohs(m->messageLength);
 	m->correction = net2host64(m->correction);

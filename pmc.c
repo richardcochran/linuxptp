@@ -413,12 +413,13 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "logSyncInterval         %hhd"
 			IFMT "delayMechanism          %hhu"
 			IFMT "logMinPdelayReqInterval %hhd"
-			IFMT "versionNumber           %hhu",
+			IFMT "versionNumber           %u",
 			pid2str(&p->portIdentity), ps_str[p->portState],
 			p->logMinDelayReqInterval, p->peerMeanPathDelay >> 16,
 			p->logAnnounceInterval, p->announceReceiptTimeout,
 			p->logSyncInterval, p->delayMechanism,
-			p->logMinPdelayReqInterval, p->versionNumber);
+			p->logMinPdelayReqInterval,
+			p->versionNumber & MAJOR_VERSION_MASK);
 		break;
 	case TLV_PORT_DATA_SET_NP:
 		pnp = (struct port_ds_np *) mgt->data;
@@ -507,7 +508,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case TLV_VERSION_NUMBER:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "VERSION_NUMBER "
-			IFMT "versionNumber %hhu", mtd->val);
+			IFMT "versionNumber %hhu", mtd->val & MAJOR_VERSION_MASK);
 		break;
 	case TLV_DELAY_MECHANISM:
 		mtd = (struct management_tlv_datum *) mgt->data;

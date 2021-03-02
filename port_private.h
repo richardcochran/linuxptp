@@ -142,7 +142,7 @@ struct port {
 	enum link_state     link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
-	unsigned int        versionNumber; /*UInteger4*/
+	UInteger8           versionNumber; /* UInteger4 */
 	struct PortStats    stats;
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
