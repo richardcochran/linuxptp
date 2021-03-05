@@ -350,8 +350,8 @@ static int do_cmp(clockid_t clkid, int cmdc, char *cmdv[])
 	}
 
 	memset(&ts, 0, sizeof(ts));
-	memset(&ts, 0, sizeof(rta));
-	memset(&ts, 0, sizeof(rtb));
+	memset(&rta, 0, sizeof(rta));
+	memset(&rtb, 0, sizeof(rtb));
 	if (clock_gettime(CLOCK_REALTIME, &rta) ||
 	    clock_gettime(clkid, &ts) ||
 	    clock_gettime(CLOCK_REALTIME, &rtb)) {
