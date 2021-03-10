@@ -67,7 +67,7 @@ static void timestamp_net2host(struct Timestamp *t)
 	NTOHL(t->nanoseconds);
 }
 
-static uint16_t flip16(uint16_t *p)
+static uint16_t flip16(void *p)
 {
 	uint16_t v;
 	memcpy(&v, p, sizeof(v));
@@ -76,7 +76,7 @@ static uint16_t flip16(uint16_t *p)
 	return v;
 }
 
-static int64_t host2net64_unaligned(int64_t *p)
+static int64_t host2net64_unaligned(void *p)
 {
 	int64_t v;
 	memcpy(&v, p, sizeof(v));
@@ -85,7 +85,7 @@ static int64_t host2net64_unaligned(int64_t *p)
 	return v;
 }
 
-static int64_t net2host64_unaligned(int64_t *p)
+static int64_t net2host64_unaligned(void *p)
 {
 	int64_t v;
 	memcpy(&v, p, sizeof(v));

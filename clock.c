@@ -350,6 +350,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	struct time_status_np *tsn;
 	struct tlv_extra *extra;
 	struct PTPText *text;
+	uint16_t duration;
 	int datalen = 0;
 
 	extra = tlv_extra_alloc();
@@ -452,7 +453,8 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 			break;
 		}
 		sen = (struct subscribe_events_np *)tlv->data;
-		clock_get_subscription(c, req, sen->bitmask, &sen->duration);
+		clock_get_subscription(c, req, sen->bitmask, &duration);
+		memcpy(&sen->duration, &duration, sizeof(sen->duration));
 		datalen = sizeof(*sen);
 		break;
 	case TLV_SYNCHRONIZATION_UNCERTAIN_NP:

@@ -57,7 +57,7 @@ const char *ts_str(enum timestamp_type ts);
  */
 int addreq(enum transport_type type, struct address *a, struct address *b);
 
-static inline uint16_t align16(uint16_t *p)
+static inline uint16_t align16(void *p)
 {
 	uint16_t v;
 	memcpy(&v, p, sizeof(v));

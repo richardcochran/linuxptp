@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -36,8 +37,8 @@ int assume_two_step = 0;
 
 struct message_storage {
 	unsigned char reserved[MSG_HEADROOM];
-	struct ptp_message msg;
-} PACKED;
+	struct ptp_message msg __attribute__((aligned (8)));
+};
 
 static TAILQ_HEAD(msg_pool, ptp_message) msg_pool = TAILQ_HEAD_INITIALIZER(msg_pool);
 
