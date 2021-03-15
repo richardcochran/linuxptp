@@ -68,7 +68,7 @@ static void pmc_show_delay_timing(struct slave_delay_timing_record *record,
 		IFMT "delayResponseTimestamp     %" PRId64 ".%09u",
 		record->sequenceId,
 		SHOW_TIMESTAMP(record->delayOriginTimestamp),
-		record->totalCorrectionField << 16,
+		record->totalCorrectionField >> 16,
 		SHOW_TIMESTAMP(record->delayResponseTimestamp));
 }
 
@@ -83,7 +83,7 @@ static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
 		IFMT "syncEventIngressTimestamp  %" PRId64 ".%09u",
 		record->sequenceId,
 		SHOW_TIMESTAMP(record->syncOriginTimestamp),
-		record->totalCorrectionField << 16,
+		record->totalCorrectionField >> 16,
 		record->scaledCumulativeRateOffset,
 		SHOW_TIMESTAMP(record->syncEventIngressTimestamp));
 }
