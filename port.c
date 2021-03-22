@@ -1070,7 +1070,7 @@ static void port_nrate_initialize(struct port *p)
 
 	p->nrate.origin1 = tmv_zero();
 	p->nrate.ingress1 = tmv_zero();
-	p->nrate.max_count = (1 << shift);
+	p->nrate.max_count = (1U << shift);
 	p->nrate.count = 0;
 	p->nrate.ratio = 1.0;
 	p->nrate.ratio_valid = 0;
@@ -2345,8 +2345,14 @@ void process_sync(struct port *p, struct ptp_message *m)
 
 	if (!msg_unicast(m) &&
 	    m->header.logMessageInterval != p->log_sync_interval) {
-		p->log_sync_interval = m->header.logMessageInterval;
-		clock_sync_interval(p->clock, p->log_sync_interval);
+		if (m->header.logMessageInterval < -10 ||
+		    m->header.logMessageInterval > 22) {
+			pl_info(300, "%s: ignore bogus sync interval 2^%d",
+				p->log_name, m->header.logMessageInterval);
+		} else {
+			p->log_sync_interval = m->header.logMessageInterval;
+			clock_sync_interval(p->clock, p->log_sync_interval);
+		}
 	}
 
 	m->header.correction += p->asymmetry;

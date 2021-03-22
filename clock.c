@@ -1881,7 +1881,7 @@ void clock_sync_interval(struct clock *c, int n)
 		shift = sizeof(int) * 8 - 1;
 		pr_warning("freq_est_interval is too long");
 	}
-	c->fest.max_count = (1 << shift);
+	c->fest.max_count = (1U << shift);
 
 	shift = c->stats_interval - n;
 	if (shift < 0)
@@ -1890,7 +1890,7 @@ void clock_sync_interval(struct clock *c, int n)
 		shift = sizeof(int) * 8 - 1;
 		pr_warning("summary_interval is too long");
 	}
-	c->stats.max_count = (1 << shift);
+	c->stats.max_count = (1U << shift);
 
 	servo_sync_interval(c->servo, n < 0 ? 1.0 / (1 << -n) : 1 << n);
 }

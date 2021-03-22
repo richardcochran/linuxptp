@@ -49,7 +49,7 @@ typedef struct {
 static inline tmv_t tmv_add(tmv_t a, tmv_t b)
 {
 	tmv_t t;
-	t.ns = a.ns + b.ns;
+	t.ns = (uint64_t)a.ns + (uint64_t)b.ns;
 	return t;
 }
 
@@ -78,7 +78,7 @@ static inline int tmv_is_zero(tmv_t x)
 static inline tmv_t tmv_sub(tmv_t a, tmv_t b)
 {
 	tmv_t t;
-	t.ns = a.ns - b.ns;
+	t.ns = (uint64_t)a.ns - (uint64_t)b.ns;
 	return t;
 }
 
@@ -126,7 +126,7 @@ static inline TimeInterval tmv_to_TimeInterval(tmv_t x)
 	} else if (x.ns > (int64_t)MAX_TMV_TO_TIMEINTERVAL) {
 		return MAX_TMV_TO_TIMEINTERVAL << 16;
 	}
-	return x.ns << 16;
+	return (uint64_t)x.ns << 16;
 }
 
 static inline struct Timestamp tmv_to_Timestamp(tmv_t x)
