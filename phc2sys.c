@@ -1290,10 +1290,6 @@ int main(int argc, char *argv[])
 			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		goto bad_usage;
 	}
-	if (hardpps_configured(pps_fd) && src_name) {
-		fprintf(stderr, "please specify -s or -d, but not both\n");
-		goto bad_usage;
-	}
 
 	print_set_progname(progname);
 	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
