@@ -128,6 +128,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	int extra_len = 0, len;
 	uint8_t *buf;
 	uint16_t u16;
+	int i;
 	switch (m->id) {
 	case TLV_CLOCK_DESCRIPTION:
 		cd = &extra->cd;
@@ -324,6 +325,10 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		psn = (struct port_stats_np *)m->data;
 		psn->portIdentity.portNumber =
 			ntohs(psn->portIdentity.portNumber);
+		for (i = 0 ; i < MAX_MESSAGE_TYPES; i++) {
+			psn->stats.rxMsgType[i] = __le64_to_cpu(psn->stats.rxMsgType[i]);
+			psn->stats.txMsgType[i] = __le64_to_cpu(psn->stats.txMsgType[i]);
+		}
 		extra_len = sizeof(struct port_stats_np);
 		break;
 	case TLV_SAVE_IN_NON_VOLATILE_STORAGE:
@@ -349,6 +354,7 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
+	int i;
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
@@ -436,6 +442,10 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		psn = (struct port_stats_np *)m->data;
 		psn->portIdentity.portNumber =
 			htons(psn->portIdentity.portNumber);
+		for (i = 0 ; i < MAX_MESSAGE_TYPES; i++) {
+			psn->stats.rxMsgType[i] = __cpu_to_le64(psn->stats.rxMsgType[i]);
+			psn->stats.txMsgType[i] = __cpu_to_le64(psn->stats.txMsgType[i]);
+		}
 		break;
 	}
 }
