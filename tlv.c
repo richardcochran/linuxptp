@@ -113,22 +113,22 @@ static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_siz
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
-	struct defaultDS *dds;
-	struct currentDS *cds;
-	struct parentDS *pds;
-	struct timePropertiesDS *tp;
-	struct portDS *p;
-	struct port_ds_np *pdsnp;
-	struct time_status_np *tsn;
 	struct grandmaster_settings_np *gsn;
+	struct mgmt_clock_description *cd;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct timePropertiesDS *tp;
+	struct time_status_np *tsn;
 	struct port_stats_np *psn;
-	struct mgmt_clock_description *cd;
-	int extra_len = 0, len;
+	int extra_len = 0, i, len;
+	struct port_ds_np *pdsnp;
+	struct currentDS *cds;
+	struct defaultDS *dds;
+	struct parentDS *pds;
+	struct portDS *p;
 	uint8_t *buf;
 	uint16_t u16;
-	int i;
+
 	switch (m->id) {
 	case TLV_CLOCK_DESCRIPTION:
 		cd = &extra->cd;
@@ -354,19 +354,20 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
-	int i;
+	struct grandmaster_settings_np *gsn;
+	struct mgmt_clock_description *cd;
+	struct subscribe_events_np *sen;
+	struct port_properties_np *ppn;
+	struct timePropertiesDS *tp;
+	struct time_status_np *tsn;
+	struct port_stats_np *psn;
+	struct port_ds_np *pdsnp;
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
-	struct timePropertiesDS *tp;
 	struct portDS *p;
-	struct port_ds_np *pdsnp;
-	struct time_status_np *tsn;
-	struct grandmaster_settings_np *gsn;
-	struct subscribe_events_np *sen;
-	struct port_properties_np *ppn;
-	struct port_stats_np *psn;
-	struct mgmt_clock_description *cd;
+	int i;
+
 	switch (m->id) {
 	case TLV_CLOCK_DESCRIPTION:
 		if (extra) {
