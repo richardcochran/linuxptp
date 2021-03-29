@@ -315,7 +315,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case TLV_SLAVE_ONLY:
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "SLAVE_ONLY "
-			IFMT "slaveOnly %d", mtd->val & DDS_SLAVE_ONLY ? 1 : 0);
+			IFMT "slaveOnly %d", mtd->val);
 		break;
 	case TLV_CLOCK_ACCURACY:
 		mtd = (struct management_tlv_datum *) mgt->data;

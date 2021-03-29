@@ -404,7 +404,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		break;
 	case TLV_SLAVE_ONLY:
 		mtd = (struct management_tlv_datum *) tlv->data;
-		mtd->val = c->dds.flags & DDS_SLAVE_ONLY;
+		mtd->val = c->dds.flags & DDS_SLAVE_ONLY ? 1 : 0;
 		datalen = sizeof(*mtd);
 		break;
 	case TLV_CLOCK_ACCURACY:
