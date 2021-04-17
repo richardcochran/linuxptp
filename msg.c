@@ -186,7 +186,7 @@ static int suffix_post_recv(struct ptp_message *msg, int len)
 {
 	uint8_t *ptr = msg_suffix(msg);
 	struct tlv_extra *extra;
-	int err;
+	int err, suffix_len = 0;
 
 	if (!ptr)
 		return 0;
@@ -204,12 +204,14 @@ static int suffix_post_recv(struct ptp_message *msg, int len)
 			tlv_extra_recycle(extra);
 			return -EBADMSG;
 		}
+		suffix_len += sizeof(struct TLV);
 		len -= sizeof(struct TLV);
 		ptr += sizeof(struct TLV);
 		if (extra->tlv->length > len) {
 			tlv_extra_recycle(extra);
 			return -EBADMSG;
 		}
+		suffix_len += extra->tlv->length;
 		len -= extra->tlv->length;
 		ptr += extra->tlv->length;
 		err = tlv_post_recv(extra);
@@ -219,7 +221,7 @@ static int suffix_post_recv(struct ptp_message *msg, int len)
 		}
 		msg_tlv_attach(msg, extra);
 	}
-	return 0;
+	return suffix_len;
 }
 
 static void suffix_pre_send(struct ptp_message *msg)
@@ -337,7 +339,7 @@ void msg_get(struct ptp_message *m)
 
 int msg_post_recv(struct ptp_message *m, int cnt)
 {
-	int pdulen, type, err;
+	int err, pdulen, suffix_len, type;
 
 	if (cnt < sizeof(struct ptp_header))
 		return -EBADMSG;
@@ -422,9 +424,13 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		break;
 	}
 
-	err = suffix_post_recv(m, cnt - pdulen);
-	if (err)
-		return err;
+	suffix_len = suffix_post_recv(m, cnt - pdulen);
+	if (suffix_len < 0) {
+		return suffix_len;
+	}
+	if (pdulen + suffix_len != m->header.messageLength) {
+		return -EBADMSG;
+	}
 
 	return 0;
 }
