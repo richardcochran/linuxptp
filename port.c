@@ -1220,6 +1220,7 @@ static void port_synchronize(struct port *p,
 		break;
 	case SERVO_LOCKED_STABLE:
 		message_interval_request(p, last_state, sync_interval);
+		port_dispatch(p, EV_MASTER_CLOCK_SELECTED, 0);
 		break;
 	}
 }
