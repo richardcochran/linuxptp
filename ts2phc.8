@@ -117,12 +117,12 @@ how well synchronized a group of local clocks are to each other.
 The default is 0 (adjust the clocks).
 .TP
 .B leapfile
-The path to the current leap seconds definition file.
-In a Debian system this file is provided by the tzdata package and can
-be found at /usr/share/zoneinfo/leap-seconds.list.
-The default is an empty string, which causes the program to use a hard
-coded table that reflects the known leap seconds on the date of the
-software's release.
+The path to the current leap seconds definition file. In a Debian
+system this file is provided by the tzdata package and can be found at
+/usr/share/zoneinfo/leap-seconds.list. If a leapfile is configured it
+will be reloaded if modified. The default is an empty string, which
+causes the program to use a hard coded table that reflects the known
+leap seconds on the date of the software's release.
 .TP
 .B logging_level
 The maximum logging level of messages which should be printed.
