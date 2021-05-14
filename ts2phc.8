@@ -146,19 +146,20 @@ set to 0.0, the servo will never step the clock except on start.
 The default is 0.0.
 .TP
 .B ts2phc.nmea_remote_host, ts2phc.nmea_remote_port
-Specifies the serial port character device providing ToD information
-when using the "nmea" PPS signal source.  Note that if these two
-options are both specified, then the given remote connection will be
-used in preference to the configured serial port.
-These options default to the empty string, that is, not specified.
-.TP
-.B ts2phc.nmea_serialport
-Specifies the serial port character device providing ToD information
-when using the "nmea" PPS signal source.  Note that if the options,
-ts2phc.nmea_remote_host and ts2phc.nmea_remote_port, are both
+Specifies the remote host providing ToD information when using the
+"nmea" PPS signal source.  Note that if these two options are both
 specified, then the given remote connection will be used in preference
 to the configured serial port.
-The default is "/dev/ttyS0".
+These options default to the empty string, that is, not specified.
+.TP
+.B ts2phc.nmea_serialport, ts2phc.nmea_baudrate
+Specifies the serial port and baudrate in bps for character device
+providing ToD information when using the "nmea" PPS signal source. Note
+that if the options, ts2phc.nmea_remote_host and
+ts2phc.nmea_remote_port, are both specified, then the given remote
+connection will be used in preference to the configured serial port.
+The default serial port is "/dev/ttyS0".
+The default baudrate is 9600 bps.
 .TP
 .B ts2phc.pulsewidth
 The expected pulse width of the external PPS signal in nanoseconds.

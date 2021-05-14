@@ -23,7 +23,6 @@
 #include "ts2phc_nmea_master.h"
 #include "util.h"
 
-#define BAUD		9600
 #define MAX_RMC_AGE	5000000000ULL
 #define NMEA_TMO	2000 /*milliseconds*/
 
@@ -45,7 +44,7 @@ struct ts2phc_nmea_master {
 };
 
 static int open_nmea_connection(const char *host, const char *port,
-				const char *serialport)
+				const char *serialport, int baud)
 {
 	int fd;
 
@@ -56,7 +55,7 @@ static int open_nmea_connection(const char *host, const char *port,
 		}
 		return fd;
 	}
-	fd = serial_open(serialport, BAUD, 0, 0);
+	fd = serial_open(serialport, baud, 0, 0);
 	if (fd == -1) {
 		pr_err("failed to open nmea source %s", serialport);
 	}
@@ -70,7 +69,7 @@ static void *monitor_nmea_status(void *arg)
 	char *host, input[256], *port, *ptr, *uart;
 	struct ts2phc_nmea_master *master = arg;
 	struct timespec rxtime, tmo = { 2, 0 };
-	int cnt, num, parsed;
+	int cnt, num, parsed, baud;
 	struct nmea_rmc rmc;
 	struct timex ntx;
 
@@ -81,12 +80,13 @@ static void *monitor_nmea_status(void *arg)
 	host = config_get_string(master->config, NULL, "ts2phc.nmea_remote_host");
 	port = config_get_string(master->config, NULL, "ts2phc.nmea_remote_port");
 	uart = config_get_string(master->config, NULL, "ts2phc.nmea_serialport");
+	baud = config_get_int(master->config, NULL, "ts2phc.nmea_baudrate");
 	memset(&ntx, 0, sizeof(ntx));
 	ntx.modes = ADJ_NANO;
 
 	while (is_running()) {
 		if (pfd.fd == -1) {
-			pfd.fd = open_nmea_connection(host, port, uart);
+			pfd.fd = open_nmea_connection(host, port, uart, baud);
 			if (pfd.fd == -1) {
 				clock_nanosleep(CLOCK_MONOTONIC, 0, &tmo, NULL);
 				continue;
