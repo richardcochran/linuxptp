@@ -115,7 +115,7 @@ static void *monitor_nmea_status(void *arg)
 			continue;
 		}
 		cnt = read(pfd.fd, input, sizeof(input));
-		if (cnt < 0) {
+		if (cnt <= 0) {
 			pr_err("failed to read from nmea source");
 			close(pfd.fd);
 			pfd.fd = -1;
