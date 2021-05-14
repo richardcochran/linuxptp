@@ -157,6 +157,7 @@ static int nmea_scan_rmc(struct nmea_parser *np, struct nmea_rmc *result)
 	}
 	tm.tm_year += 100;
 	tm.tm_mon--;
+	tm.tm_isdst = 0;
 	result->ts.tv_sec = mktime(&tm);
 	result->ts.tv_nsec = msec * 1000000UL;
 	result->fix_valid = status == 'A' ? true : false;
