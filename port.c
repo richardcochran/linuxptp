@@ -924,6 +924,11 @@ static int port_management_fill_response(struct port *target,
 		mtd->val = target->versionNumber;
 		datalen = sizeof(*mtd);
 		break;
+	case TLV_MASTER_ONLY:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = target->master_only;
+		datalen = sizeof(*mtd);
+		break;
 	case TLV_DELAY_MECHANISM:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		if (target->delayMechanism)
@@ -2898,6 +2903,7 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	case TLV_UNICAST_MASTER_MAX_TABLE_SIZE:
 	case TLV_ACCEPTABLE_MASTER_TABLE_ENABLED:
 	case TLV_ALTERNATE_MASTER:
+	case TLV_MASTER_ONLY:
 	case TLV_TRANSPARENT_CLOCK_PORT_DATA_SET:
 	case TLV_DELAY_MECHANISM:
 	case TLV_LOG_MIN_PDELAY_REQ_INTERVAL:

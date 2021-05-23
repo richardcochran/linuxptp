@@ -104,6 +104,7 @@ struct management_id idtab[] = {
 	{ "ALTERNATE_TIME_OFFSET_NAME", TLV_ALTERNATE_TIME_OFFSET_NAME, not_supported },
 	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", TLV_ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
 	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", TLV_ALTERNATE_TIME_OFFSET_PROPERTIES, not_supported },
+	{ "MASTER_ONLY", TLV_MASTER_ONLY, do_get_action },
 	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", TLV_TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
 	{ "PRIMARY_DOMAIN", TLV_PRIMARY_DOMAIN, not_supported },
 	{ "TIME_STATUS_NP", TLV_TIME_STATUS_NP, do_get_action },
@@ -510,6 +511,7 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 	case TLV_CLOCK_ACCURACY:
 	case TLV_TRACEABILITY_PROPERTIES:
 	case TLV_TIMESCALE_PROPERTIES:
+	case TLV_MASTER_ONLY:
 		len += sizeof(struct management_tlv_datum);
 		break;
 	case TLV_TIME_STATUS_NP:

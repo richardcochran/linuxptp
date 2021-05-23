@@ -335,6 +335,11 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		fprintf(fp, "TIMESCALE_PROPERTIES "
 			IFMT "ptpTimescale %d", mtd->val & PTP_TIMESCALE ? 1 : 0);
 		break;
+	case TLV_MASTER_ONLY:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "MASTER_ONLY "
+			IFMT "masterOnly %d", mtd->val);
+		break;
 	case TLV_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
 		fprintf(fp, "TIME_STATUS_NP "
