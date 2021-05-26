@@ -705,7 +705,8 @@ static void clock_update_slave(struct clock *c)
 	if (c->tds.currentUtcOffset < c->utc_offset) {
 		pr_warning("running in a temporal vortex");
 	}
-	if ((c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) ||
+	if (((c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) &&
+	    (c->tds.currentUtcOffset != c->utc_offset)) ||
 	    (c->tds.currentUtcOffset > c->utc_offset)) {
 		pr_info("updating UTC offset to %d", c->tds.currentUtcOffset);
 		c->utc_offset = c->tds.currentUtcOffset;
@@ -1939,14 +1940,6 @@ static void handle_state_decision_event(struct clock *c)
 		best_id = c->dds.clockIdentity;
 	}
 
-	if (cid_eq(&best_id, &c->dds.clockIdentity)) {
-		pr_notice("selected local clock %s as best master",
-			  cid2str(&best_id));
-	} else {
-		pr_notice("selected best master clock %s",
-			  cid2str(&best_id));
-	}
-
 	if (!cid_eq(&best_id, &c->best_id)) {
 		clock_freq_est_reset(c);
 		tsproc_reset(c->tsproc, 1);
@@ -1957,6 +1950,13 @@ static void handle_state_decision_event(struct clock *c)
 		c->master_local_rr = 1.0;
 		c->nrr = 1.0;
 		fresh_best = 1;
+		if (cid_eq(&best_id, &c->dds.clockIdentity)) {
+			pr_notice("selected local clock %s as best master",
+					cid2str(&best_id));
+		} else {
+			pr_notice("selected best master clock %s",
+					cid2str(&best_id));
+		}
 	}
 
 	c->best = best;
