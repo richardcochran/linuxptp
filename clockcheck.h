@@ -34,6 +34,12 @@ struct clockcheck;
 struct clockcheck *clockcheck_create(int freq_limit);
 
 /**
+ * Reset a clock check.
+ * @param cc Pointer to a clock check obtained via @ref clockcheck_create().
+ */
+void clockcheck_reset(struct clockcheck *cc);
+
+/**
  * Perform the sanity check on a time stamp.
  * @param cc Pointer to a clock check obtained via @ref clockcheck_create().
  * @param ts Time stamp made by the clock in nanoseconds.

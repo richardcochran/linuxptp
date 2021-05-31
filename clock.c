@@ -1942,6 +1942,8 @@ static void handle_state_decision_event(struct clock *c)
 
 	if (!cid_eq(&best_id, &c->best_id) || best != c->best) {
 		clock_freq_est_reset(c);
+		if (c->sanity_check)
+			clockcheck_reset(c->sanity_check);
 		tsproc_reset(c->tsproc, 1);
 		if (!tmv_is_zero(c->initial_delay))
 			tsproc_set_delay(c->tsproc, c->initial_delay);

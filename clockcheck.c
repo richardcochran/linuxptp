@@ -47,9 +47,16 @@ struct clockcheck *clockcheck_create(int freq_limit)
 	if (!cc)
 		return NULL;
 	cc->freq_limit = freq_limit;
+	clockcheck_reset(cc);
+	return cc;
+}
+
+void clockcheck_reset(struct clockcheck *cc)
+{
+	cc->freq_known = 0;
 	cc->max_freq = -CHECK_MAX_FREQ;
 	cc->min_freq = CHECK_MAX_FREQ;
-	return cc;
+	cc->last_ts = 0;
 }
 
 int clockcheck_sample(struct clockcheck *cc, uint64_t ts)
