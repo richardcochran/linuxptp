@@ -1811,6 +1811,12 @@ static int port_renew_transport(struct port *p)
 	if (!port_is_enabled(p)) {
 		return 0;
 	}
+
+	/* Closing and binding of raw sockets is too slow and unnecessary */
+	if (transport_type(p->trp) == TRANS_IEEE_802_3) {
+		return 0;
+	}
+
 	transport_close(p->trp, &p->fda);
 	port_clear_fda(p, FD_FIRST_TIMER);
 	res = transport_open(p->trp, p->iface, &p->fda, p->timestamping);
