@@ -1940,7 +1940,7 @@ static void handle_state_decision_event(struct clock *c)
 		best_id = c->dds.clockIdentity;
 	}
 
-	if (!cid_eq(&best_id, &c->best_id)) {
+	if (!cid_eq(&best_id, &c->best_id) || best != c->best) {
 		clock_freq_est_reset(c);
 		tsproc_reset(c->tsproc, 1);
 		if (!tmv_is_zero(c->initial_delay))
