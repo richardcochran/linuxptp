@@ -2749,7 +2749,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	}
 	if (msg_sots_valid(msg)) {
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
-		clock_check_ts(p->clock, tmv_to_nanoseconds(msg->hwts.ts));
+		if (p->state == PS_SLAVE) {
+			clock_check_ts(p->clock,
+				       tmv_to_nanoseconds(msg->hwts.ts));
+		}
 	}
 
 	switch (msg_type(msg)) {
