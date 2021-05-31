@@ -23,7 +23,7 @@
 #include "clockcheck.h"
 #include "print.h"
 
-#define CHECK_MIN_INTERVAL 100000000
+#define CHECK_MIN_INTERVAL 1000000000
 #define CHECK_MAX_FREQ 900000000
 
 struct clockcheck {
