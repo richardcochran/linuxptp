@@ -118,10 +118,12 @@ static void port_id_pre_send(struct PortIdentity *pid)
 	pid->portNumber = htons(pid->portNumber);
 }
 
-static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
+static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last, int *suffix_len)
 {
 	int cnt, err;
 	struct TLV *tlv;
+
+	*suffix_len = 0;
 
 	if (!ptr)
 		return 0;
@@ -133,11 +135,13 @@ static int suffix_post_recv(uint8_t *ptr, int len, struct tlv_extra *last)
 		if (tlv->length % 2) {
 			return -EBADMSG;
 		}
+		*suffix_len += sizeof(struct TLV);
 		len -= sizeof(struct TLV);
 		ptr += sizeof(struct TLV);
 		if (tlv->length > len) {
 			return -EBADMSG;
 		}
+		*suffix_len += tlv->length;
 		len -= tlv->length;
 		ptr += tlv->length;
 		err = tlv_post_recv(tlv, len ? NULL : last);
@@ -225,7 +229,7 @@ void msg_get(struct ptp_message *m)
 
 int msg_post_recv(struct ptp_message *m, int cnt)
 {
-	int pdulen, type, err;
+	int err, pdulen, type, suffix_len;
 	uint8_t *suffix = NULL;
 
 	if (cnt < sizeof(struct ptp_header))
@@ -318,9 +322,12 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	if (msg_sots_missing(m))
 		return -ETIME;
 
-	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen, &m->last_tlv);
+	m->tlv_count = suffix_post_recv(suffix, cnt - pdulen, &m->last_tlv, &suffix_len);
 	if (m->tlv_count < 0)
 		return m->tlv_count;
+	if (pdulen + suffix_len != m->header.messageLength) {
+		return -EBADMSG;
+	}
 
 	return 0;
 }
