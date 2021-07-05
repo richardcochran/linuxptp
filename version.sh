@@ -6,7 +6,7 @@
 #
 major=3
 minor=1
-extra=
+extra=.1
 
 usage() {
 	echo "Usage: $0 [srctree]" >&2
