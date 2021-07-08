@@ -324,7 +324,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("ts2phc.pulsewidth", 500000000, 1000000, 999000000),
 	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),
 	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),
-	GLOB_ITEM_INT("tx_timestamp_timeout", 1, 1, INT_MAX),
+	GLOB_ITEM_INT("tx_timestamp_timeout", 10, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
 	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
