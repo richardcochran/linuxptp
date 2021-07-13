@@ -740,6 +740,8 @@ static struct option *config_alloc_longopts(void)
 		ci = &config_tab[i];
 		opts[i].name = ci->label;
 		opts[i].has_arg = required_argument;
+		/* Avoid bug in detection of ambiguous options in glibc */
+		opts[i].flag = &opts[i].val;
 	}
 
 	return opts;
