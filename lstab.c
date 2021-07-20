@@ -144,6 +144,7 @@ static int lstab_read(struct lstab *lstab, const char *name)
 			index++;
 		}
 	}
+	fclose(fp);
 	if (!lstab->expiration_utc) {
 		fprintf(stderr, "missing expiration date in '%s'\n", name);
 		return -1;
