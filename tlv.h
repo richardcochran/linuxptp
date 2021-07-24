@@ -213,6 +213,8 @@ struct nsm_resp_tlv_foot {
 /* Organizationally Unique Identifiers */
 #define IEEE_802_1_COMMITTEE 0x00, 0x80, 0xC2
 extern uint8_t ieee8021_id[3];
+#define IEEE_C37_238_PROFILE 0x1C, 0x12, 0x9D
+extern uint8_t ieeec37_238_id[3];
 
 struct organization_tlv {
 	Enumeration16 type;
@@ -298,6 +300,28 @@ struct follow_up_info_tlv {
 	UInteger16    gmTimeBaseIndicator;
 	ScaledNs      lastGmPhaseChange;
 	Integer32     scaledLastGmPhaseChange;
+} PACKED;
+
+struct ieee_c37_238_2011_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Octet         id[3];
+	Octet         subtype[3];
+	UInteger16    grandmasterID;
+	UInteger32    grandmasterTimeInaccuracy;
+	UInteger32    networkTimeInaccuracy;
+	Octet         pad[2];
+} PACKED;
+
+struct ieee_c37_238_2017_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Octet         id[3];
+	Octet         subtype[3];
+	UInteger16    grandmasterID;
+	UInteger32    reserved1;
+	UInteger32    totalTimeInaccuracy;
+	Octet         pad[2];
 } PACKED;
 
 struct msg_interval_req_tlv {

@@ -35,6 +35,7 @@
 	(tlv->length < sizeof(struct type) - sizeof(struct TLV))
 
 uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };
+uint8_t ieeec37_238_id[3] = { IEEE_C37_238_PROFILE };
 uint8_t itu_t_id[3] = { ITU_T_COMMITTEE };
 
 static TAILQ_HEAD(tlv_pool, tlv_extra) tlv_pool =
@@ -680,6 +681,7 @@ static void nsm_resp_pre_send(struct tlv_extra *extra)
 
 static int org_post_recv(struct organization_tlv *org)
 {
+	struct ieee_c37_238_2017_tlv *p;
 	struct follow_up_info_tlv *f;
 	struct msg_interface_rate_tlv *m;
 
@@ -718,6 +720,24 @@ static int org_post_recv(struct organization_tlv *org)
 		}
 
 	}
+	if (0 == memcmp(org->id, ieeec37_238_id, sizeof(ieeec37_238_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return 0;
+		}
+		switch (org->subtype[2]) {
+		case 1:
+		case 2:
+			/* Layout of 2011 and 2017 messages is compatible. */
+			if (org->length + sizeof(struct TLV) !=
+			    sizeof(struct ieee_c37_238_2017_tlv))
+				goto bad_length;
+			p = (struct ieee_c37_238_2017_tlv *) org;
+			NTOHS(p->grandmasterID);
+			NTOHL(p->reserved1);
+			NTOHL(p->totalTimeInaccuracy);
+			break;
+		}
+	}
 	return 0;
 bad_length:
 	return -EBADMSG;
@@ -725,6 +745,7 @@ bad_length:
 
 static void org_pre_send(struct organization_tlv *org)
 {
+	struct ieee_c37_238_2017_tlv *p;
 	struct follow_up_info_tlv *f;
 	struct msg_interface_rate_tlv *m;
 
@@ -751,6 +772,21 @@ static void org_pre_send(struct organization_tlv *org)
 			m->interfaceBitPeriod = host2net64(m->interfaceBitPeriod);
 			m->numberOfBitsBeforeTimestamp = htons(m->numberOfBitsBeforeTimestamp);
 			m->numberOfBitsAfterTimestamp = htons(m->numberOfBitsAfterTimestamp);
+			break;
+		}
+	}
+	if (0 == memcmp(org->id, ieeec37_238_id, sizeof(ieeec37_238_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return;
+		}
+		switch (org->subtype[2]) {
+		case 1:
+		case 2:
+			/* Layout of 2011 and 2017 messages is compatible. */
+			p = (struct ieee_c37_238_2017_tlv *) org;
+			HTONS(p->grandmasterID);
+			HTONL(p->reserved1);
+			HTONL(p->totalTimeInaccuracy);
 			break;
 		}
 	}
