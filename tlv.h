@@ -324,6 +324,14 @@ struct ieee_c37_238_2017_tlv {
 	Octet         pad[2];
 } PACKED;
 
+struct ieee_c37_238_settings_np {
+	Enumeration16 version;
+	UInteger16    grandmasterID;
+	UInteger32    grandmasterTimeInaccuracy;
+	UInteger32    networkTimeInaccuracy;
+	UInteger32    totalTimeInaccuracy;
+} PACKED;
+
 struct msg_interval_req_tlv {
 	Enumeration16 type;
 	UInteger16    length;

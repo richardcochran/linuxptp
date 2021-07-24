@@ -361,6 +361,44 @@ The default is -1, which means the index will be set to the PHC associated with
 the interface, or the device specified by the \fB-p\fP option.
 
 .TP
+.B power_profile.2011.grandmasterTimeInaccuracy
+Specifies the time inaccuracy of the GM in nanoseconds.  Relevant only
+when power_profile.version is 2011.  This value may be changed
+dynamically using the POWER_PROFILE_SETTINGS_NP management message.
+The default is 0xFFFFFFFF.
+
+.TP
+.B power_profile.2011.networkTimeInaccuracy
+Specifies the time inaccuracy of the network in nanoseconds.  Relevant
+only when power_profile.version is 2011.  This value may be changed
+dynamically using the POWER_PROFILE_SETTINGS_NP management message.
+The default is 0xFFFFFFFF.
+
+.TP
+.B power_profile.2017.totalTimeInaccuracy
+Specifies the sum of the GM, network, and local node inaccuracies in
+nanoseconds.  Relevant only when power_profile.version is 2017.  This
+value may be changed dynamically using the POWER_PROFILE_SETTINGS_NP
+management message.  The default is 0xFFFFFFFF meaning unknown
+inaccuracy.
+
+.TP
+.B power_profile.grandmasterID
+Specifies an optional, non-zero identification code for the GM.  Note
+that the code is an arbitrary, power profile specific integer, not
+necessarily related to the clockIdentity in any way.  This value may
+be changed dynamically using the POWER_PROFILE_SETTINGS_NP management
+message.  The default is 0 meaning unused.
+
+.TP
+.B power_profile.version
+Specifies the power profile version to be used.  Valid values are
+"none", "2011", or "2017".
+This value may be changed dynamically using the
+POWER_PROFILE_SETTINGS_NP management message.
+The default is "none".
+
+.TP
 .B ptp_dst_mac
 The MAC address to which PTP messages should be sent.
 Relevant only with L2 transport. The default is 01:1B:19:00:00:00.

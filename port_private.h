@@ -26,6 +26,7 @@
 #include "fsm.h"
 #include "monitor.h"
 #include "msg.h"
+#include "power_profile.h"
 #include "tmv.h"
 
 #define NSEC2SEC 1000000000LL
@@ -153,6 +154,8 @@ struct port {
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
 	/* TC book keeping */
 	TAILQ_HEAD(tct, tc_txd) tc_transmitted;
+	/* power profile */
+	struct ieee_c37_238_settings_np pwr;
 	/* unicast client mode */
 	struct unicast_master_table *unicast_master_table;
 	/* unicast service mode */

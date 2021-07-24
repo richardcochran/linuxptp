@@ -31,6 +31,7 @@
 #include "config.h"
 #include "ether.h"
 #include "hash.h"
+#include "power_profile.h"
 #include "print.h"
 #include "util.h"
 
@@ -66,7 +67,7 @@ typedef union {
 	char *s;
 } any_t;
 
-#define CONFIG_LABEL_SIZE 32
+#define CONFIG_LABEL_SIZE 64
 
 #define CFG_ITEM_STATIC (1 << 0) /* statically allocated, not to be freed */
 #define CFG_ITEM_LOCKED (1 << 1) /* command line value, may not be changed */
@@ -190,6 +191,13 @@ static struct config_enum hwts_filter_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum ieee_c37_238_enu[] = {
+	{ "none", IEEE_C37_238_VERSION_NONE },
+	{ "2011", IEEE_C37_238_VERSION_2011 },
+	{ "2017", IEEE_C37_238_VERSION_2017 },
+	{ NULL, 0 },
+};
+
 static struct config_enum nw_trans_enu[] = {
 	{ "L2",    TRANS_IEEE_802_3 },
 	{ "UDPv4", TRANS_UDP_IPV4   },
@@ -300,6 +308,11 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_exponent", -0.3, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_proportional_norm_max", 0.7, DBL_MIN, 1.0),
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
+	PORT_ITEM_ENU("power_profile.version", IEEE_C37_238_VERSION_NONE, ieee_c37_238_enu),
+	PORT_ITEM_INT("power_profile.2011.grandmasterTimeInaccuracy", 0xFFFFFFFF, 0, INT_MAX),
+	PORT_ITEM_INT("power_profile.2011.networkTimeInaccuracy", 0, 0, INT_MAX),
+	PORT_ITEM_INT("power_profile.2017.totalTimeInaccuracy", 0xFFFFFFFF, 0, INT_MAX),
+	PORT_ITEM_INT("power_profile.grandmasterID", 0, 0, 0xFFFF),
 	GLOB_ITEM_INT("priority1", 128, 0, UINT8_MAX),
 	GLOB_ITEM_INT("priority2", 128, 0, UINT8_MAX),
 	GLOB_ITEM_STR("productDescription", ";;"),
