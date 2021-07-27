@@ -115,6 +115,7 @@ static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_siz
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
+	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
 	struct port_service_stats_np *pssn;
@@ -400,6 +401,16 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		phn->phc_index = ntohl(phn->phc_index);
 		extra_len = sizeof(struct port_hwclock_np);
 		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		if (data_len < sizeof(struct ieee_c37_238_settings_np))
+			goto bad_length;
+		pwr = (struct ieee_c37_238_settings_np *)m->data;
+		NTOHS(pwr->version);
+		NTOHS(pwr->grandmasterID);
+		NTOHL(pwr->grandmasterTimeInaccuracy);
+		NTOHL(pwr->networkTimeInaccuracy);
+		NTOHL(pwr->totalTimeInaccuracy);
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -423,6 +434,7 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
+	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
 	struct port_service_stats_np *pssn;
@@ -570,6 +582,14 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		phn = (struct port_hwclock_np *)m->data;
 		phn->portIdentity.portNumber = htons(phn->portIdentity.portNumber);
 		phn->phc_index = htonl(phn->phc_index);
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		pwr = (struct ieee_c37_238_settings_np *)m->data;
+		HTONS(pwr->version);
+		HTONS(pwr->grandmasterID);
+		HTONL(pwr->grandmasterTimeInaccuracy);
+		HTONL(pwr->networkTimeInaccuracy);
+		HTONL(pwr->totalTimeInaccuracy);
 		break;
 	}
 }

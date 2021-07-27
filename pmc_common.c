@@ -28,6 +28,7 @@
 #include "tlv.h"
 #include "transport.h"
 #include "pmc_common.h"
+#include "power_profile.h"
 
 #define BAD_ACTION   -1
 #define BAD_ID       -1
@@ -154,6 +155,7 @@ struct management_id idtab[] = {
 	{ "PORT_SERVICE_STATS_NP", MID_PORT_SERVICE_STATS_NP, do_get_action },
 	{ "UNICAST_MASTER_TABLE_NP", MID_UNICAST_MASTER_TABLE_NP, do_get_action },
 	{ "PORT_HWCLOCK_NP", MID_PORT_HWCLOCK_NP, do_get_action },
+	{ "POWER_PROFILE_SETTINGS_NP", MID_POWER_PROFILE_SETTINGS_NP, do_set_action },
 };
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str)
@@ -168,6 +170,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 {
 	int cnt, code = idtab[index].code, freq_traceable, leap_59, leap_61,
 		ptp_timescale, time_traceable, utc_off_valid;
+	struct ieee_c37_238_settings_np pwr;
 	struct grandmaster_settings_np gsn;
 	struct management_tlv_datum mtd;
 	struct subscribe_events_np sen;
@@ -301,6 +304,37 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			break;
 		}
 		pmc_send_set_action(pmc, code, &pnp, sizeof(pnp));
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "version                   %hu "
+			     "grandmasterID             %hx "
+			     "grandmasterTimeInaccuracy %u "
+			     "networkTimeInaccuracy     %u "
+			     "totalTimeInaccuracy       %u ",
+			     &pwr.version,
+			     &pwr.grandmasterID,
+			     &pwr.grandmasterTimeInaccuracy,
+			     &pwr.networkTimeInaccuracy,
+			     &pwr.totalTimeInaccuracy);
+		if (cnt != 5) {
+			fprintf(stderr, "%s SET needs 5 values\n",
+				idtab[index].name);
+			break;
+		}
+		switch (pwr.version) {
+		case IEEE_C37_238_VERSION_NONE:
+		case IEEE_C37_238_VERSION_2011:
+		case IEEE_C37_238_VERSION_2017:
+			pmc_send_set_action(pmc, code, &pwr, sizeof(pwr));
+			break;
+		default:
+			fprintf(stderr, "\nusage: set PROFILE_SETTINGS_NP version "
+				"%hu (none), %hu (2011), or %hu (2017)\n\n",
+				IEEE_C37_238_VERSION_NONE,
+				IEEE_C37_238_VERSION_2011,
+				IEEE_C37_238_VERSION_2017);
+		}
 		break;
 	}
 }
@@ -572,6 +606,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_PORT_HWCLOCK_NP:
 		len += sizeof(struct port_hwclock_np);
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		len += sizeof(struct ieee_c37_238_settings_np);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 	case MID_ANNOUNCE_RECEIPT_TIMEOUT:

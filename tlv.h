@@ -128,6 +128,7 @@ enum management_action {
 #define MID_PORT_SERVICE_STATS_NP			0xC007
 #define MID_UNICAST_MASTER_TABLE_NP			0xC008
 #define MID_PORT_HWCLOCK_NP				0xC009
+#define MID_POWER_PROFILE_SETTINGS_NP			0xC00A
 
 /* Management error ID values */
 #define MID_RESPONSE_TOO_BIG				0x0001

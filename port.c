@@ -877,6 +877,7 @@ static const Octet profile_id_8275_2[] = {0x00, 0x19, 0xA7, 0x02, 0x01, 0x02};
 static int port_management_fill_response(struct port *target,
 					 struct ptp_message *rsp, int id)
 {
+	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct unicast_master_address *ucma;
 	struct port_service_stats_np *pssn;
@@ -1123,6 +1124,11 @@ static int port_management_fill_response(struct port *target,
 			PORT_HWCLOCK_VCLOCK : 0;
 		datalen = sizeof(*phn);
 		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		pwr = (struct ieee_c37_238_settings_np *)tlv->data;
+		memcpy(pwr, &target->pwr, sizeof(*pwr));
+		datalen = sizeof(*pwr);
+		break;
 	default:
 		/* The caller should *not* respond to this message. */
 		tlv_extra_recycle(extra);
@@ -1164,9 +1170,10 @@ static int port_management_set(struct port *target,
 			       struct port *ingress, int id,
 			       struct ptp_message *req)
 {
-	int respond = 0;
+	struct ieee_c37_238_settings_np *pwr;
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
+	int respond = 0;
 
 	tlv = (struct management_tlv *) req->management.suffix;
 
@@ -1175,6 +1182,17 @@ static int port_management_set(struct port *target,
 		pdsnp = (struct port_ds_np *) tlv->data;
 		target->neighborPropDelayThresh = pdsnp->neighborPropDelayThresh;
 		respond = 1;
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		pwr = (struct ieee_c37_238_settings_np *) tlv->data;
+		switch (pwr->version) {
+		case IEEE_C37_238_VERSION_NONE:
+		case IEEE_C37_238_VERSION_2011:
+		case IEEE_C37_238_VERSION_2017:
+			target->pwr = *pwr;
+			respond = 1;
+			break;
+		}
 		break;
 	}
 	if (respond && !port_management_get_response(target, ingress, id, req))

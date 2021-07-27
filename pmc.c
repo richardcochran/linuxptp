@@ -157,6 +157,7 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
+	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
 	struct port_service_stats_np *pssp;
@@ -571,6 +572,20 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pid2str(&phn->portIdentity),
 			phn->phc_index,
 			phn->flags);
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		pwr = (struct ieee_c37_238_settings_np *) mgt->data;
+		fprintf(fp, "POWER_PROFILE_SETTINGS_NP "
+			IFMT "version                   %hu"
+			IFMT "grandmasterID             0x%04hx"
+			IFMT "grandmasterTimeInaccuracy %u"
+			IFMT "networkTimeInaccuracy     %u"
+			IFMT "totalTimeInaccuracy       %u",
+			pwr->version,
+			pwr->grandmasterID,
+			pwr->grandmasterTimeInaccuracy,
+			pwr->networkTimeInaccuracy,
+			pwr->totalTimeInaccuracy);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
