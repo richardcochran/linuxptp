@@ -817,7 +817,7 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 	if (mgt_id == excluded)
 		return 0;
 	switch (mgt_id) {
-	case TLV_PORT_DATA_SET:
+	case MID_PORT_DATA_SET:
 		pds = management_tlv_data(msg);
 		port = port_get(priv, pds->portIdentity.portNumber);
 		if (!port) {

@@ -58,7 +58,7 @@ static void send_subscription(struct pmc_agent *node)
 	memset(&sen, 0, sizeof(sen));
 	sen.duration = PMC_SUBSCRIBE_DURATION;
 	event_bitmask_set(sen.bitmask, NOTIFY_PORT_STATE, TRUE);
-	pmc_send_set_action(node->pmc, TLV_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
+	pmc_send_set_action(node->pmc, MID_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
 
 static int check_clock_identity(struct pmc_agent *node, struct ptp_message *msg)
@@ -149,7 +149,7 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		if ((pollfd[0].revents & POLLOUT) &&
 		    !(pollfd[0].revents & (POLLIN|POLLPRI))) {
 			switch (ds_id) {
-			case TLV_SUBSCRIBE_EVENTS_NP:
+			case MID_SUBSCRIBE_EVENTS_NP:
 				send_subscription(node);
 				break;
 			default:
@@ -195,7 +195,7 @@ static int renew_subscription(struct pmc_agent *node, int timeout)
 	struct ptp_message *msg;
 	int res;
 
-	res = run_pmc(node, timeout, TLV_SUBSCRIBE_EVENTS_NP, &msg);
+	res = run_pmc(node, timeout, MID_SUBSCRIBE_EVENTS_NP, &msg);
 	if (is_run_pmc_error(res)) {
 		return run_pmc_err2errno(res);
 	}
@@ -211,7 +211,7 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 	int res;
 
 	while (1) {
-		res = run_pmc(node, timeout, TLV_PORT_DATA_SET, &msg);
+		res = run_pmc(node, timeout, MID_PORT_DATA_SET, &msg);
 		if (res <= 0)
 			return res;
 
@@ -291,7 +291,7 @@ int pmc_agent_query_dds(struct pmc_agent *node, int timeout)
 	struct defaultDS *dds;
 	int res;
 
-	res = run_pmc(node, timeout, TLV_DEFAULT_DATA_SET, &msg);
+	res = run_pmc(node, timeout, MID_DEFAULT_DATA_SET, &msg);
 	if (is_run_pmc_error(res)) {
 		return run_pmc_err2errno(res);
 	}
@@ -312,7 +312,7 @@ int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
 
 	pmc_target_port(node->pmc, port);
 	while (1) {
-		res = run_pmc(node, timeout, TLV_PORT_PROPERTIES_NP, &msg);
+		res = run_pmc(node, timeout, MID_PORT_PROPERTIES_NP, &msg);
 		if (is_run_pmc_error(res)) {
 			goto out;
 		}
@@ -345,7 +345,7 @@ int pmc_agent_query_utc_offset(struct pmc_agent *node, int timeout)
 	struct ptp_message *msg;
 	int res;
 
-	res = run_pmc(node, timeout, TLV_TIME_PROPERTIES_DATA_SET, &msg);
+	res = run_pmc(node, timeout, MID_TIME_PROPERTIES_DATA_SET, &msg);
 	if (is_run_pmc_error(res)) {
 		return run_pmc_err2errno(res);
 	}

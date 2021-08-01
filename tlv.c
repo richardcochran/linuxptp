@@ -130,7 +130,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	uint16_t u16;
 
 	switch (m->id) {
-	case TLV_CLOCK_DESCRIPTION:
+	case MID_CLOCK_DESCRIPTION:
 		cd = &extra->cd;
 		buf = m->data;
 		len = data_len;
@@ -229,14 +229,14 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 
 		extra_len = buf - m->data;
 		break;
-	case TLV_USER_DESCRIPTION:
+	case MID_USER_DESCRIPTION:
 		if (data_len < sizeof(struct PTPText))
 			goto bad_length;
 		extra->cd.userDescription = (struct PTPText *) m->data;
 		extra_len = sizeof(struct PTPText);
 		extra_len += extra->cd.userDescription->length;
 		break;
-	case TLV_DEFAULT_DATA_SET:
+	case MID_DEFAULT_DATA_SET:
 		if (data_len != sizeof(struct defaultDS))
 			goto bad_length;
 		dds = (struct defaultDS *) m->data;
@@ -244,7 +244,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		dds->clockQuality.offsetScaledLogVariance =
 			ntohs(dds->clockQuality.offsetScaledLogVariance);
 		break;
-	case TLV_CURRENT_DATA_SET:
+	case MID_CURRENT_DATA_SET:
 		if (data_len != sizeof(struct currentDS))
 			goto bad_length;
 		cds = (struct currentDS *) m->data;
@@ -252,7 +252,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		cds->offsetFromMaster = net2host64(cds->offsetFromMaster);
 		cds->meanPathDelay = net2host64(cds->meanPathDelay);
 		break;
-	case TLV_PARENT_DATA_SET:
+	case MID_PARENT_DATA_SET:
 		if (data_len != sizeof(struct parentDS))
 			goto bad_length;
 		pds = (struct parentDS *) m->data;
@@ -265,20 +265,20 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		pds->grandmasterClockQuality.offsetScaledLogVariance =
 			ntohs(pds->grandmasterClockQuality.offsetScaledLogVariance);
 		break;
-	case TLV_TIME_PROPERTIES_DATA_SET:
+	case MID_TIME_PROPERTIES_DATA_SET:
 		if (data_len != sizeof(struct timePropertiesDS))
 			goto bad_length;
 		tp = (struct timePropertiesDS *) m->data;
 		tp->currentUtcOffset = ntohs(tp->currentUtcOffset);
 		break;
-	case TLV_PORT_DATA_SET:
+	case MID_PORT_DATA_SET:
 		if (data_len != sizeof(struct portDS))
 			goto bad_length;
 		p = (struct portDS *) m->data;
 		p->portIdentity.portNumber = ntohs(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = net2host64(p->peerMeanPathDelay);
 		break;
-	case TLV_TIME_STATUS_NP:
+	case MID_TIME_STATUS_NP:
 		if (data_len != sizeof(struct time_status_np))
 			goto bad_length;
 		tsn = (struct time_status_np *) m->data;
@@ -290,7 +290,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		scaled_ns_n2h(&tsn->lastGmPhaseChange);
 		tsn->gmPresent = ntohl(tsn->gmPresent);
 		break;
-	case TLV_GRANDMASTER_SETTINGS_NP:
+	case MID_GRANDMASTER_SETTINGS_NP:
 		if (data_len != sizeof(struct grandmaster_settings_np))
 			goto bad_length;
 		gsn = (struct grandmaster_settings_np *) m->data;
@@ -298,20 +298,20 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			ntohs(gsn->clockQuality.offsetScaledLogVariance);
 		gsn->utc_offset = ntohs(gsn->utc_offset);
 		break;
-	case TLV_PORT_DATA_SET_NP:
+	case MID_PORT_DATA_SET_NP:
 		if (data_len != sizeof(struct port_ds_np))
 			goto bad_length;
 		pdsnp = (struct port_ds_np *) m->data;
 		pdsnp->neighborPropDelayThresh = ntohl(pdsnp->neighborPropDelayThresh);
 		pdsnp->asCapable = ntohl(pdsnp->asCapable);
 		break;
-	case TLV_SUBSCRIBE_EVENTS_NP:
+	case MID_SUBSCRIBE_EVENTS_NP:
 		if (data_len != sizeof(struct subscribe_events_np))
 			goto bad_length;
 		sen = (struct subscribe_events_np *)m->data;
 		sen->duration = ntohs(sen->duration);
 		break;
-	case TLV_PORT_PROPERTIES_NP:
+	case MID_PORT_PROPERTIES_NP:
 		if (data_len < sizeof(struct port_properties_np))
 			goto bad_length;
 		ppn = (struct port_properties_np *)m->data;
@@ -319,7 +319,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		extra_len = sizeof(struct port_properties_np);
 		extra_len += ppn->interface.length;
 		break;
-	case TLV_PORT_STATS_NP:
+	case MID_PORT_STATS_NP:
 		if (data_len < sizeof(struct port_stats_np))
 			goto bad_length;
 		psn = (struct port_stats_np *)m->data;
@@ -331,12 +331,12 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		}
 		extra_len = sizeof(struct port_stats_np);
 		break;
-	case TLV_SAVE_IN_NON_VOLATILE_STORAGE:
-	case TLV_RESET_NON_VOLATILE_STORAGE:
-	case TLV_INITIALIZE:
-	case TLV_FAULT_LOG_RESET:
-	case TLV_ENABLE_PORT:
-	case TLV_DISABLE_PORT:
+	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
+	case MID_RESET_NON_VOLATILE_STORAGE:
+	case MID_INITIALIZE:
+	case MID_FAULT_LOG_RESET:
+	case MID_ENABLE_PORT:
+	case MID_DISABLE_PORT:
 		if (data_len != 0)
 			goto bad_length;
 		break;
@@ -369,7 +369,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	int i;
 
 	switch (m->id) {
-	case TLV_CLOCK_DESCRIPTION:
+	case MID_CLOCK_DESCRIPTION:
 		if (extra) {
 			cd = &extra->cd;
 			flip16(cd->clockType);
@@ -378,19 +378,19 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 			flip16(&cd->protocolAddress->addressLength);
 		}
 		break;
-	case TLV_DEFAULT_DATA_SET:
+	case MID_DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) m->data;
 		dds->numberPorts = htons(dds->numberPorts);
 		dds->clockQuality.offsetScaledLogVariance =
 			htons(dds->clockQuality.offsetScaledLogVariance);
 		break;
-	case TLV_CURRENT_DATA_SET:
+	case MID_CURRENT_DATA_SET:
 		cds = (struct currentDS *) m->data;
 		cds->stepsRemoved = htons(cds->stepsRemoved);
 		cds->offsetFromMaster = host2net64(cds->offsetFromMaster);
 		cds->meanPathDelay = host2net64(cds->meanPathDelay);
 		break;
-	case TLV_PARENT_DATA_SET:
+	case MID_PARENT_DATA_SET:
 		pds = (struct parentDS *) m->data;
 		pds->parentPortIdentity.portNumber =
 			htons(pds->parentPortIdentity.portNumber);
@@ -401,16 +401,16 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		pds->grandmasterClockQuality.offsetScaledLogVariance =
 			htons(pds->grandmasterClockQuality.offsetScaledLogVariance);
 		break;
-	case TLV_TIME_PROPERTIES_DATA_SET:
+	case MID_TIME_PROPERTIES_DATA_SET:
 		tp = (struct timePropertiesDS *) m->data;
 		tp->currentUtcOffset = htons(tp->currentUtcOffset);
 		break;
-	case TLV_PORT_DATA_SET:
+	case MID_PORT_DATA_SET:
 		p = (struct portDS *) m->data;
 		p->portIdentity.portNumber = htons(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = host2net64(p->peerMeanPathDelay);
 		break;
-	case TLV_TIME_STATUS_NP:
+	case MID_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
 		tsn->master_offset = host2net64(tsn->master_offset);
 		tsn->ingress_time = host2net64(tsn->ingress_time);
@@ -420,26 +420,26 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		scaled_ns_h2n(&tsn->lastGmPhaseChange);
 		tsn->gmPresent = htonl(tsn->gmPresent);
 		break;
-	case TLV_GRANDMASTER_SETTINGS_NP:
+	case MID_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) m->data;
 		gsn->clockQuality.offsetScaledLogVariance =
 			htons(gsn->clockQuality.offsetScaledLogVariance);
 		gsn->utc_offset = htons(gsn->utc_offset);
 		break;
-	case TLV_PORT_DATA_SET_NP:
+	case MID_PORT_DATA_SET_NP:
 		pdsnp = (struct port_ds_np *) m->data;
 		pdsnp->neighborPropDelayThresh = htonl(pdsnp->neighborPropDelayThresh);
 		pdsnp->asCapable = htonl(pdsnp->asCapable);
 		break;
-	case TLV_SUBSCRIBE_EVENTS_NP:
+	case MID_SUBSCRIBE_EVENTS_NP:
 		sen = (struct subscribe_events_np *)m->data;
 		sen->duration = htons(sen->duration);
 		break;
-	case TLV_PORT_PROPERTIES_NP:
+	case MID_PORT_PROPERTIES_NP:
 		ppn = (struct port_properties_np *)m->data;
 		ppn->portIdentity.portNumber = htons(ppn->portIdentity.portNumber);
 		break;
-	case TLV_PORT_STATS_NP:
+	case MID_PORT_STATS_NP:
 		psn = (struct port_stats_np *)m->data;
 		psn->portIdentity.portNumber =
 			htons(psn->portIdentity.portNumber);

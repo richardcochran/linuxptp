@@ -819,10 +819,10 @@ static int port_management_fill_response(struct port *target,
 	tlv->id = id;
 
 	switch (id) {
-	case TLV_NULL_MANAGEMENT:
+	case MID_NULL_MANAGEMENT:
 		datalen = 0;
 		break;
-	case TLV_CLOCK_DESCRIPTION:
+	case MID_CLOCK_DESCRIPTION:
 		cd = &extra->cd;
 		buf = tlv->data;
 		cd->clockType = (UInteger16 *) buf;
@@ -882,7 +882,7 @@ static int port_management_fill_response(struct port *target,
 		buf += PROFILE_ID_LEN;
 		datalen = buf - tlv->data;
 		break;
-	case TLV_PORT_DATA_SET:
+	case MID_PORT_DATA_SET:
 		pds = (struct portDS *) tlv->data;
 		pds->portIdentity            = target->portIdentity;
 		if (target->state == PS_GRAND_MASTER) {
@@ -904,32 +904,32 @@ static int port_management_fill_response(struct port *target,
 		pds->versionNumber           = target->versionNumber;
 		datalen = sizeof(*pds);
 		break;
-	case TLV_LOG_ANNOUNCE_INTERVAL:
+	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = target->logAnnounceInterval;
 		datalen = sizeof(*mtd);
 		break;
-	case TLV_ANNOUNCE_RECEIPT_TIMEOUT:
+	case MID_ANNOUNCE_RECEIPT_TIMEOUT:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = target->announceReceiptTimeout;
 		datalen = sizeof(*mtd);
 		break;
-	case TLV_LOG_SYNC_INTERVAL:
+	case MID_LOG_SYNC_INTERVAL:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = target->logSyncInterval;
 		datalen = sizeof(*mtd);
 		break;
-	case TLV_VERSION_NUMBER:
+	case MID_VERSION_NUMBER:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = target->versionNumber;
 		datalen = sizeof(*mtd);
 		break;
-	case TLV_MASTER_ONLY:
+	case MID_MASTER_ONLY:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = target->master_only;
 		datalen = sizeof(*mtd);
 		break;
-	case TLV_DELAY_MECHANISM:
+	case MID_DELAY_MECHANISM:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		if (target->delayMechanism)
 			mtd->val = target->delayMechanism;
@@ -937,18 +937,18 @@ static int port_management_fill_response(struct port *target,
 			mtd->val = DM_E2E;
 		datalen = sizeof(*mtd);
 		break;
-	case TLV_LOG_MIN_PDELAY_REQ_INTERVAL:
+	case MID_LOG_MIN_PDELAY_REQ_INTERVAL:
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = target->logMinPdelayReqInterval;
 		datalen = sizeof(*mtd);
 		break;
-	case TLV_PORT_DATA_SET_NP:
+	case MID_PORT_DATA_SET_NP:
 		pdsnp = (struct port_ds_np *) tlv->data;
 		pdsnp->neighborPropDelayThresh = target->neighborPropDelayThresh;
 		pdsnp->asCapable = target->asCapable;
 		datalen = sizeof(*pdsnp);
 		break;
-	case TLV_PORT_PROPERTIES_NP:
+	case MID_PORT_PROPERTIES_NP:
 		ppn = (struct port_properties_np *)tlv->data;
 		ppn->portIdentity = target->portIdentity;
 		if (target->state == PS_GRAND_MASTER)
@@ -960,7 +960,7 @@ static int port_management_fill_response(struct port *target,
 		ptp_text_set(&ppn->interface, ts_label);
 		datalen = sizeof(*ppn) + ppn->interface.length;
 		break;
-	case TLV_PORT_STATS_NP:
+	case MID_PORT_STATS_NP:
 		psn = (struct port_stats_np *)tlv->data;
 		psn->portIdentity = target->portIdentity;
 		psn->stats = target->stats;
@@ -1014,7 +1014,7 @@ static int port_management_set(struct port *target,
 	tlv = (struct management_tlv *) req->management.suffix;
 
 	switch (id) {
-	case TLV_PORT_DATA_SET_NP:
+	case MID_PORT_DATA_SET_NP:
 		pdsnp = (struct port_ds_np *) tlv->data;
 		target->neighborPropDelayThresh = pdsnp->neighborPropDelayThresh;
 		respond = 1;
@@ -2898,28 +2898,28 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	}
 
 	switch (mgt->id) {
-	case TLV_NULL_MANAGEMENT:
-	case TLV_CLOCK_DESCRIPTION:
-	case TLV_PORT_DATA_SET:
-	case TLV_LOG_ANNOUNCE_INTERVAL:
-	case TLV_ANNOUNCE_RECEIPT_TIMEOUT:
-	case TLV_LOG_SYNC_INTERVAL:
-	case TLV_VERSION_NUMBER:
-	case TLV_ENABLE_PORT:
-	case TLV_DISABLE_PORT:
-	case TLV_UNICAST_NEGOTIATION_ENABLE:
-	case TLV_UNICAST_MASTER_TABLE:
-	case TLV_UNICAST_MASTER_MAX_TABLE_SIZE:
-	case TLV_ACCEPTABLE_MASTER_TABLE_ENABLED:
-	case TLV_ALTERNATE_MASTER:
-	case TLV_MASTER_ONLY:
-	case TLV_TRANSPARENT_CLOCK_PORT_DATA_SET:
-	case TLV_DELAY_MECHANISM:
-	case TLV_LOG_MIN_PDELAY_REQ_INTERVAL:
-		port_management_send_error(p, ingress, msg, TLV_NOT_SUPPORTED);
+	case MID_NULL_MANAGEMENT:
+	case MID_CLOCK_DESCRIPTION:
+	case MID_PORT_DATA_SET:
+	case MID_LOG_ANNOUNCE_INTERVAL:
+	case MID_ANNOUNCE_RECEIPT_TIMEOUT:
+	case MID_LOG_SYNC_INTERVAL:
+	case MID_VERSION_NUMBER:
+	case MID_ENABLE_PORT:
+	case MID_DISABLE_PORT:
+	case MID_UNICAST_NEGOTIATION_ENABLE:
+	case MID_UNICAST_MASTER_TABLE:
+	case MID_UNICAST_MASTER_MAX_TABLE_SIZE:
+	case MID_ACCEPTABLE_MASTER_TABLE_ENABLED:
+	case MID_ALTERNATE_MASTER:
+	case MID_MASTER_ONLY:
+	case MID_TRANSPARENT_CLOCK_PORT_DATA_SET:
+	case MID_DELAY_MECHANISM:
+	case MID_LOG_MIN_PDELAY_REQ_INTERVAL:
+		port_management_send_error(p, ingress, msg, MID_NOT_SUPPORTED);
 		break;
 	default:
-		port_management_send_error(p, ingress, msg, TLV_NO_SUCH_ID);
+		port_management_send_error(p, ingress, msg, MID_NO_SUCH_ID);
 		return -1;
 	}
 	return 1;
@@ -3024,7 +3024,7 @@ void port_notify_event(struct port *p, enum notification event)
 
 	switch (event) {
 	case NOTIFY_PORT_STATE:
-		id = TLV_PORT_DATA_SET;
+		id = MID_PORT_DATA_SET;
 		break;
 	default:
 		return;
