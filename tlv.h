@@ -175,6 +175,32 @@ struct grant_unicast_xmit_tlv {
 	uint8_t         flags;
 } PACKED;
 
+struct alternate_time_offset_indicator_tlv {
+	Enumeration16   type;
+	UInteger16      length;
+	UInteger8       keyField;
+	/* Message alignment broken by design. */
+	Integer32       currentOffset;
+	Integer32       jumpSeconds;
+	struct {
+		uint16_t   seconds_msb; /* 16 bits + */
+		uint32_t   seconds_lsb; /* 32 bits = 48 bits*/
+	} PACKED timeOfNextJump;
+	struct PTPText  displayName;
+} PACKED;
+
+struct alternate_time_offset_properties {
+	UInteger8       keyField;
+	/* Message alignment broken by design. */
+	Integer32       currentOffset;
+	Integer32       jumpSeconds;
+	struct {
+		uint16_t   seconds_msb; /* 16 bits + */
+		uint32_t   seconds_lsb; /* 32 bits = 48 bits*/
+	} PACKED timeOfNextJump;
+	uint8_t pad;
+} PACKED;
+
 struct management_tlv {
 	Enumeration16 type;
 	UInteger16    length;

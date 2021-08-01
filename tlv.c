@@ -78,6 +78,22 @@ static uint16_t flip16(void *p)
 	return v;
 }
 
+static void host2net32_unaligned(void *p)
+{
+	int32_t v;
+	memcpy(&v, p, sizeof(v));
+	v = htonl(v);
+	memcpy(p, &v, sizeof(v));
+}
+
+static void net2host32_unaligned(void *p)
+{
+	int32_t v;
+	memcpy(&v, p, sizeof(v));
+	v = ntohl(v);
+	memcpy(p, &v, sizeof(v));
+}
+
 static int64_t host2net64_unaligned(void *p)
 {
 	int64_t v;
@@ -110,6 +126,39 @@ static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_siz
 	expected_length = base_size + n_items * item_size;
 
 	return (tlv->length == expected_length) ? false : true;
+}
+
+static int alttime_offset_post_recv(struct tlv_extra *extra)
+{
+	struct TLV *tlv = extra->tlv;
+	struct alternate_time_offset_indicator_tlv *atoi =
+		(struct alternate_time_offset_indicator_tlv *) tlv;
+
+	if (tlv->length < sizeof(struct alternate_time_offset_indicator_tlv) +
+	    atoi->displayName.length - sizeof(struct TLV)) {
+		return -EBADMSG;
+	}
+
+	/* Message alignment broken by design. */
+	net2host32_unaligned(&atoi->currentOffset);
+	net2host32_unaligned(&atoi->jumpSeconds);
+	flip16(&atoi->timeOfNextJump.seconds_msb);
+	net2host32_unaligned(&atoi->timeOfNextJump.seconds_lsb);
+
+	return 0;
+}
+
+static void alttime_offset_pre_send(struct tlv_extra *extra)
+{
+	struct alternate_time_offset_indicator_tlv *atoi;
+
+	atoi = (struct alternate_time_offset_indicator_tlv *) extra->tlv;
+
+	/* Message alignment broken by design. */
+	host2net32_unaligned(&atoi->currentOffset);
+	host2net32_unaligned(&atoi->jumpSeconds);
+	flip16(&atoi->timeOfNextJump.seconds_msb);
+	host2net32_unaligned(&atoi->timeOfNextJump.seconds_lsb);
 }
 
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
@@ -1065,6 +1114,8 @@ int tlv_post_recv(struct tlv_extra *extra)
 		}
 		break;
 	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
+		result = alttime_offset_post_recv(extra);
+		break;
 	case TLV_AUTHENTICATION_2008:
 	case TLV_AUTHENTICATION_CHALLENGE:
 	case TLV_SECURITY_ASSOCIATION_UPDATE:
@@ -1128,7 +1179,10 @@ void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)
 		unicast_negotiation_pre_send(tlv);
 		break;
 	case TLV_PATH_TRACE:
+		break;
 	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
+		alttime_offset_pre_send(extra);
+		break;
 	case TLV_AUTHENTICATION_2008:
 	case TLV_AUTHENTICATION_CHALLENGE:
 	case TLV_SECURITY_ASSOCIATION_UPDATE:
