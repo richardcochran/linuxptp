@@ -42,6 +42,7 @@
 #include "rtnl.h"
 #include "tlv.h"
 #include "tsproc.h"
+#include "tz.h"
 #include "uds.h"
 #include "util.h"
 
@@ -77,6 +78,15 @@ struct clock_subscriber {
 	struct address addr;
 	UInteger16 sequenceId;
 	time_t expiration;
+};
+
+struct time_zone {
+	bool enabled;
+	int32_t current_offset;
+	int32_t jump_seconds;
+	uint16_t next_jump_msb;
+	uint32_t next_jump_lsb;
+	struct static_ptp_text display_name;
 };
 
 struct clock {
@@ -137,6 +147,7 @@ struct clock {
 	struct monitor *slave_event_monitor;
 	int step_window_counter;
 	int step_window;
+	struct time_zone tz[MAX_TIME_ZONES];
 };
 
 struct clock the_clock;
@@ -896,19 +907,17 @@ int clock_required_modes(struct clock *c)
 struct clock *clock_create(enum clock_type type, struct config *config,
 			   const char *phc_device)
 {
+	int conf_phc_index, i, max_adj = 0, phc_index, required_modes = 0, sfl, sw_ts;
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
 	char ts_label[IF_NAMESIZE], phc[32], *tmp;
 	enum timestamp_type timestamping;
-	int phc_index, conf_phc_index, required_modes = 0;
 	struct clock *c = &the_clock;
-	int max_adj = 0, sw_ts;
 	const char *uds_ifname;
 	double fadj = 0.0;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
 	struct interface *iface;
 	struct timespec ts;
-	int sfl;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
@@ -1204,6 +1213,10 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->dad.pds.observedParentOffsetScaledLogVariance = 0xffff;
 	c->dad.pds.observedParentClockPhaseChangeRate    = 0x7fffffff;
 	c->dad.ptl = c->ptl;
+
+	for (i = 0; i < MAX_TIME_ZONES; i++) {
+		c->tz[i].display_name.max_symbols = MAX_TZ_DISPLAY_NAME;
+	}
 
 	clock_sync_interval(c, 0);
 
