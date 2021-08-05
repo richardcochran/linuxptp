@@ -157,6 +157,32 @@ static int clock_resize_pollfd(struct clock *c, int new_nports);
 static void clock_remove_port(struct clock *c, struct port *p);
 static void clock_stats_display(struct clock_stats *s);
 
+uint8_t clock_alttime_offset_get_key(struct ptp_message *req)
+{
+	struct management_tlv_datum *mtd;
+	struct management_tlv *mgt =
+		(struct management_tlv *) req->management.suffix;
+
+	/*
+	 * The data field of incoming management request messages is
+	 * normally ignored.  Indeed it can even be empty.  However
+	 * the ALTERNATE_TIME_OFFSET requests are exceptional because
+	 * the key field selects one of the configured time zones.
+	 *
+	 * Provide the first time zone for an empty GET, and validate
+	 * the length of the request when non-empty.
+	 */
+	if (mgt->length == sizeof(mgt->id)) {
+		return 0;
+	}
+	if (mgt->length < sizeof(mgt->id) + sizeof(*mtd)) {
+		return MAX_TIME_ZONES;
+	}
+	mtd = (struct management_tlv_datum *) mgt->data;
+
+	return mtd->val;
+}
+
 static void remove_subscriber(struct clock_subscriber *s)
 {
 	LIST_REMOVE(s, list);
@@ -354,6 +380,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 					  struct ptp_message *req,
 					  struct ptp_message *rsp, int id)
 {
+	struct alternate_time_offset_properties *atop;
 	struct grandmaster_settings_np *gsn;
 	struct management_tlv_datum *mtd;
 	struct subscribe_events_np *sen;
@@ -363,6 +390,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	struct PTPText *text;
 	uint16_t duration;
 	int datalen = 0;
+	uint8_t key;
 
 	extra = tlv_extra_alloc();
 	if (!extra) {
@@ -432,6 +460,24 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & PTP_TIMESCALE;
 		datalen = sizeof(*mtd);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		key = clock_alttime_offset_get_key(req);
+		if (key >= MAX_TIME_ZONES) {
+			break;
+		}
+		atop = (struct alternate_time_offset_properties *) tlv->data;
+		atop->keyField = key;
+		/* Message alignment broken by design. */
+		memcpy(&atop->currentOffset, &c->tz[key].current_offset,
+		       sizeof(atop->currentOffset));
+		memcpy(&atop->jumpSeconds, &c->tz[key].jump_seconds,
+		       sizeof(atop->jumpSeconds));
+		memcpy(&atop->timeOfNextJump.seconds_lsb, &c->tz[key].next_jump_lsb,
+		       sizeof(atop->timeOfNextJump.seconds_lsb));
+		memcpy(&atop->timeOfNextJump.seconds_msb, &c->tz[key].next_jump_msb,
+		       sizeof(atop->timeOfNextJump.seconds_msb));
+		datalen = sizeof(*atop);
 		break;
 	case MID_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) tlv->data;
@@ -511,11 +557,12 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 static int clock_management_set(struct clock *c, struct port *p,
 				int id, struct ptp_message *req, int *changed)
 {
-	int respond = 0;
-	struct management_tlv *tlv;
-	struct management_tlv_datum *mtd;
+	struct alternate_time_offset_properties *atop;
 	struct grandmaster_settings_np *gsn;
+	struct management_tlv_datum *mtd;
 	struct subscribe_events_np *sen;
+	struct management_tlv *tlv;
+	int key, respond = 0;
 
 	tlv = (struct management_tlv *) req->management.suffix;
 
@@ -531,6 +578,22 @@ static int clock_management_set(struct clock *c, struct port *p,
 		c->dds.priority2 = mtd->val;
 		*changed = 1;
 		respond = 1;
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		atop = (struct alternate_time_offset_properties *) tlv->data;
+		key = atop->keyField;
+		if (key < MAX_TIME_ZONES) {
+			/* Message alignment broken by design. */
+			memcpy(&c->tz[key].current_offset, &atop->currentOffset,
+			       sizeof(c->tz[key].current_offset));
+			memcpy(&c->tz[key].jump_seconds, &atop->jumpSeconds,
+			       sizeof(c->tz[key].jump_seconds));
+			memcpy(&c->tz[key].next_jump_lsb, &atop->timeOfNextJump.seconds_lsb,
+			       sizeof(c->tz[key].next_jump_lsb));
+			memcpy(&c->tz[key].next_jump_msb, &atop->timeOfNextJump.seconds_msb,
+			       sizeof(c->tz[key].next_jump_msb));
+			respond = 1;
+		}
 		break;
 	case MID_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) tlv->data;
@@ -1533,7 +1596,6 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
 	case MID_ALTERNATE_TIME_OFFSET_NAME:
 	case MID_ALTERNATE_TIME_OFFSET_MAX_KEY:
-	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 	case MID_TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case MID_PRIMARY_DOMAIN:
 	case MID_TIME_STATUS_NP:

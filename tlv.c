@@ -164,6 +164,7 @@ static void alttime_offset_pre_send(struct tlv_extra *extra)
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
+	struct alternate_time_offset_properties *atop;
 	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
@@ -334,6 +335,17 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		p->portIdentity.portNumber = ntohs(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = net2host64(p->peerMeanPathDelay);
 		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		atop = (struct alternate_time_offset_properties *) m->data;
+		if (data_len != sizeof(*atop)) {
+			goto bad_length;
+		}
+		/* Message alignment broken by design. */
+		net2host32_unaligned(&atop->currentOffset);
+		net2host32_unaligned(&atop->jumpSeconds);
+		flip16(&atop->timeOfNextJump.seconds_msb);
+		net2host32_unaligned(&atop->timeOfNextJump.seconds_lsb);
+		break;
 	case MID_TIME_STATUS_NP:
 		if (data_len != sizeof(struct time_status_np))
 			goto bad_length;
@@ -483,6 +495,7 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
+	struct alternate_time_offset_properties *atop;
 	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
@@ -544,6 +557,14 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		p = (struct portDS *) m->data;
 		p->portIdentity.portNumber = htons(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = host2net64(p->peerMeanPathDelay);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		atop = (struct alternate_time_offset_properties *) m->data;
+		/* Message alignment broken by design. */
+		host2net32_unaligned(&atop->currentOffset);
+		host2net32_unaligned(&atop->jumpSeconds);
+		flip16(&atop->timeOfNextJump.seconds_msb);
+		host2net32_unaligned(&atop->timeOfNextJump.seconds_lsb);
 		break;
 	case MID_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;

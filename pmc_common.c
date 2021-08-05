@@ -123,7 +123,7 @@ struct management_id idtab[] = {
 	{ "ALTERNATE_TIME_OFFSET_ENABLE", MID_ALTERNATE_TIME_OFFSET_ENABLE, not_supported },
 	{ "ALTERNATE_TIME_OFFSET_NAME", MID_ALTERNATE_TIME_OFFSET_NAME, not_supported },
 	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", MID_ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", MID_ALTERNATE_TIME_OFFSET_PROPERTIES, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", MID_ALTERNATE_TIME_OFFSET_PROPERTIES, do_set_action },
 	{ "MASTER_ONLY", MID_MASTER_ONLY, do_get_action },
 	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", MID_TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
 	{ "PRIMARY_DOMAIN", MID_PRIMARY_DOMAIN, not_supported },
@@ -170,6 +170,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 {
 	int cnt, code = idtab[index].code, freq_traceable, leap_59, leap_61,
 		ptp_timescale, time_traceable, utc_off_valid;
+	struct alternate_time_offset_properties atop;
 	struct ieee_c37_238_settings_np pwr;
 	struct grandmaster_settings_np gsn;
 	struct management_tlv_datum mtd;
@@ -177,6 +178,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	struct port_ds_np pnp;
 	char onoff_port_state[4] = "off";
 	char onoff_time_status[4] = "off";
+	uint64_t jump;
 
 	mtd.reserved = 0;
 
@@ -204,6 +206,26 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			break;
 		}
 		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		memset(&atop, 0, sizeof(atop));
+		cnt = sscanf(str, " %*s %*s "
+			     "keyField       %hhu "
+			     "currentOffset  %d "
+			     "jumpSeconds    %d "
+			     "timeOfNextJump %" SCNu64,
+			     &atop.keyField,
+			     &atop.currentOffset,
+			     &atop.jumpSeconds,
+			     &jump);
+		if (cnt != 4) {
+			fprintf(stderr, "%s SET needs 4 values\n",
+				idtab[index].name);
+			break;
+		}
+		atop.timeOfNextJump.seconds_lsb = jump & 0xffffffff;
+		atop.timeOfNextJump.seconds_msb = jump >> 32;
+		pmc_send_set_action(pmc, code, &atop, sizeof(atop));
 		break;
 	case MID_GRANDMASTER_SETTINGS_NP:
 		cnt = sscanf(str, " %*s %*s "
@@ -574,6 +596,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_TIME_STATUS_NP:
 		len += sizeof(struct time_status_np);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		len += sizeof(struct alternate_time_offset_properties);
 		break;
 	case MID_GRANDMASTER_SETTINGS_NP:
 		len += sizeof(struct grandmaster_settings_np);

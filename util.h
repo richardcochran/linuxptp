@@ -66,6 +66,13 @@ static inline uint16_t align16(void *p)
 	return v;
 }
 
+static inline uint32_t align32(void *p)
+{
+	uint32_t v;
+	memcpy(&v, p, sizeof(v));
+	return v;
+}
+
 char *bin2str_impl(Octet *data, int len, char *buf, int buf_len);
 
 /**

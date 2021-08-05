@@ -157,6 +157,7 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
+	struct alternate_time_offset_properties *atop;
 	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
@@ -176,6 +177,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
+	uint64_t next_jump;
 	struct portDS *p;
 	struct TLV *tlv;
 	uint8_t *buf;
@@ -358,6 +360,21 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "TIMESCALE_PROPERTIES "
 			IFMT "ptpTimescale %d", mtd->val & PTP_TIMESCALE ? 1 : 0);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		atop = (struct alternate_time_offset_properties *) mgt->data;
+		next_jump = atop->timeOfNextJump.seconds_msb;
+		next_jump <<= 32;
+		next_jump |= atop->timeOfNextJump.seconds_lsb;
+		fprintf(fp, "ALTERNATE_TIME_OFFSET_PROPERTIES "
+			IFMT "keyField       %hhu"
+			IFMT "currentOffset  %d"
+			IFMT "jumpSeconds    %d"
+			IFMT "timeOfNextJump %" PRIu64,
+			atop->keyField,
+			align32(&atop->currentOffset),
+			align32(&atop->jumpSeconds),
+			next_jump);
 		break;
 	case MID_MASTER_ONLY:
 		mtd = (struct management_tlv_datum *) mgt->data;
