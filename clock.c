@@ -381,6 +381,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 					  struct ptp_message *rsp, int id)
 {
 	struct alternate_time_offset_properties *atop;
+	struct alternate_time_offset_name *aton;
 	struct grandmaster_settings_np *gsn;
 	struct management_tlv_datum *mtd;
 	struct subscribe_events_np *sen;
@@ -460,6 +461,16 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		mtd = (struct management_tlv_datum *) tlv->data;
 		mtd->val = c->tds.flags & PTP_TIMESCALE;
 		datalen = sizeof(*mtd);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		key = clock_alttime_offset_get_key(req);
+		if (key >= MAX_TIME_ZONES) {
+			break;
+		}
+		aton = (struct alternate_time_offset_name *) tlv->data;
+		aton->keyField = key;
+		ptp_text_copy(&aton->displayName, &c->tz[key].display_name);
+		datalen = sizeof(*aton) + aton->displayName.length;
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		key = clock_alttime_offset_get_key(req);
@@ -558,6 +569,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 				int id, struct ptp_message *req, int *changed)
 {
 	struct alternate_time_offset_properties *atop;
+	struct alternate_time_offset_name *aton;
 	struct grandmaster_settings_np *gsn;
 	struct management_tlv_datum *mtd;
 	struct subscribe_events_np *sen;
@@ -578,6 +590,14 @@ static int clock_management_set(struct clock *c, struct port *p,
 		c->dds.priority2 = mtd->val;
 		*changed = 1;
 		respond = 1;
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		aton = (struct alternate_time_offset_name *) tlv->data;
+		key = aton->keyField;
+		if (key < MAX_TIME_ZONES &&
+		    !static_ptp_text_copy(&c->tz[key].display_name, &aton->displayName)) {
+			respond = 1;
+		}
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		atop = (struct alternate_time_offset_properties *) tlv->data;
@@ -1594,7 +1614,6 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case MID_ACCEPTABLE_MASTER_TABLE:
 	case MID_ACCEPTABLE_MASTER_MAX_TABLE_SIZE:
 	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
-	case MID_ALTERNATE_TIME_OFFSET_NAME:
 	case MID_ALTERNATE_TIME_OFFSET_MAX_KEY:
 	case MID_TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case MID_PRIMARY_DOMAIN:

@@ -79,6 +79,7 @@ static void do_get_action(struct pmc *pmc, int action, int index, char *str);
 static void do_set_action(struct pmc *pmc, int action, int index, char *str);
 static void not_supported(struct pmc *pmc, int action, int index, char *str);
 static void null_management(struct pmc *pmc, int action, int index, char *str);
+static int send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name);
 
 static const char *action_string[] = {
 	"GET",
@@ -121,7 +122,7 @@ struct management_id idtab[] = {
 	{ "ACCEPTABLE_MASTER_TABLE", MID_ACCEPTABLE_MASTER_TABLE, not_supported },
 	{ "ACCEPTABLE_MASTER_MAX_TABLE_SIZE", MID_ACCEPTABLE_MASTER_MAX_TABLE_SIZE, not_supported },
 	{ "ALTERNATE_TIME_OFFSET_ENABLE", MID_ALTERNATE_TIME_OFFSET_ENABLE, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_NAME", MID_ALTERNATE_TIME_OFFSET_NAME, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_NAME", MID_ALTERNATE_TIME_OFFSET_NAME, do_set_action },
 	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", MID_ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
 	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", MID_ALTERNATE_TIME_OFFSET_PROPERTIES, do_set_action },
 	{ "MASTER_ONLY", MID_MASTER_ONLY, do_get_action },
@@ -178,7 +179,9 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	struct port_ds_np pnp;
 	char onoff_port_state[4] = "off";
 	char onoff_time_status[4] = "off";
+	char display_name[11] = {0};
 	uint64_t jump;
+	uint8_t key;
 
 	mtd.reserved = 0;
 
@@ -206,6 +209,19 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			break;
 		}
 		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		cnt = sscanf(str, " %*s %*s "
+			     "keyField       %hhu "
+			     "displayName    %10s ",
+			     &key,
+			     display_name);
+		if (cnt != 2) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		send_set_aton(pmc, code, key, display_name);
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		memset(&atop, 0, sizeof(atop));
@@ -597,6 +613,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 	case MID_TIME_STATUS_NP:
 		len += sizeof(struct time_status_np);
 		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		len += sizeof(struct alternate_time_offset_name);
+		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		len += sizeof(struct alternate_time_offset_properties);
 		break;
@@ -722,6 +741,41 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 	mgt->length = 2 + datasize;
 	mgt->id = id;
 	memcpy(mgt->data, data, datasize);
+	pmc_send(pmc, msg);
+	msg_put(msg);
+
+	return 0;
+}
+
+static int send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name)
+{
+	struct alternate_time_offset_name *aton;
+	struct management_tlv *mgt;
+	struct ptp_message *msg;
+	struct tlv_extra *extra;
+	int datasize;
+
+	datasize = sizeof(*aton) + strlen(name);
+	if (datasize % 2) {
+		datasize++;
+	}
+	msg = pmc_message(pmc, SET);
+	if (!msg) {
+		return -1;
+	}
+	extra = msg_tlv_append(msg, sizeof(*mgt) + datasize);
+	if (!extra) {
+		msg_put(msg);
+		return -ENOMEM;
+	}
+	mgt = (struct management_tlv *) extra->tlv;
+	mgt->type = TLV_MANAGEMENT;
+	mgt->length = 2 + datasize;
+	mgt->id = id;
+	aton = (struct alternate_time_offset_name *) mgt->data;
+	aton->keyField = key;
+	ptp_text_set(&aton->displayName, name);
+
 	pmc_send(pmc, msg);
 	msg_put(msg);
 

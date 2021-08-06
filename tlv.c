@@ -165,6 +165,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
 	struct alternate_time_offset_properties *atop;
+	struct alternate_time_offset_name *aton;
 	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
@@ -334,6 +335,14 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		p = (struct portDS *) m->data;
 		p->portIdentity.portNumber = ntohs(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = net2host64(p->peerMeanPathDelay);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		aton = (struct alternate_time_offset_name *) m->data;
+		if (data_len < sizeof(*aton)) {
+			goto bad_length;
+		}
+		extra_len = sizeof(*aton);
+		extra_len += aton->displayName.length;
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		atop = (struct alternate_time_offset_properties *) m->data;
@@ -557,6 +566,8 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		p = (struct portDS *) m->data;
 		p->portIdentity.portNumber = htons(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = host2net64(p->peerMeanPathDelay);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		atop = (struct alternate_time_offset_properties *) m->data;

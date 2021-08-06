@@ -158,6 +158,7 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
 	struct alternate_time_offset_properties *atop;
+	struct alternate_time_offset_name *aton;
 	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
@@ -360,6 +361,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "TIMESCALE_PROPERTIES "
 			IFMT "ptpTimescale %d", mtd->val & PTP_TIMESCALE ? 1 : 0);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		aton = (struct alternate_time_offset_name *) mgt->data;
+		fprintf(fp, "ALTERNATE_TIME_OFFSET_NAME "
+			IFMT "keyField       %hhu"
+			IFMT "displayName    %s",
+			aton->keyField,
+			text2str(&aton->displayName));
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		atop = (struct alternate_time_offset_properties *) mgt->data;

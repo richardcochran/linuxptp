@@ -189,6 +189,11 @@ struct alternate_time_offset_indicator_tlv {
 	struct PTPText  displayName;
 } PACKED;
 
+struct alternate_time_offset_name {
+	UInteger8       keyField;
+	struct PTPText  displayName;
+} PACKED;
+
 struct alternate_time_offset_properties {
 	UInteger8       keyField;
 	/* Message alignment broken by design. */
