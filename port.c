@@ -1683,6 +1683,9 @@ int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 	if (ieee_c37_238_append(p, msg)) {
 		pr_err("%s: append power profile failed", p->log_name);
 	}
+	if (clock_append_timezones(p->clock, msg)) {
+		pr_err("%s: append time zones failed", p->log_name);
+	}
 
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {

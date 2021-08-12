@@ -157,6 +157,43 @@ static int clock_resize_pollfd(struct clock *c, int new_nports);
 static void clock_remove_port(struct clock *c, struct port *p);
 static void clock_stats_display(struct clock_stats *s);
 
+static int clock_alttime_offset_append(struct clock *c, int key, struct ptp_message *m)
+{
+	struct alternate_time_offset_indicator_tlv *atoi;
+	struct tlv_extra *extra;
+	int tlv_len;
+
+	tlv_len = sizeof(*atoi) + c->tz[key].display_name.length;
+	if (tlv_len % 2) {
+		tlv_len++;
+	}
+	extra = msg_tlv_append(m, tlv_len);
+	if (!extra) {
+		return -1;
+	}
+	atoi = (struct alternate_time_offset_indicator_tlv *) extra->tlv;
+	atoi->type = TLV_ALTERNATE_TIME_OFFSET_INDICATOR;
+	atoi->length = tlv_len - sizeof(atoi->type) - sizeof(atoi->length);
+	atoi->keyField = key;
+
+	/* Message alignment broken by design. */
+	memcpy(&atoi->currentOffset, &c->tz[key].current_offset,
+	       sizeof(atoi->currentOffset));
+
+	memcpy(&atoi->jumpSeconds, &c->tz[key].jump_seconds,
+	       sizeof(atoi->jumpSeconds));
+
+	memcpy(&atoi->timeOfNextJump.seconds_lsb, &c->tz[key].next_jump_lsb,
+	       sizeof(atoi->timeOfNextJump.seconds_lsb));
+
+	memcpy(&atoi->timeOfNextJump.seconds_msb, &c->tz[key].next_jump_msb,
+	       sizeof(atoi->timeOfNextJump.seconds_msb));
+
+	ptp_text_copy(&atoi->displayName, &c->tz[key].display_name);
+
+	return 0;
+}
+
 uint8_t clock_alttime_offset_get_key(struct ptp_message *req)
 {
 	struct management_tlv_datum *mtd;
@@ -462,6 +499,16 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		mtd->val = c->tds.flags & PTP_TIMESCALE;
 		datalen = sizeof(*mtd);
 		break;
+	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
+		key = clock_alttime_offset_get_key(req);
+		if (key >= MAX_TIME_ZONES) {
+			break;
+		}
+		mtd = (struct management_tlv_datum *) tlv->data;
+		mtd->val = key;
+		mtd->reserved = c->tz[key].enabled ? 1 : 0;
+		datalen = sizeof(*mtd);
+		break;
 	case MID_ALTERNATE_TIME_OFFSET_NAME:
 		key = clock_alttime_offset_get_key(req);
 		if (key >= MAX_TIME_ZONES) {
@@ -574,7 +621,7 @@ static int clock_management_set(struct clock *c, struct port *p,
 	struct management_tlv_datum *mtd;
 	struct subscribe_events_np *sen;
 	struct management_tlv *tlv;
-	int key, respond = 0;
+	int k, key, respond = 0;
 
 	tlv = (struct management_tlv *) req->management.suffix;
 
@@ -590,6 +637,20 @@ static int clock_management_set(struct clock *c, struct port *p,
 		c->dds.priority2 = mtd->val;
 		*changed = 1;
 		respond = 1;
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
+		mtd = (struct management_tlv_datum *) tlv->data;
+		key = mtd->val;
+		if (key == 0xff) {
+			for (k = 0; k < MAX_TIME_ZONES; k++) {
+				c->tz[k].enabled = mtd->reserved & 1 ? true : false;
+			}
+			respond = 1;
+		}
+		if (key < MAX_TIME_ZONES) {
+			c->tz[key].enabled = mtd->reserved & 1 ? true : false;
+			respond = 1;
+		}
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_NAME:
 		aton = (struct alternate_time_offset_name *) tlv->data;
@@ -895,6 +956,22 @@ static int forwarding(struct clock *c, struct port *p)
 }
 
 /* public methods */
+
+int clock_append_timezones(struct clock *c, struct ptp_message *m)
+{
+	int err = 0, i;
+
+	for (i = 0; i < MAX_TIME_ZONES; i++) {
+		if (!c->tz[i].enabled) {
+			continue;
+		}
+		err = clock_alttime_offset_append(c, i, m);
+		if (err) {
+			break;
+		}
+	}
+	return err;
+}
 
 UInteger8 clock_class(struct clock *c)
 {
@@ -1613,7 +1690,6 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	case MID_GRANDMASTER_CLUSTER_TABLE:
 	case MID_ACCEPTABLE_MASTER_TABLE:
 	case MID_ACCEPTABLE_MASTER_MAX_TABLE_SIZE:
-	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
 	case MID_ALTERNATE_TIME_OFFSET_MAX_KEY:
 	case MID_TRANSPARENT_CLOCK_DEFAULT_DATA_SET:
 	case MID_PRIMARY_DOMAIN:

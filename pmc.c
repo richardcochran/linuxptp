@@ -362,6 +362,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		fprintf(fp, "TIMESCALE_PROPERTIES "
 			IFMT "ptpTimescale %d", mtd->val & PTP_TIMESCALE ? 1 : 0);
 		break;
+	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
+		mtd = (struct management_tlv_datum *) mgt->data;
+		fprintf(fp, "ALTERNATE_TIME_OFFSET_ENABLE "
+			IFMT "keyField       %hhu"
+			IFMT "enable         %d",
+			mtd->val,
+			mtd->reserved & 1 ? 1 : 0);
+		break;
 	case MID_ALTERNATE_TIME_OFFSET_NAME:
 		aton = (struct alternate_time_offset_name *) mgt->data;
 		fprintf(fp, "ALTERNATE_TIME_OFFSET_NAME "

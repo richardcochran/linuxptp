@@ -121,7 +121,7 @@ struct management_id idtab[] = {
 	{ "GRANDMASTER_CLUSTER_TABLE", MID_GRANDMASTER_CLUSTER_TABLE, not_supported },
 	{ "ACCEPTABLE_MASTER_TABLE", MID_ACCEPTABLE_MASTER_TABLE, not_supported },
 	{ "ACCEPTABLE_MASTER_MAX_TABLE_SIZE", MID_ACCEPTABLE_MASTER_MAX_TABLE_SIZE, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_ENABLE", MID_ALTERNATE_TIME_OFFSET_ENABLE, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_ENABLE", MID_ALTERNATE_TIME_OFFSET_ENABLE, do_set_action },
 	{ "ALTERNATE_TIME_OFFSET_NAME", MID_ALTERNATE_TIME_OFFSET_NAME, do_set_action },
 	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", MID_ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
 	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", MID_ALTERNATE_TIME_OFFSET_PROPERTIES, do_set_action },
@@ -182,6 +182,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	char display_name[11] = {0};
 	uint64_t jump;
 	uint8_t key;
+	int enable;
 
 	mtd.reserved = 0;
 
@@ -208,6 +209,17 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 				idtab[index].name);
 			break;
 		}
+		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
+		cnt = sscanf(str,  " %*s %*s keyField %hhu enable %d",
+			     &mtd.val, &enable);
+		if (cnt != 2) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		mtd.reserved = enable ? 1 : 0;
 		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_NAME:
@@ -612,6 +624,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_TIME_STATUS_NP:
 		len += sizeof(struct time_status_np);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
+		len += sizeof(struct management_tlv_datum);
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_NAME:
 		len += sizeof(struct alternate_time_offset_name);

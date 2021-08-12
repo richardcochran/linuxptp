@@ -44,6 +44,14 @@ enum clock_type {
 };
 
 /**
+ * Appends the active time zone TLVs to a given message.
+ * @param c          The clock instance.
+ * @param m          The message that will receive the TLVs.
+ * @return           Zero on success, non-zero otherwise.
+ */
+int clock_append_timezones(struct clock *c, struct ptp_message *m);
+
+/**
  * Obtains a reference to the best foreign master of a clock.
  * @param c  The clock instance.
  * @return   A pointer to the data set of the foreign master,
