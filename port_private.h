@@ -143,6 +143,8 @@ struct port {
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
 	UInteger8           versionNumber; /* UInteger4 */
+	UInteger8	    delay_response_counter;
+	UInteger8	    delay_response_timeout;
 	struct PortStats    stats;
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;

@@ -304,6 +304,13 @@ UInteger8 clock_get_clock_class_threshold(struct clock *c);
 UInteger16 clock_steps_removed(struct clock *c);
 
 /**
+ * Obtain the Time Stamp Processor instance from a clock.
+ * @param c The clock instance.
+ * @return  The Time Stamp Processor associated with the clock.
+ */
+struct tsproc *clock_get_tsproc(struct clock *c);
+
+/**
  * Switch to a new PTP Hardware Clock, for use with the "jbod" mode.
  * @param c          The clock instance.
  * @param phc_index  The index of the PHC device to use.

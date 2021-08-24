@@ -1732,6 +1732,7 @@ int port_initialize(struct port *p)
 	p->operLogPdelayReqInterval = config_get_int(cfg, p->name, "operLogPdelayReqInterval");
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
 	p->min_neighbor_prop_delay = config_get_int(cfg, p->name, "min_neighbor_prop_delay");
+	p->delay_response_timeout  = config_get_int(cfg, p->name, "delay_response_timeout");
 
 	if (config_get_int(cfg, p->name, "asCapable") == AS_CAPABLE_TRUE) {
 		p->asCapable = ALWAYS_CAPABLE;
@@ -1996,6 +1997,9 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 	if (!req) {
 		return;
 	}
+
+	/* Valid Delay Response received, reset the counter */
+	p->delay_response_counter = 0;
 
 	c3 = correction_to_tmv(m->header.correction);
 	t3 = req->hwts.ts;
@@ -2680,7 +2684,19 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		pr_debug("%s: delay timeout", p->log_name);
 		port_set_delay_tmo(p);
 		delay_req_prune(p);
-		return port_delay_request(p) ? EV_FAULT_DETECTED : EV_NONE;
+		if (port_delay_request(p)) {
+			return EV_FAULT_DETECTED;
+		}
+		if (p->delay_response_timeout && p->state == PS_SLAVE) {
+			p->delay_response_counter++;
+			if (p->delay_response_counter >= p->delay_response_timeout) {
+				p->delay_response_counter = 0;
+				tsproc_reset(clock_get_tsproc(p->clock), 1);
+				pr_err("%s: delay response timeout", p->log_name);
+				return EV_SYNCHRONIZATION_FAULT;
+			}
+		}
+		return EV_NONE;
 
 	case FD_QUALIFICATION_TIMER:
 		pr_debug("%s: qualification timeout", p->log_name);

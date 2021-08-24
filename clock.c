@@ -1726,6 +1726,11 @@ UInteger16 clock_steps_removed(struct clock *c)
 	return c->cur.stepsRemoved;
 }
 
+struct tsproc *clock_get_tsproc(struct clock *c)
+{
+	return c->tsproc;
+}
+
 int clock_switch_phc(struct clock *c, int phc_index)
 {
 	struct servo *servo;

@@ -204,6 +204,12 @@ running in gPTP mode according to the 802.1AS-2011 standard. Setting
 this option to zero will disable the sync message timeout.
 The default is 0 or disabled.
 .TP
+.B delay_response_timeout
+The number of delay response messages that may go missing before
+triggering a synchronization fault. Setting this option to zero will
+disable the delay response timeout.
+The default is 0 or disabled.
+.TP
 .B transportSpecific
 The transport specific field. Must be in the range 0 to 255.
 The default is 0.
