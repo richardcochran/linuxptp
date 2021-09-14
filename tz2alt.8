@@ -1,0 +1,126 @@
+.TH TS2ALT 8 "February 2023" "linuxptp"
+.SH NAME
+tz2alt - Monitors daylight savings time changes and publishes them to PTP stack.
+
+.SH SYNOPSIS
+.B ts2alt
+[
+.B \-hmqv
+] [
+.BI \-f " conf"
+] [
+.BI \-k " key"
+] [
+.BI \-p " period"
+] [
+.BI \-w " window"
+] [
+.BI \-z " timezone"
+] [
+.I long-options
+]
+.I .\|.\|.
+
+.SH DESCRIPTION
+.B tz2alt
+leverages the local time zone database to monitor for changes in
+daylight savings time and publishes the pending changes to the PTP
+stack.
+
+.SH OPTIONS
+.TP
+.BI \-f " config"
+Read configuration from the specified file.
+No configuration file is read by default.
+.TP
+.BI \-h
+Displays the command line help summary.
+.TP
+.BI \-l " print-level"
+Sets the maximum syslog level of messages which should be printed or
+sent to the system logger. The default is 6 (LOG_INFO).
+.TP
+.B \-m
+Prints log messages to the standard output.
+.TP
+.B \-q
+Prevents sending log messages to the system logger.
+.TP
+.B \-v
+Prints the software version and exits.
+
+.SH LONG OPTIONS
+
+Each and every configuration file option (see below) may also appear
+as a "long" style command line argument.  For example, the use_syslog
+option may be set using either of these two forms.
+
+.RS
+\f(CW\-\-use_syslog 1   \-\-use_syslog=1\fP
+.RE
+
+Option values given on the command line override values in the global
+section of the configuration file.
+
+.SH CONFIGURATION FILE
+
+The configuration file is divided into sections. Each section starts with a
+line containing its name enclosed in brackets and it follows with settings.
+Each setting is placed on a separate line, it contains the name of the
+option and the value separated by whitespace characters. Empty lines and lines
+starting with # are ignored.
+
+.SH GLOBAL OPTIONS
+
+.TP
+.B domainNumber
+The domain attribute of the local clock.
+The default is 0.
+
+.TP
+.B leapfile
+The path to the current leap seconds definition file. In a Debian
+system this file is provided by the tzdata package and can be found at
+/usr/share/zoneinfo/leap-seconds.list. If a leapfile is configured it
+will be reloaded if modified. The default is an empty string, which
+causes the program to use a hard coded table that reflects the known
+leap seconds on the date of the software's release.
+
+.TP
+.B logging_level
+The maximum logging level of messages which should be printed.
+The default is 6 (LOG_INFO).
+
+.TP
+.B message_tag
+The tag which is added to all messages printed to the standard output
+or system log.  The default is an empty string (which cannot be set in
+the configuration file as the option requires an argument).
+
+.TP
+.B transportSpecific
+The transport specific field. Must be in the range 0 to 255.
+The default is 0.
+
+.TP
+.B use_syslog
+Print messages to the system log if enabled.  The default is 1 (enabled).
+
+.TP
+.B verbose
+Print messages to the standard output if enabled.  The default is 0 (disabled).
+
+.SH WARNING
+
+Be cautious when sharing the same configuration file between ptp4l,
+phc2sys, and tz2alt.  Keep in mind that values specified in the
+configuration file take precedence over the default values.  If an
+option which is common to the other programs is set in the
+configuration file, then the value will be applied to all the programs
+using the file, and this might not be what is expected.
+
+It is recommended to use separate configuration files for ptp4l,
+phc2sys, and tz2alt in order to avoid any unexpected behavior.
+
+.SH SEE ALSO
+.BR ptp4l (8)
