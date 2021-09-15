@@ -1892,9 +1892,46 @@ void clock_sync_interval(struct clock *c, int n)
 	servo_sync_interval(c->servo, n < 0 ? 1.0 / (1 << -n) : 1 << n);
 }
 
+static void clock_update_utc_offset(struct clock *c)
+{
+	struct timespec ts;
+	int leap;
+
+	if (c->tds.flags & LEAP_61) {
+		leap = 1;
+	} else if (c->tds.flags & LEAP_59) {
+		leap = -1;
+	} else {
+		leap = 0;
+	}
+
+	/* Don't do anything if not a grandmaster with a leap flag set. */
+	if (c->cur.stepsRemoved > 0 || leap == 0) {
+		return;
+	}
+
+	clock_gettime(c->clkid, &ts);
+	if (c->time_flags & PTP_TIMESCALE) {
+		ts.tv_sec -= c->utc_offset;
+	}
+
+	/* Wait until the leap second has passed. */
+	if (leap_second_status(tmv_to_nanoseconds(timespec_to_tmv(ts)),
+			       leap, &leap, &c->utc_offset)) {
+		return;
+	}
+
+	c->time_flags &= ~(LEAP_61 | LEAP_59);
+	clock_update_grandmaster(c);
+}
+
 struct timePropertiesDS clock_time_properties(struct clock *c)
 {
-	struct timePropertiesDS tds = c->tds;
+	struct timePropertiesDS tds;
+
+	clock_update_utc_offset(c);
+
+	tds = c->tds;
 
 	switch (c->local_sync_uncertain) {
 	case SYNC_UNCERTAIN_DONTCARE:
