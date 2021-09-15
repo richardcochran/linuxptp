@@ -684,6 +684,7 @@ static void clock_update_grandmaster(struct clock *c)
 static void clock_update_slave(struct clock *c)
 {
 	struct parentDS *pds = &c->dad.pds;
+	struct timePropertiesDS tds;
 	struct ptp_message *msg;
 
 	if (!c->best)
@@ -696,21 +697,16 @@ static void clock_update_slave(struct clock *c)
 	pds->grandmasterClockQuality   = msg->announce.grandmasterClockQuality;
 	pds->grandmasterPriority1      = msg->announce.grandmasterPriority1;
 	pds->grandmasterPriority2      = msg->announce.grandmasterPriority2;
-	c->tds.currentUtcOffset        = msg->announce.currentUtcOffset;
-	c->tds.flags                   = msg->header.flagField[1];
-	c->tds.timeSource              = msg->announce.timeSource;
-	if (!(c->tds.flags & PTP_TIMESCALE)) {
+	tds.currentUtcOffset           = msg->announce.currentUtcOffset;
+	tds.flags                      = msg->header.flagField[1];
+	tds.timeSource                 = msg->announce.timeSource;
+	if (!(tds.flags & PTP_TIMESCALE)) {
 		pr_warning("foreign master not using PTP timescale");
 	}
-	if (c->tds.currentUtcOffset < c->utc_offset) {
+	if (tds.currentUtcOffset < c->utc_offset) {
 		pr_warning("running in a temporal vortex");
 	}
-	if (((c->tds.flags & UTC_OFF_VALID && c->tds.flags & TIME_TRACEABLE) &&
-	    (c->tds.currentUtcOffset != c->utc_offset)) ||
-	    (c->tds.currentUtcOffset > c->utc_offset)) {
-		pr_info("updating UTC offset to %d", c->tds.currentUtcOffset);
-		c->utc_offset = c->tds.currentUtcOffset;
-	}
+	clock_update_time_properties(c, tds);
 }
 
 static int clock_utc_correct(struct clock *c, tmv_t ingress)
@@ -1916,6 +1912,13 @@ struct timePropertiesDS clock_time_properties(struct clock *c)
 
 void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds)
 {
+	if ((tds.flags & UTC_OFF_VALID && tds.flags & TIME_TRACEABLE &&
+	     tds.currentUtcOffset != c->utc_offset) ||
+	    tds.currentUtcOffset > c->utc_offset) {
+		pr_info("updating UTC offset to %d", tds.currentUtcOffset);
+		c->utc_offset = tds.currentUtcOffset;
+	}
+
 	c->tds = tds;
 }
 
