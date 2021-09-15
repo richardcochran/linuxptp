@@ -1912,6 +1912,11 @@ struct timePropertiesDS clock_time_properties(struct clock *c)
 
 void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds)
 {
+	if ((tds.flags ^ c->tds.flags) & (LEAP_61 | LEAP_59)) {
+		pr_info("updating time properties to %s leap second",
+			tds.flags & (LEAP_61 | LEAP_59) ?
+			(tds.flags & LEAP_61 ? "insert" : "delete") : "no");
+	}
 	if ((tds.flags & UTC_OFF_VALID && tds.flags & TIME_TRACEABLE &&
 	     tds.currentUtcOffset != c->utc_offset) ||
 	    tds.currentUtcOffset > c->utc_offset) {
