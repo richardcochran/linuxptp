@@ -715,7 +715,7 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 	int utc_offset, leap, clock_leap;
 	uint64_t ts;
 
-	if (!c->utc_timescale)
+	if (!c->utc_timescale && c->tds.flags & PTP_TIMESCALE)
 		return 0;
 
 	utc_offset = c->utc_offset;
@@ -729,7 +729,7 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 	}
 
 	/* Handle leap seconds. */
-	if ((leap || c->leap_set) && c->clkid == CLOCK_REALTIME) {
+	if (leap || c->leap_set) {
 		/* If the clock will be stepped, the time stamp has to be the
 		   target time. Ignore possible 1 second error in utc_offset. */
 		if (c->servo_state == SERVO_UNLOCKED) {
@@ -750,7 +750,7 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 		clock_leap = leap_second_status(ts, c->leap_set,
 						&leap, &utc_offset);
 		if (c->leap_set != clock_leap) {
-			if (c->kernel_leap)
+			if (c->kernel_leap && c->clkid == CLOCK_REALTIME)
 				sysclk_set_leap(clock_leap);
 			else
 				servo_leap(c->servo, clock_leap);
