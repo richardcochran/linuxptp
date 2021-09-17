@@ -79,7 +79,6 @@ static void do_get_action(struct pmc *pmc, int action, int index, char *str);
 static void do_set_action(struct pmc *pmc, int action, int index, char *str);
 static void not_supported(struct pmc *pmc, int action, int index, char *str);
 static void null_management(struct pmc *pmc, int action, int index, char *str);
-static int send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name);
 
 static const char *action_string[] = {
 	"GET",
@@ -233,7 +232,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 				idtab[index].name);
 			break;
 		}
-		send_set_aton(pmc, code, key, display_name);
+		pmc_send_set_aton(pmc, code, key, display_name);
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
 		memset(&atop, 0, sizeof(atop));
@@ -762,7 +761,7 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 	return 0;
 }
 
-static int send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name)
+int pmc_send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name)
 {
 	struct alternate_time_offset_name *aton;
 	struct management_tlv *mgt;
