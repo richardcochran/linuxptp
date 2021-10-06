@@ -340,6 +340,13 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress,
 void clock_sync_interval(struct clock *c, int n);
 
 /**
+ * Update the clock leap bits and UTC offset after a leap second
+ * if operating as a grandmaster.
+ * @param c  The clock instance.
+ */
+void clock_update_leap_status(struct clock *c);
+
+/**
  * Obtain a clock's time properties data set.
  * @param c  The clock instance.
  * @return   A copy of the clock's time properties data set.

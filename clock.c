@@ -1897,7 +1897,7 @@ void clock_sync_interval(struct clock *c, int n)
 	servo_sync_interval(c->servo, n < 0 ? 1.0 / (1 << -n) : 1 << n);
 }
 
-static void clock_update_utc_offset(struct clock *c)
+void clock_update_leap_status(struct clock *c)
 {
 	struct timespec ts;
 	int leap;
@@ -1932,11 +1932,7 @@ static void clock_update_utc_offset(struct clock *c)
 
 struct timePropertiesDS clock_time_properties(struct clock *c)
 {
-	struct timePropertiesDS tds;
-
-	clock_update_utc_offset(c);
-
-	tds = c->tds;
+	struct timePropertiesDS tds = c->tds;
 
 	switch (c->local_sync_uncertain) {
 	case SYNC_UNCERTAIN_DONTCARE:

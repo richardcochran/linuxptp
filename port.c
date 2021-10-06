@@ -2705,6 +2705,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_MANNO_TIMER:
 		pr_debug("%s: master tx announce timeout", p->log_name);
 		port_set_manno_tmo(p);
+		clock_update_leap_status(p->clock);
 		return port_tx_announce(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_SYNC_TX_TIMER:
