@@ -1510,7 +1510,7 @@ int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 	return err;
 }
 
-int port_tx_sync(struct port *p, struct address *dst)
+int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 {
 	struct ptp_message *msg, *fup;
 	int err, event;
@@ -1557,7 +1557,7 @@ int port_tx_sync(struct port *p, struct address *dst)
 	msg->header.messageLength      = sizeof(struct sync_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
-	msg->header.sequenceId         = p->seqnum.sync++;
+	msg->header.sequenceId         = sequence_id;
 	msg->header.control            = CTL_SYNC;
 	msg->header.logMessageInterval = p->logSyncInterval;
 
@@ -1593,7 +1593,7 @@ int port_tx_sync(struct port *p, struct address *dst)
 	fup->header.messageLength      = sizeof(struct follow_up_msg);
 	fup->header.domainNumber       = clock_domain_number(p->clock);
 	fup->header.sourcePortIdentity = p->portIdentity;
-	fup->header.sequenceId         = p->seqnum.sync - 1;
+	fup->header.sequenceId         = sequence_id;
 	fup->header.control            = CTL_FOLLOW_UP;
 	fup->header.logMessageInterval = p->logSyncInterval;
 
@@ -1913,8 +1913,8 @@ int process_announce(struct port *p, struct ptp_message *m)
 
 static int process_delay_req(struct port *p, struct ptp_message *m)
 {
-	int err, nsm, saved_seqnum_sync;
 	struct ptp_message *msg;
+	int err, nsm;
 
 	nsm = port_nsm_reply(p, m);
 
@@ -1964,10 +1964,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		goto out;
 	}
 	if (nsm) {
-		saved_seqnum_sync = p->seqnum.sync;
-		p->seqnum.sync = m->header.sequenceId;
-		err = port_tx_sync(p, &m->address);
-		p->seqnum.sync = saved_seqnum_sync;
+		err = port_tx_sync(p, &m->address, m->header.sequenceId);
 	}
 out:
 	msg_put(msg);
@@ -2712,7 +2709,8 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_SYNC_TX_TIMER:
 		pr_debug("%s: master sync timeout", p->log_name);
 		port_set_sync_tx_tmo(p);
-		return port_tx_sync(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
+		return port_tx_sync(p, NULL, p->seqnum.sync++) ?
+			EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_UNICAST_SRV_TIMER:
 		pr_debug("%s: unicast service timeout", p->log_name);

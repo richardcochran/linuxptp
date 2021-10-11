@@ -38,6 +38,7 @@ struct unicast_client_address {
 	struct PortIdentity portIdentity;
 	struct {
 		UInteger16 announce;
+		UInteger16 sync;
 	} seqnum;
 	unsigned int message_types;
 	struct address addr;
@@ -190,7 +191,8 @@ static int unicast_service_clients(struct port *p,
 			}
 		}
 		if (client->message_types & (1 << SYNC)) {
-			if (port_tx_sync(p, &client->addr)) {
+			if (port_tx_sync(p, &client->addr,
+					 client->seqnum.sync++)) {
 				err = -1;
 			}
 		}

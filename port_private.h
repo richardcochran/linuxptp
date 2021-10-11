@@ -192,7 +192,7 @@ int port_tx_interval_request(struct port *p,
 			     Integer8 announceInterval,
 			     Integer8 timeSyncInterval,
 			     Integer8 linkDelayInterval);
-int port_tx_sync(struct port *p, struct address *dst);
+int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id);
 int process_announce(struct port *p, struct ptp_message *m);
 void process_delay_resp(struct port *p, struct ptp_message *m);
 void process_follow_up(struct port *p, struct ptp_message *m);
