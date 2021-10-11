@@ -187,7 +187,7 @@ void port_show_transition(struct port *p, enum port_state next,
 struct ptp_message *port_signaling_uc_construct(struct port *p,
 						struct address *address,
 						struct PortIdentity *tpid);
-int port_tx_announce(struct port *p, struct address *dst);
+int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id);
 int port_tx_interval_request(struct port *p,
 			     Integer8 announceInterval,
 			     Integer8 timeSyncInterval,

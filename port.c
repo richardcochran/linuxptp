@@ -1455,7 +1455,7 @@ out:
 	return -1;
 }
 
-int port_tx_announce(struct port *p, struct address *dst)
+int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 {
 	struct timePropertiesDS tp = clock_time_properties(p->clock);
 	struct parent_ds *dad = clock_parent_ds(p->clock);
@@ -1480,7 +1480,7 @@ int port_tx_announce(struct port *p, struct address *dst)
 	msg->header.messageLength      = sizeof(struct announce_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
-	msg->header.sequenceId         = p->seqnum.announce++;
+	msg->header.sequenceId         = sequence_id;
 	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = p->logAnnounceInterval;
 
@@ -2706,7 +2706,8 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		pr_debug("%s: master tx announce timeout", p->log_name);
 		port_set_manno_tmo(p);
 		clock_update_leap_status(p->clock);
-		return port_tx_announce(p, NULL) ? EV_FAULT_DETECTED : EV_NONE;
+		return port_tx_announce(p, NULL, p->seqnum.announce++) ?
+			EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_SYNC_TX_TIMER:
 		pr_debug("%s: master sync timeout", p->log_name);

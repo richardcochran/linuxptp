@@ -36,6 +36,9 @@
 struct unicast_client_address {
 	LIST_ENTRY(unicast_client_address) list;
 	struct PortIdentity portIdentity;
+	struct {
+		UInteger16 announce;
+	} seqnum;
 	unsigned int message_types;
 	struct address addr;
 	time_t grant_tmo;
@@ -181,7 +184,8 @@ static int unicast_service_clients(struct port *p,
 			continue;
 		}
 		if (client->message_types & (1 << ANNOUNCE)) {
-			if (port_tx_announce(p, &client->addr)) {
+			if (port_tx_announce(p, &client->addr,
+					     client->seqnum.announce++)) {
 				err = -1;
 			}
 		}
