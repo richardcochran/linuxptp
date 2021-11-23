@@ -21,7 +21,7 @@ struct interface {
 
 static void ts2phc_cleanup(struct config *cfg, struct ts2phc_master *master)
 {
-	ts2phc_slave_cleanup();
+	ts2phc_pps_sink_cleanup();
 	if (master) {
 		ts2phc_master_destroy(master);
 	}
@@ -55,7 +55,7 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	int c, err = 0, have_slave = 0, index, print_level;
+	int c, err = 0, have_sink = 0, index, print_level;
 	struct ts2phc_master *master = NULL;
 	enum ts2phc_master_type pps_type;
 	char *config = NULL, *progname;
@@ -87,11 +87,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			if (!config_create_interface(optarg, cfg)) {
-				fprintf(stderr, "failed to add slave\n");
+				fprintf(stderr, "failed to add PPS sink\n");
 				ts2phc_cleanup(cfg, master);
 				return -1;
 			}
-			have_slave = 1;
+			have_sink = 1;
 			break;
 		case 'f':
 			config = optarg;
@@ -156,16 +156,16 @@ int main(int argc, char *argv[])
 			}
 			pps_source = interface_name(iface);
 		} else {
-			if (ts2phc_slave_add(cfg, interface_name(iface))) {
-				fprintf(stderr, "failed to add slave\n");
+			if (ts2phc_pps_sink_add(cfg, interface_name(iface))) {
+				fprintf(stderr, "failed to add PPS sink\n");
 				ts2phc_cleanup(cfg, master);
 				return -1;
 			}
-			have_slave = 1;
+			have_sink = 1;
 		}
 	}
-	if (!have_slave) {
-		fprintf(stderr, "no slave clocks specified\n");
+	if (!have_sink) {
+		fprintf(stderr, "no PPS sinks specified\n");
 		ts2phc_cleanup(cfg, master);
 		usage(progname);
 		return -1;
@@ -176,8 +176,8 @@ int main(int argc, char *argv[])
 		usage(progname);
 		return -1;
 	}
-	if (ts2phc_slave_arm()) {
-		fprintf(stderr, "failed to arm slaves\n");
+	if (ts2phc_pps_sink_arm()) {
+		fprintf(stderr, "failed to arm PPS sinks\n");
 		ts2phc_cleanup(cfg, master);
 		return -1;
 	}
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (is_running()) {
-		err = ts2phc_slave_poll(master);
+		err = ts2phc_pps_sink_poll(master);
 		if (err) {
 			pr_err("poll failed");
 			break;
