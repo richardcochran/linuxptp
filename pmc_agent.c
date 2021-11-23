@@ -303,7 +303,7 @@ int pmc_agent_query_dds(struct pmc_agent *node, int timeout)
 }
 
 int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
-				    unsigned int port, int *state,
+				    unsigned int port, enum port_state *state,
 				    int *tstamping, int *phc_index, char *iface)
 {
 	struct port_properties_np *ppn;

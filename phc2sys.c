@@ -299,8 +299,9 @@ static struct port *port_add(struct phc2sys_private *priv, unsigned int number,
 static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 			 int new_state)
 {
-	int err = -1, phc_index = -1, phc_switched = 0, state, timestamping;
+	int err = -1, phc_index = -1, phc_switched = 0, timestamping;
 	char iface[IFNAMSIZ], phc_device[19];
+	enum port_state state;
 	struct port *p;
 	clockid_t clkid = CLOCK_INVALID;
 
@@ -824,7 +825,8 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 
 static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 {
-	int err, number_ports, phc_index, state, timestamping;
+	int err, number_ports, phc_index, timestamping;
+	enum port_state state;
 	char iface[IFNAMSIZ];
 	struct clock *clock;
 	struct port *port;

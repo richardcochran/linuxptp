@@ -24,6 +24,7 @@
 
 #include <stdbool.h>
 
+#include "fsm.h"
 #include "pmc_common.h"
 
 struct pmc_agent;
@@ -108,7 +109,7 @@ int pmc_agent_query_dds(struct pmc_agent *agent, int timeout);
  * @return           Zero on success, negative error code otherwise.
  */
 int pmc_agent_query_port_properties(struct pmc_agent *agent, int timeout,
-				    unsigned int port, int *state,
+				    unsigned int port, enum port_state *state,
 				    int *tstamping, int *phc_index,
 				    char *iface);
 
