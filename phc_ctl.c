@@ -90,26 +90,6 @@ static int install_handler(int signum, void(*handler)(int))
 	return 0;
 }
 
-static int64_t calculate_offset(struct timespec *ts1,
-				      struct timespec *rt,
-				      struct timespec *ts2)
-{
-	int64_t interval;
-	int64_t offset;
-
-#define NSEC_PER_SEC 1000000000ULL
-	/* calculate interval between clock realtime */
-	interval = (ts2->tv_sec - ts1->tv_sec) * NSEC_PER_SEC;
-	interval += ts2->tv_nsec - ts1->tv_nsec;
-
-	/* assume PHC read occured half way between CLOCK_REALTIME reads */
-
-	offset = (rt->tv_sec - ts1->tv_sec) * NSEC_PER_SEC;
-	offset += (rt->tv_nsec - ts1->tv_nsec) - (interval / 2);
-
-	return offset;
-}
-
 static void usage(const char *progname)
 {
 	fprintf(stderr,
@@ -335,34 +315,32 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 
 static int do_cmp(clockid_t clkid, int cmdc, char *cmdv[])
 {
-	struct timespec ts, rta, rtb;
-	int64_t sys_offset, delay = 0, offset;
+	int64_t sys_offset, delay;
 	uint64_t sys_ts;
-	int method;
+	int method, fd;
 
-	method = sysoff_probe(CLOCKID_TO_FD(clkid), 9);
+#define N_SAMPLES 9
 
-	if (method >= 0 && sysoff_measure(CLOCKID_TO_FD(clkid), method, 9,
+	fd = CLOCKID_TO_FD(clkid);
+
+	method = sysoff_probe(fd, N_SAMPLES);
+
+	if (method >= 0 && sysoff_measure(fd, method, N_SAMPLES,
 					  &sys_offset, &sys_ts, &delay) >= 0) {
-		pr_notice( "offset from CLOCK_REALTIME is %"PRId64"ns\n",
-			sys_offset);
+		pr_notice("offset from CLOCK_REALTIME is %"PRId64"ns\n",
+			  sys_offset);
 		return 0;
 	}
 
-	memset(&ts, 0, sizeof(ts));
-	memset(&rta, 0, sizeof(rta));
-	memset(&rtb, 0, sizeof(rtb));
-	if (clock_gettime(CLOCK_REALTIME, &rta) ||
-	    clock_gettime(clkid, &ts) ||
-	    clock_gettime(CLOCK_REALTIME, &rtb)) {
-		pr_err("cmp: failed clock reads: %s\n",
-			strerror(errno));
+	if (clockadj_compare(clkid, CLOCK_REALTIME, N_SAMPLES,
+			     &sys_offset, &sys_ts, &delay)) {
+		pr_err("cmp: failed to compare clocks: %s\n",
+		       strerror(errno));
 		return -1;
 	}
 
-	offset = calculate_offset(&rta, &ts, &rtb);
-	pr_notice( "offset from CLOCK_REALTIME is approximately %"PRId64"ns\n",
-		offset);
+	pr_notice("offset from CLOCK_REALTIME is approximately %"PRId64"ns\n",
+		  sys_offset);
 
 	return 0;
 }
