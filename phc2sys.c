@@ -470,37 +470,6 @@ static void reconfigure(struct phc2sys_private *priv)
 	pr_info("selecting %s as the master clock", src->device);
 }
 
-static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
-		    int64_t *offset, uint64_t *ts, int64_t *delay)
-{
-	struct timespec tdst1, tdst2, tsrc;
-	int i;
-	int64_t interval, best_interval = INT64_MAX;
-
-	/* Pick the quickest clkid reading. */
-	for (i = 0; i < readings; i++) {
-		if (clock_gettime(sysclk, &tdst1) ||
-				clock_gettime(clkid, &tsrc) ||
-				clock_gettime(sysclk, &tdst2)) {
-			pr_err("failed to read clock: %m");
-			return 0;
-		}
-
-		interval = (tdst2.tv_sec - tdst1.tv_sec) * NS_PER_SEC +
-			tdst2.tv_nsec - tdst1.tv_nsec;
-
-		if (best_interval > interval) {
-			best_interval = interval;
-			*offset = (tdst1.tv_sec - tsrc.tv_sec) * NS_PER_SEC +
-				tdst1.tv_nsec - tsrc.tv_nsec + interval / 2;
-			*ts = tdst2.tv_sec * NS_PER_SEC + tdst2.tv_nsec;
-		}
-	}
-	*delay = best_interval;
-
-	return 1;
-}
-
 static int64_t get_sync_offset(struct phc2sys_private *priv, struct clock *dst)
 {
 	int direction = priv->forced_sync_offset;
@@ -662,8 +631,10 @@ static int do_pps_loop(struct phc2sys_private *priv, struct clock *clock,
 		/* If a PHC is available, use it to get the whole number
 		   of seconds in the offset and PPS for the rest. */
 		if (src != CLOCK_INVALID) {
-			if (!read_phc(src, clock->clkid, priv->phc_readings,
-				      &phc_offset, &phc_ts, &phc_delay))
+			if (clockadj_compare(src, clock->clkid,
+					     priv->phc_readings,
+					     &phc_offset, &phc_ts,
+					     &phc_delay))
 				return -1;
 
 			/* Convert the time stamp to the PHC time. */
@@ -764,10 +735,11 @@ static int do_loop(struct phc2sys_private *priv)
 				ts += offset;
 			} else {
 				/* use phc */
-				if (!read_phc(priv->master->clkid, clock->clkid,
-					      priv->phc_readings,
-					      &offset, &ts, &delay))
-					continue;
+				if (clockadj_compare(priv->master->clkid,
+						     clock->clkid,
+						     priv->phc_readings,
+						     &offset, &ts, &delay))
+					return -1;
 			}
 			update_clock(priv, clock, offset, ts, delay);
 		}

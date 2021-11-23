@@ -64,6 +64,24 @@ void clockadj_step(clockid_t clkid, int64_t step);
 int clockadj_max_freq(clockid_t clkid);
 
 /**
+ * Compare offset between two clocks
+ * @param clkid     A clock ID obtained using phc_open() or CLOCK_REALTIME
+ * @param sysclk    A clock ID obtained using phc_open() or CLOCK_REALTIME
+ * @param readings  Number of readings to try
+ * @param offset    On return, the nanoseconds offset between the clocks
+ * @param ts        On return, the time of sysclk in nanoseconds that was used
+ * @param delay     On return, the interval between two reads of sysclk
+ * @return Zero on success and non-zero on failure.
+ *
+ * Compare the offset between two clocks in a similar manner as the
+ * PTP_SYS_OFFSET ioctls. Performs multiple reads of sysclk with a read of
+ * clkid between in order to calculate the time difference of sysclk minus
+ * clkid.
+ */
+int clockadj_compare(clockid_t clkid, clockid_t sysclk, int readings,
+		     int64_t *offset, uint64_t *ts, int64_t *delay);
+
+/**
  * Set the system clock to insert/delete leap second at midnight.
  * @param leap  +1 to insert leap second, -1 to delete leap second,
  *              0 to reset the leap state.

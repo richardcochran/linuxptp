@@ -139,6 +139,37 @@ int clockadj_max_freq(clockid_t clkid)
 	return f;
 }
 
+int clockadj_compare(clockid_t clkid, clockid_t sysclk, int readings,
+		     int64_t *offset, uint64_t *ts, int64_t *delay)
+{
+	struct timespec tdst1, tdst2, tsrc;
+	int i;
+	int64_t interval, best_interval = INT64_MAX;
+
+	/* Pick the quickest clkid reading. */
+	for (i = 0; i < readings; i++) {
+		if (clock_gettime(sysclk, &tdst1) ||
+				clock_gettime(clkid, &tsrc) ||
+				clock_gettime(sysclk, &tdst2)) {
+			pr_err("failed to read clock: %m");
+			return -1;
+		}
+
+		interval = (tdst2.tv_sec - tdst1.tv_sec) * NS_PER_SEC +
+			tdst2.tv_nsec - tdst1.tv_nsec;
+
+		if (best_interval > interval) {
+			best_interval = interval;
+			*offset = (tdst1.tv_sec - tsrc.tv_sec) * NS_PER_SEC +
+				tdst1.tv_nsec - tsrc.tv_nsec + interval / 2;
+			*ts = tdst2.tv_sec * NS_PER_SEC + tdst2.tv_nsec;
+		}
+	}
+	*delay = best_interval;
+
+	return 0;
+}
+
 void sysclk_set_leap(int leap)
 {
 	clockid_t clkid = CLOCK_REALTIME;
