@@ -1,5 +1,5 @@
 /**
- * @file ts2phc_phc_master.c
+ * @file ts2phc_phc_pps_source.c
  * @note Copyright (C) 2019 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
@@ -9,11 +9,11 @@
 #include <sys/ioctl.h>
 
 #include "config.h"
+#include "missing.h"
 #include "phc.h"
 #include "print.h"
-#include "missing.h"
-#include "ts2phc_master_private.h"
-#include "ts2phc_phc_master.h"
+#include "ts2phc_phc_pps_source.h"
+#include "ts2phc_pps_source_private.h"
 #include "util.h"
 
 struct ts2phc_phc_master {

@@ -15,14 +15,14 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "clockadj.h"
+#include "config.h"
 #include "missing.h"
 #include "phc.h"
 #include "print.h"
 #include "servo.h"
-#include "ts2phc_master.h"
-#include "ts2phc_slave.h"
+#include "ts2phc_pps_sink.h"
+#include "ts2phc_pps_source.h"
 #include "util.h"
 
 #define NS_PER_SEC		1000000000LL

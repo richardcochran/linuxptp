@@ -11,8 +11,8 @@
 #include "config.h"
 #include "interface.h"
 #include "print.h"
-#include "ts2phc_master.h"
-#include "ts2phc_slave.h"
+#include "ts2phc_pps_sink.h"
+#include "ts2phc_pps_source.h"
 #include "version.h"
 
 struct interface {

@@ -1,5 +1,5 @@
 /**
- * @file ts2phc_slave.h
+ * @file ts2phc_pps_sink.h
  * @brief Utility program to synchronize the PHC clock to external events
  * @note Copyright (C) 2019 Balint Ferencz <fernya@sch.bme.hu>
  * @note SPDX-License-Identifier: GPL-2.0+
@@ -7,7 +7,7 @@
 #ifndef HAVE_TS2PHC_SLAVE_H
 #define HAVE_TS2PHC_SLAVE_H
 
-#include "ts2phc_master.h"
+#include "ts2phc_pps_source.h"
 
 int ts2phc_slave_add(struct config *cfg, const char *name);
 

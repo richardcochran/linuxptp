@@ -1,5 +1,5 @@
 /**
- * @file ts2phc_nmea_master.c
+ * @file ts2phc_nmea_pps_source.c
  * @note Copyright (C) 2019 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
@@ -19,8 +19,8 @@
 #include "serial.h"
 #include "sock.h"
 #include "tmv.h"
-#include "ts2phc_master_private.h"
-#include "ts2phc_nmea_master.h"
+#include "ts2phc_nmea_pps_source.h"
+#include "ts2phc_pps_source_private.h"
 #include "util.h"
 
 #define MAX_RMC_AGE	5000000000ULL

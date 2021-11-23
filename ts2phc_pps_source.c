@@ -3,10 +3,10 @@
  * @note Copyright (C) 2019 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
-#include "ts2phc_generic_master.h"
-#include "ts2phc_master_private.h"
-#include "ts2phc_nmea_master.h"
-#include "ts2phc_phc_master.h"
+#include "ts2phc_generic_pps_source.h"
+#include "ts2phc_nmea_pps_source.h"
+#include "ts2phc_phc_pps_source.h"
+#include "ts2phc_pps_source_private.h"
 
 struct ts2phc_master *ts2phc_master_create(struct config *cfg, const char *dev,
 					   enum ts2phc_master_type type)

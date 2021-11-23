@@ -8,8 +8,8 @@
 
 #include "missing.h"
 #include "print.h"
-#include "ts2phc_generic_master.h"
-#include "ts2phc_master_private.h"
+#include "ts2phc_generic_pps_source.h"
+#include "ts2phc_pps_source_private.h"
 #include "util.h"
 
 struct ts2phc_generic_master {

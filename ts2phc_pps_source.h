@@ -1,5 +1,5 @@
 /**
- * @file ts2phc_master.h
+ * @file ts2phc_pps_source.h
  * @note Copyright (C) 2019 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
