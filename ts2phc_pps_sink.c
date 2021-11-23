@@ -268,19 +268,19 @@ static int ts2phc_pps_sink_event(struct ts2phc_pps_sink *sink,
 	}
 
 	if (sink->no_adj) {
-		pr_info("%s master offset %10" PRId64, sink->name, offset);
+		pr_info("%s source offset %10" PRId64, sink->name, offset);
 		return 0;
 	}
 
 	if (!source_ts.valid) {
-		pr_debug("%s ignoring invalid master time stamp", sink->name);
+		pr_debug("%s ignoring invalid source time stamp", sink->name);
 		return 0;
 	}
 
 	adj = servo_sample(sink->servo, offset, extts_ts,
 			   SAMPLE_WEIGHT, &sink->state);
 
-	pr_debug("%s master offset %10" PRId64 " s%d freq %+7.0f",
+	pr_debug("%s source offset %10" PRId64 " s%d freq %+7.0f",
 		 sink->name, offset, sink->state, adj);
 
 	switch (sink->state) {
@@ -402,7 +402,7 @@ void ts2phc_pps_sink_cleanup(void)
 	}
 }
 
-int ts2phc_pps_sink_poll(struct ts2phc_master *master)
+int ts2phc_pps_sink_poll(struct ts2phc_pps_source *src)
 {
 	struct ts2phc_source_timestamp source_ts;
 	unsigned int i;
@@ -424,7 +424,7 @@ int ts2phc_pps_sink_poll(struct ts2phc_master *master)
 		return 0;
 	}
 
-	err = ts2phc_master_getppstime(master, &source_ts.ts);
+	err = ts2phc_pps_source_getppstime(src, &source_ts.ts);
 	source_ts.valid = err ? false : true;
 
 	for (i = 0; i < ts2phc_n_sinks; i++) {

@@ -15,6 +15,6 @@ int ts2phc_pps_sink_arm(void);
 
 void ts2phc_pps_sink_cleanup(void);
 
-int ts2phc_pps_sink_poll(struct ts2phc_master *master);
+int ts2phc_pps_sink_poll(struct ts2phc_pps_source *src);
 
 #endif

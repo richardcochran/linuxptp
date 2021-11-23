@@ -26,8 +26,8 @@
 #define MAX_RMC_AGE	5000000000ULL
 #define NMEA_TMO	2000 /*milliseconds*/
 
-struct ts2phc_nmea_master {
-	struct ts2phc_master master;
+struct ts2phc_nmea_pps_source {
+	struct ts2phc_pps_source pps_source;
 	struct config *config;
 	const char *leapfile;
 	time_t lsfile_mtime;
@@ -67,7 +67,7 @@ static void *monitor_nmea_status(void *arg)
 	struct nmea_parser *np = nmea_parser_create();
 	struct pollfd pfd = { -1, POLLIN | POLLPRI };
 	char *host, input[256], *port, *ptr, *uart;
-	struct ts2phc_nmea_master *master = arg;
+	struct ts2phc_nmea_pps_source *s = arg;
 	struct timespec rxtime, tmo = { 2, 0 };
 	int cnt, num, parsed, baud;
 	struct nmea_rmc rmc;
@@ -77,10 +77,10 @@ static void *monitor_nmea_status(void *arg)
 		pr_err("failed to create NMEA parser");
 		return NULL;
 	}
-	host = config_get_string(master->config, NULL, "ts2phc.nmea_remote_host");
-	port = config_get_string(master->config, NULL, "ts2phc.nmea_remote_port");
-	uart = config_get_string(master->config, NULL, "ts2phc.nmea_serialport");
-	baud = config_get_int(master->config, NULL, "ts2phc.nmea_baudrate");
+	host = config_get_string(s->config, NULL, "ts2phc.nmea_remote_host");
+	port = config_get_string(s->config, NULL, "ts2phc.nmea_remote_port");
+	uart = config_get_string(s->config, NULL, "ts2phc.nmea_serialport");
+	baud = config_get_int(s->config, NULL, "ts2phc.nmea_baudrate");
 	memset(&ntx, 0, sizeof(ntx));
 	ntx.modes = ADJ_NANO;
 
@@ -124,13 +124,13 @@ static void *monitor_nmea_status(void *arg)
 		ptr = input;
 		do {
 			if (!nmea_parse(np, ptr, cnt, &rmc, &parsed)) {
-				pthread_mutex_lock(&master->mutex);
-				master->local_monotime = rxtime;
-				master->local_utctime.tv_sec = ntx.time.tv_sec;
-				master->local_utctime.tv_nsec = ntx.time.tv_usec;
-				master->rmc_utctime = rmc.ts;
-				master->rmc_fix_valid = rmc.fix_valid;
-				pthread_mutex_unlock(&master->mutex);
+				pthread_mutex_lock(&s->mutex);
+				s->local_monotime = rxtime;
+				s->local_utctime.tv_sec = ntx.time.tv_sec;
+				s->local_utctime.tv_nsec = ntx.time.tv_usec;
+				s->rmc_utctime = rmc.ts;
+				s->rmc_fix_valid = rmc.fix_valid;
+				pthread_mutex_unlock(&s->mutex);
 			}
 			cnt -= parsed;
 			ptr += parsed;
@@ -144,49 +144,49 @@ static void *monitor_nmea_status(void *arg)
 	return NULL;
 }
 
-static int update_leapsecond_table(struct ts2phc_nmea_master *master)
+static int update_leapsecond_table(struct ts2phc_nmea_pps_source *s)
 {
 	struct stat statbuf;
 	int err;
 
-	if (!master->leapfile) {
+	if (!s->leapfile) {
 		return 0;
 	}
-	err = stat(master->leapfile, &statbuf);
+	err = stat(s->leapfile, &statbuf);
 	if (err) {
-		pr_err("nmea: file status failed on %s: %m", master->leapfile);
+		pr_err("nmea: file status failed on %s: %m", s->leapfile);
 		return -1;
 	}
-	if (master->lsfile_mtime == statbuf.st_mtim.tv_sec) {
+	if (s->lsfile_mtime == statbuf.st_mtim.tv_sec) {
 		return 0;
 	}
 	pr_info("nmea: updating leap seconds file");
-	if (master->lstab) {
-		lstab_destroy(master->lstab);
+	if (s->lstab) {
+		lstab_destroy(s->lstab);
 	}
-	master->lstab = lstab_create(master->leapfile);
-	if (!master->lstab) {
+	s->lstab = lstab_create(s->leapfile);
+	if (!s->lstab) {
 		return -1;
 	}
-	master->lsfile_mtime = statbuf.st_mtim.tv_sec;
+	s->lsfile_mtime = statbuf.st_mtim.tv_sec;
 	return 0;
 }
 
-static void ts2phc_nmea_master_destroy(struct ts2phc_master *master)
+static void ts2phc_nmea_pps_source_destroy(struct ts2phc_pps_source *src)
 {
-	struct ts2phc_nmea_master *m =
-		container_of(master, struct ts2phc_nmea_master, master);
-	pthread_join(m->worker, NULL);
-	pthread_mutex_destroy(&m->mutex);
-	lstab_destroy(m->lstab);
-	free(m);
+	struct ts2phc_nmea_pps_source *s =
+		container_of(src, struct ts2phc_nmea_pps_source, pps_source);
+	pthread_join(s->worker, NULL);
+	pthread_mutex_destroy(&s->mutex);
+	lstab_destroy(s->lstab);
+	free(s);
 }
 
-static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
-					 struct timespec *ts)
+static int ts2phc_nmea_pps_source_getppstime(struct ts2phc_pps_source *src,
+					     struct timespec *ts)
 {
-	struct ts2phc_nmea_master *m =
-		container_of(master, struct ts2phc_nmea_master, master);
+	struct ts2phc_nmea_pps_source *m =
+		container_of(src, struct ts2phc_nmea_pps_source, pps_source);
 	tmv_t delay_t1, delay_t2, duration_since_rmc, local_t1, local_t2, rmc;
 	int lstab_error = 0, tai_offset = 0;
 	enum lstab_result result;
@@ -249,42 +249,43 @@ static int ts2phc_nmea_master_getppstime(struct ts2phc_master *master,
 	return lstab_error;
 }
 
-struct ts2phc_master *ts2phc_nmea_master_create(struct config *cfg, const char *dev)
+struct ts2phc_pps_source *ts2phc_nmea_pps_source_create(struct config *cfg,
+							const char *dev)
 {
-	struct ts2phc_nmea_master *master;
+	struct ts2phc_nmea_pps_source *s;
 	struct stat statbuf;
 	int err;
 
-	master = calloc(1, sizeof(*master));
-	if (!master) {
+	s = calloc(1, sizeof(*s));
+	if (!s) {
 		return NULL;
 	}
-	master->leapfile = config_get_string(cfg, NULL, "leapfile");
-	master->lstab = lstab_create(master->leapfile);
-	if (!master->lstab) {
-		free(master);
+	s->leapfile = config_get_string(cfg, NULL, "leapfile");
+	s->lstab = lstab_create(s->leapfile);
+	if (!s->lstab) {
+		free(s);
 		return NULL;
 	}
-	if (master->leapfile) {
-		err = stat(master->leapfile, &statbuf);
+	if (s->leapfile) {
+		err = stat(s->leapfile, &statbuf);
 		if (err) {
-			lstab_destroy(master->lstab);
-			free(master);
+			lstab_destroy(s->lstab);
+			free(s);
 			return NULL;
 		}
-		master->lsfile_mtime = statbuf.st_mtim.tv_sec;
+		s->lsfile_mtime = statbuf.st_mtim.tv_sec;
 	}
-	master->master.destroy = ts2phc_nmea_master_destroy;
-	master->master.getppstime = ts2phc_nmea_master_getppstime;
-	master->config = cfg;
-	pthread_mutex_init(&master->mutex, NULL);
-	err = pthread_create(&master->worker, NULL, monitor_nmea_status, master);
+	s->pps_source.destroy = ts2phc_nmea_pps_source_destroy;
+	s->pps_source.getppstime = ts2phc_nmea_pps_source_getppstime;
+	s->config = cfg;
+	pthread_mutex_init(&s->mutex, NULL);
+	err = pthread_create(&s->worker, NULL, monitor_nmea_status, s);
 	if (err) {
 		pr_err("failed to create worker thread: %s", strerror(err));
-		lstab_destroy(master->lstab);
-		free(master);
+		lstab_destroy(s->lstab);
+		free(s);
 		return NULL;
 	}
 
-	return &master->master;
+	return &s->pps_source;
 }

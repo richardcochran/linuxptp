@@ -1,5 +1,5 @@
 /**
- * @file ts2phc_generic_master.c
+ * @file ts2phc_generic_pps_source.c
  * @note Copyright (C) 2019 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
@@ -12,14 +12,14 @@
 #include "ts2phc_pps_source_private.h"
 #include "util.h"
 
-struct ts2phc_generic_master {
-	struct ts2phc_master master;
+struct ts2phc_generic_pps_source {
+	struct ts2phc_pps_source pps_source;
 };
 
-static void ts2phc_generic_master_destroy(struct ts2phc_master *master)
+static void ts2phc_generic_pps_source_destroy(struct ts2phc_pps_source *src)
 {
-	struct ts2phc_generic_master *s =
-		container_of(master, struct ts2phc_generic_master, master);
+	struct ts2phc_generic_pps_source *s =
+		container_of(src, struct ts2phc_generic_pps_source, pps_source);
 	free(s);
 }
 
@@ -28,8 +28,8 @@ static void ts2phc_generic_master_destroy(struct ts2phc_master *master)
  * PPS event was generated.  This implementation assumes that the
  * system time is approximately correct.
  */
-static int ts2phc_generic_master_getppstime(struct ts2phc_master *m,
-					    struct timespec *ts)
+static int ts2phc_generic_pps_source_getppstime(struct ts2phc_pps_source *src,
+						struct timespec *ts)
 {
 	struct timex ntx;
 	int code;
@@ -47,17 +47,17 @@ static int ts2phc_generic_master_getppstime(struct ts2phc_master *m,
 	return 0;
 }
 
-struct ts2phc_master *ts2phc_generic_master_create(struct config *cfg,
-						   const char *dev)
+struct ts2phc_pps_source *ts2phc_generic_pps_source_create(struct config *cfg,
+							   const char *dev)
 {
-	struct ts2phc_generic_master *master;
+	struct ts2phc_generic_pps_source *src;
 
-	master = calloc(1, sizeof(*master));
-	if (!master) {
+	src = calloc(1, sizeof(*src));
+	if (!src) {
 		return NULL;
 	}
-	master->master.destroy = ts2phc_generic_master_destroy;
-	master->master.getppstime = ts2phc_generic_master_getppstime;
+	src->pps_source.destroy = ts2phc_generic_pps_source_destroy;
+	src->pps_source.getppstime = ts2phc_generic_pps_source_getppstime;
 
-	return &master->master;
+	return &src->pps_source;
 }

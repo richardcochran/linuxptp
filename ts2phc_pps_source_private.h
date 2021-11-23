@@ -3,8 +3,8 @@
  * @note Copyright (C) 2019 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
-#ifndef HAVE_TS2PHC_MASTER_PRIVATE_H
-#define HAVE_TS2PHC_MASTER_PRIVATE_H
+#ifndef HAVE_TS2PHC_PPS_SOURCE_PRIVATE_H
+#define HAVE_TS2PHC_PPS_SOURCE_PRIVATE_H
 
 #include <stdint.h>
 #include <time.h>
@@ -12,9 +12,9 @@
 #include "contain.h"
 #include "ts2phc_pps_source.h"
 
-struct ts2phc_master {
-	void (*destroy)(struct ts2phc_master *ts2phc_master);
-	int (*getppstime)(struct ts2phc_master *master, struct timespec *ts);
+struct ts2phc_pps_source {
+	void (*destroy)(struct ts2phc_pps_source *src);
+	int (*getppstime)(struct ts2phc_pps_source *src, struct timespec *ts);
 };
 
 #endif
