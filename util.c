@@ -218,7 +218,8 @@ clockid_t posix_clock_open(const char *device, int *phc_index)
 				fprintf(stderr,
 					"failed to parse PHC index from %s\n",
 					device);
-				return -1;
+				phc_close(clkid);
+				return CLOCK_INVALID;
 			}
 		}
 		return clkid;
