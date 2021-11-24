@@ -18,6 +18,7 @@
  */
 #include <arpa/inet.h>
 #include <errno.h>
+#include <linux/limits.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -200,6 +201,7 @@ void posix_clock_close(clockid_t clock)
 
 clockid_t posix_clock_open(const char *device, int *phc_index)
 {
+	char phc_device_path[PATH_MAX];
 	struct sk_ts_info ts_info;
 	char phc_device[19];
 	int clkid;
@@ -208,22 +210,29 @@ clockid_t posix_clock_open(const char *device, int *phc_index)
 	if (!strcasecmp(device, "CLOCK_REALTIME")) {
 		return CLOCK_REALTIME;
 	}
-	/* check if device is valid phc device */
-	clkid = phc_open(device);
-	if (clkid != CLOCK_INVALID) {
-		if (!strncmp(device, "/dev/ptp", strlen("/dev/ptp"))) {
-			int r = get_ranged_int(device + strlen("/dev/ptp"),
+
+	/* if the device name resolves so a plausible filesystem path, we
+	 * assume it is the path to a PHC char device, and treat it as such
+	 */
+	if (realpath(device, phc_device_path)) {
+		clkid = phc_open(device);
+		if (clkid == CLOCK_INVALID)
+			return clkid;
+
+		if (!strncmp(phc_device_path, "/dev/ptp", strlen("/dev/ptp"))) {
+			int r = get_ranged_int(phc_device_path + strlen("/dev/ptp"),
 					       phc_index, 0, 65535);
 			if (r) {
 				fprintf(stderr,
 					"failed to parse PHC index from %s\n",
-					device);
+					phc_device_path);
 				phc_close(clkid);
 				return CLOCK_INVALID;
 			}
 		}
 		return clkid;
 	}
+
 	/* check if device is a valid ethernet device */
 	if (sk_get_ts_info(device, &ts_info) || !ts_info.valid) {
 		pr_err("unknown clock %s: %m", device);
