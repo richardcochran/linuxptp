@@ -131,6 +131,7 @@ struct management_id idtab[] = {
 	{ "LOG_MIN_PDELAY_REQ_INTERVAL", MID_LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
 	{ "PORT_DATA_SET_NP", MID_PORT_DATA_SET_NP, do_set_action },
 	{ "PORT_STATS_NP", MID_PORT_STATS_NP, do_get_action },
+	{ "PORT_SERVICE_STATS_NP", MID_PORT_SERVICE_STATS_NP, do_get_action },
 	{ "PORT_PROPERTIES_NP", MID_PORT_PROPERTIES_NP, do_get_action },
 };
 

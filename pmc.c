@@ -148,6 +148,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct management_tlv *mgt;
 	struct time_status_np *tsn;
 	struct port_stats_np *pcp;
+	struct port_service_stats_np *pssp;
 	struct tlv_extra *extra;
 	struct port_ds_np *pnp;
 	struct defaultDS *dds;
@@ -494,6 +495,32 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pcp->stats.txMsgType[ANNOUNCE],
 			pcp->stats.txMsgType[SIGNALING],
 			pcp->stats.txMsgType[MANAGEMENT]);
+		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		pssp = (struct port_service_stats_np *) mgt->data;
+		fprintf(fp, "PORT_SERVICE_STATS_NP "
+		IFMT "portIdentity              %s"
+		IFMT "announce_timeout          %" PRIu64
+		IFMT "sync_timeout              %" PRIu64
+		IFMT "delay_timeout             %" PRIu64
+		IFMT "unicast_service_timeout   %" PRIu64
+		IFMT "unicast_request_timeout   %" PRIu64
+		IFMT "master_announce_timeout   %" PRIu64
+		IFMT "master_sync_timeout       %" PRIu64
+		IFMT "qualification_timeout     %" PRIu64
+		IFMT "sync_mismatch             %" PRIu64
+		IFMT "followup_mismatch         %" PRIu64,
+		pid2str(&pssp->portIdentity),
+		pssp->stats.announce_timeout,
+		pssp->stats.sync_timeout,
+		pssp->stats.delay_timeout,
+		pssp->stats.unicast_service_timeout,
+		pssp->stats.unicast_request_timeout,
+		pssp->stats.master_announce_timeout,
+		pssp->stats.master_sync_timeout,
+		pssp->stats.qualification_timeout,
+		pssp->stats.sync_mismatch,
+		pssp->stats.followup_mismatch);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;

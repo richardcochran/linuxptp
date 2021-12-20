@@ -107,4 +107,17 @@ struct PortStats {
 	uint64_t txMsgType[MAX_MESSAGE_TYPES];
 };
 
+struct PortServiceStats {
+	uint64_t announce_timeout;
+	uint64_t sync_timeout;
+	uint64_t delay_timeout;
+	uint64_t unicast_service_timeout;
+	uint64_t unicast_request_timeout;
+	uint64_t master_announce_timeout;
+	uint64_t master_sync_timeout;
+	uint64_t qualification_timeout;
+	uint64_t sync_mismatch;
+	uint64_t followup_mismatch;
+};
+
 #endif

@@ -146,6 +146,7 @@ struct port {
 	UInteger8	    delay_response_counter;
 	UInteger8	    delay_response_timeout;
 	struct PortStats    stats;
+	struct PortServiceStats    service_stats;
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
 	/* TC book keeping */

@@ -125,6 +125,7 @@ enum management_action {
 #define MID_PORT_DATA_SET_NP				0xC002
 #define MID_PORT_PROPERTIES_NP				0xC004
 #define MID_PORT_STATS_NP				0xC005
+#define MID_PORT_SERVICE_STATS_NP			0xC007
 
 /* Management error ID values */
 #define MID_RESPONSE_TOO_BIG				0x0001
@@ -347,6 +348,11 @@ struct port_properties_np {
 struct port_stats_np {
 	struct PortIdentity portIdentity;
 	struct PortStats stats;
+} PACKED;
+
+struct port_service_stats_np {
+	struct PortIdentity portIdentity;
+	struct PortServiceStats stats;
 } PACKED;
 
 #define PROFILE_ID_LEN 6

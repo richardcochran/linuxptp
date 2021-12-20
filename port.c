@@ -798,6 +798,7 @@ static int port_management_fill_response(struct port *target,
 	struct clock_description *desc;
 	struct port_properties_np *ppn;
 	struct port_stats_np *psn;
+	struct port_service_stats_np *pssn;
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
 	struct tlv_extra *extra;
@@ -965,6 +966,12 @@ static int port_management_fill_response(struct port *target,
 		psn->portIdentity = target->portIdentity;
 		psn->stats = target->stats;
 		datalen = sizeof(*psn);
+		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		pssn = (struct port_service_stats_np *)tlv->data;
+		pssn->portIdentity = target->portIdentity;
+		pssn->stats = target->service_stats;
+		datalen = sizeof(*pssn);
 		break;
 	default:
 		/* The caller should *not* respond to this message. */
@@ -1285,6 +1292,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			msg_put(p->last_syncfup);
 			msg_get(m);
 			p->last_syncfup = m;
+			p->service_stats.sync_mismatch++;
 			break;
 		case SYNC_MATCH:
 			break;
@@ -1294,6 +1302,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			msg_get(m);
 			p->last_syncfup = m;
 			p->syfu = SF_HAVE_FUP;
+			p->service_stats.followup_mismatch++;
 			break;
 		case FUP_MATCH:
 			syn = p->last_syncfup;
@@ -1316,6 +1325,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			msg_get(m);
 			p->last_syncfup = m;
 			p->syfu = SF_HAVE_SYNC;
+			p->service_stats.sync_mismatch++;
 			break;
 		case SYNC_MATCH:
 			fup = p->last_syncfup;
@@ -1332,6 +1342,7 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 			msg_put(p->last_syncfup);
 			msg_get(m);
 			p->last_syncfup = m;
+			p->service_stats.followup_mismatch++;
 			break;
 		case FUP_MATCH:
 			break;
@@ -2651,6 +2662,12 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 			fc_clear(p->best);
 		}
 
+		if (fd_index == FD_SYNC_RX_TIMER) {
+			p->service_stats.sync_timeout++;
+		} else {
+			p->service_stats.announce_timeout++;
+		}
+
 		/*
 		 * Clear out the event returned by poll(). It is only cleared
 		 * in port_*_transition(). But, when BMCA == 'noop', there is no
@@ -2681,6 +2698,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		pr_debug("%s: delay timeout", p->log_name);
 		port_set_delay_tmo(p);
 		delay_req_prune(p);
+		p->service_stats.delay_timeout++;
 		if (port_delay_request(p)) {
 			return EV_FAULT_DETECTED;
 		}
@@ -2697,11 +2715,13 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_QUALIFICATION_TIMER:
 		pr_debug("%s: qualification timeout", p->log_name);
+		p->service_stats.qualification_timeout++;
 		return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 
 	case FD_MANNO_TIMER:
 		pr_debug("%s: master tx announce timeout", p->log_name);
 		port_set_manno_tmo(p);
+		p->service_stats.master_announce_timeout++;
 		clock_update_leap_status(p->clock);
 		return port_tx_announce(p, NULL, p->seqnum.announce++) ?
 			EV_FAULT_DETECTED : EV_NONE;
@@ -2709,15 +2729,18 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_SYNC_TX_TIMER:
 		pr_debug("%s: master sync timeout", p->log_name);
 		port_set_sync_tx_tmo(p);
+		p->service_stats.master_sync_timeout++;
 		return port_tx_sync(p, NULL, p->seqnum.sync++) ?
 			EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_UNICAST_SRV_TIMER:
 		pr_debug("%s: unicast service timeout", p->log_name);
+		p->service_stats.unicast_service_timeout++;
 		return unicast_service_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_UNICAST_REQ_TIMER:
 		pr_debug("%s: unicast request timeout", p->log_name);
+		p->service_stats.unicast_request_timeout++;
 		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_RTNL:

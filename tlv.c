@@ -120,6 +120,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
+	struct port_service_stats_np *pssn;
 	int extra_len = 0, i, len;
 	struct port_ds_np *pdsnp;
 	struct currentDS *cds;
@@ -331,6 +332,34 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		}
 		extra_len = sizeof(struct port_stats_np);
 		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		if (data_len < sizeof(struct port_service_stats_np))
+			goto bad_length;
+		pssn = (struct port_service_stats_np *)m->data;
+		pssn->portIdentity.portNumber =
+			htons(pssn->portIdentity.portNumber);
+		pssn->stats.announce_timeout =
+			__le64_to_cpu(pssn->stats.announce_timeout);
+		pssn->stats.sync_timeout =
+			__le64_to_cpu(pssn->stats.sync_timeout);
+		pssn->stats.delay_timeout =
+			__le64_to_cpu(pssn->stats.delay_timeout);
+		pssn->stats.unicast_service_timeout =
+			__le64_to_cpu(pssn->stats.unicast_service_timeout);
+		pssn->stats.unicast_request_timeout =
+			__le64_to_cpu(pssn->stats.unicast_request_timeout);
+		pssn->stats.master_announce_timeout =
+			__le64_to_cpu(pssn->stats.master_announce_timeout);
+		pssn->stats.master_sync_timeout =
+			__le64_to_cpu(pssn->stats.master_sync_timeout);
+		pssn->stats.qualification_timeout =
+			__le64_to_cpu(pssn->stats.qualification_timeout);
+		pssn->stats.sync_mismatch =
+			__le64_to_cpu(pssn->stats.sync_mismatch);
+		pssn->stats.followup_mismatch =
+			__le64_to_cpu(pssn->stats.followup_mismatch);
+		extra_len = sizeof(struct port_service_stats_np);
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -361,6 +390,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
+	struct port_service_stats_np *pssn;
 	struct port_ds_np *pdsnp;
 	struct defaultDS *dds;
 	struct currentDS *cds;
@@ -447,6 +477,31 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 			psn->stats.rxMsgType[i] = __cpu_to_le64(psn->stats.rxMsgType[i]);
 			psn->stats.txMsgType[i] = __cpu_to_le64(psn->stats.txMsgType[i]);
 		}
+		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		pssn = (struct port_service_stats_np *)m->data;
+		pssn->portIdentity.portNumber =
+			htons(pssn->portIdentity.portNumber);
+		pssn->stats.announce_timeout =
+			__cpu_to_le64(pssn->stats.announce_timeout);
+		pssn->stats.sync_timeout =
+			__cpu_to_le64(pssn->stats.sync_timeout);
+		pssn->stats.delay_timeout =
+			__cpu_to_le64(pssn->stats.delay_timeout);
+		pssn->stats.unicast_service_timeout =
+			__cpu_to_le64(pssn->stats.unicast_service_timeout);
+		pssn->stats.unicast_request_timeout =
+			__cpu_to_le64(pssn->stats.unicast_request_timeout);
+		pssn->stats.master_announce_timeout =
+			__cpu_to_le64(pssn->stats.master_announce_timeout);
+		pssn->stats.master_sync_timeout =
+			__cpu_to_le64(pssn->stats.master_sync_timeout);
+		pssn->stats.qualification_timeout =
+			__cpu_to_le64(pssn->stats.qualification_timeout);
+		pssn->stats.sync_mismatch =
+			__cpu_to_le64(pssn->stats.sync_mismatch);
+		pssn->stats.followup_mismatch =
+			__cpu_to_le64(pssn->stats.followup_mismatch);
 		break;
 	}
 }
