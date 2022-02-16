@@ -154,6 +154,8 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	char onoff_port_state[4] = "off";
 	char onoff_time_status[4] = "off";
 
+	mtd.reserved = 0;
+
 	switch (action) {
 	case GET:
 		pmc_send_get_action(pmc, code);
