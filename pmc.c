@@ -88,6 +88,24 @@ static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
 		SHOW_TIMESTAMP(record->syncEventIngressTimestamp));
 }
 
+
+static void pmc_show_unicast_master_entry(struct unicast_master_entry *entry,
+				    FILE *fp)
+{
+	fprintf(fp,
+		IFMT "%s %-24s %-34s %-9s %-10hhu 0x%02hhx         0x%04hx                  %-3hhu %-3hhu",
+		entry->selected ? "yes" : "no ",
+		pid2str(&entry->port_identity),
+		portaddr2str(&entry->address),
+		ustate2str(entry->port_state),
+		entry->clock_quality.clockClass,
+		entry->clock_quality.clockAccuracy,
+		entry->clock_quality.offsetScaledLogVariance,
+		entry->priority1,
+		entry->priority2
+	);
+}
+
 static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 {
 	struct slave_rx_sync_timing_record *sync_record;
@@ -139,16 +157,18 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
+	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
+	struct port_service_stats_np *pssp;
 	struct mgmt_clock_description *cd;
-	struct subscribe_events_np *sen;
 	struct management_tlv_datum *mtd;
+	struct unicast_master_entry *ume;
+	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
 	struct timePropertiesDS *tp;
 	struct management_tlv *mgt;
 	struct time_status_np *tsn;
 	struct port_stats_np *pcp;
-	struct port_service_stats_np *pssp;
 	struct tlv_extra *extra;
 	struct port_ds_np *pnp;
 	struct defaultDS *dds;
@@ -156,6 +176,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct parentDS *pds;
 	struct portDS *p;
 	struct TLV *tlv;
+	uint8_t *buf;
 	int action;
 
 	if (msg_type(msg) == SIGNALING) {
@@ -521,6 +542,24 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		pssp->stats.qualification_timeout,
 		pssp->stats.sync_mismatch,
 		pssp->stats.followup_mismatch);
+		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		umtn = (struct unicast_master_table_np *) mgt->data;
+		fprintf(fp, "MID_UNICAST_MASTER_TABLE_NP "
+			IFMT "actual_table_size %" PRIu16,
+			umtn->actual_table_size);
+		buf = (uint8_t *) umtn->unicast_masters;
+		// table header
+		fprintf(fp,
+			IFMT "%s  %-24s %-34s %-9s %s %s %s %s  %s",
+			"BM", "identity", "address", "state",
+			"clockClass", "clockQuality", "offsetScaledLogVariance",
+			"p1", "p2");
+		for (int i = 0; i < umtn->actual_table_size; i++) {
+			ume = (struct unicast_master_entry *) buf;
+			pmc_show_unicast_master_entry(ume, fp);
+			buf += sizeof(*ume) + ume->address.addressLength;
+		}
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;

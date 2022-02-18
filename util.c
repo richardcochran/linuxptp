@@ -191,6 +191,22 @@ char *portaddr2str(struct PortAddress *addr)
 	return buf;
 }
 
+const char *ustate2str(enum unicast_state ustate)
+{
+	switch (ustate) {
+	case UC_WAIT:
+		return "WAIT";
+	case UC_HAVE_ANN:
+		return "HAVE_ANN";
+	case UC_NEED_SYDY:
+		return "NEED_SYDY";
+	case UC_HAVE_SYDY:
+		return "HAVE_SYDY";
+	}
+
+	return "???";
+}
+
 void posix_clock_close(clockid_t clock)
 {
 	if (clock == CLOCK_REALTIME) {

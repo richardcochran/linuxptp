@@ -130,9 +130,10 @@ struct management_id idtab[] = {
 	{ "DELAY_MECHANISM", MID_DELAY_MECHANISM, do_get_action },
 	{ "LOG_MIN_PDELAY_REQ_INTERVAL", MID_LOG_MIN_PDELAY_REQ_INTERVAL, do_get_action },
 	{ "PORT_DATA_SET_NP", MID_PORT_DATA_SET_NP, do_set_action },
+	{ "PORT_PROPERTIES_NP", MID_PORT_PROPERTIES_NP, do_get_action },
 	{ "PORT_STATS_NP", MID_PORT_STATS_NP, do_get_action },
 	{ "PORT_SERVICE_STATS_NP", MID_PORT_SERVICE_STATS_NP, do_get_action },
-	{ "PORT_PROPERTIES_NP", MID_PORT_PROPERTIES_NP, do_get_action },
+	{ "UNICAST_MASTER_TABLE_NP", MID_UNICAST_MASTER_TABLE_NP, do_get_action },
 };
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str)

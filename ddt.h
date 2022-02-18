@@ -120,4 +120,14 @@ struct PortServiceStats {
 	uint64_t followup_mismatch;
 };
 
+struct unicast_master_entry {
+	struct PortIdentity     port_identity;
+	struct ClockQuality     clock_quality;
+	uint8_t                 selected;
+	Enumeration8            port_state;
+	UInteger8               priority1;
+	UInteger8               priority2;
+	struct PortAddress      address;
+} PACKED;
+
 #endif

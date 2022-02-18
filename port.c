@@ -110,22 +110,23 @@ static int check_source_identity(struct port *p, struct ptp_message *m)
 	return pid_eq(&master, &m->header.sourcePortIdentity) ? 0 : -1;
 }
 
-static void extract_address(struct ptp_message *m, struct PortAddress *paddr)
+static void address_to_portaddress(struct address *addr,
+				struct PortAddress *paddr)
 {
 	int len = 0;
 
 	switch (paddr->networkProtocol) {
 	case TRANS_UDP_IPV4:
-		len = sizeof(m->address.sin.sin_addr.s_addr);
-		memcpy(paddr->address, &m->address.sin.sin_addr.s_addr, len);
+		len = sizeof(addr->sin.sin_addr.s_addr);
+		memcpy(paddr->address, &addr->sin.sin_addr.s_addr, len);
 		break;
 	case TRANS_UDP_IPV6:
-		len = sizeof(m->address.sin6.sin6_addr.s6_addr);
-		memcpy(paddr->address, &m->address.sin6.sin6_addr.s6_addr, len);
+		len = sizeof(addr->sin6.sin6_addr.s6_addr);
+		memcpy(paddr->address, &addr->sin6.sin6_addr.s6_addr, len);
 		break;
 	case TRANS_IEEE_802_3:
 		len = MAC_LEN;
-		memcpy(paddr->address, &m->address.sll.sll_addr, len);
+		memcpy(paddr->address, &addr->sll.sll_addr, len);
 		break;
 	default:
 		return;
@@ -439,7 +440,7 @@ static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 			transport_protocol_addr(best->trp, paddr->address);
 		if (best->best) {
 			tmp = TAILQ_FIRST(&best->best->messages);
-			extract_address(tmp, paddr);
+			address_to_portaddress(&tmp->address, paddr);
 		}
 	} else {
 		/* We are our own parent. */
@@ -793,15 +794,20 @@ static const Octet profile_id_p2p[] = {0x00, 0x1B, 0x19, 0x00, 0x02, 0x00};
 static int port_management_fill_response(struct port *target,
 					 struct ptp_message *rsp, int id)
 {
+	struct unicast_master_table_np *umtn;
+	struct unicast_master_address *ucma;
+	struct port_service_stats_np *pssn;
 	struct mgmt_clock_description *cd;
 	struct management_tlv_datum *mtd;
+	struct unicast_master_entry *ume;
 	struct clock_description *desc;
 	struct port_properties_np *ppn;
-	struct port_stats_np *psn;
-	struct port_service_stats_np *pssn;
 	struct management_tlv *tlv;
+	struct port_stats_np *psn;
+	struct foreign_clock *fc;
 	struct port_ds_np *pdsnp;
 	struct tlv_extra *extra;
+	struct PortIdentity pid;
 	const char *ts_label;
 	struct portDS *pds;
 	uint16_t u16;
@@ -972,6 +978,48 @@ static int port_management_fill_response(struct port *target,
 		pssn->portIdentity = target->portIdentity;
 		pssn->stats = target->service_stats;
 		datalen = sizeof(*pssn);
+		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		umtn = (struct unicast_master_table_np *)tlv->data;
+		buf = tlv->data + sizeof(umtn->actual_table_size);
+		if (!unicast_client_enabled(target)) {
+			umtn->actual_table_size = 0;
+			datalen = buf - tlv->data;
+			break;
+		}
+
+		STAILQ_FOREACH(ucma, &target->unicast_master_table->addrs,
+				list) {
+			ume = (struct unicast_master_entry *) buf;
+			ume->address.networkProtocol = ucma->type;
+			address_to_portaddress(
+				&ucma->address, &ume->address);
+			ume->port_identity = ucma->portIdentity;
+			ume->port_state = ucma->state;
+			pid = clock_parent_identity(target->clock);
+			if (pid_eq(&ucma->portIdentity, &pid)) {
+				ume->selected = 1;
+			}
+
+			/* iterate over foreign masters and search for
+			 * the current identity
+			 */
+			LIST_FOREACH(fc, &target->foreign_masters,
+					list) {
+				if (pid_eq(&ume->port_identity,
+						&fc->dataset.sender)) {
+					ume->clock_quality =
+						fc->dataset.quality;
+					ume->priority1 = fc->dataset.priority1;
+					ume->priority2 = fc->dataset.priority2;
+					break;
+				}
+			}
+			buf += sizeof(struct unicast_master_entry) +
+				ume->address.addressLength;
+			umtn->actual_table_size++;
+		}
+		datalen = buf - tlv->data;
 		break;
 	default:
 		/* The caller should *not* respond to this message. */

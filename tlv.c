@@ -113,14 +113,16 @@ static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_siz
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
+	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
+	struct port_service_stats_np *pssn;
 	struct mgmt_clock_description *cd;
+	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
-	struct port_service_stats_np *pssn;
 	int extra_len = 0, i, len;
 	struct port_ds_np *pdsnp;
 	struct currentDS *cds;
@@ -360,6 +362,34 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			__le64_to_cpu(pssn->stats.followup_mismatch);
 		extra_len = sizeof(struct port_service_stats_np);
 		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		if (data_len < sizeof(struct unicast_master_table_np))
+			goto bad_length;
+		len = sizeof(struct unicast_master_table_np);
+		umtn = (struct unicast_master_table_np *)m->data;
+		umtn->actual_table_size =
+			ntohs(umtn->actual_table_size);
+		buf = (uint8_t *) umtn->unicast_masters;
+		for (int i = 0; i < umtn->actual_table_size; i++) {
+			len += sizeof(struct unicast_master_entry);
+			if (data_len < len)
+				goto bad_length;
+			ume = (struct unicast_master_entry *) buf;
+			ume->port_identity.portNumber =
+				ntohs(ume->port_identity.portNumber);
+			ume->clock_quality.offsetScaledLogVariance =
+				ntohs(ume->clock_quality.offsetScaledLogVariance);
+			ume->address.networkProtocol =
+				ntohs(ume->address.networkProtocol);
+			ume->address.addressLength =
+				ntohs(ume->address.addressLength);
+			len += ume->address.addressLength;
+			if (data_len < len)
+				goto bad_length;
+			buf += sizeof(*ume) + ume->address.addressLength;
+		}
+
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -383,19 +413,22 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
+	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
+	struct port_service_stats_np *pssn;
 	struct mgmt_clock_description *cd;
+	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
-	struct port_service_stats_np *pssn;
 	struct port_ds_np *pdsnp;
 	struct defaultDS *dds;
 	struct currentDS *cds;
 	struct parentDS *pds;
 	struct portDS *p;
+	uint8_t *buf;
 	int i;
 
 	switch (m->id) {
@@ -502,6 +535,25 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 			__cpu_to_le64(pssn->stats.sync_mismatch);
 		pssn->stats.followup_mismatch =
 			__cpu_to_le64(pssn->stats.followup_mismatch);
+		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		umtn = (struct unicast_master_table_np *)m->data;
+		buf = (uint8_t *) umtn->unicast_masters;
+		for (int i = 0; i < umtn->actual_table_size; i++) {
+			ume = (struct unicast_master_entry *) buf;
+			// update pointer before the conversion
+			buf += sizeof(*ume) + ume->address.addressLength;
+			ume->port_identity.portNumber =
+				htons(ume->port_identity.portNumber);
+			ume->clock_quality.offsetScaledLogVariance =
+				htons(ume->clock_quality.offsetScaledLogVariance);
+			ume->address.networkProtocol =
+				htons(ume->address.networkProtocol);
+			ume->address.addressLength =
+				htons(ume->address.addressLength);
+		}
+		umtn->actual_table_size =
+			htons(umtn->actual_table_size);
 		break;
 	}
 }
