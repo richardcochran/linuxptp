@@ -91,4 +91,18 @@ bool interface_tsinfo_valid(struct interface *iface);
  */
 bool interface_tsmodes_supported(struct interface *iface, int modes);
 
+/**
+ * Set the vclock (virtual PHC) to be used for timestamping on an interface.
+ * @param iface  The interface of interest.
+ * @param vclock The index of the vclock.
+ */
+void interface_set_vclock(struct interface *iface, int vclock);
+
+/**
+ * Get the vclock index set for the interface.
+ * @param iface  The interface of interest.
+ * @return       The index of the vclock, or -1 if not set.
+ */
+int interface_get_vclock(struct interface *iface);
+
 #endif

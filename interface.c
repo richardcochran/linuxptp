@@ -12,6 +12,7 @@ struct interface {
 	char name[MAX_IFNAME_SIZE + 1];
 	char ts_label[MAX_IFNAME_SIZE + 1];
 	struct sk_ts_info ts_info;
+	int vclock;
 };
 
 struct interface *interface_create(const char *name)
@@ -23,6 +24,7 @@ struct interface *interface_create(const char *name)
 		return NULL;
 	}
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	iface->vclock = -1;
 
 	return iface;
 }
@@ -75,4 +77,14 @@ bool interface_tsmodes_supported(struct interface *iface, int modes)
 		return true;
 	}
 	return false;
+}
+
+void interface_set_vclock(struct interface *iface, int vclock)
+{
+	iface->vclock = vclock;
+}
+
+int interface_get_vclock(struct interface *iface)
+{
+	return iface->vclock;
 }

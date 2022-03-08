@@ -62,6 +62,17 @@ enum {
 };
 #endif
 
+#ifndef HAVE_VCLOCKS
+enum {
+	SOF_TIMESTAMPING_BIND_PHC = (1 << 15),
+};
+
+struct so_timestamping {
+	int flags;
+	int bind_phc;
+};
+#endif
+
 #ifdef PTP_EXTTS_REQUEST2
 #define PTP_EXTTS_REQUEST_FAILED "PTP_EXTTS_REQUEST2 failed: %m"
 #else

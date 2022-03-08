@@ -243,7 +243,8 @@ static int raw_open(struct transport *t, struct interface *iface,
 	if (gfd < 0)
 		goto no_general;
 
-	if (sk_timestamping_init(efd, name, ts_type, TRANS_IEEE_802_3))
+	if (sk_timestamping_init(efd, name, ts_type, TRANS_IEEE_802_3,
+				 interface_get_vclock(iface)))
 		goto no_timestamping;
 
 	if (sk_general_init(gfd))

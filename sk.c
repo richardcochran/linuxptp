@@ -447,9 +447,10 @@ int sk_set_priority(int fd, int family, uint8_t dscp)
 }
 
 int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
-			 enum transport_type transport)
+			 enum transport_type transport, int vclock)
 {
 	int err, filter1, filter2 = 0, flags, tx_type = HWTSTAMP_TX_ON;
+	struct so_timestamping timestamping;
 
 	switch (type) {
 	case TS_SOFTWARE:
@@ -509,8 +510,14 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 			return err;
 	}
 
+	if (vclock >= 0)
+		flags |= SOF_TIMESTAMPING_BIND_PHC;
+
+	timestamping.flags = flags;
+	timestamping.bind_phc = vclock;
+
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPING,
-		       &flags, sizeof(flags)) < 0) {
+		       &timestamping, sizeof(timestamping)) < 0) {
 		pr_err("ioctl SO_TIMESTAMPING failed: %m");
 		return -1;
 	}
