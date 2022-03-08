@@ -20,6 +20,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <glob.h>
 #include <libgen.h>
 #include <limits.h>
 #include <time.h>
@@ -33,6 +34,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -46,6 +48,7 @@
 
 #define DEFAULT_FIRST_SHM_SEGMENT 0
 #define DEFAULT_RESTART_PROCESSES 1
+#define DEFAULT_USE_VCLOCKS -1
 
 #define DEFAULT_NTP_PROGRAM CHRONYD
 #define DEFAULT_NTP_MINPOLL 6
@@ -111,6 +114,7 @@ struct timemaster_config {
 	char *rundir;
 	int first_shm_segment;
 	int restart_processes;
+	int use_vclocks;
 	struct program_config chronyd;
 	struct program_config ntpd;
 	struct program_config phc2sys;
@@ -122,7 +126,13 @@ struct config_file {
 	char *content;
 };
 
+struct phc_vclocks {
+	int pclock_index;
+	int vclocks;
+};
+
 struct script {
+	struct phc_vclocks **vclocks;
 	struct config_file **configs;
 	char ***commands;
 	int **command_groups;
@@ -393,6 +403,8 @@ static int parse_timemaster_settings(char **settings,
 			r = parse_int(value, &config->first_shm_segment);
 		} else if (!strcasecmp(name, "restart_processes")) {
 			r = parse_int(value, &config->restart_processes);
+		} else if (!strcasecmp(name, "use_vclocks")) {
+			r = parse_int(value, &config->use_vclocks);
 		} else {
 			pr_err("unknown timemaster setting %s", name);
 			return 1;
@@ -520,6 +532,20 @@ static void config_destroy(struct timemaster_config *config)
 	free(config);
 }
 
+static int check_kernel_version(int version, int patch)
+{
+	struct utsname uts;
+	int v, p;
+
+	if (uname(&uts) < 0)
+		return 1;
+	if (sscanf(uts.release, "%d.%d", &v, &p) < 2)
+		return 1;
+	if (version > v || (version == v && patch > p))
+		return 1;
+	return 0;
+}
+
 static struct timemaster_config *config_parse(char *path)
 {
 	struct timemaster_config *config = xcalloc(1, sizeof(*config));
@@ -533,6 +559,7 @@ static struct timemaster_config *config_parse(char *path)
 	config->rundir = xstrdup(DEFAULT_RUNDIR);
 	config->first_shm_segment = DEFAULT_FIRST_SHM_SEGMENT;
 	config->restart_processes = DEFAULT_RESTART_PROCESSES;
+	config->use_vclocks = DEFAULT_USE_VCLOCKS;
 
 	init_program_config(&config->chronyd, "chronyd",
 			    NULL, DEFAULT_CHRONYD_SETTINGS, NULL);
@@ -593,6 +620,9 @@ static struct timemaster_config *config_parse(char *path)
 
 	fclose(f);
 
+	if (config->use_vclocks < 0)
+		config->use_vclocks = !check_kernel_version(5, 18);
+
 	if (section_name)
 		free(section_name);
 	if (section_lines)
@@ -608,7 +638,7 @@ static struct timemaster_config *config_parse(char *path)
 
 static char **get_ptp4l_command(struct program_config *config,
 				struct config_file *file, char **interfaces,
-				int hw_ts)
+				char *phc_index, int hw_ts)
 {
 	char **command = (char **)parray_new();
 
@@ -617,6 +647,9 @@ static char **get_ptp4l_command(struct program_config *config,
 	parray_extend((void ***)&command,
 		      xstrdup("-f"), xstrdup(file->path),
 		      xstrdup(hw_ts ? "-H" : "-S"), NULL);
+	if (phc_index && phc_index[0])
+		parray_extend((void ***)&command,
+			      xstrdup("--phc_index"), xstrdup(phc_index), NULL);
 
 	for (; *interfaces; interfaces++)
 		parray_extend((void ***)&command,
@@ -706,6 +739,24 @@ static int add_ntp_source(struct ntp_server *source, char **ntp_config)
 	return 0;
 }
 
+static int add_vclock(struct script *script, int pclock_index)
+{
+	struct phc_vclocks **vclocks, *v;
+
+	for (vclocks = script->vclocks; *vclocks; vclocks++) {
+		if ((*vclocks)->pclock_index != pclock_index)
+			continue;
+		return (*vclocks)->vclocks++;
+	}
+
+	v = xmalloc(sizeof(*v));
+	v->pclock_index = pclock_index;
+	v->vclocks = 1;
+	parray_append((void ***)&script->vclocks, v);
+
+	return 0;
+}
+
 static int add_ptp_source(struct ptp_domain *source,
 			  struct timemaster_config *config, int *shm_segment,
 			  int *command_group, int ***allocated_phcs,
@@ -713,7 +764,7 @@ static int add_ptp_source(struct ptp_domain *source,
 {
 	struct config_file *config_file;
 	char **command, *uds_path, *uds_path2, **interfaces, *message_tag;
-	char ts_interface[IF_NAMESIZE];
+	char ts_interface[IF_NAMESIZE], vclock_index[20];
 	int i, j, num_interfaces, *phc, *phcs, hw_ts, sw_ts;
 	struct sk_ts_info ts_info;
 
@@ -801,10 +852,18 @@ static int add_ptp_source(struct ptp_domain *source,
 				}
 			}
 
-			/* don't use this PHC in other sources */
-			phc = xmalloc(sizeof(int));
-			*phc = phcs[i];
-			parray_append((void ***)allocated_phcs, phc);
+			if (config->use_vclocks) {
+				/* request new vclock for the PHC */
+				int vclock = add_vclock(script, phcs[i]);
+				snprintf(vclock_index, sizeof(vclock_index),
+					 "%%PHC%d-%d%%", phcs[i], vclock);
+			} else {
+				/* don't use this PHC in other sources */
+				phc = xmalloc(sizeof(int));
+				*phc = phcs[i];
+				parray_append((void ***)allocated_phcs, phc);
+				vclock_index[0] = '\0';
+			}
 		}
 
 		uds_path = string_newf("%s/ptp4l.%d.socket",
@@ -842,7 +901,8 @@ static int add_ptp_source(struct ptp_domain *source,
 		if (phcs[i] >= 0) {
 			/* HW time stamping */
 			command = get_ptp4l_command(&config->ptp4l, config_file,
-						    interfaces, 1);
+						    interfaces,
+						    vclock_index, 1);
 			add_command(command, *command_group, script);
 
 			command = get_phc2sys_command(&config->phc2sys,
@@ -854,7 +914,7 @@ static int add_ptp_source(struct ptp_domain *source,
 		} else {
 			/* SW time stamping */
 			command = get_ptp4l_command(&config->ptp4l, config_file,
-						    interfaces, 0);
+						    interfaces, NULL, 0);
 			add_command(command, (*command_group)++, script);
 
 			string_appendf(&config_file->content,
@@ -943,6 +1003,11 @@ static void script_destroy(struct script *script)
 	char ***commands, **command;
 	int **groups;
 	struct config_file *config, **configs;
+	struct phc_vclocks **vclocks;
+
+	for (vclocks = script->vclocks; *vclocks; vclocks++)
+		free(*vclocks);
+	free(script->vclocks);
 
 	for (configs = script->configs; *configs; configs++) {
 		config = *configs;
@@ -974,6 +1039,7 @@ static struct script *script_create(struct timemaster_config *config)
 	int **allocated_phcs = (int **)parray_new();
 	int ret = 0, shm_segment, command_group = 0;
 
+	script->vclocks = (struct phc_vclocks **)parray_new();
 	script->configs = (struct config_file **)parray_new();
 	script->commands = (char ***)parray_new();
 	script->command_groups = (int **)parray_new();
@@ -1116,6 +1182,102 @@ static int remove_config_files(struct config_file **configs)
 	return 0;
 }
 
+static int set_phc_n_vclocks(int phc_index, int n_vclocks)
+{
+	char path[PATH_MAX];
+	FILE *f;
+
+	snprintf(path, sizeof(path), "/sys/class/ptp/ptp%d/n_vclocks",
+		 phc_index);
+	f = fopen(path, "w");
+	if (!f) {
+		pr_err("failed to open %s: %m", path);
+		return 1;
+	}
+	fprintf(f, "%d\n", n_vclocks);
+	fclose(f);
+
+	return 0;
+}
+
+static int create_vclocks(struct phc_vclocks **phc_vclocks)
+{
+	struct phc_vclocks **vclocks;
+
+	for (vclocks = phc_vclocks; *vclocks; vclocks++) {
+		if (set_phc_n_vclocks((*vclocks)->pclock_index,
+				      (*vclocks)->vclocks))
+			return 1;
+	}
+
+	return 0;
+}
+
+static int remove_vclocks(struct phc_vclocks **phc_vclocks)
+{
+	struct phc_vclocks **vclocks;
+
+	for (vclocks = phc_vclocks; *vclocks; vclocks++) {
+		if (set_phc_n_vclocks((*vclocks)->pclock_index, 0))
+			return 1;
+	}
+
+	return 0;
+}
+
+static int get_vclock_index(int pindex, int vclock)
+{
+	char pattern[PATH_MAX], *s;
+	int n, vindex;
+	glob_t gl;
+
+	snprintf(pattern, sizeof(pattern), "/sys/class/ptp/ptp%d/ptp[0-9]*",
+		 pindex);
+
+	if (glob(pattern, 0, NULL, &gl)) {
+		pr_err("glob(%s) failed", pattern);
+		return -1;
+	}
+
+	if (vclock >= gl.gl_pathc ||
+	    !(s = strrchr(gl.gl_pathv[vclock], '/')) ||
+	    sscanf(s + 1, "ptp%d%n", &vindex, &n) != 1 ||
+	    n != strlen(s + 1)) {
+		pr_err("missing vclock %d:%d", pindex, vclock);
+		globfree(&gl);
+		return -1;
+	}
+
+	globfree(&gl);
+
+	return vindex;
+}
+
+static int translate_vclock_options(char ***commands)
+{
+	int n, pindex, vclock, vindex, blen;
+	char **command;
+
+	for (; *commands; commands++) {
+		for (command = *commands; *command; command++) {
+			if (sscanf(*command, "%%PHC%d-%d%%%n",
+				   &pindex, &vclock, &n) != 2 ||
+			    n != strlen(*command))
+				continue;
+			vindex = get_vclock_index(pindex, vclock);
+			if (vindex < 0)
+				return 1;
+
+			/* overwrite the string with the vclock PHC index */
+			blen = strlen(*command) + 1;
+			if (snprintf(*command, blen, "%d", vindex) >= blen)
+				return 1;
+		}
+	}
+
+	return 0;
+}
+
 static int script_run(struct script *script)
 {
 	struct timespec ts_start, ts_now;
@@ -1133,6 +1295,12 @@ static int script_run(struct script *script)
 	}
 
 	if (create_config_files(script->configs))
+		return 1;
+
+	if (create_vclocks(script->vclocks))
+		return 1;
+
+	if (translate_vclock_options(script->commands))
 		return 1;
 
 	sigemptyset(&mask);
@@ -1278,6 +1446,9 @@ static int script_run(struct script *script)
 
 	free(pids);
 
+	if (remove_vclocks(script->vclocks))
+		return 1;
+
 	if (remove_config_files(script->configs))
 		return 1;
 
@@ -1289,13 +1460,20 @@ static void script_print(struct script *script)
 	char ***commands, **command;
 	int **groups;
 	struct config_file *config, **configs;
+	struct phc_vclocks **vclocks;
 
 	for (configs = script->configs; *configs; configs++) {
 		config = *configs;
 		fprintf(stderr, "%s:\n\n%s\n", config->path, config->content);
 	}
 
-	fprintf(stderr, "commands:\n\n");
+	fprintf(stderr, "virtual clocks:\n\n");
+	for (vclocks = script->vclocks; *vclocks; vclocks++) {
+		fprintf(stderr, "PHC%d: %d\n",
+			(*vclocks)->pclock_index, (*vclocks)->vclocks);
+	}
+
+	fprintf(stderr, "\ncommands:\n\n");
 	for (commands = script->commands, groups = script->command_groups;
 	     *commands; commands++, groups++) {
 		fprintf(stderr, "[%d] ", **groups);

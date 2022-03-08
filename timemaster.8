@@ -97,6 +97,15 @@ configuration error). If a process was terminated and is not started again,
 \fBtimemaster\fR will kill the other processes and exit with a non-zero status.
 The default value is 1 (enabled).
 
+.TP
+.B use_vclocks
+Enable or disable synchronization with virtual clocks. If enabled,
+\fBtimemaster\fR will create virtual clocks running on top of physical clocks
+needed by configured PTP domains. This enables hardware time stamping for
+multiple \fBptp4l\fR instances using the same network interface. The default
+value is -1, which enables the virtual clocks if running on Linux 5.18 or
+later.
+
 .SS [ntp_server address]
 
 The \fBntp_server\fR section specifies an NTP server that should be used as a
@@ -140,8 +149,8 @@ Specify which network interfaces should be used for this PTP domain. A separate
 \fBptp4l\fR instance will be started for each group of interfaces sharing the
 same PHC and for each interface that supports only SW time stamping. HW time
 stamping is enabled automatically. If an interface with HW time stamping is
-specified also in other PTP domains, only the \fBptp4l\fR instance from the
-first PTP domain will be using HW time stamping.
+specified also in other PTP domains and virtual clocks are disabled, only the
+\fBptp4l\fR instance from the first PTP domain will be using HW time stamping.
 
 .TP
 .B ntp_poll
@@ -333,6 +342,7 @@ ntp_program chronyd
 rundir /var/run/timemaster
 first_shm_segment 1
 restart_processes 0
+use_vclocks 0
 
 [chronyd]
 path /usr/sbin/chronyd
