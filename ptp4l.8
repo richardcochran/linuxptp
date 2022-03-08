@@ -377,8 +377,11 @@ The default is 0 (disabled).
 .TP
 .B phc_index
 Specifies the index of the PHC to be used for synchronization with hardware
-timestamping. The default is -1, which means the index will be set to the PHC
-associated with the interface, or the device specified by the \fB-p\fP option.
+timestamping. This option is useful with virtual clocks running on top of a
+free-running physical clock (created by writing to
+/sys/class/ptp/ptp*/n_vclocks).
+The default is -1, which means the index will be set to the PHC associated with
+the interface, or the device specified by the \fB-p\fP option.
 .TP
 .B udp_ttl
 Specifies the Time to live (TTL) value for IPv4 multicast messages and the hop
