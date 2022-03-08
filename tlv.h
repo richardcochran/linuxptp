@@ -354,6 +354,7 @@ struct port_hwclock_np {
 	struct PortIdentity portIdentity;
 	Integer32 phc_index;
 	UInteger8 flags;
+	uint8_t reserved;
 } PACKED;
 
 struct port_stats_np {
