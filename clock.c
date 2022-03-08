@@ -1486,6 +1486,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 
 	switch (mgt->id) {
 	case MID_PORT_PROPERTIES_NP:
+	case MID_PORT_HWCLOCK_NP:
 		if (p != c->uds_rw_port) {
 			/* Only the UDS-RW port allowed. */
 			clock_management_send_error(p, msg, MID_NOT_SUPPORTED);

@@ -802,6 +802,7 @@ static int port_management_fill_response(struct port *target,
 	struct unicast_master_entry *ume;
 	struct clock_description *desc;
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct management_tlv *tlv;
 	struct port_stats_np *psn;
 	struct foreign_clock *fc;
@@ -1020,6 +1021,14 @@ static int port_management_fill_response(struct port *target,
 			umtn->actual_table_size++;
 		}
 		datalen = buf - tlv->data;
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		phn = (struct port_hwclock_np *)tlv->data;
+		phn->portIdentity = target->portIdentity;
+		phn->phc_index = target->phc_index;
+		phn->flags = interface_get_vclock(target->iface) >= 0 ?
+			PORT_HWCLOCK_VCLOCK : 0;
+		datalen = sizeof(*phn);
 		break;
 	default:
 		/* The caller should *not* respond to this message. */

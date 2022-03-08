@@ -165,6 +165,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
 	struct management_tlv *mgt;
 	struct time_status_np *tsn;
@@ -560,6 +561,16 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pmc_show_unicast_master_entry(ume, fp);
 			buf += sizeof(*ume) + ume->address.addressLength;
 		}
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		phn = (struct port_hwclock_np *) mgt->data;
+		fprintf(fp, "PORT_HWCLOCK_NP "
+			IFMT "portIdentity            %s"
+			IFMT "phcIndex                %d"
+			IFMT "flags                   %hhu",
+			pid2str(&phn->portIdentity),
+			phn->phc_index,
+			phn->flags);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;

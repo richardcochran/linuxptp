@@ -120,6 +120,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
@@ -388,7 +389,14 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 				goto bad_length;
 			buf += sizeof(*ume) + ume->address.addressLength;
 		}
-
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		if (data_len < sizeof(struct port_hwclock_np))
+			goto bad_length;
+		phn = (struct port_hwclock_np *)m->data;
+		phn->portIdentity.portNumber = ntohs(phn->portIdentity.portNumber);
+		phn->phc_index = ntohl(phn->phc_index);
+		extra_len = sizeof(struct port_hwclock_np);
 		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
@@ -420,6 +428,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
@@ -554,6 +563,11 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		}
 		umtn->actual_table_size =
 			htons(umtn->actual_table_size);
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		phn = (struct port_hwclock_np *)m->data;
+		phn->portIdentity.portNumber = htons(phn->portIdentity.portNumber);
+		phn->phc_index = htonl(phn->phc_index);
 		break;
 	}
 }
