@@ -304,9 +304,10 @@ int pmc_agent_query_dds(struct pmc_agent *node, int timeout)
 
 int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
 				    unsigned int port, int *state,
-				    int *tstamping, char *iface)
+				    int *tstamping, int *phc_index, char *iface)
 {
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct ptp_message *msg;
 	int res, len;
 
@@ -329,6 +330,21 @@ int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
 		}
 		memcpy(iface, ppn->interface.text, len);
 		iface[len] = '\0';
+
+		msg_put(msg);
+		break;
+	}
+	while (1) {
+		res = run_pmc(node, timeout, MID_PORT_HWCLOCK_NP, &msg);
+		if (is_run_pmc_error(res)) {
+			goto out;
+		}
+		phn = management_tlv_data(msg);
+		if (phn->portIdentity.portNumber != port) {
+			msg_put(msg);
+			continue;
+		}
+		*phc_index = phn->phc_index;
 
 		msg_put(msg);
 		res = RUN_PMC_OKAY;
