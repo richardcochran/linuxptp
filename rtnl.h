@@ -60,6 +60,15 @@ int rtnl_link_query(int fd, const char *device);
 int rtnl_link_status(int fd, const char *device, rtnl_callback cb, void *ctx);
 
 /**
+ * Check if the PHC is a virtual clock of the interface (i.e. sockets bound to
+ * the interface also need to be bound to the clock).
+ * @param device    Name of the interface.
+ * @param phc_index Index of the clock to check.
+ * @return          1 if true, otherwise 0.
+ */
+int rtnl_iface_has_vclock(const char *device, int phc_index);
+
+/**
  * Open a RT netlink socket for monitoring link state.
  * @return    A valid socket, or -1 on error.
  */
