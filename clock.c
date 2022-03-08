@@ -898,7 +898,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	char ts_label[IF_NAMESIZE], phc[32], *tmp;
 	enum timestamp_type timestamping;
 	int fadj = 0, max_adj = 0, sw_ts;
-	int phc_index, required_modes = 0;
+	int phc_index, conf_phc_index, required_modes = 0;
 	struct clock *c = &the_clock;
 	const char *uds_ifname;
 	struct port *p;
@@ -1016,6 +1016,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 	iface = STAILQ_FIRST(&config->interfaces);
 
+	conf_phc_index = config_get_int(config, interface_name(iface), "phc_index");
+
 	/* determine PHC Clock index */
 	if (config_get_int(config, NULL, "free_running")) {
 		phc_index = -1;
@@ -1025,6 +1027,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index)) {
 			phc_index = -1;
 		}
+	} else if (conf_phc_index >= 0) {
+		phc_index = conf_phc_index;
 	} else if (interface_tsinfo_valid(iface)) {
 		phc_index = interface_phc_index(iface);
 	} else {

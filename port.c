@@ -3173,7 +3173,9 @@ struct port *port_open(const char *phc_device,
 		goto err_log_name;
 	}
 
-	p->phc_index = phc_index;
+	p->phc_index = config_get_int(cfg, interface_name(interface), "phc_index");
+	if (p->phc_index < 0)
+		p->phc_index = phc_index;
 	p->jbod = config_get_int(cfg, interface_name(interface), "boundary_clock_jbod");
 	p->master_only = config_get_int(cfg, interface_name(interface), "serverOnly");
 	p->bmca = config_get_int(cfg, interface_name(interface), "BMCA");
@@ -3200,8 +3202,8 @@ struct port *port_open(const char *phc_device,
 		; /* UDS cannot have a PHC. */
 	} else if (!interface_tsinfo_valid(interface)) {
 		pr_warning("%s: get_ts_info not supported", p->log_name);
-	} else if (phc_index >= 0 &&
-		   phc_index != interface_phc_index(interface)) {
+	} else if (p->phc_index >= 0 &&
+		   p->phc_index != interface_phc_index(interface)) {
 		if (p->jbod) {
 			pr_warning("%s: just a bunch of devices", p->log_name);
 			p->phc_index = interface_phc_index(interface);

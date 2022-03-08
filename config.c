@@ -284,6 +284,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("operLogPdelayReqInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("operLogSyncInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("path_trace_enabled", 0, 0, 1),
+	PORT_ITEM_INT("phc_index", -1, -1, INT_MAX),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_exponent", 0.4, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_norm_max", 0.3, DBL_MIN, 2.0),

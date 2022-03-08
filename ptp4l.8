@@ -375,6 +375,11 @@ collection of clocks must be synchronized by an external program, for
 example phc2sys(8) in "automatic" mode.
 The default is 0 (disabled).
 .TP
+.B phc_index
+Specifies the index of the PHC to be used for synchronization with hardware
+timestamping. The default is -1, which means the index will be set to the PHC
+associated with the interface, or the device specified by the \fB-p\fP option.
+.TP
 .B udp_ttl
 Specifies the Time to live (TTL) value for IPv4 multicast messages and the hop
 limit for IPv6 multicast messages. This option is only relevant with the IPv4
