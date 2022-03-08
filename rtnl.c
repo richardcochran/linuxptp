@@ -178,10 +178,10 @@ static int rtnl_rtattr_parse(struct rtattr *tb[], int max, struct rtattr *rta, i
 {
 	unsigned short type;
 
-	memset(tb, 0, sizeof(struct rtattr *) * max);
+	memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
 	while (RTA_OK(rta, len)) {
 		type = rta->rta_type;
-		if ((type < max) && (!tb[type]))
+		if ((type <= max) && (!tb[type]))
 			tb[type] = rta;
 		rta = RTA_NEXT(rta, len);
 	}
@@ -200,8 +200,8 @@ static inline int rtnl_nested_rtattr_parse(struct rtattr *tb[], int max, struct 
 
 static int rtnl_linkinfo_parse(int master_index, struct rtattr *rta)
 {
-	struct rtattr *linkinfo[IFLA_INFO_MAX];
-	struct rtattr *bond[IFLA_BOND_MAX];
+	struct rtattr *linkinfo[IFLA_INFO_MAX+1];
+	struct rtattr *bond[IFLA_BOND_MAX+1];
 	int index = -1;
 	char *kind;
 
