@@ -54,6 +54,25 @@
 #define EMPTY_CLOCK_DESCRIPTION 22
 /* Includes one extra byte to make length even. */
 #define EMPTY_PTP_TEXT 2
+/* Field                  Len  Type
+ * -------------------------------------------------------
+ * portIdentity          10    UInteger16 + 8 * Octets
+ * port_state             1    uint8_t
+ * timestamping           1    uint8_t
+ * interface              1    PTPText
+ * extra                  1    make length even
+ * -------------------------------------------------------
+ * TOTAL                 14
+ */
+#define EMPTY_PORT_PROPERTIES_NP 14
+/* Field                  Len  Type
+ * -------------------------------------------------------
+ * actualTableSize        2    UInteger16
+ * unicast_masters        0    Zero length array
+ * -------------------------------------------------------
+ * TOTAL                  2
+ */
+#define EMPTY_UNICAST_MASTER_TABLE_NP 2
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str);
 static void do_set_action(struct pmc *pmc, int action, int index, char *str);
@@ -517,6 +536,7 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 	case MID_TRACEABILITY_PROPERTIES:
 	case MID_TIMESCALE_PROPERTIES:
 	case MID_MASTER_ONLY:
+	case MID_SYNCHRONIZATION_UNCERTAIN_NP:
 		len += sizeof(struct management_tlv_datum);
 		break;
 	case MID_TIME_STATUS_NP:
@@ -524,6 +544,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_GRANDMASTER_SETTINGS_NP:
 		len += sizeof(struct grandmaster_settings_np);
+		break;
+	case MID_SUBSCRIBE_EVENTS_NP:
+		len += sizeof(struct subscribe_events_np);
 		break;
 	case MID_NULL_MANAGEMENT:
 		break;
@@ -536,6 +559,21 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 	case MID_PORT_DATA_SET_NP:
 		len += sizeof(struct port_ds_np);
 		break;
+	case MID_PORT_PROPERTIES_NP:
+		len += EMPTY_PORT_PROPERTIES_NP;
+		break;
+	case MID_PORT_STATS_NP:
+		len += sizeof(struct port_stats_np);
+		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		len += sizeof(struct port_service_stats_np);
+		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		len += EMPTY_UNICAST_MASTER_TABLE_NP;
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		len += sizeof(struct port_hwclock_np);
+		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 	case MID_ANNOUNCE_RECEIPT_TIMEOUT:
 	case MID_LOG_SYNC_INTERVAL:
@@ -545,7 +583,7 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		len += sizeof(struct management_tlv_datum);
 		break;
 	}
-	return len;
+	return len + len % 2;
 }
 
 int pmc_get_transport_fd(struct pmc *pmc)
