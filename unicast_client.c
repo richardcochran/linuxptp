@@ -547,3 +547,21 @@ int unicast_client_timer(struct port *p)
 	unicast_client_set_tmo(p);
 	return err;
 }
+
+int unicast_client_msg_is_from_master_table_entry(struct port *p, struct ptp_message *m)
+{
+	struct unicast_master_address *ucma;
+	int found = 0;
+
+	if (!unicast_client_enabled(p)) {
+		return found;
+	}
+	STAILQ_FOREACH(ucma, &p->unicast_master_table->addrs, list) {
+		if (addreq(transport_type(p->trp), &ucma->address, &m->address)) {
+			found = 1;
+			break;
+		}
+	}
+	return found;
+}
+

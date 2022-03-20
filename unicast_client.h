@@ -82,4 +82,15 @@ void unicast_client_state_changed(struct port *p);
  */
 int unicast_client_timer(struct port *p);
 
+/**
+ * Check whether a message was received from an entry in the unicast
+ * master table.
+ * @param p      The port in question.
+ * @param m      The message in question.
+ * @return       One (1) if the message is from an entry in the unicast
+ *               master table, or zero otherwise.
+ */
+int unicast_client_msg_is_from_master_table_entry(struct port *p, 
+						  struct ptp_message *m);
+
 #endif
