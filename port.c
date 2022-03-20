@@ -167,6 +167,21 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 	return 0 == memcmp(id1, id2, sizeof(*id1));
 }
 
+static void port_cancel_unicast(struct port *p)
+{
+	struct unicast_master_address *ucma;
+
+	if (!unicast_client_enabled(p)) {
+		return;
+	}
+
+	STAILQ_FOREACH(ucma, &p->unicast_master_table->addrs, list) {
+		if (ucma) {
+			unicast_client_tx_cancel(p, ucma);
+		}
+	}
+}
+
 static int port_unicast_message_valid(struct port *p, struct ptp_message *m)
 {
 	struct unicast_master_address master;
@@ -2488,6 +2503,7 @@ void process_sync(struct port *p, struct ptp_message *m)
 void port_close(struct port *p)
 {
 	if (port_is_enabled(p)) {
+		port_cancel_unicast(p);
 		port_disable(p);
 	}
 
