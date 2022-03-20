@@ -167,6 +167,27 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 	return 0 == memcmp(id1, id2, sizeof(*id1));
 }
 
+static int port_unicast_message_valid(struct port *p, struct ptp_message *m)
+{
+	struct unicast_master_address master;
+
+	if (!unicast_client_msg_is_from_master_table_entry(p, m)) {
+		memset(&master, 0, sizeof(master));
+		master.address = m->address;
+		master.portIdentity = m->header.sourcePortIdentity;
+
+		pr_warning("%s: new foreign master %s not in unicast master table",
+			   p->log_name, pid2str(&m->header.sourcePortIdentity));
+
+		if (unicast_client_tx_cancel(p, &master)) {
+			pr_warning("%s: cancel unicast transmission to %s failed",
+				   p->log_name, pid2str(&m->header.sourcePortIdentity));
+		}
+		return 0;
+	}
+	return 1;
+}
+
 int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 {
 	return pid_eq(&m1->header.sourcePortIdentity,
@@ -351,6 +372,11 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 		}
 	}
 	if (!fc) {
+		if (unicast_client_enabled(p)) {
+			if (!port_unicast_message_valid(p, m)) {
+				return 0;
+			}
+		}
 		pr_notice("%s: new foreign master %s", p->log_name,
 			pid2str(&m->header.sourcePortIdentity));
 
