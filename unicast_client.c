@@ -64,6 +64,23 @@ static int attach_request(struct ptp_message *msg, int log_period,
 	return 0;
 }
 
+static int attach_cancel(struct ptp_message *msg, uint8_t message_type)
+{
+	struct cancel_unicast_xmit_tlv *req;
+	struct tlv_extra *extra;
+
+	extra = msg_tlv_append(msg, sizeof(*req));
+	if (!extra) {
+		return -1;
+	}
+	req = (struct cancel_unicast_xmit_tlv *) extra->tlv;
+	req->type = TLV_CANCEL_UNICAST_TRANSMISSION;
+	req->length = sizeof(*req) - sizeof(req->type) - sizeof(req->length);
+	req->message_type_flags = message_type << 4;
+
+	return 0;
+}
+
 static int unicast_client_announce(struct port *p,
 				   struct unicast_master_address *dst)
 {
@@ -565,3 +582,36 @@ int unicast_client_msg_is_from_master_table_entry(struct port *p, struct ptp_mes
 	return found;
 }
 
+int unicast_client_tx_cancel(struct port *p,
+			     struct unicast_master_address *dst)
+{
+	struct ptp_message *msg;
+	int err;
+
+	msg = port_signaling_uc_construct(p, &dst->address, &dst->portIdentity);
+	if (!msg) {
+		return -1;
+	}
+	err = attach_cancel(msg, ANNOUNCE);
+	if (err) {
+		goto out;
+	}
+	err = attach_cancel(msg, SYNC);
+	if (err) {
+		goto out;
+	}
+	if (p->delayMechanism != DM_P2P) {
+		err = attach_cancel(msg, DELAY_RESP);
+		if (err) {
+			goto out;
+		}
+	}
+
+	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
+	if (err) {
+		pr_err("%s: signaling message failed", p->log_name);
+	}
+out:
+	msg_put(msg);
+	return err;
+}
