@@ -53,9 +53,11 @@ static int uds_close(struct transport *t, struct fdarray *fda)
 static int uds_open(struct transport *t, struct interface *iface, struct fdarray *fda,
 		    enum timestamp_type tt)
 {
+	char *uds_ro_path = config_get_string(t->cfg, NULL, "uds_ro_address");
 	char *uds_path = config_get_string(t->cfg, NULL, "uds_address");
 	struct uds *uds = container_of(t, struct uds, t);
 	const char *name = interface_name(iface);
+	const char* file_mode_cfg;
 	struct sockaddr_un sa;
 	mode_t file_mode;
 	int fd, err;
@@ -78,7 +80,11 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 		return -1;
 	}
 
-	file_mode = (mode_t)config_get_int(t->cfg, name, "uds_file_mode");
+	file_mode_cfg = "uds_file_mode";
+	// The RO UDS socket has a separate configuration for file mode
+	if (0 == strncmp(name, uds_ro_path, MAX_IFNAME_SIZE))
+		file_mode_cfg = "uds_ro_file_mode";
+	file_mode = (mode_t)config_get_int(t->cfg, name, file_mode_cfg);
 
 	/* For client use, pre load the server path. */
 	memset(&sa, 0, sizeof(sa));

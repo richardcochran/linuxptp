@@ -35,6 +35,7 @@
 #include "util.h"
 
 #define UDS_FILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) /*0660*/
+#define UDS_RO_FILEMODE (UDS_FILEMODE|S_IROTH|S_IWOTH) /*0666*/
 
 struct interface {
 	STAILQ_ENTRY(interface) list;
@@ -335,6 +336,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
 	PORT_ITEM_INT("uds_file_mode", UDS_FILEMODE, 0, 0777),
 	GLOB_ITEM_STR("uds_ro_address", "/var/run/ptp4lro"),
+	PORT_ITEM_INT("uds_ro_file_mode", UDS_RO_FILEMODE, 0, 0777),
 	PORT_ITEM_INT("unicast_listen", 0, 0, 1),
 	PORT_ITEM_INT("unicast_master_table", 0, 0, INT_MAX),
 	PORT_ITEM_INT("unicast_req_duration", 3600, 10, INT_MAX),

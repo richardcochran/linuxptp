@@ -653,6 +653,11 @@ File mode of the UNIX domain socket used for receiving local management
 messages. The mode should be specified as an octal number, i.e. it
 should start with a 0 literal. The default mode is 0660.
 .TP
+.B uds_ro_file_mode
+File mode of the second (read-only) UNIX domain socket used for receiving
+local management messages. The mode should be specified as an octal number,
+i.e. it should start with a 0 literal. The default mode is 0666.
+.TP
 .B dscp_event
 Defines the Differentiated Services Codepoint (DSCP) to be used for PTP
 event messages. Must be a value between 0 and 63. There are several media
