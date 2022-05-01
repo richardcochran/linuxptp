@@ -648,6 +648,11 @@ management messages, which is restricted to GET actions and does not forward
 messages to other ports. Access to this socket can be given to untrusted
 applications for monitoring purposes. The default is /var/run/ptp4lro.
 .TP
+.B uds_file_mode
+File mode of the UNIX domain socket used for receiving local management
+messages. The mode should be specified as an octal number, i.e. it
+should start with a 0 literal. The default mode is 0660.
+.TP
 .B dscp_event
 Defines the Differentiated Services Codepoint (DSCP) to be used for PTP
 event messages. Must be a value between 0 and 63. There are several media

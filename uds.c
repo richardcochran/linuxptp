@@ -31,8 +31,6 @@
 #include "transport_private.h"
 #include "uds.h"
 
-#define UDS_FILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) /*0660*/
-
 struct uds {
 	struct transport t;
 	struct address address;
@@ -59,6 +57,7 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 	struct uds *uds = container_of(t, struct uds, t);
 	const char *name = interface_name(iface);
 	struct sockaddr_un sa;
+	mode_t file_mode;
 	int fd, err;
 
 	fd = socket(AF_LOCAL, SOCK_DGRAM, 0);
@@ -79,6 +78,8 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 		return -1;
 	}
 
+	file_mode = (mode_t)config_get_int(t->cfg, name, "uds_file_mode");
+
 	/* For client use, pre load the server path. */
 	memset(&sa, 0, sizeof(sa));
 	sa.sun_family = AF_LOCAL;
@@ -86,7 +87,7 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 	uds->address.sun = sa;
 	uds->address.len = sizeof(sa);
 
-	chmod(name, UDS_FILEMODE);
+	chmod(name, file_mode);
 	fda->fd[FD_EVENT] = -1;
 	fda->fd[FD_GENERAL] = fd;
 	return 0;
