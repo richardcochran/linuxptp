@@ -546,8 +546,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_UNICAST_MASTER_TABLE_NP:
 		umtn = (struct unicast_master_table_np *) mgt->data;
-		fprintf(fp, "MID_UNICAST_MASTER_TABLE_NP "
-			IFMT "actual_table_size %" PRIu16,
+		fprintf(fp, "UNICAST_MASTER_TABLE_NP "
+			IFMT "actual_table_size %hu",
 			umtn->actual_table_size);
 		buf = (uint8_t *) umtn->unicast_masters;
 		// table header
