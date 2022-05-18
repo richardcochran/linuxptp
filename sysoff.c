@@ -17,6 +17,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -38,11 +39,11 @@ static int sysoff_precise(int fd, int64_t *result, uint64_t *ts)
 	memset(&pso, 0, sizeof(pso));
 	if (ioctl(fd, PTP_SYS_OFFSET_PRECISE, &pso)) {
 		pr_debug("ioctl PTP_SYS_OFFSET_PRECISE: %m");
-		return SYSOFF_RUN_TIME_MISSING;
+		return -errno;
 	}
 	*result = pctns(&pso.sys_realtime) - pctns(&pso.device);
 	*ts = pctns(&pso.sys_realtime);
-	return SYSOFF_PRECISE;
+	return 0;
 }
 
 static int64_t sysoff_estimate(struct ptp_clock_time *pct, int extended,
@@ -98,10 +99,10 @@ static int sysoff_extended(int fd, int n_samples,
 	pso.n_samples = n_samples;
 	if (ioctl(fd, PTP_SYS_OFFSET_EXTENDED, &pso)) {
 		pr_debug("ioctl PTP_SYS_OFFSET_EXTENDED: %m");
-		return SYSOFF_RUN_TIME_MISSING;
+		return -errno;
 	}
 	*result = sysoff_estimate(&pso.ts[0][0], 1, n_samples, ts, delay);
-	return SYSOFF_EXTENDED;
+	return 0;
 }
 
 static int sysoff_basic(int fd, int n_samples,
@@ -112,10 +113,10 @@ static int sysoff_basic(int fd, int n_samples,
 	pso.n_samples = n_samples;
 	if (ioctl(fd, PTP_SYS_OFFSET, &pso)) {
 		perror("ioctl PTP_SYS_OFFSET");
-		return SYSOFF_RUN_TIME_MISSING;
+		return -errno;
 	}
 	*result = sysoff_estimate(pso.ts, 0, n_samples, ts, delay);
-	return SYSOFF_BASIC;
+	return 0;
 }
 
 int sysoff_measure(int fd, int method, int n_samples,
@@ -130,7 +131,7 @@ int sysoff_measure(int fd, int method, int n_samples,
 	case SYSOFF_BASIC:
 		return sysoff_basic(fd, n_samples, result, ts, delay);
 	}
-	return SYSOFF_RUN_TIME_MISSING;
+	return -EOPNOTSUPP;
 }
 
 int sysoff_probe(int fd, int n_samples)
