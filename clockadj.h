@@ -71,7 +71,7 @@ int clockadj_max_freq(clockid_t clkid);
  * @param offset    On return, the nanoseconds offset between the clocks
  * @param ts        On return, the time of sysclk in nanoseconds that was used
  * @param delay     On return, the interval between two reads of sysclk
- * @return Zero on success and non-zero on failure.
+ * @return Zero on success, or negative error code on failure.
  *
  * Compare the offset between two clocks in a similar manner as the
  * PTP_SYS_OFFSET ioctls. Performs multiple reads of sysclk with a read of

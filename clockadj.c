@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <errno.h>
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
@@ -152,7 +153,7 @@ int clockadj_compare(clockid_t clkid, clockid_t sysclk, int readings,
 				clock_gettime(clkid, &tsrc) ||
 				clock_gettime(sysclk, &tdst2)) {
 			pr_err("failed to read clock: %m");
-			return -1;
+			return -errno;
 		}
 
 		interval = (tdst2.tv_sec - tdst1.tv_sec) * NS_PER_SEC +
