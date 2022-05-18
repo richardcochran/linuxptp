@@ -145,8 +145,8 @@ int sysoff_measure(int fd, int method, int n_samples,
 int sysoff_probe(int fd, int n_samples)
 {
 	int64_t junk, delay;
+	int i, j, err;
 	uint64_t ts;
-	int i;
 
 	if (n_samples > PTP_MAX_SAMPLES) {
 		fprintf(stderr, "warning: %d exceeds kernel max readings %d\n",
@@ -156,9 +156,15 @@ int sysoff_probe(int fd, int n_samples)
 	}
 
 	for (i = 0; i < SYSOFF_LAST; i++) {
-		if (sysoff_measure(fd, i, n_samples, &junk, &ts, &delay) < 0)
-			continue;
-		return i;
+		for (j = 0; j < 3; j++) {
+			err = sysoff_measure(fd, i, n_samples, &junk, &ts,
+					     &delay);
+			if (err == -EBUSY)
+				continue;
+			if (err)
+				break;
+			return i;
+		}
 	}
 
 	return SYSOFF_RUN_TIME_MISSING;
