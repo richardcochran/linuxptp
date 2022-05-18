@@ -28,6 +28,14 @@
 
 #define NS_PER_SEC 1000000000LL
 
+static void print_ioctl_error(const char *name)
+{
+	if (errno == EOPNOTSUPP)
+		pr_debug("ioctl %s: %s", name, strerror(errno));
+	else
+		pr_err("ioctl %s: %s", name, strerror(errno));
+}
+
 static int64_t pctns(struct ptp_clock_time *t)
 {
 	return t->sec * NS_PER_SEC + t->nsec;
@@ -38,7 +46,7 @@ static int sysoff_precise(int fd, int64_t *result, uint64_t *ts)
 	struct ptp_sys_offset_precise pso;
 	memset(&pso, 0, sizeof(pso));
 	if (ioctl(fd, PTP_SYS_OFFSET_PRECISE, &pso)) {
-		pr_debug("ioctl PTP_SYS_OFFSET_PRECISE: %m");
+		print_ioctl_error("PTP_SYS_OFFSET_PRECISE");
 		return -errno;
 	}
 	*result = pctns(&pso.sys_realtime) - pctns(&pso.device);
@@ -98,7 +106,7 @@ static int sysoff_extended(int fd, int n_samples,
 	memset(&pso, 0, sizeof(pso));
 	pso.n_samples = n_samples;
 	if (ioctl(fd, PTP_SYS_OFFSET_EXTENDED, &pso)) {
-		pr_debug("ioctl PTP_SYS_OFFSET_EXTENDED: %m");
+		print_ioctl_error("PTP_SYS_OFFSET_EXTENDED");
 		return -errno;
 	}
 	*result = sysoff_estimate(&pso.ts[0][0], 1, n_samples, ts, delay);
@@ -112,7 +120,7 @@ static int sysoff_basic(int fd, int n_samples,
 	memset(&pso, 0, sizeof(pso));
 	pso.n_samples = n_samples;
 	if (ioctl(fd, PTP_SYS_OFFSET, &pso)) {
-		perror("ioctl PTP_SYS_OFFSET");
+		print_ioctl_error("PTP_SYS_OFFSET");
 		return -errno;
 	}
 	*result = sysoff_estimate(pso.ts, 0, n_samples, ts, delay);
