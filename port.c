@@ -2678,10 +2678,42 @@ static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	}
 }
 
+static void port_change_phc(struct port *p)
+{
+	int required_modes;
+
+	/* Only switch phc with HW time stamping mode */
+	if (!interface_tsinfo_valid(p->iface) ||
+	    interface_phc_index(p->iface) < 0)
+		return;
+
+	required_modes = clock_required_modes(p->clock);
+	if (!interface_tsmodes_supported(p->iface, required_modes)) {
+		pr_err("interface '%s' does not support requested "
+		       "timestamping mode, set link status down by force.",
+		       interface_label(p->iface));
+		p->link_status = LINK_DOWN | LINK_STATE_CHANGED;
+	} else if (p->phc_from_cmdline) {
+		pr_warning("%s: taking /dev/ptp%d from the "
+			   "command line, not the attached ptp%d",
+			   p->log_name, p->phc_index,
+			   interface_phc_index(p->iface));
+	} else if (p->phc_index != interface_phc_index(p->iface)) {
+		p->phc_index = interface_phc_index(p->iface);
+
+		if (clock_switch_phc(p->clock, p->phc_index)) {
+			p->last_fault_type = FT_SWITCH_PHC;
+			port_dispatch(p, EV_FAULT_DETECTED, 0);
+			return;
+		}
+		clock_sync_interval(p->clock, p->log_sync_interval);
+	}
+}
+
 void port_link_status(void *ctx, int linkup, int ts_index)
 {
 	char ts_label[MAX_IFNAME_SIZE + 1] = {0};
-	int link_state, required_modes;
+	int link_state;
 	const char *old_ts_label;
 	struct port *p = ctx;
 
@@ -2705,32 +2737,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	if (p->link_status & LINK_UP &&
 	    (p->link_status & LINK_STATE_CHANGED || p->link_status & TS_LABEL_CHANGED)) {
 		interface_get_tsinfo(p->iface);
-
-		/* Only switch phc with HW time stamping mode */
-		if (interface_tsinfo_valid(p->iface) &&
-		    interface_phc_index(p->iface) >= 0) {
-			required_modes = clock_required_modes(p->clock);
-			if (!interface_tsmodes_supported(p->iface, required_modes)) {
-				pr_err("interface '%s' does not support requested "
-				       "timestamping mode, set link status down by force.",
-				       interface_label(p->iface));
-				p->link_status = LINK_DOWN | LINK_STATE_CHANGED;
-			} else if (p->phc_from_cmdline) {
-				pr_warning("%s: taking /dev/ptp%d from the "
-					   "command line, not the attached ptp%d",
-					   p->log_name, p->phc_index,
-					   interface_phc_index(p->iface));
-			} else if (p->phc_index != interface_phc_index(p->iface)) {
-				p->phc_index = interface_phc_index(p->iface);
-
-				if (clock_switch_phc(p->clock, p->phc_index)) {
-					p->last_fault_type = FT_SWITCH_PHC;
-					port_dispatch(p, EV_FAULT_DETECTED, 0);
-					return;
-				}
-				clock_sync_interval(p->clock, p->log_sync_interval);
-			}
-		}
+		port_change_phc(p);
 	}
 
 	/*
