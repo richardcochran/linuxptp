@@ -1002,9 +1002,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		memset(ts_label, 0, sizeof(ts_label));
-		rtnl_get_ts_device(interface_name(iface), ts_label);
-		interface_set_label(iface, ts_label);
-		interface_ensure_tslabel(iface);
+		if (!rtnl_get_ts_device(interface_name(iface), ts_label))
+			interface_set_label(iface, ts_label);
 		interface_get_tsinfo(iface);
 		if (interface_tsinfo_valid(iface) &&
 		    !interface_tsmodes_supported(iface, required_modes)) {

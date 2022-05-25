@@ -34,12 +34,6 @@ struct interface *interface_create(const char *name);
 void interface_destroy(struct interface *iface);
 
 /**
- * Ensures that an interface has a proper time stamping label.
- * @param iface  The interface of interest.
- */
-void interface_ensure_tslabel(struct interface *iface);
-
-/**
  * Populate the time stamping information of a given interface.
  * @param iface  The interface of interest.
  * @return       zero on success, negative on failure.

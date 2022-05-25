@@ -435,7 +435,6 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		pr_err("failed to create interface");
 		goto failed;
 	}
-	interface_ensure_tslabel(pmc->iface);
 
 	if (transport_open(pmc->transport, pmc->iface,
 			   &pmc->fdarray, TS_SOFTWARE)) {

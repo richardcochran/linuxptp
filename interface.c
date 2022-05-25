@@ -24,6 +24,7 @@ struct interface *interface_create(const char *name)
 		return NULL;
 	}
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	strncpy(iface->ts_label, name, MAX_IFNAME_SIZE);
 	iface->vclock = -1;
 
 	return iface;
@@ -32,13 +33,6 @@ struct interface *interface_create(const char *name)
 void interface_destroy(struct interface *iface)
 {
 	free(iface);
-}
-
-void interface_ensure_tslabel(struct interface *iface)
-{
-	if (!iface->ts_label[0]) {
-		memcpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
-	}
 }
 
 int interface_get_tsinfo(struct interface *iface)
