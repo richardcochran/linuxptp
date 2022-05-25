@@ -66,6 +66,11 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 
 	init_ifreq(&ifreq, &cfg, device);
 
+	cfg.flags = HWTSTAMP_FLAG_BONDED_PHC_INDEX;
+	/* Fall back without flag if user run new build on old kernel */
+	if (ioctl(fd, SIOCGHWTSTAMP, &ifreq) == -EINVAL)
+		init_ifreq(&ifreq, &cfg, device);
+
 	switch (sk_hwts_filter_mode) {
 	case HWTS_FILTER_CHECK:
 		err = ioctl(fd, SIOCGHWTSTAMP, &ifreq);

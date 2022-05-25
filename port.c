@@ -2733,12 +2733,18 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		pr_notice("%s: ts label changed to %s", p->log_name, ts_label);
 	}
 
+	/* phc index may changed while ts_label keeps the same after failover.
+	 * e.g. vlan over bond. Since the lower link changed, we still set
+	 * the TS_LABEL_CHANGED flag.
+	 */
+	interface_get_tsinfo(p->iface);
+	if (p->phc_index != interface_phc_index(p->iface))
+		p->link_status |= TS_LABEL_CHANGED;
+
 	/* Both link down/up and change ts_label may change phc index. */
 	if (p->link_status & LINK_UP &&
-	    (p->link_status & LINK_STATE_CHANGED || p->link_status & TS_LABEL_CHANGED)) {
-		interface_get_tsinfo(p->iface);
+	    (p->link_status & LINK_STATE_CHANGED || p->link_status & TS_LABEL_CHANGED))
 		port_change_phc(p);
-	}
 
 	/*
 	 * A port going down can affect the BMCA result.

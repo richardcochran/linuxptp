@@ -73,6 +73,12 @@ struct so_timestamping {
 };
 #endif
 
+#ifndef HWTSTAMP_FLAG_BONDED_PHC_INDEX
+enum {
+	HWTSTAMP_FLAG_BONDED_PHC_INDEX = (1<<0),
+};
+#endif
+
 #ifdef PTP_EXTTS_REQUEST2
 #define PTP_EXTTS_REQUEST_FAILED "PTP_EXTTS_REQUEST2 failed: %m"
 #else

@@ -1767,6 +1767,9 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	c->clkid = clkid;
 	c->servo = servo;
 	c->servo_state = SERVO_UNLOCKED;
+
+	pr_info("Switched to /dev/ptp%d as PTP clock", phc_index);
+
 	return 0;
 }
 
