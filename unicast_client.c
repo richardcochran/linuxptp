@@ -467,14 +467,13 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 	ucma->granted |= 1 << mtype;
 
 	switch (ucma->state) {
+	case UC_HAVE_ANN:
 	case UC_WAIT:
 		if (mtype == ANNOUNCE) {
 			ucma->state = unicast_fsm(ucma->state, UC_EV_GRANT_ANN);
 			ucma->portIdentity = m->header.sourcePortIdentity;
 			unicast_client_set_renewal(p, ucma, g->durationField);
 		}
-		break;
-	case UC_HAVE_ANN:
 		break;
 	case UC_NEED_SYDY:
 		switch (mtype) {
