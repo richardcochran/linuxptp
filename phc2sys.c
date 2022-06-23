@@ -975,11 +975,10 @@ static bool hardpps_configured(int fd)
 	return fd >= 0;
 }
 
-static int phc2sys_static_configuration(struct phc2sys_private *priv,
-					const char *src_name,
-					const char *dst_name)
+static int phc2sys_static_src_configuration(struct phc2sys_private *priv,
+					    const char *src_name)
 {
-	struct clock *src, *dst;
+	struct clock *src;
 
 	src = clock_add(priv, src_name, -1);
 	if (!src) {
@@ -988,6 +987,14 @@ static int phc2sys_static_configuration(struct phc2sys_private *priv,
 	}
 	src->state = PS_SLAVE;
 	priv->master = src;
+
+	return 0;
+}
+
+static int phc2sys_static_dst_configuration(struct phc2sys_private *priv,
+					    const char *dst_name)
+{
+	struct clock *dst;
 
 	dst = clock_add(priv, dst_name, -1);
 	if (!dst) {
@@ -1055,11 +1062,11 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *config = NULL, *dst_name = NULL, *progname, *src_name = NULL;
+	char *config = NULL, *last_dst_name = NULL, *progname, *src_name = NULL;
 	char uds_local[MAX_IFNAME_SIZE + 1];
 	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment, offset;
 	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0;
-	int wait_sync = 0;
+	int wait_sync = 0, dst_cnt = 0;
 	struct config *cfg;
 	struct option *opts;
 	double phc_rate, tmp;
@@ -1103,7 +1110,13 @@ int main(int argc, char *argv[])
 			rt++;
 			break;
 		case 'c':
-			dst_name = optarg;
+			last_dst_name = optarg;
+			r = phc2sys_static_dst_configuration(&priv,
+							     last_dst_name);
+			if (r) {
+				goto end;
+			}
+			dst_cnt++;
 			break;
 		case 'd':
 			pps_fd = open(optarg, O_RDONLY);
@@ -1254,7 +1267,7 @@ int main(int argc, char *argv[])
 		return c;
 	}
 
-	if (autocfg && (src_name || dst_name || hardpps_configured(pps_fd) ||
+	if (autocfg && (src_name || last_dst_name || hardpps_configured(pps_fd) ||
 			wait_sync || priv.forced_sync_offset)) {
 		fprintf(stderr,
 			"autoconfiguration cannot be mixed with manual config options.\n");
@@ -1272,10 +1285,15 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
-	if (!dst_name) {
-		dst_name = "CLOCK_REALTIME";
+	if (!last_dst_name) {
+		last_dst_name = "CLOCK_REALTIME";
+		r = phc2sys_static_dst_configuration(&priv, last_dst_name);
+		if (r) {
+			goto end;
+		}
 	}
-	if (hardpps_configured(pps_fd) && strcmp(dst_name, "CLOCK_REALTIME")) {
+	if (hardpps_configured(pps_fd) && (dst_cnt > 1 ||
+	    strcmp(last_dst_name, "CLOCK_REALTIME"))) {
 		fprintf(stderr,
 			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		goto bad_usage;
@@ -1308,7 +1326,7 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	r = phc2sys_static_configuration(&priv, src_name, dst_name);
+	r = phc2sys_static_src_configuration(&priv, src_name);
 	if (r) {
 		goto end;
 	}
