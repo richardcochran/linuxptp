@@ -302,14 +302,21 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 		"  %d programmable periodic signals\n"
 		"  %d configurable input/output pins\n"
 		"  %s pulse per second support\n"
-		"  %s cross timestamping support\n",
+		"  %s cross timestamping support\n"
+		"  %s adjust phase support\n",
 		caps.max_adj,
 		caps.n_alarm,
 		caps.n_ext_ts,
 		caps.n_per_out,
 		caps.n_pins,
 		caps.pps ? "has" : "doesn't have",
-		caps.cross_timestamping ? "has" : "doesn't have");
+		caps.cross_timestamping ? "has" : "doesn't have",
+		#ifdef PTP_CLOCK_GETCAPS2
+		caps.adjust_phase ? "has" : "doesn't have"
+		#else
+		"no information regarding"
+		#endif
+		);
 	return 0;
 }
 
