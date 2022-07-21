@@ -408,15 +408,10 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 #if RAW_DEBUG
 	fprintf(stderr, "Get the time stamp right away!\n");
 #endif
-	int val = sk_receive(fd, pkt, len, NULL, hwts, MSG_ERRQUEUE);
 #if RAW_RECV
 		fprintf(stderr, "raw_send_sk_timestamp:%ld\n", hwts->ts.ns);
 #endif
-#if RAW_DEBUG
-	fprintf(stderr, "raw_send --> sk_receive: %d\n", val);
-	fprintf(stderr, "event %d val %d cnt %ld\n", event, val, cnt);
-#endif
-	return event == TRANS_EVENT ? val : cnt;
+	return event == TRANS_EVENT ? sk_receive(fd, pkt, len, NULL, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static void raw_release(struct transport *t)
