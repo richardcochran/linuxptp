@@ -149,9 +149,6 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 
 	/* delay = ((t2 - t3) * rr + (t4 - t1)) / 2 */
 
-#if TSPROC
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	t23 = tmv_sub(tsp->t2, tsp->t3);
 	if (tsp->clock_rate_ratio != 1.0)
 		t23 = dbl_tmv(tmv_dbl(t23) * tsp->clock_rate_ratio);
@@ -166,6 +163,18 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 		pr_debug("t4 - t1 = %+10" PRId64, tmv_to_nanoseconds(t41));
 		pr_debug("rr = %.9f", tsp->clock_rate_ratio);
 	}
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+	fprintf(stderr, "tsp->t1: %ld\n", tsp->t1);
+	fprintf(stderr, "tsp->t2: %ld\n", tsp->t2);
+	fprintf(stderr, "tsp->t3: %ld\n", tsp->t3);
+	fprintf(stderr, "tsp->t4: %ld\n", tsp->t4);
+	fprintf(stderr, "negative delay %ld\n", tmv_to_nanoseconds(delay));
+	fprintf(stderr, "delay = ((t2 - t3) * rr + (t4 - t1)) / 2\n");
+	fprintf(stderr, "t2 - t3 = %ld\n", tmv_to_nanoseconds(t23));
+	fprintf(stderr, "t4 - t1 = %ld\n", tmv_to_nanoseconds(t41));
+	fprintf(stderr, "rr = %.9f\n", tsp->clock_rate_ratio);
+#endif
 
 	return delay;
 }
@@ -202,6 +211,10 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 		*delay = raw_delay;
 		break;
 	}
+#if TSPROC
+	fprintf(stderr, "raw_delay: %ld\n", raw_delay);
+	fprintf(stderr, "tsp->filtered_delay: %ld\n", tsp->filtered_delay);
+#endif
 
 	return 0;
 }
@@ -216,6 +229,7 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2))
 		return -1;
 
+	fprintf(stderr, "tsp->mode: %d\n", tsp->mode);
 	switch (tsp->mode) {
 	case TSPROC_FILTER:
 		if (!tsp->filtered_delay_valid) {
@@ -240,14 +254,18 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 		break;
 	}
 
+	/* offset = t2 - t1 - delay */
+	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
+
+#if TSPROC
 	fprintf(stderr, "t1===========%ld\n", tsp->t1.ns);
 	fprintf(stderr, "t2===========%ld\n", tsp->t2.ns);
 	fprintf(stderr, "t3===========%ld\n", tsp->t3.ns);
 	fprintf(stderr, "t4===========%ld\n", tsp->t4.ns);
-
-	/* offset = t2 - t1 - delay */
-	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
-
+	fprintf(stderr, "start_delay: %ld\n", delay);
+	fprintf(stderr, "start_offset: %ld\n",
+		tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay));
+#endif
 	if (!weight)
 		return 0;
 
