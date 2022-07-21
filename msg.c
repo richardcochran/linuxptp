@@ -444,6 +444,8 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 
 	switch (type) {
 	case SYNC:
+		m->sync.originTimestamp.seconds_lsb = 0;
+		m->sync.originTimestamp.seconds_msb = 0;
 		timestamp_post_recv(m, &m->sync.originTimestamp);
 		break;
 	case DELAY_REQ:
