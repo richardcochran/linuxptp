@@ -45,6 +45,8 @@
 #include "uds.h"
 #include "util.h"
 
+#include "test.h"
+
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define POW2_41 ((double)(1ULL << 41))
 
@@ -148,6 +150,9 @@ static void clock_stats_display(struct clock_stats *s);
 
 static void remove_subscriber(struct clock_subscriber *s)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	LIST_REMOVE(s, list);
 	free(s);
 }
@@ -158,6 +163,9 @@ static void clock_update_subscription(struct clock *c, struct ptp_message *req,
 	struct clock_subscriber *s, *tmp;
 	struct timespec now;
 	int i, remove = 1;
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	for (i = 0; i < EVENT_BITMASK_CNT; i++) {
 		if (bitmask[i]) {
@@ -204,6 +212,9 @@ static void clock_get_subscription(struct clock *c, struct ptp_message *req,
 	struct clock_subscriber *s;
 	struct timespec now;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	LIST_FOREACH(s, &c->subscribers, list) {
 		if (pid_eq(&s->targetPortIdentity,
 			   &req->header.sourcePortIdentity)) {
@@ -225,6 +236,9 @@ static void clock_flush_subscriptions(struct clock *c)
 {
 	struct clock_subscriber *s, *tmp;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	LIST_FOREACH_SAFE(s, &c->subscribers, list, tmp) {
 		remove_subscriber(s);
 	}
@@ -235,6 +249,9 @@ static void clock_prune_subscriptions(struct clock *c)
 	struct clock_subscriber *s, *tmp;
 	struct timespec now;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	LIST_FOREACH_SAFE(s, &c->subscribers, list, tmp) {
 		if (s->expiration <= now.tv_sec) {
@@ -251,6 +268,9 @@ void clock_send_notification(struct clock *c, struct ptp_message *msg,
 	struct port *uds = c->uds_rw_port;
 	struct clock_subscriber *s;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	LIST_FOREACH(s, &c->subscribers, list) {
 		if (!event_bitmask_get(s->events, event))
 			continue;
@@ -270,6 +290,9 @@ void clock_destroy(struct clock *c)
 {
 	struct port *p, *tmp;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	interface_destroy(c->uds_rw_if);
 	interface_destroy(c->uds_ro_if);
 	clock_flush_subscriptions(c);
@@ -300,6 +323,9 @@ static int clock_fault_timeout(struct port *port, int set)
 {
 	struct fault_interval i;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!set) {
 		pr_debug("clearing fault on %s", port_log_name(port));
 		return port_set_fault_timer_lin(port, 0);
@@ -323,6 +349,9 @@ static int clock_fault_timeout(struct port *port, int set)
 
 static void clock_freq_est_reset(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	c->fest.origin1 = tmv_zero();
 	c->fest.ingress1 = tmv_zero();
 	c->fest.count = 0;
@@ -331,6 +360,9 @@ static void clock_freq_est_reset(struct clock *c)
 static void clock_management_send_error(struct port *p,
 					struct ptp_message *msg, int error_id)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (port_management_error(port_identity(p), p, msg, error_id))
 		pr_err("failed to send management error status");
 }
@@ -353,6 +385,9 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 	uint16_t duration;
 	int datalen = 0;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	extra = tlv_extra_alloc();
 	if (!extra) {
 		pr_err("failed to allocate TLV descriptor");
@@ -486,6 +521,9 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 	struct ptp_message *rsp;
 	int respond;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	rsp = port_management_reply(pid, p, req);
 	if (!rsp) {
 		return 0;
@@ -506,6 +544,9 @@ static int clock_management_set(struct clock *c, struct port *p,
 	struct grandmaster_settings_np *gsn;
 	struct subscribe_events_np *sen;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tlv = (struct management_tlv *) req->management.suffix;
 
 	switch (id) {
@@ -562,6 +603,9 @@ static void clock_stats_update(struct clock_stats *s,
 	stats_add_value(s->offset, offset);
 	stats_add_value(s->freq, freq);
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (stats_get_num_values(s->offset) < s->max_count)
 		return;
 
@@ -575,6 +619,9 @@ static void clock_stats_display(struct clock_stats *s)
 	stats_get_result(s->offset, &offset_stats);
 	stats_get_result(s->freq, &freq_stats);
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Path delay stats are updated separately, they may be empty. */
 	if (!stats_get_result(s->delay, &delay_stats)) {
 		pr_info("rms %4.0f max %4.0f "
@@ -602,6 +649,9 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	double freq, fui, ratio;
 	enum servo_state state;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (c->local_sync_uncertain == SYNC_UNCERTAIN_FALSE) {
 		state = SERVO_LOCKED;
 	} else {
@@ -667,6 +717,9 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 static void clock_update_grandmaster(struct clock *c)
 {
 	struct parentDS *pds = &c->dad.pds;
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&c->cur, 0, sizeof(c->cur));
 	memset(c->ptl, 0, sizeof(c->ptl));
 	pds->parentPortIdentity.clockIdentity   = c->dds.clockIdentity;
@@ -687,6 +740,9 @@ static void clock_update_slave(struct clock *c)
 	struct timePropertiesDS tds;
 	struct ptp_message *msg;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!c->best)
 		return;
 
@@ -715,6 +771,9 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 	int utc_offset, leap, clock_leap;
 	uint64_t ts;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!c->utc_timescale && c->tds.flags & PTP_TIMESCALE)
 		return 0;
 
@@ -778,6 +837,9 @@ static int clock_utc_correct(struct clock *c, tmv_t ingress)
 static int forwarding(struct clock *c, struct port *p)
 {
 	enum port_state ps = port_state(p);
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	if (p == c->uds_ro_port)
 		return 0;
@@ -802,21 +864,33 @@ static int forwarding(struct clock *c, struct port *p)
 
 UInteger8 clock_class(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->dds.clockQuality.clockClass;
 }
 
 struct config *clock_config(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->config;
 }
 
 int (*clock_dscmp(struct clock *c))(struct dataset *a, struct dataset *b)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->dscmp;
 }
 
 struct currentDS *clock_current_dataset(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return &c->cur;
 }
 
@@ -826,6 +900,9 @@ static int clock_add_port(struct clock *c, const char *phc_device,
 {
 	struct port *p, *piter, *lastp = NULL;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (clock_resize_pollfd(c, c->nports + 2)) {
 		return -1;
 	}
@@ -856,6 +933,9 @@ static void clock_remove_port(struct clock *c, struct port *p)
 	 * it all anyway. This function is usable from other parts of
 	 * the code, but even then we don't mind if pollfd is larger
 	 * than necessary. */
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	LIST_REMOVE(p, list);
 	c->nports--;
 	clock_fda_changed(c);
@@ -866,6 +946,9 @@ int clock_required_modes(struct clock *c)
 {
 	int required_modes = 0;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (c->timestamping) {
 	case TS_SOFTWARE:
 		required_modes |= SOF_TIMESTAMPING_TX_SOFTWARE |
@@ -907,6 +990,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	struct timespec ts;
 	int sfl;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 
@@ -1257,11 +1343,17 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 struct dataset *clock_best_foreign(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->best ? &c->best->dataset : NULL;
 }
 
 struct port *clock_best_port(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->best ? c->best->port : NULL;
 }
 
@@ -1270,6 +1362,9 @@ struct dataset *clock_default_ds(struct clock *c)
 	struct dataset *out = &c->default_dataset;
 	struct defaultDS *in = &c->dds;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	out->priority1              = in->priority1;
 	out->identity               = in->clockIdentity;
 	out->quality                = in->clockQuality;
@@ -1285,16 +1380,25 @@ struct dataset *clock_default_ds(struct clock *c)
 
 UInteger8 clock_domain_number(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->dds.domainNumber;
 }
 
 struct port *clock_first_port(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return LIST_FIRST(&c->ports);
 }
 
 void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	c->status.cumulativeScaledRateOffset = f->cumulativeScaledRateOffset;
 	c->status.scaledLastGmPhaseChange = f->scaledLastGmPhaseChange;
 	c->status.gmTimeBaseIndicator = f->gmTimeBaseIndicator;
@@ -1304,16 +1408,25 @@ void clock_follow_up_info(struct clock *c, struct follow_up_info_tlv *f)
 
 int clock_free_running(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->free_running ? 1 : 0;
 }
 
 int clock_gm_capable(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->grand_master_capable;
 }
 
 struct ClockIdentity clock_identity(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->dds.clockIdentity;
 }
 
@@ -1321,6 +1434,9 @@ static int clock_resize_pollfd(struct clock *c, int new_nports)
 {
 	struct pollfd *new_pollfd;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Need to allocate two whole extra blocks of fds for UDS ports. */
 	new_pollfd = realloc(c->pollfd,
 			     (new_nports + 2) * N_CLOCK_PFD *
@@ -1337,6 +1453,9 @@ static void clock_fill_pollfd(struct pollfd *dest, struct port *p)
 	struct fdarray *fda;
 	int i;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	fda = port_fda(p);
 	for (i = 0; i < N_POLLFD; i++) {
 		dest[i].fd = fda->fd[i];
@@ -1351,6 +1470,9 @@ static void clock_check_pollfd(struct clock *c)
 	struct port *p;
 	struct pollfd *dest = c->pollfd;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (c->pollfd_valid) {
 		return;
 	}
@@ -1366,6 +1488,9 @@ static void clock_check_pollfd(struct clock *c)
 
 void clock_fda_changed(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	c->pollfd_valid = 0;
 }
 
@@ -1373,6 +1498,9 @@ static int clock_do_forward_mgmt(struct clock *c,
 				 struct port *in, struct port *out,
 				 struct ptp_message *msg, int *pre_sent)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (in == out || !forwarding(c, out))
 		return 0;
 
@@ -1401,6 +1529,9 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 	struct port *piter;
 	int pdulen = 0, msg_ready = 0;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (forwarding(c, p) && msg->management.boundaryHops) {
 		pdulen = msg->header.messageLength;
 		msg->management.boundaryHops--;
@@ -1420,6 +1551,9 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 
 tmv_t clock_ingress_time(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->ingress_ts;
 }
 
@@ -1432,6 +1566,9 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 	};
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Forward this message out all eligible ports. */
 	clock_forward_mgmt_msg(c, p, msg);
 
@@ -1552,6 +1689,9 @@ void clock_notify_event(struct clock *c, enum notification event)
 	struct ptp_message *msg;
 	int id;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (event) {
 	case NOTIFY_TIME_SYNC:
 		id = MID_TIME_STATUS_NP;
@@ -1575,16 +1715,25 @@ err:
 
 struct parent_ds *clock_parent_ds(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return &c->dad;
 }
 
 struct PortIdentity clock_parent_identity(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->dad.pds.parentPortIdentity;
 }
 
 void clock_set_sde(struct clock *c, int sde)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	c->sde = sde;
 }
 
@@ -1595,6 +1744,9 @@ int clock_poll(struct clock *c)
 	struct pollfd *cur;
 	struct port *p;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	clock_check_pollfd(c);
 	cnt = poll(c->pollfd, (c->nports + 2) * N_CLOCK_PFD, -1);
 	if (cnt < 0) {
@@ -1677,6 +1829,9 @@ int clock_poll(struct clock *c)
 
 void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tsproc_up_ts(c->tsproc, req, rx);
 
 	if (tsproc_update_delay(c->tsproc, &c->path_delay))
@@ -1691,6 +1846,9 @@ void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 		      double nrr)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	c->path_delay = ppd;
 	c->nrr = nrr;
 
@@ -1703,31 +1861,49 @@ void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 
 struct monitor *clock_slave_monitor(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->slave_event_monitor;
 }
 
 int clock_slave_only(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->dds.flags & DDS_SLAVE_ONLY;
 }
 
 UInteger8 clock_max_steps_removed(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->max_steps_removed;
 }
 
 UInteger8 clock_get_clock_class_threshold(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->clock_class_threshold;
 }
 
 UInteger16 clock_steps_removed(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->cur.stepsRemoved;
 }
 
 struct tsproc *clock_get_tsproc(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->tsproc;
 }
 
@@ -1738,6 +1914,9 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	clockid_t clkid;
 	char phc[32];
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	snprintf(phc, sizeof(phc), "/dev/ptp%d", phc_index);
 	clkid = phc_open(phc);
 	if (clkid == CLOCK_INVALID) {
@@ -1768,6 +1947,9 @@ int clock_switch_phc(struct clock *c, int phc_index)
 
 static void clock_step_window(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!c->step_window) {
 		return;
 	}
@@ -1776,6 +1958,9 @@ static void clock_step_window(struct clock *c)
 
 static void clock_synchronize_locked(struct clock *c, double adj)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	clockadj_set_freq(c->clkid, -adj);
 	if (c->clkid == CLOCK_REALTIME) {
 		sysclk_set_sync();
@@ -1791,6 +1976,9 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	double adj, weight;
 	int64_t offset;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (c->step_window_counter) {
 		c->step_window_counter--;
 		pr_debug("skip sync after jump %d/%d",
@@ -1876,6 +2064,9 @@ void clock_sync_interval(struct clock *c, int n)
 {
 	int shift;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	shift = c->freq_est_interval - n;
 	if (shift < 0)
 		shift = 0;
@@ -1902,6 +2093,9 @@ void clock_update_leap_status(struct clock *c)
 	struct timespec ts;
 	int leap;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (c->tds.flags & LEAP_61) {
 		leap = 1;
 	} else if (c->tds.flags & LEAP_59) {
@@ -1934,6 +2128,9 @@ struct timePropertiesDS clock_time_properties(struct clock *c)
 {
 	struct timePropertiesDS tds = c->tds;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (c->local_sync_uncertain) {
 	case SYNC_UNCERTAIN_DONTCARE:
 		tds.flags &= ~SYNC_UNCERTAIN;
@@ -1950,6 +2147,9 @@ struct timePropertiesDS clock_time_properties(struct clock *c)
 
 void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if ((tds.flags ^ c->tds.flags) & (LEAP_61 | LEAP_59)) {
 		pr_info("updating time properties to %s leap second",
 			tds.flags & (LEAP_61 | LEAP_59) ?
@@ -1972,6 +2172,9 @@ static void handle_state_decision_event(struct clock *c)
 	struct port *piter;
 	int fresh_best = 0;
 
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	LIST_FOREACH(piter, &c->ports, list) {
 		fc = port_compute_best(piter);
 		if (!fc)
@@ -2044,16 +2247,25 @@ static void handle_state_decision_event(struct clock *c)
 
 struct clock_description *clock_description(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return &c->desc;
 }
 
 enum clock_type clock_type(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->type;
 }
 
 void clock_check_ts(struct clock *c, uint64_t ts)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (c->sanity_check && clockcheck_sample(c->sanity_check, ts)) {
 		servo_reset(c->servo);
 	}
@@ -2061,6 +2273,9 @@ void clock_check_ts(struct clock *c, uint64_t ts)
 
 double clock_rate_ratio(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (c->free_running) {
 		return c->master_local_rr;
 	}
@@ -2069,10 +2284,16 @@ double clock_rate_ratio(struct clock *c)
 
 struct servo *clock_servo(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->servo;
 }
 
 enum servo_state clock_servo_state(struct clock *c)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return c->servo_state;
 }

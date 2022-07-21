@@ -45,6 +45,8 @@
 #include "transport_private.h"
 #include "util.h"
 
+#include "test.h"
+
 struct raw {
 	struct transport t;
 	struct address src_addr;
@@ -86,6 +88,9 @@ static int raw_configure(int fd, int event, int index,
 	int err1, err2, filter_test, option;
 	struct packet_mreq mreq;
 	struct sock_fprog prg = { N_RAW_FILTER, raw_filter };
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	filter_test = RAW_FILTER_TEST;
 	if (event) {
@@ -144,6 +149,9 @@ static int raw_configure(int fd, int event, int index,
 
 static int raw_close(struct transport *t, struct fdarray *fda)
 {
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	close(fda->fd[0]);
 	close(fda->fd[1]);
 	return 0;
@@ -155,6 +163,9 @@ static int open_socket(const char *name, int event, unsigned char *ptp_dst_mac,
 	struct sockaddr_ll addr;
 	int fd, index;
 
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if (fd < 0) {
 		pr_err("socket failed: %m");
@@ -195,6 +206,9 @@ no_socket:
 
 static void mac_to_addr(struct address *addr, void *mac)
 {
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	addr->sll.sll_family = AF_PACKET;
 	addr->sll.sll_halen = MAC_LEN;
 	memcpy(addr->sll.sll_addr, mac, MAC_LEN);
@@ -203,6 +217,9 @@ static void mac_to_addr(struct address *addr, void *mac)
 
 static void addr_to_mac(void *mac, struct address *addr)
 {
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memcpy(mac, &addr->sll.sll_addr, MAC_LEN);
 }
 
@@ -216,6 +233,9 @@ static int raw_open(struct transport *t, struct interface *iface,
 	const char *name;
 	char *str;
 
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	name = interface_label(iface);
 	str = config_get_string(t->cfg, name, "ptp_dst_mac");
 	if (str2mac(str, ptp_dst_mac)) {
@@ -270,6 +290,9 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	struct eth_hdr *hdr;
 	struct raw *raw = container_of(t, struct raw, t);
 
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (raw->vlan) {
 		hlen = sizeof(struct vlan_hdr);
 	} else {
@@ -280,7 +303,29 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	hdr = (struct eth_hdr *) ptr;
 
 	cnt = sk_receive(fd, ptr, buflen, addr, hwts, MSG_DONTWAIT);
+#if RAW_RECV
+		fprintf(stderr, "raw_recv_sk_timestamp:%ld\n", hwts->ts.ns);
+#endif
 
+#if RAW_RECV
+	fprintf(stderr, "[======== raw_recv ========]\n");
+	fprintf(stderr, "raw_recv_data_len: %d \n", buflen);
+
+	int i, count = 0;
+	for (i = 0; i < buflen; i++) {
+		if ((i & 0xf) == 0) {
+			fprintf(stderr, "\n RECV >");
+			count ++;
+		}
+		fprintf(stderr, "%02x ", ptr[i]);
+		if (count == 7)
+			break;
+	}
+
+	fprintf(stderr, "\n");
+	get_ptp_type(&ptr[0]);
+	fprintf(stderr, "\n");
+#endif
 	if (cnt >= 0)
 		cnt -= hlen;
 	if (cnt < 0)
@@ -310,6 +355,9 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 	struct eth_hdr *hdr;
 	int fd = -1;
 
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (event) {
 	case TRANS_GENERAL:
 		fd = fda->fd[FD_GENERAL];
@@ -325,6 +373,17 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 	ptr -= sizeof(*hdr);
 	len += sizeof(*hdr);
 
+#if RAW_SEND
+	fprintf(stderr, "[======== raw_send ========]\n");
+	fprintf(stderr, "raw_send_data_len: %d \n", len);
+
+	int i;
+	for (i = 0; i < len; i++) {
+		if ((i & 0xf) == 0) fprintf(stderr, "\n SEND > ");
+		fprintf(stderr, "%02x ", ptr[i]);
+	}
+	fprintf(stderr, "\n");
+#endif
 	if (!addr)
 		addr = peer ? &raw->p2p_addr : &raw->ptp_addr;
 
@@ -336,23 +395,44 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 
 	cnt = send(fd, ptr, len, 0);
 	if (cnt < 1) {
+#if RAW_DEBUG
+		fprintf(stderr, "raw_send --> cnt < 1\n");
+#endif
 		return -errno;
 	}
 	/*
 	 * Get the time stamp right away.
 	 */
-	return event == TRANS_EVENT ? sk_receive(fd, pkt, len, NULL, hwts, MSG_ERRQUEUE) : cnt;
+	
+#if RAW_DEBUG
+	fprintf(stderr, "Get the time stamp right away!\n");
+#endif
+	int val = sk_receive(fd, pkt, len, NULL, hwts, MSG_ERRQUEUE);
+#if RAW_RECV
+		fprintf(stderr, "raw_send_sk_timestamp:%ld\n", hwts->ts.ns);
+#endif
+#if RAW_DEBUG
+	fprintf(stderr, "raw_send --> sk_receive: %d\n", val);
+	fprintf(stderr, "event %d val %d cnt %ld\n", event, val, cnt);
+#endif
+	return event == TRANS_EVENT ? val : cnt;
 }
 
 static void raw_release(struct transport *t)
 {
 	struct raw *raw = container_of(t, struct raw, t);
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	free(raw);
 }
 
 static int raw_physical_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	addr_to_mac(addr, &raw->src_addr);
 	return MAC_LEN;
 }
@@ -360,6 +440,9 @@ static int raw_physical_addr(struct transport *t, uint8_t *addr)
 static int raw_protocol_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	addr_to_mac(addr, &raw->src_addr);
 	return MAC_LEN;
 }
@@ -367,6 +450,9 @@ static int raw_protocol_addr(struct transport *t, uint8_t *addr)
 struct transport *raw_transport_create(void)
 {
 	struct raw *raw;
+#if RAW
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	raw = calloc(1, sizeof(*raw));
 	if (!raw)
 		return NULL;

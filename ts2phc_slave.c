@@ -25,6 +25,8 @@
 #include "ts2phc_slave.h"
 #include "util.h"
 
+#include "test.h"
+
 #define NS_PER_SEC		1000000000LL
 #define SAMPLE_WEIGHT		1.0
 #define SERVO_SYNC_INTERVAL	1.0
@@ -74,7 +76,9 @@ static int ts2phc_slave_array_create(void)
 {
 	struct ts2phc_slave *slave;
 	unsigned int i;
-
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (polling_array.slave) {
 		return 0;
 	}
@@ -104,6 +108,9 @@ static int ts2phc_slave_array_create(void)
 
 static void ts2phc_slave_array_destroy(void)
 {
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	free(polling_array.slave);
 	free(polling_array.pfd);
 	polling_array.slave = NULL;
@@ -119,6 +126,9 @@ static int ts2phc_slave_clear_fifo(struct ts2phc_slave *slave)
 	struct ptp_extts_event event;
 	int cnt, size;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while (1) {
 		cnt = poll(&pfd, 1, 0);
 		if (cnt < 0) {
@@ -150,6 +160,9 @@ static struct ts2phc_slave *ts2phc_slave_create(struct config *cfg, const char *
 	struct ptp_extts_request extts;
 	struct ts2phc_slave *slave;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	slave = calloc(1, sizeof(*slave));
 	if (!slave) {
 		pr_err("low memory");
@@ -236,6 +249,9 @@ static void ts2phc_slave_destroy(struct ts2phc_slave *slave)
 {
 	struct ptp_extts_request extts;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&extts, 0, sizeof(extts));
 	extts.index = slave->pin_desc.chan;
 	extts.flags = 0;
@@ -256,6 +272,9 @@ static int ts2phc_slave_event(struct ts2phc_slave *slave,
 	int64_t offset;
 	double adj;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	result = ts2phc_slave_offset(slave, source_ts, &offset, &extts_ts);
 	switch (result) {
 	case EXTTS_ERROR:
@@ -307,6 +326,9 @@ static enum extts_result ts2phc_slave_offset(struct ts2phc_slave *slave,
 	uint64_t event_ns, source_ns;
 	int cnt;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	cnt = read(slave->fd, &event, sizeof(event));
 	if (cnt != sizeof(event)) {
 		pr_err("read extts event failed: %m");
@@ -351,6 +373,9 @@ int ts2phc_slave_add(struct config *cfg, const char *name)
 {
 	struct ts2phc_slave *slave;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Create each interface only once. */
 	STAILQ_FOREACH(slave, &ts2phc_slaves, list) {
 		if (0 == strcmp(name, slave->name)) {
@@ -374,6 +399,9 @@ int ts2phc_slave_arm(void)
 	struct ts2phc_slave *slave;
 	int err;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&extts, 0, sizeof(extts));
 
 	STAILQ_FOREACH(slave, &ts2phc_slaves, list) {
@@ -392,6 +420,9 @@ void ts2phc_slave_cleanup(void)
 {
 	struct ts2phc_slave *slave;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	ts2phc_slave_array_destroy();
 
 	while ((slave = STAILQ_FIRST(&ts2phc_slaves))) {
@@ -407,6 +438,9 @@ int ts2phc_slave_poll(struct ts2phc_master *master)
 	unsigned int i;
 	int cnt, err;
 
+#if SLAVE
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (ts2phc_slave_array_create()) {
 		return -1;
 	}

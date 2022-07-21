@@ -37,6 +37,8 @@
 #include "print.h"
 #include "sk.h"
 
+#include "test.h"
+
 /* globals */
 
 int sk_tx_timeout = 1;
@@ -51,6 +53,9 @@ static void init_ifreq(struct ifreq *ifreq, struct hwtstamp_config *cfg,
 	memset(ifreq, 0, sizeof(*ifreq));
 	memset(cfg, 0, sizeof(*cfg));
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	strncpy(ifreq->ifr_name, device, sizeof(ifreq->ifr_name) - 1);
 
 	ifreq->ifr_data = (void *) cfg;
@@ -64,6 +69,9 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 	int orig_rx_filter;
 	int err;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	init_ifreq(&ifreq, &cfg, device);
 
 	switch (sk_hwts_filter_mode) {
@@ -93,8 +101,7 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 			init_ifreq(&ifreq, &cfg, device);
 			cfg.tx_type   = tx_type;
 			cfg.rx_filter = orig_rx_filter = rx_filter2;
-
-			err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
+err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
 			if (err < 0) {
 				pr_err("ioctl SIOCSHWTSTAMP failed: %m");
 				return err;
@@ -124,6 +131,9 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 int sk_interface_fd(void)
 {
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (fd < 0) {
 		pr_err("socket failed: %m");
 		return -1;
@@ -136,6 +146,9 @@ int sk_interface_index(int fd, const char *name)
 	struct ifreq ifreq;
 	int err;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&ifreq, 0, sizeof(ifreq));
 	strncpy(ifreq.ifr_name, name, sizeof(ifreq.ifr_name) - 1);
 	err = ioctl(fd, SIOCGIFINDEX, &ifreq);
@@ -149,6 +162,9 @@ int sk_interface_index(int fd, const char *name)
 int sk_general_init(int fd)
 {
 	int on = sk_check_fupsync ? 1 : 0;
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMPNS, &on, sizeof(on)) < 0) {
 		pr_err("ioctl SO_TIMESTAMPNS failed: %m");
 		return -1;
@@ -163,6 +179,9 @@ int sk_get_ts_info(const char *name, struct sk_ts_info *sk_info)
 	struct ifreq ifr;
 	int fd, err;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&ifr, 0, sizeof(ifr));
 	memset(&info, 0, sizeof(info));
 	info.cmd = ETHTOOL_GET_TS_INFO;
@@ -207,6 +226,9 @@ static int sk_interface_guidaddr(const char *name, unsigned char *guid)
 	char *err;
 	int res;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	snprintf(file_name, sizeof buf, "/sys/class/net/%s/address", name);
 	f = fopen(file_name, "r");
 	if (!f) {
@@ -250,6 +272,9 @@ int sk_interface_macaddr(const char *name, struct address *mac)
 	struct ifreq ifreq;
 	int err, fd, type;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&ifreq, 0, sizeof(ifreq));
 	strncpy(ifreq.ifr_name, name, sizeof(ifreq.ifr_name) - 1);
 
@@ -294,6 +319,9 @@ int sk_interface_addr(const char *name, int family, struct address *addr)
 	struct ifaddrs *ifaddr, *i;
 	int result = -1;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (getifaddrs(&ifaddr) == -1) {
 		pr_err("getifaddrs failed: %m");
 		return -1;
@@ -334,7 +362,9 @@ int sk_receive(int fd, void *buf, int buflen,
 	struct iovec iov = { buf, buflen };
 	struct msghdr msg;
 	struct timespec *sw, *ts = NULL;
-
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(control, 0, sizeof(control));
 	memset(&msg, 0, sizeof(msg));
 	if (addr) {
@@ -345,10 +375,36 @@ int sk_receive(int fd, void *buf, int buflen,
 	msg.msg_iovlen = 1;
 	msg.msg_control = control;
 	msg.msg_controllen = sizeof(control);
+#if SK_RECE
+	struct eth_hdr *hdr;
+	unsigned char *ptr = buf;
+
+
+	ptr	-=sizeof(*hdr);
+	buflen	+=sizeof(*hdr);
+
+	fprintf(stderr, "[======== sk_recevice ========]\n");
+	fprintf(stderr, "sk_data_len: %d \n", buflen);
+
+	int i, count = 0;
+	for (i = 0; i < buflen; i++) {
+		if ((i & 0xf) == 0) {
+			fprintf(stderr, "\n SK_RECV >");
+			count ++;
+		}
+		fprintf(stderr, "%02x ", ptr[i]);
+		if (count == 9)
+			break;
+	}
+	fprintf(stderr, "\n");
+#endif
 
 	if (flags == MSG_ERRQUEUE) {
 		struct pollfd pfd = { fd, sk_events, 0 };
 		res = poll(&pfd, 1, sk_tx_timeout);
+#if SK_DEBUG
+		fprintf(stderr, "sk_recevie --> poll: %d\n", res);
+#endif
 		if (res < 1) {
 			pr_err(res ? "poll for tx timestamp failed: %m" :
 			             "timed out while polling for tx timestamp");
@@ -393,20 +449,35 @@ int sk_receive(int fd, void *buf, int buflen,
 		memset(&hwts->ts, 0, sizeof(hwts->ts));
 		return cnt < 0 ? -errno : cnt;
 	}
-
+#if SK_DEBUG
+	fprintf(stderr, "hwts->type: %d\n", hwts->type);
+#endif
 	switch (hwts->type) {
 	case TS_SOFTWARE:
+#if SK_DEBUG
+		fprintf(stderr, "TS_SOFTWARE\n");
+#endif
 		hwts->ts = timespec_to_tmv(ts[0]);
 		break;
 	case TS_HARDWARE:
-	case TS_ONESTEP:
+	case TS_ONESTEP: /* do it */
 	case TS_P2P1STEP:
+#if SK_DEBUG
+		fprintf(stderr, "TS_P2P1STEP\n");
+#endif
 		hwts->ts = timespec_to_tmv(ts[2]);
+
 		break;
 	case TS_LEGACY_HW:
+#if SK_DEBUG
+		fprintf(stderr, "TS_LEGACT_HW\n");
+#endif
 		hwts->ts = timespec_to_tmv(ts[1]);
 		break;
 	}
+#if SK_DEBUG
+	fprintf(stderr, "sk_recive-->cnt: %d\n", cnt < 0 ? -errno : cnt);
+#endif
 	return cnt < 0 ? -errno : cnt;
 }
 
@@ -415,6 +486,9 @@ int sk_set_priority(int fd, int family, uint8_t dscp)
 	int level, optname, tos;
 	socklen_t tos_len;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (family) {
 	case AF_INET:
 		level = IPPROTO_IP;
@@ -451,6 +525,9 @@ int sk_timestamping_init(int fd, const char *device, enum timestamp_type type,
 {
 	int err, filter1, filter2 = 0, flags, tx_type = HWTSTAMP_TX_ON;
 
+#if SK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (type) {
 	case TS_SOFTWARE:
 		flags = SOF_TIMESTAMPING_TX_SOFTWARE |

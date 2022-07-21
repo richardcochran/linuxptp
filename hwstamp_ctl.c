@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
 	strncpy(ifreq.ifr_name, device, sizeof(ifreq.ifr_name) - 1);
 
-	ifreq.ifr_data = (void *) &cfg;
+	ifreq.ifr_data = (void *) & cfg;
 
 	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (fd < 0) {

@@ -8,11 +8,16 @@
 #include "ts2phc_nmea_master.h"
 #include "ts2phc_phc_master.h"
 
+#include "test.h"
+
 struct ts2phc_master *ts2phc_master_create(struct config *cfg, const char *dev,
 					   enum ts2phc_master_type type)
 {
 	struct ts2phc_master *master = NULL;
 
+#if MASTER
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (type) {
 	case TS2PHC_MASTER_GENERIC:
 		master = ts2phc_generic_master_create(cfg, dev);
@@ -29,10 +34,16 @@ struct ts2phc_master *ts2phc_master_create(struct config *cfg, const char *dev,
 
 void ts2phc_master_destroy(struct ts2phc_master *master)
 {
+#if MASTER
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	master->destroy(master);
 }
 
 int ts2phc_master_getppstime(struct ts2phc_master *master, struct timespec *ts)
 {
+#if MASTER
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return master->getppstime(master, ts);
 }

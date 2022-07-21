@@ -45,6 +45,8 @@
 #include "unicast_service.h"
 #include "util.h"
 
+#include "test.h"
+
 #define ALLOWED_LOST_RESPONSES 3
 #define ANNOUNCE_SPAN 1
 
@@ -62,6 +64,9 @@ static void port_nrate_initialize(struct port *p);
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
 {
 	struct announce_msg *a = &m1->announce, *b = &m2->announce;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	int len =
 		sizeof(a->grandmasterPriority1) +
 		sizeof(a->grandmasterClockQuality) +
@@ -76,6 +81,9 @@ static void announce_to_dataset(struct ptp_message *m, struct port *p,
 				struct dataset *out)
 {
 	struct announce_msg *a = &m->announce;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	out->priority1    = a->grandmasterPriority1;
 	out->identity     = a->grandmasterIdentity;
 	out->quality      = a->grandmasterClockQuality;
@@ -88,6 +96,9 @@ static void announce_to_dataset(struct ptp_message *m, struct port *p,
 
 int clear_fault_asap(struct fault_interval *faint)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (faint->type) {
 	case FTMO_LINEAR_SECONDS:
 		return faint->val == 0 ? 1 : 0;
@@ -102,6 +113,9 @@ int clear_fault_asap(struct fault_interval *faint)
 static int check_source_identity(struct port *p, struct ptp_message *m)
 {
 	struct PortIdentity master;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	if (p->ignore_source_id) {
 		return 0;
@@ -114,6 +128,9 @@ static void extract_address(struct ptp_message *m, struct PortAddress *paddr)
 {
 	int len = 0;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (paddr->networkProtocol) {
 	case TRANS_UDP_IPV4:
 		len = sizeof(m->address.sin.sin_addr.s_addr);
@@ -137,6 +154,9 @@ static int msg_current(struct ptp_message *m, struct timespec now)
 {
 	int64_t t1, t2, tmo;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
 	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
 
@@ -157,6 +177,9 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 {
 	struct PortIdentity *id1, *id2;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!fc) {
 		return 0;
 	}
@@ -168,29 +191,44 @@ static int msg_source_equal(struct ptp_message *m1, struct foreign_clock *fc)
 
 int source_pid_eq(struct ptp_message *m1, struct ptp_message *m2)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return pid_eq(&m1->header.sourcePortIdentity,
 		      &m2->header.sourcePortIdentity);
 }
 
 enum fault_type last_fault_type(struct port *port)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return port->last_fault_type;
 }
 
 void fault_interval(struct port *port, enum fault_type ft,
 		    struct fault_interval *i)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	i->type = port->flt_interval_pertype[ft].type;
 	i->val = port->flt_interval_pertype[ft].val;
 }
 
 int port_fault_fd(struct port *port)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return port->fault_fd;
 }
 
 struct fdarray *port_fda(struct port *port)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return &port->fda;
 }
 
@@ -202,6 +240,9 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 	uint64_t ns;
 	int i;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (log_seconds < 0) {
 
 		log_seconds *= -1;
@@ -227,6 +268,9 @@ int set_tmo_lin(int fd, int seconds)
 		{0, 0}, {0, 0}
 	};
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tmo.it_value.tv_sec = seconds;
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
@@ -238,6 +282,9 @@ int set_tmo_random(int fd, int min, int span, int log_seconds)
 		{0, 0}, {0, 0}
 	};
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (log_seconds >= 0) {
 		min_ns = min * NS_PER_SEC << log_seconds;
 		span_ns = span * NS_PER_SEC << log_seconds;
@@ -257,11 +304,17 @@ int set_tmo_random(int fd, int min, int span, int log_seconds)
 int port_set_fault_timer_log(struct port *port,
 			     unsigned int scale, int log_seconds)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return set_tmo_log(port->fault_fd, scale, log_seconds);
 }
 
 int port_set_fault_timer_lin(struct port *port, int seconds)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return set_tmo_lin(port->fault_fd, seconds);
 }
 
@@ -269,6 +322,9 @@ void fc_clear(struct foreign_clock *fc)
 {
 	struct ptp_message *m;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while (fc->n_messages) {
 		m = TAILQ_LAST(&fc->messages, messages);
 		TAILQ_REMOVE(&fc->messages, m, list);
@@ -282,6 +338,9 @@ static void fc_prune(struct foreign_clock *fc)
 	struct timespec now;
 	struct ptp_message *m;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	while (fc->n_messages > FOREIGN_MASTER_THRESHOLD) {
@@ -305,6 +364,9 @@ static int delay_req_current(struct ptp_message *m, struct timespec now)
 {
 	int64_t t1, t2, tmo = 5 * NSEC2SEC;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
 	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
 
@@ -317,6 +379,9 @@ void delay_req_prune(struct port *p)
 	struct ptp_message *m;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while (!TAILQ_EMPTY(&p->delay_req)) {
 		m = TAILQ_LAST(&p->delay_req, delay_req);
 		if (delay_req_current(m, now)) {
@@ -329,6 +394,9 @@ void delay_req_prune(struct port *p)
 
 void ts_add(tmv_t *ts, Integer64 correction)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!correction) {
 		return;
 	}
@@ -344,6 +412,9 @@ static int add_foreign_master(struct port *p, struct ptp_message *m)
 	struct ptp_message *tmp;
 	int broke_threshold = 0, diff = 0;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	LIST_FOREACH(fc, &p->foreign_masters, list) {
 		if (msg_source_equal(m, fc)) {
 			break;
@@ -398,6 +469,9 @@ static int follow_up_info_append(struct ptp_message *m)
 	struct follow_up_info_tlv *fui;
 	struct tlv_extra *extra;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	extra = msg_tlv_append(m, sizeof(*fui));
 	if (!extra) {
 		return -1;
@@ -428,6 +502,9 @@ static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 
 	uint8_t buf[sizeof(*paddr) + sizeof(struct sockaddr_storage)];
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	last_sync = tmv_to_Timestamp(clock_ingress_time(p->clock));
 	pid = dad->pds.parentPortIdentity.clockIdentity;
 	paddr = (struct PortAddress *)buf;
@@ -480,6 +557,9 @@ static struct follow_up_info_tlv *follow_up_info_extract(struct ptp_message *m)
 	struct follow_up_info_tlv *f;
 	struct tlv_extra *extra;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	TAILQ_FOREACH(extra, &m->tlv_list, list) {
 		f = (struct follow_up_info_tlv *) extra->tlv;
 		if (f->type == TLV_ORGANIZATION_EXTENSION &&
@@ -495,6 +575,9 @@ static struct follow_up_info_tlv *follow_up_info_extract(struct ptp_message *m)
 static void free_foreign_masters(struct port *p)
 {
 	struct foreign_clock *fc;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while ((fc = LIST_FIRST(&p->foreign_masters)) != NULL) {
 		LIST_REMOVE(fc, list);
 		fc_clear(fc);
@@ -504,6 +587,9 @@ static void free_foreign_masters(struct port *p)
 
 static int fup_sync_ok(struct ptp_message *fup, struct ptp_message *sync)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/*
 	 * NB - If the sk_check_fupsync option is not enabled, then
 	 * both of these time stamps will be zero.
@@ -516,6 +602,9 @@ static int fup_sync_ok(struct ptp_message *fup, struct ptp_message *sync)
 
 static int incapable_ignore(struct port *p, struct ptp_message *m)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (port_capable(p)) {
 		return 0;
 	}
@@ -532,6 +621,9 @@ static int path_trace_append(struct port *p, struct ptp_message *m,
 	struct path_trace_tlv *ptt;
 	struct tlv_extra *extra;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (length > PATH_TRACE_MAX) {
 		return -1;
 	}
@@ -559,6 +651,9 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 	struct tlv_extra *extra;
 	int i, cnt;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!p->path_trace_enabled) {
 		return 0;
 	}
@@ -583,11 +678,17 @@ static int path_trace_ignore(struct port *p, struct ptp_message *m)
 
 static void port_stats_inc_rx(struct port *p, const struct ptp_message *msg)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	p->stats.rxMsgType[msg_type(msg)]++;
 }
 
 static void port_stats_inc_tx(struct port *p, const struct ptp_message *msg)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	p->stats.txMsgType[msg_type(msg)]++;
 }
 
@@ -595,6 +696,9 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 				 enum transport_event event)
 {
 	int cnt;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (msg_pre_send(msg)) {
 		return -1;
 	}
@@ -615,6 +719,9 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 
 int port_capable(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!port_is_ieee8021as(p)) {
 		/* Normal 1588 ports are always capable. */
 		goto capable;
@@ -685,6 +792,9 @@ int port_clr_tmo(int fd)
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
 	};
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
@@ -692,6 +802,9 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 {
 	struct ClockIdentity c1, c2;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (port_is_uds(p) && msg_type(m) != MANAGEMENT) {
 		return 1;
 	}
@@ -725,6 +838,9 @@ static int port_nsm_reply(struct port *p, struct ptp_message *m)
 {
 	struct tlv_extra *extra;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!p->net_sync_monitor) {
 		return 0;
 	}
@@ -750,6 +866,9 @@ static int port_sync_incapable(struct port *p)
 	struct ClockIdentity cid;
 	struct PortIdentity pid;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!port_is_ieee8021as(p)) {
 		return 0;
 	}
@@ -769,6 +888,9 @@ static int port_sync_incapable(struct port *p)
 
 static int port_is_ieee8021as(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (p->asCapable == ALWAYS_CAPABLE) {
 		return 0;
 	}
@@ -777,12 +899,18 @@ static int port_is_ieee8021as(struct port *p)
 
 static int port_is_uds(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return transport_type(p->trp) == TRANS_UDS;
 }
 
 static void port_management_send_error(struct port *p, struct port *ingress,
 				       struct ptp_message *msg, int error_id)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (port_management_error(p->portIdentity, ingress, msg, error_id))
 		pr_err("%s: management error failed", p->log_name);
 }
@@ -807,6 +935,9 @@ static int port_management_fill_response(struct port *target,
 	uint8_t *buf;
 	int datalen;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	extra = tlv_extra_alloc();
 	if (!extra) {
 		pr_err("failed to allocate TLV descriptor");
@@ -992,6 +1123,9 @@ static int port_management_get_response(struct port *target,
 	struct ptp_message *rsp;
 	int respond;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	rsp = port_management_reply(pid, ingress, req);
 	if (!rsp) {
 		return 0;
@@ -1011,6 +1145,9 @@ static int port_management_set(struct port *target,
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tlv = (struct management_tlv *) req->management.suffix;
 
 	switch (id) {
@@ -1029,6 +1166,9 @@ static void port_nrate_calculate(struct port *p, tmv_t origin, tmv_t ingress)
 {
 	struct nrate_estimator *n = &p->nrate;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/*
 	 * We experienced a successful exchanges of peer delay request
 	 * and response, reset pdr_missing for this port.
@@ -1061,6 +1201,9 @@ static void port_nrate_initialize(struct port *p)
 {
 	int shift = p->freq_est_interval - p->logPdelayReqInterval;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (shift < 0)
 		shift = 0;
 	else if (shift >= sizeof(int) * 8) {
@@ -1083,6 +1226,9 @@ static void port_nrate_initialize(struct port *p)
 
 int port_set_announce_tmo(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
 			      p->announceReceiptTimeout,
 			      p->announce_span, p->logAnnounceInterval);
@@ -1090,6 +1236,9 @@ int port_set_announce_tmo(struct port *p)
 
 int port_set_delay_tmo(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (p->inhibit_delay_req) {
 		return 0;
 	}
@@ -1105,29 +1254,44 @@ int port_set_delay_tmo(struct port *p)
 
 static int port_set_manno_tmo(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, p->logAnnounceInterval);
 }
 
 int port_set_qualification_tmo(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return set_tmo_log(p->fda.fd[FD_QUALIFICATION_TIMER],
 		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
 }
 
 static int port_set_sync_rx_tmo(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return set_tmo_log(p->fda.fd[FD_SYNC_RX_TIMER],
 			   p->syncReceiptTimeout, p->logSyncInterval);
 }
 
 static int port_set_sync_tx_tmo(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
 }
 
 void port_show_transition(struct port *p, enum port_state next,
 			  enum fsm_event event)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (event == EV_FAULT_DETECTED) {
 		pr_notice("%s: %s to %s on %s (%s)", p->log_name,
 			  ps_str[p->state], ps_str[next], ev_str[event],
@@ -1140,6 +1304,9 @@ void port_show_transition(struct port *p, enum port_state next,
 
 static void port_slave_priority_warning(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	const char *n = p->log_name;
 	pr_warning("%s: master state recommended in slave only mode", n);
 	pr_warning("%s: defaultDS.priority1 probably misconfigured", n);
@@ -1149,6 +1316,9 @@ static void message_interval_request(struct port *p,
 				     enum servo_state last_state,
 				     Integer8 sync_interval)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!p->msg_interval_request)
 		return;
 
@@ -1179,6 +1349,9 @@ static void port_synchronize(struct port *p,
 	enum servo_state state, last_state;
 	tmv_t t1, t1c, t2, c1, c2;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	port_set_sync_rx_tmo(p);
 
 	t1 = timestamp_to_tmv(origin_ts);
@@ -1235,6 +1408,9 @@ static void port_syfufsm_print_mismatch(struct port *p, enum syfu_event event,
 {
 	int expected_msgtype;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (event == SYNC_MISMATCH)
 		expected_msgtype = FOLLOW_UP;
 	else
@@ -1258,6 +1434,9 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 {
 	struct ptp_message *syn, *fup;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (p->syfu) {
 	case SF_EMPTY:
 		switch (event) {
@@ -1345,6 +1524,9 @@ static int port_pdelay_request(struct port *p)
 	struct ptp_message *msg;
 	int err;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* If multiple pdelay resp were not detected the counter can be reset */
 	if (!p->multiple_pdr_detected) {
 		p->multiple_seq_pdr_count = 0;
@@ -1401,6 +1583,9 @@ int port_delay_request(struct port *p)
 {
 	struct ptp_message *msg;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Time to send a new request, forget current pdelay resp and fup */
 	if (p->peer_delay_resp) {
 		msg_put(p->peer_delay_resp);
@@ -1462,6 +1647,9 @@ int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 	struct ptp_message *msg;
 	int err;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (p->inhibit_multicast_service && !dst) {
 		return 0;
 	}
@@ -1515,6 +1703,9 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	struct ptp_message *msg, *fup;
 	int err, event;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (p->timestamping) {
 	case TS_SOFTWARE:
 	case TS_LEGACY_HW:
@@ -1571,6 +1762,7 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 		msg->header.logMessageInterval = 0x7f;
 	}
 	err = port_prepare_and_send(p, msg, event);
+	fprintf(stderr, "port_prepare_and_send====>err: %d\n", err);
 	if (err) {
 		pr_err("%s: send sync failed", p->log_name);
 		goto out;
@@ -1599,6 +1791,8 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 
 	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
 
+	fprintf(stderr, "follow_up_ts: %d\n", fup->follow_up.preciseOriginTimestamp.nanoseconds);
+
 	if (dst) {
 		fup->address = *dst;
 		fup->header.flagField[0] |= UNICAST;
@@ -1624,6 +1818,9 @@ out:
  */
 int port_is_enabled(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -1643,6 +1840,9 @@ int port_is_enabled(struct port *p)
 
 void flush_last_sync(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (p->syfu != SF_EMPTY) {
 		msg_put(p->last_syncfup);
 		p->syfu = SF_EMPTY;
@@ -1652,6 +1852,9 @@ void flush_last_sync(struct port *p)
 void flush_delay_req(struct port *p)
 {
 	struct ptp_message *m;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while ((m = TAILQ_FIRST(&p->delay_req)) != NULL) {
 		TAILQ_REMOVE(&p->delay_req, m, list);
 		msg_put(m);
@@ -1660,6 +1863,9 @@ void flush_delay_req(struct port *p)
 
 static void flush_peer_delay(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (p->peer_delay_req) {
 		msg_put(p->peer_delay_req);
 		p->peer_delay_req = NULL;
@@ -1678,6 +1884,9 @@ static void port_clear_fda(struct port *p, int count)
 {
 	int i;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	for (i = 0; i < count; i++)
 		p->fda.fd[i] = -1;
 }
@@ -1686,6 +1895,9 @@ void port_disable(struct port *p)
 {
 	int i;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tc_flush(p);
 	flush_last_sync(p);
 	flush_delay_req(p);
@@ -1709,6 +1921,9 @@ int port_initialize(struct port *p)
 	struct config *cfg = clock_config(p->clock);
 	int fd[N_TIMER_FDS], i;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	p->multiple_seq_pdr_count  = 0;
 	p->multiple_pdr_detected   = 0;
 	p->last_fault_type         = FT_UNSPECIFIED;
@@ -1809,6 +2024,9 @@ static int port_renew_transport(struct port *p)
 {
 	int res;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!port_is_enabled(p)) {
 		return 0;
 	}
@@ -1838,6 +2056,9 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 	struct path_trace_tlv *ptt;
 	struct timePropertiesDS tds;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!msg_source_equal(m, fc))
 		return add_foreign_master(p, m);
 
@@ -1867,6 +2088,9 @@ static int update_current_master(struct port *p, struct ptp_message *m)
 
 struct dataset *port_best_foreign(struct port *port)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return port->best ? &port->best->dataset : NULL;
 }
 
@@ -1879,6 +2103,9 @@ int process_announce(struct port *p, struct ptp_message *m)
 {
 	int result = 0;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (m->announce.stepsRemoved >= clock_max_steps_removed(p->clock)) {
 		return result;
 	}
@@ -1915,7 +2142,9 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *msg;
 	int err, nsm;
-
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	nsm = port_nsm_reply(p, m);
 
 	if (!nsm && p->state != PS_MASTER && p->state != PS_GRAND_MASTER) {
@@ -1945,7 +2174,11 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
 	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
-
+#if 1
+	fprintf(stderr, "delay_resp_msb:%d\n", msg->delay_resp.receiveTimestamp.seconds_msb);
+	fprintf(stderr, "delay_resp_lsb:%d\n", msg->delay_resp.receiveTimestamp.seconds_lsb);
+	fprintf(stderr, "delay_resp_ns:%d\n", msg->delay_resp.receiveTimestamp.nanoseconds);
+#endif
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
 	if (p->hybrid_e2e && msg_unicast(m)) {
@@ -1977,6 +2210,9 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 	struct ptp_message *req;
 	tmv_t c3, t3, t4, t4c;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (p->state != PS_UNCALIBRATED && p->state != PS_SLAVE) {
 		return;
 	}
@@ -2033,6 +2269,9 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 void process_follow_up(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -2074,6 +2313,9 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	enum transport_event event;
 	int err;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (p->timestamping) {
 	case TS_SOFTWARE:
 	case TS_LEGACY_HW:
@@ -2210,6 +2452,9 @@ static void port_peer_delay(struct port *p)
 	struct ptp_message *rsp = p->peer_delay_resp;
 	struct ptp_message *fup = p->peer_delay_fup;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Check for response, validate port and sequence number. */
 
 	if (!rsp)
@@ -2277,6 +2522,9 @@ calc:
 
 int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (p->peer_delay_resp) {
 		if (!source_pid_eq(p->peer_delay_resp, m)) {
 			pr_err("%s: multiple peer responses", p->log_name);
@@ -2321,6 +2569,9 @@ int process_pdelay_resp(struct port *p, struct ptp_message *m)
 
 void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!p->peer_delay_req) {
 		return;
 	}
@@ -2337,6 +2588,9 @@ void process_pdelay_resp_fup(struct port *p, struct ptp_message *m)
 void process_sync(struct port *p, struct ptp_message *m)
 {
 	enum syfu_event event;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (p->state) {
 	case PS_INITIALIZING:
 	case PS_FAULTY:
@@ -2393,6 +2647,9 @@ void process_sync(struct port *p, struct ptp_message *m)
 
 void port_close(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (port_is_enabled(p)) {
 		port_disable(p);
 	}
@@ -2418,6 +2675,9 @@ struct foreign_clock *port_compute_best(struct port *p)
 	struct foreign_clock *fc;
 	struct ptp_message *tmp;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	dscmp = clock_dscmp(p->clock);
 	p->best = NULL;
 
@@ -2457,6 +2717,9 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
 	/* Leave FD_UNICAST_REQ_TIMER running. */
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (next) {
 	case PS_INITIALIZING:
 		break;
@@ -2501,6 +2764,9 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 	port_clr_tmo(p->fda.fd[FD_SYNC_TX_TIMER]);
 	/* Leave FD_UNICAST_REQ_TIMER running. */
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (next) {
 	case PS_INITIALIZING:
 		break;
@@ -2537,11 +2803,17 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 
 void port_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	p->dispatch(p, event, mdiff);
 }
 
 static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (clock_slave_only(p->clock)) {
 		if (event == EV_RS_GRAND_MASTER) {
 			port_slave_priority_warning(p);
@@ -2575,6 +2847,9 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	const char *old_ts_label;
 	struct port *p = ctx;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	link_state = linkup ? LINK_UP : LINK_DOWN;
 	if (p->link_status & link_state) {
 		p->link_status = link_state;
@@ -2633,6 +2908,9 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 
 enum fsm_event port_event(struct port *p, int fd_index)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return p->event(p, fd_index);
 }
 
@@ -2642,6 +2920,9 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	struct ptp_message *msg;
 	int cnt, fd = p->fda.fd[fd_index], err;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (fd_index) {
 	case FD_ANNOUNCE_TIMER:
 	case FD_SYNC_RX_TIMER:
@@ -2824,6 +3105,9 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 int port_forward(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, msg);
 	if (cnt <= 0) {
 		return -1;
@@ -2835,6 +3119,9 @@ int port_forward(struct port *p, struct ptp_message *msg)
 int port_forward_to(struct port *p, struct ptp_message *msg)
 {
 	int cnt;
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	cnt = transport_sendto(p->trp, &p->fda, TRANS_GENERAL, msg);
 	if (cnt < 0) {
 		return cnt;
@@ -2850,15 +3137,20 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 {
 	int cnt;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (msg_pre_send(msg)) {
 		return -1;
 	}
+
 	if (msg_unicast(msg)) {
 		cnt = transport_sendto(p->trp, &p->fda, event, msg);
 	} else {
 		cnt = transport_send(p->trp, &p->fda, event, msg);
 	}
 	if (cnt <= 0) {
+		fprintf(stderr, "port_prepare_and_send_cnt:%d\n", cnt);
 		return -1;
 	}
 	port_stats_inc_tx(p, msg);
@@ -2870,21 +3162,33 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 
 struct PortIdentity port_identity(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return p->portIdentity;
 }
 
 int port_number(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return portnum(p);
 }
 
 const char *port_log_name(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return p->log_name;
 }
 
 int port_link_status_get(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return !!(p->link_status & LINK_UP);
 }
 
@@ -2893,6 +3197,9 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 	struct management_tlv *mgt;
 	UInteger16 target = msg->management.targetPortIdentity.portNumber;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (target != portnum(p) && target != 0xffff) {
 		return 0;
 	}
@@ -2950,6 +3257,9 @@ int port_management_error(struct PortIdentity pid, struct port *ingress,
 	struct tlv_extra *extra;
 	int err = 0;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	mgt = (struct management_tlv *) req->management.suffix;
 	msg = port_management_reply(pid, ingress, req);
 	if (!msg) {
@@ -2980,6 +3290,9 @@ port_management_construct(struct PortIdentity pid, struct port *ingress,
 {
 	struct ptp_message *msg;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	msg = msg_allocate();
 	if (!msg)
 		return NULL;
@@ -3017,6 +3330,9 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 {
 	UInteger8 boundaryHops;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	boundaryHops = req->management.startingBoundaryHops -
 		       req->management.boundaryHops;
 	return port_management_construct(pid, ingress,
@@ -3029,6 +3345,9 @@ struct ptp_message *port_management_reply(struct PortIdentity pid,
 struct ptp_message *port_management_notify(struct PortIdentity pid,
 					   struct port *port)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return port_management_construct(pid, port, 0, NULL, 1, GET);
 }
 
@@ -3038,6 +3357,9 @@ void port_notify_event(struct port *p, enum notification event)
 	struct ptp_message *msg;
 	int id;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (event) {
 	case NOTIFY_PORT_STATE:
 		id = MID_PORT_DATA_SET;
@@ -3071,6 +3393,9 @@ struct port *port_open(const char *phc_device,
 	struct port *p = malloc(sizeof(*p));
 	int i;
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!p) {
 		return NULL;
 	}
@@ -3087,6 +3412,7 @@ struct port *port_open(const char *phc_device,
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
 	case CLOCK_TYPE_BOUNDARY:
+		/* Here is interface for ptp enter at present */
 		p->dispatch = bc_dispatch;
 		p->event = bc_event;
 		break;
@@ -3251,6 +3577,9 @@ err_port:
 
 enum port_state port_state(struct port *port)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return port->state;
 }
 
@@ -3258,6 +3587,9 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 {
 	enum port_state next = p->state_machine(p->state, event, mdiff);
 
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (PS_FAULTY == next) {
 		struct fault_interval i;
 		fault_interval(p, last_fault_type(p), &i);
@@ -3300,5 +3632,8 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 
 enum bmca_select port_bmca(struct port *p)
 {
+#if PORT
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return p->bmca;
 }

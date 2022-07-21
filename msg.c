@@ -28,6 +28,8 @@
 #include "print.h"
 #include "tlv.h"
 
+#include "test.h"
+
 int assume_two_step = 0;
 
 /*
@@ -62,6 +64,9 @@ static void pool_debug(const char *str, void *addr)
 
 static void announce_pre_send(struct announce_msg *m)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	m->currentUtcOffset = htons(m->currentUtcOffset);
 	m->grandmasterClockQuality.offsetScaledLogVariance =
 		htons(m->grandmasterClockQuality.offsetScaledLogVariance);
@@ -70,6 +75,9 @@ static void announce_pre_send(struct announce_msg *m)
 
 static void announce_post_recv(struct announce_msg *m)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	m->currentUtcOffset = ntohs(m->currentUtcOffset);
 	m->grandmasterClockQuality.offsetScaledLogVariance =
 		ntohs(m->grandmasterClockQuality.offsetScaledLogVariance);
@@ -78,6 +86,9 @@ static void announce_post_recv(struct announce_msg *m)
 
 static int hdr_post_recv(struct ptp_header *m)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if ((m->ver & MAJOR_VERSION_MASK) != PTP_MAJOR_VERSION)
 		return -EPROTO;
 	m->messageLength = ntohs(m->messageLength);
@@ -89,6 +100,9 @@ static int hdr_post_recv(struct ptp_header *m)
 
 static int hdr_pre_send(struct ptp_header *m)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	m->messageLength = htons(m->messageLength);
 	m->correction = host2net64(m->correction);
 	m->sourcePortIdentity.portNumber = htons(m->sourcePortIdentity.portNumber);
@@ -98,6 +112,9 @@ static int hdr_pre_send(struct ptp_header *m)
 
 static uint8_t *msg_suffix(struct ptp_message *m)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (msg_type(m)) {
 	case SYNC:
 		return NULL;
@@ -128,6 +145,9 @@ static struct tlv_extra *msg_tlv_prepare(struct ptp_message *msg, int length)
 	struct tlv_extra *extra, *tmp;
 	uint8_t *ptr;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Make sure this message type admits appended TLVs. */
 	ptr = msg_suffix(msg);
 	if (!ptr) {
@@ -164,6 +184,9 @@ static void msg_tlv_recycle(struct ptp_message *msg)
 {
 	struct tlv_extra *extra;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while ((extra = TAILQ_FIRST(&msg->tlv_list)) != NULL) {
 		TAILQ_REMOVE(&msg->tlv_list, extra, list);
 		tlv_extra_recycle(extra);
@@ -172,11 +195,17 @@ static void msg_tlv_recycle(struct ptp_message *msg)
 
 static void port_id_post_recv(struct PortIdentity *pid)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	pid->portNumber = ntohs(pid->portNumber);
 }
 
 static void port_id_pre_send(struct PortIdentity *pid)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	pid->portNumber = htons(pid->portNumber);
 }
 
@@ -186,6 +215,9 @@ static int suffix_post_recv(struct ptp_message *msg, int len)
 	struct tlv_extra *extra;
 	int err, suffix_len = 0;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!ptr)
 		return 0;
 
@@ -227,6 +259,9 @@ static void suffix_pre_send(struct ptp_message *msg)
 	struct tlv_extra *extra;
 	struct TLV *tlv;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	TAILQ_FOREACH(extra, &msg->tlv_list, list) {
 		tlv = extra->tlv;
 		tlv_pre_send(tlv, extra);
@@ -241,12 +276,18 @@ static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
 	uint32_t lsb = ntohl(ts->seconds_lsb);
 	uint16_t msb = ntohs(ts->seconds_msb);
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	m->ts.pdu.sec  = ((uint64_t)lsb) | (((uint64_t)msb) << 32);
 	m->ts.pdu.nsec = ntohl(ts->nanoseconds);
 }
 
 static void timestamp_pre_send(struct Timestamp *ts)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	ts->seconds_lsb = htonl(ts->seconds_lsb);
 	ts->seconds_msb = htons(ts->seconds_msb);
 	ts->nanoseconds = htonl(ts->nanoseconds);
@@ -259,6 +300,9 @@ struct ptp_message *msg_allocate(void)
 	struct message_storage *s;
 	struct ptp_message *m = TAILQ_FIRST(&msg_pool);
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (m) {
 		TAILQ_REMOVE(&msg_pool, m, list);
 		pool_stats.count--;
@@ -285,6 +329,9 @@ void msg_cleanup(void)
 	struct message_storage *s;
 	struct ptp_message *m;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tlv_extra_cleanup();
 
 	while ((m = TAILQ_FIRST(&msg_pool)) != NULL) {
@@ -299,6 +346,9 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 	struct ptp_message *dup;
 	int err;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	dup = msg_allocate();
 	if (!dup) {
 		return NULL;
@@ -332,6 +382,9 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 
 void msg_get(struct ptp_message *m)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	m->refcnt++;
 }
 
@@ -339,6 +392,9 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 {
 	int err, pdulen, suffix_len, type;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (cnt < sizeof(struct ptp_header))
 		return -EBADMSG;
 
@@ -437,8 +493,15 @@ int msg_pre_send(struct ptp_message *m)
 {
 	int type;
 
-	if (hdr_pre_send(&m->header))
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
+	if (hdr_pre_send(&m->header)) {
+#if MSG
+		fprintf(stderr,"hdr_pre_send **err**\n");
+#endif
 		return -1;
+	}
 
 	type = msg_type(m);
 
@@ -476,6 +539,9 @@ int msg_pre_send(struct ptp_message *m)
 		port_id_pre_send(&m->management.targetPortIdentity);
 		break;
 	default:
+#if MSG
+		fprintf(stderr,"hdr_pre_send **default err**\n");
+#endif
 		return -1;
 	}
 	suffix_pre_send(m);
@@ -486,6 +552,9 @@ struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length)
 {
 	struct tlv_extra *extra;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	extra = msg_tlv_prepare(msg, length);
 	if (extra) {
 		msg->header.messageLength += length;
@@ -496,6 +565,9 @@ struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length)
 
 void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	TAILQ_INSERT_TAIL(&msg->tlv_list, extra, list);
 }
 
@@ -504,6 +576,9 @@ int msg_tlv_count(struct ptp_message *msg)
 	int count = 0;
 	struct tlv_extra *extra;
 
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	for (extra = TAILQ_FIRST(&msg->tlv_list);
 			extra != NULL;
 			extra = TAILQ_NEXT(extra, list))
@@ -514,6 +589,9 @@ int msg_tlv_count(struct ptp_message *msg)
 
 const char *msg_type_string(int type)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (type) {
 	case SYNC:
 		return "SYNC";
@@ -575,6 +653,9 @@ void msg_print(struct ptp_message *m, FILE *fp)
 
 void msg_put(struct ptp_message *m)
 {
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	m->refcnt--;
 	if (m->refcnt) {
 		return;
@@ -588,6 +669,9 @@ void msg_put(struct ptp_message *m)
 int msg_sots_missing(struct ptp_message *m)
 {
 	int type = msg_type(m);
+#if MSG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (type) {
 	case SYNC:
 	case DELAY_REQ:

@@ -31,6 +31,7 @@
 #include "rtnl.h"
 #include "util.h"
 #include "version.h"
+#include "test.h"
 
 #define IFMT		"\n\t\t"
 #define NSM_NFD		3
@@ -60,6 +61,9 @@ static void nsm_reset(struct nsm *nsm);
 static int nsm_command(struct nsm *nsm, const char *cmd)
 {
 	char action_str[10+1] = {0}, id_str[64+1] = {0};
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	if (0 == strncasecmp(cmd, "HELP", strlen(cmd))) {
 		nsm_help(stdout);
@@ -78,6 +82,9 @@ static int nsm_command(struct nsm *nsm, const char *cmd)
 
 static int nsm_complete(struct nsm *nsm)
 {
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!nsm->nsm_sync) {
 		return 0;
 	}
@@ -95,6 +102,9 @@ static int64_t nsm_compute_offset(struct tsproc *tsp,
 {
 	tmv_t c1, c2, c3, t1, t1c, t2, t3, t4, t4c, offset;
 
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	c1 = correction_to_tmv(syn->header.correction);
 	c2 = correction_to_tmv(fup->header.correction);
 	c3 = correction_to_tmv(resp->header.correction);
@@ -117,6 +127,9 @@ static int64_t nsm_compute_offset(struct tsproc *tsp,
 
 static void nsm_close(struct nsm *nsm)
 {
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	nsm_reset(nsm);
 	transport_close(nsm->trp, &nsm->fda);
 	transport_destroy(nsm->trp);
@@ -135,6 +148,9 @@ static void nsm_handle_msg(struct nsm *nsm, struct ptp_message *msg, FILE *fp)
 	unsigned char *ptr;
 	int64_t offset;
 
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!nsm->nsm_delay_req) {
 		return;
 	}
@@ -256,6 +272,9 @@ static void nsm_handle_msg(struct nsm *nsm, struct ptp_message *msg, FILE *fp)
 
 static void nsm_help(FILE *fp)
 {
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	fprintf(fp, "\tSend a NetSync Monitor request to a specific port address:\n");
 	fprintf(fp, "\n");
 	fprintf(fp, "\tNSM 111.222.333.444\n");
@@ -271,6 +290,9 @@ static int nsm_open(struct nsm *nsm, struct config *cfg)
 	struct interface *iface;
 	int count = 0;
 
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
 		ifname = interface_name(iface);
 		memset(ts_label, 0, sizeof(ts_label));
@@ -325,6 +347,9 @@ static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 	struct ptp_message *msg;
 	int cnt, err;
 
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	msg = msg_allocate();
 	if (!msg) {
 		pr_err("low memory");
@@ -371,6 +396,9 @@ static int nsm_request(struct nsm *nsm, char *target)
 	struct address dst;
 	int cnt, err;
 
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (str2addr(type, target, &dst)) {
 		return -1;
 	}
@@ -435,6 +463,9 @@ out:
 
 static void nsm_reset(struct nsm *nsm)
 {
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (nsm->nsm_delay_req) {
 		msg_put(nsm->nsm_delay_req);
 	}
@@ -455,6 +486,9 @@ static void nsm_reset(struct nsm *nsm)
 
 static void usage(char *progname)
 {
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	fprintf(stderr,
 		"\nusage: %s [options]\n\n"
 		" -f [file] read configuration from 'file'\n"
@@ -475,6 +509,9 @@ int main(int argc, char *argv[])
 	struct option *opts;
 	struct config *cfg;
 
+#if NSM
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (handle_term_signals()) {
 		return -1;
 	}

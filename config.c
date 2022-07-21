@@ -33,6 +33,8 @@
 #include "print.h"
 #include "util.h"
 
+#include "test.h"
+
 struct interface {
 	STAILQ_ENTRY(interface) list;
 };
@@ -352,6 +354,9 @@ static struct config_item *config_section_item(struct config *cfg,
 {
 	char buf[CONFIG_LABEL_SIZE + MAX_IFNAME_SIZE];
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	snprintf(buf, sizeof(buf), "%s.%s", section, name);
 	return hash_lookup(cfg->htab, buf);
 }
@@ -359,6 +364,9 @@ static struct config_item *config_section_item(struct config *cfg,
 static struct config_item *config_global_item(struct config *cfg,
 					      const char *name)
 {
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return config_section_item(cfg, "global", name);
 }
 
@@ -367,6 +375,9 @@ static struct config_item *config_find_item(struct config *cfg,
 					    const char *name)
 {
 	struct config_item *ci;
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (section) {
 		ci = config_section_item(cfg, section, name);
 		if (ci) {
@@ -384,6 +395,9 @@ static struct config_item *config_item_alloc(struct config *cfg,
 	struct config_item *ci;
 	char buf[CONFIG_LABEL_SIZE + MAX_IFNAME_SIZE];
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	ci = calloc(1, sizeof(*ci));
 	if (!ci) {
 		fprintf(stderr, "low memory\n");
@@ -405,6 +419,9 @@ static struct config_item *config_item_alloc(struct config *cfg,
 static void config_item_free(void *ptr)
 {
 	struct config_item *ci = ptr;
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (ci->type == CFG_TYPE_STRING && ci->flags & CFG_ITEM_DYNSTR)
 		free(ci->val.s);
 	if (ci->flags & CFG_ITEM_STATIC)
@@ -416,6 +433,9 @@ static int config_switch_unicast_mtab(struct config *cfg, int idx, int line_num)
 {
 	struct unicast_master_table *table;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (idx < 1) {
 		fprintf(stderr, "line %d: table_id %d is out of range. "
 			"Must be in the range %d to %d\n",
@@ -448,6 +468,9 @@ static int config_unicast_mtab_address(enum transport_type type, char *address,
 {
 	struct unicast_master_address *item;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!current_uc_mtab) {
 		fprintf(stderr, "line %d: missing table_id\n", line_num);
 		return -1;
@@ -472,6 +495,9 @@ static int config_unicast_mtab_address(enum transport_type type, char *address,
 
 static int config_unicast_mtab_peer(char *address, int line_num)
 {
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!current_uc_mtab) {
 		fprintf(stderr, "line %d: missing table_id\n", line_num);
 		return -1;
@@ -489,6 +515,9 @@ static int config_unicast_mtab_peer(char *address, int line_num)
 
 static int config_unicast_mtab_query_interval(int lqi, int line_num)
 {
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!current_uc_mtab) {
 		fprintf(stderr, "line %d: missing table_id\n", line_num);
 		return -1;
@@ -504,6 +533,9 @@ static int config_unicast_mtab_query_interval(int lqi, int line_num)
 
 static enum parser_result parse_section_line(char *s, enum config_section *section)
 {
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!strcasecmp(s, "[global]")) {
 		*section = GLOBAL_SECTION;
 	} else if (!strcasecmp(s, "[unicast_master_table]")) {
@@ -535,6 +567,9 @@ static enum parser_result parse_item(struct config *cfg,
 	double df;
 	int val;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	r = parse_fault_interval(cfg, section, option, value);
 	if (r != NOT_PARSED)
 		return r;
@@ -632,6 +667,9 @@ static enum parser_result parse_fault_interval(struct config *cfg,
 		0, FRI_ASAP,
 	};
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (strcasecmp("ASAP", value)) {
 		return NOT_PARSED;
 	}
@@ -656,6 +694,9 @@ static int parse_unicast_mtab_line(struct config *cfg, char *line, int line_num)
 	struct config_enum *cte;
 	int cnt, lqi, table_id;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	cnt = sscanf(line, " table_id %d", &table_id);
 	if (cnt == 1) {
 		return config_switch_unicast_mtab(cfg, table_id, line_num);
@@ -688,6 +729,9 @@ static enum parser_result parse_setting_line(char *line,
 {
 	*option = line;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while (!isspace(line[0])) {
 		if (line[0] == '\0')
 			return NOT_PARSED;
@@ -708,6 +752,9 @@ static void check_deprecated_options(const char **option)
 {
 	const char *new_option = NULL;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!strcmp(*option, "pi_offset_const")) {
 		new_option = "step_threshold";
 	} else if (!strcmp(*option, "pi_f_offset_const")) {
@@ -733,6 +780,9 @@ static struct option *config_alloc_longopts(void)
 	struct option *opts;
 	int i;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	opts = calloc(1, (1 + N_CONFIG_ITEMS) * sizeof(*opts));
 	if (!opts) {
 		return NULL;
@@ -758,6 +808,9 @@ int config_read(const char *name, struct config *cfg)
 	struct interface *current_port = NULL;
 	int line_num;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	fp = 0 == strncmp(name, "-", 2) ? stdin : fopen(name, "r");
 
 	if (!fp) {
@@ -860,6 +913,9 @@ struct interface *config_create_interface(const char *name, struct config *cfg)
 	struct interface *iface;
 	const char *ifname;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* only create each interface once (by name) */
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
 		ifname = interface_name(iface);
@@ -885,6 +941,9 @@ struct config *config_create(void)
 	struct config *cfg;
 	int i;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	cfg = calloc(1, sizeof(*cfg));
 	if (!cfg) {
 		return NULL;
@@ -940,6 +999,9 @@ void config_destroy(struct config *cfg)
 	struct unicast_master_table *table;
 	struct interface *iface;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	while ((iface = STAILQ_FIRST(&cfg->interfaces))) {
 		STAILQ_REMOVE_HEAD(&cfg->interfaces, list);
 		interface_destroy(iface);
@@ -965,6 +1027,9 @@ double config_get_double(struct config *cfg, const char *section,
 {
 	struct config_item *ci = config_find_item(cfg, section, option);
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!ci || ci->type != CFG_TYPE_DOUBLE) {
 		pr_err("bug: config option %s missing or invalid!", option);
 		exit(-1);
@@ -977,6 +1042,9 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 {
 	struct config_item *ci = config_find_item(cfg, section, option);
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!ci) {
 		pr_err("bug: config option %s missing!", option);
 		exit(-1);
@@ -999,6 +1067,9 @@ char *config_get_string(struct config *cfg, const char *section,
 {
 	struct config_item *ci = config_find_item(cfg, section, option);
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!ci || ci->type != CFG_TYPE_STRING) {
 		pr_err("bug: config option %s missing or invalid!", option);
 		exit(-1);
@@ -1012,6 +1083,9 @@ int config_harmonize_onestep(struct config *cfg)
 	enum timestamp_type tstype = config_get_int(cfg, NULL, "time_stamping");
 	int two_step_flag = config_get_int(cfg, NULL, "twoStepFlag");
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (tstype) {
 	case TS_SOFTWARE:
 	case TS_LEGACY_HW:
@@ -1049,6 +1123,9 @@ int config_parse_option(struct config *cfg, const char *opt, const char *val)
 {
 	enum parser_result result;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	check_deprecated_options(&opt);
 
 	result = parse_item(cfg, 1, NULL, opt, val);
@@ -1078,6 +1155,9 @@ int config_set_double(struct config *cfg, const char *option, double val)
 {
 	struct config_item *ci = config_find_item(cfg, NULL, option);
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!ci || ci->type != CFG_TYPE_DOUBLE) {
 		pr_err("bug: config option %s missing or invalid!", option);
 		return -1;
@@ -1093,6 +1173,9 @@ int config_set_section_int(struct config *cfg, const char *section,
 {
 	struct config_item *cgi, *dst;
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	cgi = config_find_item(cfg, NULL, option);
 	if (!cgi) {
 		pr_err("bug: config option %s missing!", option);
@@ -1131,6 +1214,9 @@ int config_set_string(struct config *cfg, const char *option,
 {
 	struct config_item *ci = config_find_item(cfg, NULL, option);
 
+#if CONFIG
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (!ci || ci->type != CFG_TYPE_STRING) {
 		pr_err("bug: config option %s missing or invalid!", option);
 		return -1;

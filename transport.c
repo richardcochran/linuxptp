@@ -26,19 +26,30 @@
 #include "udp6.h"
 #include "uds.h"
 
+#include "test.h"
+
 int transport_close(struct transport *t, struct fdarray *fda)
 {
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return t->close(t, fda);
 }
 
 int transport_open(struct transport *t, struct interface *iface,
 		   struct fdarray *fda, enum timestamp_type tt)
 {
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return t->open(t, iface, fda, tt);
 }
 
 int transport_recv(struct transport *t, int fd, struct ptp_message *msg)
 {
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return t->recv(t, fd, msg, sizeof(msg->data), &msg->address, &msg->hwts);
 }
 
@@ -46,7 +57,13 @@ int transport_send(struct transport *t, struct fdarray *fda,
 		   enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
-
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
+#if TRAN_SEND
+	fprintf(stderr, "transport_send-->msg_header_len:%d\n", len);
+	fprintf(stderr, "transport_send-->event:%d\n", event);
+#endif
 	return t->send(t, fda, event, 0, msg, len, NULL, &msg->hwts);
 }
 
@@ -54,6 +71,9 @@ int transport_peer(struct transport *t, struct fdarray *fda,
 		   enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	return t->send(t, fda, event, 1, msg, len, NULL, &msg->hwts);
 }
@@ -62,6 +82,9 @@ int transport_sendto(struct transport *t, struct fdarray *fda,
 		     enum transport_event event, struct ptp_message *msg)
 {
 	int len = ntohs(msg->header.messageLength);
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	return t->send(t, fda, event, 0, msg, len, &msg->address, &msg->hwts);
 }
@@ -73,12 +96,18 @@ int transport_txts(struct fdarray *fda,
 	struct hw_timestamp *hwts = &msg->hwts;
 	unsigned char pkt[1600];
 
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	cnt = sk_receive(fda->fd[FD_EVENT], pkt, len, NULL, hwts, MSG_ERRQUEUE);
 	return cnt > 0 ? 0 : cnt;
 }
 
 int transport_physical_addr(struct transport *t, uint8_t *addr)
 {
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (t->physical_addr) {
 		return t->physical_addr(t, addr);
 	}
@@ -87,6 +116,9 @@ int transport_physical_addr(struct transport *t, uint8_t *addr)
 
 int transport_protocol_addr(struct transport *t, uint8_t *addr)
 {
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (t->protocol_addr) {
 		return t->protocol_addr(t, addr);
 	}
@@ -95,6 +127,9 @@ int transport_protocol_addr(struct transport *t, uint8_t *addr)
 
 enum transport_type transport_type(struct transport *t)
 {
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return t->type;
 }
 
@@ -102,6 +137,9 @@ struct transport *transport_create(struct config *cfg,
 				   enum transport_type type)
 {
 	struct transport *t = NULL;
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (type) {
 	case TRANS_UDS:
 		t = uds_transport_create();
@@ -129,5 +167,8 @@ struct transport *transport_create(struct config *cfg,
 
 void transport_destroy(struct transport *t)
 {
+#if TRAN
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	t->release(t);
 }

@@ -23,6 +23,7 @@
 #include "tsproc.h"
 #include "filter.h"
 #include "print.h"
+#include "test.h"
 
 struct tsproc {
 	/* Processing options */
@@ -49,6 +50,9 @@ struct tsproc {
 
 static int weighting(struct tsproc *tsp)
 {
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (tsp->mode) {
 	case TSPROC_FILTER:
 	case TSPROC_RAW:
@@ -65,6 +69,9 @@ struct tsproc *tsproc_create(enum tsproc_mode mode,
 {
 	struct tsproc *tsp;
 
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tsp = calloc(1, sizeof(*tsp));
 	if (!tsp)
 		return NULL;
@@ -94,29 +101,44 @@ struct tsproc *tsproc_create(enum tsproc_mode mode,
 
 void tsproc_destroy(struct tsproc *tsp)
 {
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	filter_destroy(tsp->delay_filter);
 	free(tsp);
 }
 
 void tsproc_down_ts(struct tsproc *tsp, tmv_t remote_ts, tmv_t local_ts)
 {
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tsp->t1 = remote_ts;
 	tsp->t2 = local_ts;
 }
 
 void tsproc_up_ts(struct tsproc *tsp, tmv_t local_ts, tmv_t remote_ts)
 {
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tsp->t3 = local_ts;
 	tsp->t4 = remote_ts;
 }
 
 void tsproc_set_clock_rate_ratio(struct tsproc *tsp, double clock_rate_ratio)
 {
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tsp->clock_rate_ratio = clock_rate_ratio;
 }
 
 void tsproc_set_delay(struct tsproc *tsp, tmv_t delay)
 {
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tsp->filtered_delay = delay;
 	tsp->filtered_delay_valid = 1;
 }
@@ -127,6 +149,9 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 
 	/* delay = ((t2 - t3) * rr + (t4 - t1)) / 2 */
 
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	t23 = tmv_sub(tsp->t2, tsp->t3);
 	if (tsp->clock_rate_ratio != 1.0)
 		t23 = dbl_tmv(tmv_dbl(t23) * tsp->clock_rate_ratio);
@@ -149,6 +174,9 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 {
 	tmv_t raw_delay;
 
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (tmv_is_zero(tsp->t2) || tmv_is_zero(tsp->t3))
 		return -1;
 
@@ -182,6 +210,9 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 {
 	tmv_t delay = tmv_zero(), raw_delay = tmv_zero();
 
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2))
 		return -1;
 
@@ -209,6 +240,11 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 		break;
 	}
 
+	fprintf(stderr, "t1===========%ld\n", tsp->t1.ns);
+	fprintf(stderr, "t2===========%ld\n", tsp->t2.ns);
+	fprintf(stderr, "t3===========%ld\n", tsp->t3.ns);
+	fprintf(stderr, "t4===========%ld\n", tsp->t4.ns);
+
 	/* offset = t2 - t1 - delay */
 	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
 
@@ -229,6 +265,9 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 
 void tsproc_reset(struct tsproc *tsp, int full)
 {
+#if TSPROC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tsp->t1 = tmv_zero();
 	tsp->t2 = tmv_zero();
 	tsp->t3 = tmv_zero();
