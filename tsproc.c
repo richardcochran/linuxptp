@@ -225,11 +225,11 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 
 #if TSPROC
 	fprintf(stderr, "%s\n", __func__);
+	fprintf(stderr, "tsp->mode: %d\n", tsp->mode);
 #endif
 	if (tmv_is_zero(tsp->t1) || tmv_is_zero(tsp->t2))
 		return -1;
 
-	fprintf(stderr, "tsp->mode: %d\n", tsp->mode);
 	switch (tsp->mode) {
 	case TSPROC_FILTER:
 		if (!tsp->filtered_delay_valid) {

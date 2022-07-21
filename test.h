@@ -5,47 +5,49 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define DEBUG_INFO	0
+
 /* sk.c */
-#define SK_RECE		1
-#define SK_DEBUG	1
-#define SK		1
+#define SK_RECE		DEBUG_INFO
+#define SK_DEBUG	DEBUG_INFO
+#define SK		DEBUG_INFO
 
 /* raw.c */
-#define RAW_RECV	1
-#define RAW_SEND	1
-#define RAW		1
-#define RAW_DEBUG	1
+#define RAW_RECV	DEBUG_INFO
+#define RAW_SEND	DEBUG_INFO
+#define RAW		DEBUG_INFO
+#define RAW_DEBUG	DEBUG_INFO
 
 /* port.c */
-#define PORT		1
+#define PORT		DEBUG_INFO
 
 /* transport.c */
-#define TRAN_SEND	1
+#define TRAN_SEND	DEBUG_INFO
 
 /* ptp4l.c */
-#define CONFIG		1
-#define TRAN		1
+#define CONFIG		DEBUG_INFO
+#define TRAN		DEBUG_INFO
 
 /* msg.c */
-#define MSG		1
+#define MSG		DEBUG_INFO
 #if			0
 #define DEBUG_POOL
 #endif
 
 /* ts2phc_slave.c */
-#define SLAVE		1
+#define SLAVE		DEBUG_INFO
 
 /* ts2phc_master.c */
-#define MASTER		1
+#define MASTER		DEBUG_INFO
 
 /* clock.c */
-#define CLOCK		1
+#define CLOCK		DEBUG_INFO
 
 /* tsproc.c */
-#define TSPROC		1
+#define TSPROC		DEBUG_INFO
 
 /* nsm.c */
-#define NSM	1
+#define NSM		DEBUG_INFO
 
 #define SYNC_TYPE	0x0
 #define FOLLOW_UP_TYPE	0x8

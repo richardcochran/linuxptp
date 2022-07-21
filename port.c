@@ -1762,7 +1762,9 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 		msg->header.logMessageInterval = 0x7f;
 	}
 	err = port_prepare_and_send(p, msg, event);
+#if PORT
 	fprintf(stderr, "port_prepare_and_send====>err: %d\n", err);
+#endif
 	if (err) {
 		pr_err("%s: send sync failed", p->log_name);
 		goto out;
@@ -2174,7 +2176,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
 	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
-#if 1
+#if PORT
 	fprintf(stderr, "delay_resp_msb:%d\n", msg->delay_resp.receiveTimestamp.seconds_msb);
 	fprintf(stderr, "delay_resp_lsb:%d\n", msg->delay_resp.receiveTimestamp.seconds_lsb);
 	fprintf(stderr, "delay_resp_ns:%d\n", msg->delay_resp.receiveTimestamp.nanoseconds);
