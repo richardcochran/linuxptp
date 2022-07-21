@@ -324,6 +324,7 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 
 	fprintf(stderr, "\n");
 	get_ptp_type(&ptr[0]);
+	get_ptp_seqid(&ptr[0]);
 	fprintf(stderr, "\n");
 #endif
 	if (cnt >= 0)

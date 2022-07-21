@@ -56,6 +56,7 @@
 #define PTPV2_BIT1	12
 #define PTPV2_BIT2	13
 #define PTPV2_TYPE	0x88f7
+#define PTPV2_SEQID	44
 
 static inline void get_ptp_type(unsigned char *ptr)
 {
@@ -85,5 +86,14 @@ static inline void get_ptp_type(unsigned char *ptr)
 	}
 	else
 		fprintf(stderr, "Not ptp type\n");
+}
+
+static inline int get_ptp_seqid(unsigned char *ptr)
+{
+	int seqid;
+
+	seqid = (ptr[PTPV2_SEQID + 1] | ptr[PTPV2_SEQID] << 8);
+	fprintf(stderr, "seqid: %d\n", seqid);
+	return seqid;
 }
 #endif
