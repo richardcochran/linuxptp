@@ -2017,7 +2017,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->servo_state = state;
 
 #if CLOCK
-	fprintf(stderr, "c->master_offset: %ld\n", c->master_offset);
+	fprintf(stderr, "c->master_offset: %ld\n", c->master_offset.ns);
 	fprintf(stderr, "offset: %ld\n", offset);
 #endif
 	tsproc_set_clock_rate_ratio(c->tsproc, clock_rate_ratio(c));

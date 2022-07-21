@@ -165,10 +165,10 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 	}
 #if TSPROC
 	fprintf(stderr, "%s\n", __func__);
-	fprintf(stderr, "tsp->t1: %ld\n", tsp->t1);
-	fprintf(stderr, "tsp->t2: %ld\n", tsp->t2);
-	fprintf(stderr, "tsp->t3: %ld\n", tsp->t3);
-	fprintf(stderr, "tsp->t4: %ld\n", tsp->t4);
+	fprintf(stderr, "tsp->t1: %ld\n", tsp->t1.ns);
+	fprintf(stderr, "tsp->t2: %ld\n", tsp->t2.ns);
+	fprintf(stderr, "tsp->t3: %ld\n", tsp->t3.ns);
+	fprintf(stderr, "tsp->t4: %ld\n", tsp->t4.ns);
 	fprintf(stderr, "negative delay %ld\n", tmv_to_nanoseconds(delay));
 	fprintf(stderr, "delay = ((t2 - t3) * rr + (t4 - t1)) / 2\n");
 	fprintf(stderr, "t2 - t3 = %ld\n", tmv_to_nanoseconds(t23));
@@ -212,8 +212,8 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 		break;
 	}
 #if TSPROC
-	fprintf(stderr, "raw_delay: %ld\n", raw_delay);
-	fprintf(stderr, "tsp->filtered_delay: %ld\n", tsp->filtered_delay);
+	fprintf(stderr, "raw_delay: %ld\n", raw_delay.ns);
+	fprintf(stderr, "tsp->filtered_delay: %ld\n", tsp->filtered_delay.ns);
 #endif
 
 	return 0;
@@ -262,9 +262,9 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	fprintf(stderr, "t2===========%ld\n", tsp->t2.ns);
 	fprintf(stderr, "t3===========%ld\n", tsp->t3.ns);
 	fprintf(stderr, "t4===========%ld\n", tsp->t4.ns);
-	fprintf(stderr, "start_delay: %ld\n", delay);
+	fprintf(stderr, "start_delay: %ld\n", delay.ns);
 	fprintf(stderr, "start_offset: %ld\n",
-		tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay));
+		tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay).ns);
 #endif
 	if (!weight)
 		return 0;
