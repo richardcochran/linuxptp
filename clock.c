@@ -2019,6 +2019,8 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 #if CLOCK
 	fprintf(stderr, "c->master_offset: %ld\n", c->master_offset.ns);
 	fprintf(stderr, "offset: %ld\n", offset);
+	fprintf(stderr, "ingress: %ld\n", tmv_to_nanoseconds(ingress));
+	fprintf(stderr, "state: %d\n",state);
 #endif
 	tsproc_set_clock_rate_ratio(c->tsproc, clock_rate_ratio(c));
 

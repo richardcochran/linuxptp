@@ -24,6 +24,7 @@
 #include "pi.h"
 #include "print.h"
 #include "servo_private.h"
+#include "test.h"
 
 #define HWTS_KP_SCALE 0.7
 #define HWTS_KI_SCALE 0.3
@@ -33,7 +34,7 @@
 #define MAX_KP_NORM_MAX 1.0
 #define MAX_KI_NORM_MAX 2.0
 
-#define FREQ_EST_MARGIN 0.001
+#define FREQ_EST_MARGIN 0.0001
 
 struct pi_servo {
 	struct servo servo;
@@ -58,6 +59,9 @@ struct pi_servo {
 static void pi_destroy(struct servo *servo)
 {
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
+#if PI
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	free(s);
 }
 
@@ -71,6 +75,13 @@ static double pi_sample(struct servo *servo,
 	double ki_term, ppb = s->last_freq;
 	double freq_est_interval, localdiff;
 
+#if PI
+	fprintf(stderr, "%s\n", __func__);
+	fprintf(stderr, "pi_offset: %ld\n", offset);
+	fprintf(stderr, "pi_local_ts: %ld\n", local_ts);
+	fprintf(stderr, "pi_weight: %f\n", weight);
+	fprintf(stderr, "s->count: %d\n", s->count);
+#endif
 	switch (s->count) {
 	case 0:
 		s->offset[0] = offset;
@@ -86,11 +97,20 @@ static double pi_sample(struct servo *servo,
 		if (s->local[0] >= s->local[1]) {
 			*state = SERVO_UNLOCKED;
 			s->count = 0;
+#if PI
+			fprintf(stderr, "state = 0 due to s->local[0] >= s->local[1]!\n");
+			fprintf(stderr, "s->local[0]: %ld\n", s->local[0]);
+			fprintf(stderr, "s->local[1]: %ld\n", s->local[1]);
+#endif
 			break;
 		}
 
 		/* Wait long enough before estimating the frequency offset. */
-		localdiff = (s->local[1] - s->local[0]) / 1e9;
+#if PI
+		fprintf(stderr, "s->local[0]: %ld\n", s->local[0]);
+		fprintf(stderr, "s->local[1]: %ld\n", s->local[1]);
+#endif
+		localdiff = (s->local[1] - s->local[0]);
 		localdiff += localdiff * FREQ_EST_MARGIN;
 		freq_est_interval = 0.016 / s->ki;
 		if (freq_est_interval > 1000.0) {
@@ -98,6 +118,11 @@ static double pi_sample(struct servo *servo,
 		}
 		if (localdiff < freq_est_interval) {
 			*state = SERVO_UNLOCKED;
+#if PI
+			fprintf(stderr, "state = 0 due to localdiff < freq_est_interval!\n");
+			fprintf(stderr, "localdiff: %f\n", localdiff);
+			fprintf(stderr, "freq_est_interval: %f\n", freq_est_interval);
+#endif
 			break;
 		}
 
@@ -158,6 +183,9 @@ static void pi_sync_interval(struct servo *servo, double interval)
 {
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
 
+#if PI
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	s->kp = s->configured_pi_kp_scale * pow(interval, s->configured_pi_kp_exponent);
 	if (s->kp > s->configured_pi_kp_norm_max / interval)
 		s->kp = s->configured_pi_kp_norm_max / interval;
@@ -173,6 +201,9 @@ static void pi_sync_interval(struct servo *servo, double interval)
 static void pi_reset(struct servo *servo)
 {
 	struct pi_servo *s = container_of(servo, struct pi_servo, servo);
+#if PI
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	s->count = 0;
 }
@@ -180,6 +211,9 @@ static void pi_reset(struct servo *servo)
 struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
 {
 	struct pi_servo *s;
+#if PI
+	fprintf(stderr, "%s\n", __func__);
+#endif
 
 	s = calloc(1, sizeof(*s));
 	if (!s)

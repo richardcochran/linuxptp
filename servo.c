@@ -28,6 +28,8 @@
 
 #include "print.h"
 
+#include "test.h"
+
 #define NSEC_PER_SEC 1000000000
 
 struct servo *servo_create(struct config *cfg, enum servo_type type,
@@ -38,6 +40,9 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 	int servo_max_frequency;
 	struct servo *servo;
 
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (type) {
 	case CLOCK_SERVO_PI:
 		servo = pi_servo_create(cfg, fadj, sw_ts);
@@ -91,6 +96,9 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 
 void servo_destroy(struct servo *servo)
 {
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	servo->destroy(servo);
 }
 
@@ -98,6 +106,9 @@ static int check_offset_threshold(struct servo *s, int64_t offset)
 {
 	long long int abs_offset = llabs(offset);
 
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (s->offset_threshold) {
 		if (abs_offset < s->offset_threshold && s->curr_offset_values)
 			s->curr_offset_values--;
@@ -113,7 +124,9 @@ double servo_sample(struct servo *servo,
 		    enum servo_state *state)
 {
 	double r;
-
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	r = servo->sample(servo, offset, local_ts, weight, state);
 
 	switch (*state) {
@@ -144,16 +157,25 @@ double servo_sample(struct servo *servo,
 
 void servo_sync_interval(struct servo *servo, double interval)
 {
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	servo->sync_interval(servo, interval);
 }
 
 void servo_reset(struct servo *servo)
 {
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	servo->reset(servo);
 }
 
 double servo_rate_ratio(struct servo *servo)
 {
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (servo->rate_ratio)
 		return servo->rate_ratio(servo);
 
@@ -162,11 +184,17 @@ double servo_rate_ratio(struct servo *servo)
 
 void servo_leap(struct servo *servo, int leap)
 {
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (servo->leap)
 		servo->leap(servo, leap);
 }
 
 int servo_offset_threshold(struct servo *servo)
 {
+#if SERVO
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return servo->offset_threshold;
 }

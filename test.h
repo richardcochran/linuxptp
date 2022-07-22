@@ -49,6 +49,12 @@
 /* nsm.c */
 #define NSM		DEBUG_INFO
 
+/* servo.c */
+#define SERVO		DEBUG_INFO
+
+/* pi.c */
+#define PI		DEBUG_INFO
+
 #define SYNC_TYPE	0x0
 #define FOLLOW_UP_TYPE	0x8
 #define DELAY_REQ	0x1
