@@ -2682,8 +2682,9 @@ static void port_change_phc(struct port *p)
 {
 	int required_modes;
 
-	/* Only switch phc with HW time stamping mode */
+	/* Only switch a non-vclock PHC with HW time stamping. */
 	if (!interface_tsinfo_valid(p->iface) ||
+	    interface_get_vclock(p->iface) >= 0 ||
 	    interface_phc_index(p->iface) < 0)
 		return;
 
