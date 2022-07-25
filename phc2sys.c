@@ -103,6 +103,7 @@ struct phc2sys_private {
 	int forced_sync_offset;
 	int kernel_leap;
 	int state_changed;
+	int free_running;
 	struct pmc_agent *agent;
 	LIST_HEAD(port_head, port) ports;
 	LIST_HEAD(clock_head, clock) clocks;
@@ -129,7 +130,8 @@ static struct servo *servo_add(struct phc2sys_private *priv,
 	ppb = clockadj_get_freq(clock->clkid);
 	/* The reading may silently fail and return 0, reset the frequency to
 	   make sure ppb is the actual frequency of the clock. */
-	clockadj_set_freq(clock->clkid, ppb);
+	if (!priv->free_running)
+		clockadj_set_freq(clock->clkid, ppb);
 	if (clock->clkid == CLOCK_REALTIME) {
 		sysclk_set_leap(0);
 		max_ppb = sysclk_max_freq();
@@ -530,8 +532,8 @@ static void update_clock_stats(struct clock *clock, unsigned int max_count,
 static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 			 int64_t offset, uint64_t ts, int64_t delay)
 {
-	enum servo_state state;
-	double ppb;
+	enum servo_state state = SERVO_UNLOCKED;
+	double ppb = 0.0;
 
 	if (!clock->servo) {
 		clock->servo = servo_add(priv, clock);
@@ -543,6 +545,9 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 		return;
 
 	offset += get_sync_offset(priv, clock);
+
+	if (priv->free_running)
+		goto report;
 
 	if (clock->sanity_check && clockcheck_sample(clock->sanity_check, ts))
 		servo_reset(clock->servo);
@@ -568,6 +573,7 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 		break;
 	}
 
+report:
 	if (clock->offset_stats) {
 		update_clock_stats(clock, priv->stats_max_count, offset, ppb, delay);
 	} else {
@@ -1305,8 +1311,9 @@ int main(int argc, char *argv[])
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
+	priv.free_running = config_get_int(cfg, NULL, "free_running");
 	priv.servo_type = config_get_int(cfg, NULL, "clock_servo");
-	if (priv.servo_type == CLOCK_SERVO_NTPSHM) {
+	if (priv.free_running || priv.servo_type == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
