@@ -171,6 +171,7 @@ static struct config_enum delay_mech_enu[] = {
 	{ "Auto", DM_AUTO },
 	{ "E2E",  DM_E2E },
 	{ "P2P",  DM_P2P },
+	{ "NONE", DM_NO_MECHANISM },
 	{ NULL, 0 },
 };
 

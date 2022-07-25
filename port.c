@@ -1854,6 +1854,9 @@ int port_initialize(struct port *p)
 		pr_err("inhibit_delay_req can only be set when asCapable == 'true'.");
 		return -1;
 	}
+	if (port_delay_mechanism(p) == DM_NO_MECHANISM) {
+		p->inhibit_delay_req = 1;
+	}
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		fd[i] = -1;
@@ -3395,6 +3398,11 @@ err_port:
 enum port_state port_state(struct port *port)
 {
 	return port->state;
+}
+
+enum delay_mechanism port_delay_mechanism(struct port *port)
+{
+	return port->delayMechanism;
 }
 
 int port_state_update(struct port *p, enum fsm_event event, int mdiff)

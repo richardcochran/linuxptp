@@ -26,6 +26,7 @@
 
 #define E2E_SYDY_MASK	(1 << ANNOUNCE | 1 << SYNC | 1 << DELAY_RESP)
 #define P2P_SYDY_MASK	(1 << ANNOUNCE | 1 << SYNC)
+#define E2E_SY_MASK (1 << ANNOUNCE | 1 << SYNC)
 
 static int attach_ack(struct ptp_message *msg, uint8_t message_type_flags)
 {
@@ -200,7 +201,8 @@ static int unicast_client_renew(struct port *p,
 		if (err) {
 			goto out;
 		}
-		if (p->delayMechanism != DM_P2P) {
+		if (p->delayMechanism != DM_P2P &&
+				p->delayMechanism != DM_NO_MECHANISM) {
 			err = attach_request(msg, p->logMinDelayReqInterval,
 					     DELAY_RESP,
 					     p->unicast_req_duration);
@@ -253,9 +255,10 @@ static int unicast_client_sydy(struct port *p,
 	if (err) {
 		goto out;
 	}
-	if (p->delayMechanism != DM_P2P) {
+	if (p->delayMechanism != DM_P2P &&
+			p->delayMechanism != DM_NO_MECHANISM) {
 		err = attach_request(msg, p->logMinDelayReqInterval, DELAY_RESP,
-				     p->unicast_req_duration);
+				p->unicast_req_duration);
 		if (err) {
 			goto out;
 		}
@@ -400,6 +403,8 @@ int unicast_client_initialize(struct port *p)
 		}
 		if (p->delayMechanism == DM_P2P) {
 			master->sydymsk = P2P_SYDY_MASK;
+		} else if (p->delayMechanism == DM_NO_MECHANISM) {
+			master->sydymsk = E2E_SY_MASK;
 		} else {
 			master->sydymsk = E2E_SYDY_MASK;
 		}

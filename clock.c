@@ -1998,8 +1998,10 @@ static void handle_state_decision_event(struct clock *c)
 		if (c->sanity_check)
 			clockcheck_reset(c->sanity_check);
 		tsproc_reset(c->tsproc, 1);
-		if (!tmv_is_zero(c->initial_delay))
+		if (!tmv_is_zero(c->initial_delay) || (best &&
+			port_delay_mechanism(best->port) == DM_NO_MECHANISM)) {
 			tsproc_set_delay(c->tsproc, c->initial_delay);
+		}
 		c->ingress_ts = tmv_zero();
 		c->path_delay = c->initial_delay;
 		c->master_local_rr = 1.0;
