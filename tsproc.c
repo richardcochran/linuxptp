@@ -149,10 +149,27 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 
 	/* delay = ((t2 - t3) * rr + (t4 - t1)) / 2 */
 
-	t23 = tmv_sub(tsp->t2, tsp->t3);
+	if (tsp->t3.ns > tsp->t2.ns) {
+		t23 = tmv_sub(tsp->t2, tsp->t3);
+	} else {
+		t23 = tmv_sub(tsp->t2, tsp->t3);
+#if 0
+		t23.ns = t23.ns + 1e9;
+#endif
+	}
+
 	if (tsp->clock_rate_ratio != 1.0)
 		t23 = dbl_tmv(tmv_dbl(t23) * tsp->clock_rate_ratio);
-	t41 = tmv_sub(tsp->t4, tsp->t1);
+
+	if (tsp->t4.ns > tsp->t1.ns) {
+		t41 = tmv_sub(tsp->t4, tsp->t1);
+	} else {
+		t41 = tmv_sub(tsp->t4, tsp->t1);
+#if 0
+		t41.ns = t41.ns + 1e9;
+#endif
+	}
+
 	delay = tmv_div(tmv_add(t23, t41), 2);
 
 	if (tmv_sign(delay) < 0) {
@@ -253,6 +270,11 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 		delay = tsp->filtered_delay;
 		break;
 	}
+#if 0
+	if (tsp->t2.ns < tsp->t1.ns) {
+		tsp->t2.ns += 1e9;
+	}
+#endif
 
 	/* offset = t2 - t1 - delay */
 	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);

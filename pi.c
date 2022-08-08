@@ -34,7 +34,7 @@
 #define MAX_KP_NORM_MAX 1.0
 #define MAX_KI_NORM_MAX 2.0
 
-#define FREQ_EST_MARGIN 0.0001
+#define FREQ_EST_MARGIN 0.001
 
 struct pi_servo {
 	struct servo servo;
@@ -110,7 +110,7 @@ static double pi_sample(struct servo *servo,
 		fprintf(stderr, "s->local[0]: %ld\n", s->local[0]);
 		fprintf(stderr, "s->local[1]: %ld\n", s->local[1]);
 #endif
-		localdiff = (s->local[1] - s->local[0]);
+		localdiff = (s->local[1] - s->local[0]) / 1e9;
 		localdiff += localdiff * FREQ_EST_MARGIN;
 		freq_est_interval = 0.016 / s->ki;
 		if (freq_est_interval > 1000.0) {
