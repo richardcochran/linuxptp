@@ -21,6 +21,9 @@
 #include "ts2phc.h"
 #include "version.h"
 
+#define NS_PER_SEC		1000000000LL
+#define SAMPLE_WEIGHT		1.0
+
 struct interface {
 	STAILQ_ENTRY(interface) list;
 };
@@ -142,6 +145,30 @@ static struct servo *ts2phc_servo_create(struct ts2phc_private *priv,
 	servo_sync_interval(servo, SERVO_SYNC_INTERVAL);
 
 	return servo;
+}
+
+void ts2phc_clock_add_tstamp(struct ts2phc_clock *clock, tmv_t t)
+{
+	struct timespec ts = tmv_to_timespec(t);
+
+	pr_debug("adding tstamp %ld.%09ld to clock %s",
+		 ts.tv_sec, ts.tv_nsec, clock->name);
+	clock->last_ts = t;
+	clock->is_ts_available = true;
+}
+
+static int ts2phc_clock_get_tstamp(struct ts2phc_clock *clock, tmv_t *ts)
+{
+	if (!clock->is_ts_available)
+		return 0;
+	clock->is_ts_available = false;
+	*ts = clock->last_ts;
+	return 1;
+}
+
+static void ts2phc_clock_flush_tstamp(struct ts2phc_clock *clock)
+{
+	clock->is_ts_available = false;
 }
 
 struct ts2phc_clock *ts2phc_clock_add(struct ts2phc_private *priv,
@@ -292,6 +319,64 @@ static int ts2phc_auto_init_ports(struct ts2phc_private *priv)
 	}
 
 	return 0;
+}
+
+static void ts2phc_synchronize_clocks(struct ts2phc_private *priv)
+{
+	struct timespec source_ts;
+	tmv_t source_tmv;
+	struct ts2phc_clock *c;
+	int valid, err;
+
+	err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
+	if (err < 0) {
+		pr_err("source ts not valid");
+		return;
+	}
+	if (source_ts.tv_nsec > NS_PER_SEC / 2)
+		source_ts.tv_sec++;
+	source_ts.tv_nsec = 0;
+
+	source_tmv = timespec_to_tmv(source_ts);
+
+	LIST_FOREACH(c, &priv->clocks, list) {
+		int64_t offset;
+		double adj;
+		tmv_t ts;
+
+		valid = ts2phc_clock_get_tstamp(c, &ts);
+		if (!valid) {
+			pr_debug("%s timestamp not valid, skipping", c->name);
+			continue;
+		}
+
+		offset = tmv_to_nanoseconds(tmv_sub(ts, source_tmv));
+
+		if (c->no_adj) {
+			pr_info("%s offset %10" PRId64, c->name,
+				offset);
+			continue;
+		}
+
+		adj = servo_sample(c->servo, offset, tmv_to_nanoseconds(ts),
+				   SAMPLE_WEIGHT, &c->servo_state);
+
+		pr_info("%s offset %10" PRId64 " s%d freq %+7.0f",
+			c->name, offset, c->servo_state, adj);
+
+		switch (c->servo_state) {
+		case SERVO_UNLOCKED:
+			break;
+		case SERVO_JUMP:
+			clockadj_set_freq(c->clkid, -adj);
+			clockadj_step(c->clkid, -offset);
+			break;
+		case SERVO_LOCKED:
+		case SERVO_LOCKED_STABLE:
+			clockadj_set_freq(c->clkid, -adj);
+			break;
+		}
+	}
 }
 
 static void usage(char *progname)
@@ -492,11 +577,18 @@ int main(int argc, char *argv[])
 	}
 
 	while (is_running()) {
+		struct ts2phc_clock *c;
+
+		LIST_FOREACH(c, &priv.clocks, list)
+			ts2phc_clock_flush_tstamp(c);
+
 		err = ts2phc_pps_sink_poll(&priv);
-		if (err) {
+		if (err < 0) {
 			pr_err("poll failed");
 			break;
 		}
+		if (err > 0)
+			ts2phc_synchronize_clocks(&priv);
 	}
 
 	ts2phc_cleanup(&priv);

@@ -31,6 +31,8 @@ struct ts2phc_clock {
 	enum servo_state servo_state;
 	char *name;
 	bool no_adj;
+	bool is_ts_available;
+	tmv_t last_ts;
 };
 
 struct ts2phc_port {
@@ -54,5 +56,6 @@ struct ts2phc_private {
 struct ts2phc_clock *ts2phc_clock_add(struct ts2phc_private *priv,
 				      const char *device);
 void ts2phc_clock_destroy(struct ts2phc_clock *clock);
+void ts2phc_clock_add_tstamp(struct ts2phc_clock *clock, tmv_t ts);
 
 #endif
