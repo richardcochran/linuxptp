@@ -473,6 +473,46 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 	}
 }
 
+static int ts2phc_collect_pps_source_tstamp(struct ts2phc_private *priv)
+{
+	struct ts2phc_clock *pps_src_clock;
+	struct timespec source_ts;
+	int err;
+
+	pps_src_clock = ts2phc_pps_source_get_clock(priv->src);
+	/*
+	 * PPS source isn't a PHC (it may be a generic or a GPS PPS source),
+	 * don't error out, just don't do anything. If it doesn't have a PHC,
+	 * there is nothing to synchronize, which is the only point of
+	 * collecting its perout timestamp in the first place.
+	 */
+	if (!pps_src_clock)
+		return 0;
+
+	err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
+	if (err < 0) {
+		pr_err("source ts not valid");
+		return err;
+	}
+
+	/*
+	 * As long as the kernel doesn't support a proper API for reporting
+	 * back a precise perout timestamp, we'll have to implicitly assume
+	 * assumption that the current time on the PPS source is still within
+	 * +/- half a second of the past perout output edge, and hence, we can
+	 * deduce the timestamp (actually only seconds part, nanoseconds are by
+	 * construction zero) of this edge at the emitter based on the
+	 * emitter's current time.
+	 */
+	if (source_ts.tv_nsec > NS_PER_SEC / 2)
+		source_ts.tv_sec++;
+	source_ts.tv_nsec = 0;
+
+	ts2phc_clock_add_tstamp(pps_src_clock, timespec_to_tmv(source_ts));
+
+	return 0;
+}
+
 static void usage(char *progname)
 {
 	fprintf(stderr,
@@ -693,8 +733,15 @@ int main(int argc, char *argv[])
 			pr_err("poll failed");
 			break;
 		}
-		if (err > 0)
+		if (err > 0) {
+			err = ts2phc_collect_pps_source_tstamp(&priv);
+			if (err) {
+				pr_err("failed to collect PPS source tstamp");
+				break;
+			}
+
 			ts2phc_synchronize_clocks(&priv, autocfg);
+		}
 	}
 
 	ts2phc_cleanup(&priv);

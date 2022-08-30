@@ -82,6 +82,14 @@ static int ts2phc_phc_pps_source_getppstime(struct ts2phc_pps_source *src,
 	return clock_gettime(s->clock->clkid, ts);
 }
 
+struct ts2phc_clock *ts2phc_phc_pps_source_get_clock(struct ts2phc_pps_source *src)
+{
+	struct ts2phc_phc_pps_source *s =
+		container_of(src, struct ts2phc_phc_pps_source, pps_source);
+
+	return s->clock;
+}
+
 struct ts2phc_pps_source *ts2phc_phc_pps_source_create(struct ts2phc_private *priv,
 						       const char *dev)
 {
@@ -93,6 +101,7 @@ struct ts2phc_pps_source *ts2phc_phc_pps_source_create(struct ts2phc_private *pr
 	}
 	s->pps_source.destroy = ts2phc_phc_pps_source_destroy;
 	s->pps_source.getppstime = ts2phc_phc_pps_source_getppstime;
+	s->pps_source.get_clock = ts2phc_phc_pps_source_get_clock;
 
 	s->clock = ts2phc_clock_add(priv, dev);
 	if (!s->clock) {
