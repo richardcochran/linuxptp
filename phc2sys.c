@@ -117,8 +117,6 @@ static int clock_handle_leap(struct phc2sys_private *priv,
 			     struct clock *clock,
 			     int64_t offset, uint64_t ts);
 
-static int normalize_state(int state);
-
 static struct servo *servo_add(struct phc2sys_private *priv,
 			       struct clock *clock)
 {
@@ -316,7 +314,7 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 						      &timestamping, &phc_index,
 						      iface);
 		if (!err) {
-			p->state = normalize_state(state);
+			p->state = port_state_normalize(state);
 		}
 		break;
 	}
@@ -770,16 +768,6 @@ static int do_loop(struct phc2sys_private *priv)
 	return 0;
 }
 
-static int normalize_state(int state)
-{
-	if (state != PS_MASTER && state != PS_SLAVE &&
-	    state != PS_PRE_MASTER && state != PS_UNCALIBRATED) {
-		/* treat any other state as "not a master nor a slave" */
-		state = PS_DISABLED;
-	}
-	return state;
-}
-
 static int clock_compute_state(struct phc2sys_private *priv,
 			       struct clock *clock)
 {
@@ -820,7 +808,7 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 				pid2str(&pds->portIdentity));
 			return 1;
 		}
-		state = normalize_state(pds->portState);
+		state = port_state_normalize(pds->portState);
 		if (port->state != state) {
 			pr_info("port %s changed state",
 				pid2str(&pds->portIdentity));
@@ -892,7 +880,7 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 		port = port_add(priv, i, iface, phc_index);
 		if (!port)
 			return -1;
-		port->state = normalize_state(state);
+		port->state = port_state_normalize(state);
 	}
 	if (LIST_EMPTY(&priv->clocks)) {
 		pr_err("no suitable ports available");

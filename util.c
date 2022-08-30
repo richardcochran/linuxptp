@@ -207,6 +207,19 @@ const char *ustate2str(enum unicast_state ustate)
 	return "???";
 }
 
+enum port_state port_state_normalize(enum port_state state)
+{
+	switch (state) {
+	case PS_MASTER:
+	case PS_SLAVE:
+	case PS_PRE_MASTER:
+	case PS_UNCALIBRATED:
+		return state;
+	default:
+		return PS_DISABLED;
+	}
+}
+
 void posix_clock_close(clockid_t clock)
 {
 	if (clock == CLOCK_REALTIME) {
