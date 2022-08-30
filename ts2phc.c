@@ -398,6 +398,44 @@ static void ts2phc_reconfigure(struct ts2phc_private *priv)
 	pr_info("selecting %s as the reference clock", ref_clk->name);
 }
 
+static int ts2phc_pps_source_implicit_tstamp(struct ts2phc_private *priv,
+					     tmv_t *source_tmv)
+{
+	struct timespec source_ts;
+	tmv_t tmv;
+	int err;
+
+	err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
+	if (err < 0) {
+		pr_err("source ts not valid");
+		return err;
+	}
+
+	tmv = timespec_to_tmv(source_ts);
+	tmv = tmv_sub(tmv, priv->perout_phase);
+	source_ts = tmv_to_timespec(tmv);
+
+	/*
+	 * As long as the kernel doesn't support a proper API for reporting
+	 * back a precise perout timestamp, we'll have to implicitly assume
+	 * assumption that the current time on the PPS source is still within
+	 * +/- half a second of the past perout output edge, and hence, we can
+	 * deduce the timestamp (actually only seconds part, nanoseconds are by
+	 * construction zero) of this edge at the emitter based on the
+	 * emitter's current time.
+	 */
+	if (source_ts.tv_nsec > NS_PER_SEC / 2)
+		source_ts.tv_sec++;
+	source_ts.tv_nsec = 0;
+
+	tmv = timespec_to_tmv(source_ts);
+	tmv = tmv_add(tmv, priv->perout_phase);
+
+	*source_tmv = tmv;
+
+	return 0;
+}
+
 static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 {
 	tmv_t source_tmv;
@@ -416,18 +454,9 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 			return;
 		}
 	} else {
-		struct timespec source_ts;
-
-		err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
-		if (err < 0) {
-			pr_err("source ts not valid");
+		err = ts2phc_pps_source_implicit_tstamp(priv, &source_tmv);
+		if (err < 0)
 			return;
-		}
-		if (source_ts.tv_nsec > NS_PER_SEC / 2)
-			source_ts.tv_sec++;
-		source_ts.tv_nsec = 0;
-
-		source_tmv = timespec_to_tmv(source_ts);
 	}
 
 	LIST_FOREACH(c, &priv->clocks, list) {
@@ -476,7 +505,7 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 static int ts2phc_collect_pps_source_tstamp(struct ts2phc_private *priv)
 {
 	struct ts2phc_clock *pps_src_clock;
-	struct timespec source_ts;
+	tmv_t source_tmv;
 	int err;
 
 	pps_src_clock = ts2phc_pps_source_get_clock(priv->src);
@@ -489,26 +518,11 @@ static int ts2phc_collect_pps_source_tstamp(struct ts2phc_private *priv)
 	if (!pps_src_clock)
 		return 0;
 
-	err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
-	if (err < 0) {
-		pr_err("source ts not valid");
+	err = ts2phc_pps_source_implicit_tstamp(priv, &source_tmv);
+	if (err < 0)
 		return err;
-	}
 
-	/*
-	 * As long as the kernel doesn't support a proper API for reporting
-	 * back a precise perout timestamp, we'll have to implicitly assume
-	 * assumption that the current time on the PPS source is still within
-	 * +/- half a second of the past perout output edge, and hence, we can
-	 * deduce the timestamp (actually only seconds part, nanoseconds are by
-	 * construction zero) of this edge at the emitter based on the
-	 * emitter's current time.
-	 */
-	if (source_ts.tv_nsec > NS_PER_SEC / 2)
-		source_ts.tv_sec++;
-	source_ts.tv_nsec = 0;
-
-	ts2phc_clock_add_tstamp(pps_src_clock, timespec_to_tmv(source_ts));
+	ts2phc_clock_add_tstamp(pps_src_clock, source_tmv);
 
 	return 0;
 }
@@ -662,13 +676,29 @@ int main(int argc, char *argv[])
 	}
 
 	STAILQ_FOREACH(iface, &cfg->interfaces, list) {
-		if (1 == config_get_int(cfg, interface_name(iface), "ts2phc.master")) {
+		const char *dev = interface_name(iface);
+
+		if (1 == config_get_int(cfg, dev, "ts2phc.master")) {
+			int perout_phase;
+
 			if (pps_source) {
 				fprintf(stderr, "too many PPS sources\n");
 				ts2phc_cleanup(&priv);
 				return -1;
 			}
-			pps_source = interface_name(iface);
+			pps_source = dev;
+			perout_phase = config_get_int(cfg, dev,
+						      "ts2phc.perout_phase");
+			/*
+			 * We use a default value of -1 to distinguish whether
+			 * to use the PTP_PEROUT_PHASE API or not. But if we
+			 * don't use that (and therefore we use absolute start
+			 * time), the phase is still zero, by our application's
+			 * convention.
+			 */
+			if (perout_phase < 0)
+				perout_phase = 0;
+			priv.perout_phase = nanoseconds_to_tmv(perout_phase);
 		} else {
 			if (ts2phc_pps_sink_add(&priv, interface_name(iface))) {
 				fprintf(stderr, "failed to add PPS sink\n");

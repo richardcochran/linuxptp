@@ -236,6 +236,19 @@ static void ts2phc_pps_sink_destroy(struct ts2phc_pps_sink *sink)
 	free(sink);
 }
 
+static bool ts2phc_pps_sink_ignore(struct ts2phc_private *priv,
+				   struct ts2phc_pps_sink *sink,
+				   struct timespec source_ts)
+{
+	tmv_t source_tmv = timespec_to_tmv(source_ts);
+
+	source_tmv = tmv_sub(source_tmv, priv->perout_phase);
+	source_ts = tmv_to_timespec(source_tmv);
+
+	return source_ts.tv_nsec > sink->ignore_lower &&
+	       source_ts.tv_nsec < sink->ignore_upper;
+}
+
 static enum extts_result ts2phc_pps_sink_event(struct ts2phc_private *priv,
 					       struct ts2phc_pps_sink *sink)
 {
@@ -264,8 +277,7 @@ static enum extts_result ts2phc_pps_sink_event(struct ts2phc_private *priv,
 	}
 
 	if (sink->polarity == (PTP_RISING_EDGE | PTP_FALLING_EDGE) &&
-	    source_ts.tv_nsec > sink->ignore_lower &&
-	    source_ts.tv_nsec < sink->ignore_upper) {
+	    ts2phc_pps_sink_ignore(priv, sink, source_ts)) {
 
 		pr_debug("%s SKIP extts index %u at %lld.%09u src %" PRIi64 ".%ld",
 		 sink->name, event.index, event.t.sec, event.t.nsec,

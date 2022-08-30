@@ -48,6 +48,7 @@ struct ts2phc_private {
 	STAILQ_HEAD(sink_ifaces_head, ts2phc_pps_sink) sinks;
 	unsigned int n_sinks;
 	struct ts2phc_sink_array *polling_array;
+	tmv_t perout_phase;
 	struct config *cfg;
 	struct pmc_agent *agent;
 	struct ts2phc_clock *ref_clock;

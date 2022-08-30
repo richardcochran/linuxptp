@@ -28,7 +28,10 @@ static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 {
 	struct ptp_perout_request perout_request;
 	struct ptp_pin_desc desc;
+	int32_t perout_phase;
+	int32_t pulsewidth;
 	struct timespec ts;
+	int err;
 
 	memset(&desc, 0, sizeof(desc));
 
@@ -45,17 +48,47 @@ static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 		perror("clock_gettime");
 		return -1;
 	}
+	perout_phase = config_get_int(cfg, dev, "ts2phc.perout_phase");
 	memset(&perout_request, 0, sizeof(perout_request));
 	perout_request.index = s->channel;
-	perout_request.start.sec = ts.tv_sec + 2;
-	perout_request.start.nsec = 0;
 	perout_request.period.sec = 1;
 	perout_request.period.nsec = 0;
-
-	if (ioctl(s->clock->fd, PTP_PEROUT_REQUEST2, &perout_request)) {
-		pr_err(PTP_PEROUT_REQUEST_FAILED);
-		return -1;
+	perout_request.flags = 0;
+	pulsewidth = config_get_int(cfg, dev, "ts2phc.pulsewidth");
+	if (pulsewidth) {
+		perout_request.flags |= PTP_PEROUT_DUTY_CYCLE;
+		perout_request.on.sec = pulsewidth / NS_PER_SEC;
+		perout_request.on.nsec = pulsewidth % NS_PER_SEC;
 	}
+	if (perout_phase != -1) {
+		perout_request.flags |= PTP_PEROUT_PHASE;
+		perout_request.phase.sec = perout_phase / NS_PER_SEC;
+		perout_request.phase.nsec = perout_phase % NS_PER_SEC;
+	} else {
+		perout_request.start.sec = ts.tv_sec + 2;
+		perout_request.start.nsec = 0;
+	}
+
+	err = ioctl(s->clock->fd, PTP_PEROUT_REQUEST2, &perout_request);
+	if (err) {
+		/* Backwards compatibility with old ts2phc where the pulsewidth
+		 * property would be just informative (a way to filter out
+		 * events in the case that the PPS sink can only do extts on
+		 * both rising and falling edges). There, nothing would be
+		 * configured on the PHC PPS source towards achieving that
+		 * pulsewidth. So in case the ioctl failed, try again with the
+		 * DUTY_CYCLE flag unset, in an attempt to avoid a hard
+		 * failure.
+		 */
+		perout_request.flags &= ~PTP_PEROUT_DUTY_CYCLE;
+		memset(&perout_request.rsv, 0, 4 * sizeof(unsigned int));
+		err = ioctl(s->clock->fd, PTP_PEROUT_REQUEST2, &perout_request);
+	}
+	if (err) {
+		pr_err(PTP_PEROUT_REQUEST_FAILED);
+		return err;
+	}
+
 	return 0;
 }
 

@@ -176,10 +176,23 @@ connection will be used in preference to the configured serial port.
 The default serial port is "/dev/ttyS0".
 The default baudrate is 9600 bps.
 .TP
+.B ts2phc.perout_phase
+Configures the offset between the beginning of the second and the PPS
+source's rising edge. Available only for the PHC kind of PPS source. The supported
+range is 0 to 999999999 nanoseconds. The default is 0 nanoseconds, but
+leaving this option unspecified will not transmit the phase to the kernel,
+instead PPS will be requested to start at an absolute time equal to the
+nearest 2nd full second since the start of the program. This should yield
+the same effect, but may not work with drivers that do not support
+starting periodic output at an absolute time.
+.TP
 .B ts2phc.pulsewidth
-The expected pulse width of the external PPS signal in nanoseconds.
+The pulse width of the external PPS signal in nanoseconds.
 When 'ts2phc.extts_polarity' is "both", the given pulse width is used
-to detect and discard the time stamp of the unwanted edge.
+to detect and discard the time stamp of the unwanted edge. In case the PPS
+source is of the PHC kind, an attempt is made to request the kernel to actually
+emit using this pulse width. If this fails, it is assumed that the specified
+pulse width is correct, and the value is used in the edge rejection algorithm.
 The supported range is 1000000 to 990000000 nanoseconds.
 The default is 500000000 nanoseconds.
 .TP

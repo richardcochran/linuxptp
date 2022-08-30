@@ -114,6 +114,58 @@ struct compat_ptp_clock_caps {
 
 #endif /*LINUX_VERSION_CODE < 5.8*/
 
+/*
+ * Bits of the ptp_perout_request.flags field:
+ */
+
+#ifndef PTP_PEROUT_ONE_SHOT
+#define PTP_PEROUT_ONE_SHOT		(1<<0)
+#endif
+
+#ifndef PTP_PEROUT_DUTY_CYCLE
+#define PTP_PEROUT_DUTY_CYCLE		(1<<1)
+#endif
+
+#ifndef PTP_PEROUT_PHASE
+#define PTP_PEROUT_PHASE		(1<<2)
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,9,0)
+
+struct compat_ptp_perout_request {
+	union {
+		/*
+		 * Absolute start time.
+		 * Valid only if (flags & PTP_PEROUT_PHASE) is unset.
+		 */
+		struct ptp_clock_time start;
+		/*
+		 * Phase offset. The signal should start toggling at an
+		 * unspecified integer multiple of the period, plus this value.
+		 * The start time should be "as soon as possible".
+		 * Valid only if (flags & PTP_PEROUT_PHASE) is set.
+		 */
+		struct ptp_clock_time phase;
+	};
+	struct ptp_clock_time period; /* Desired period, zero means disable. */
+	unsigned int index;           /* Which channel to configure. */
+	unsigned int flags;
+	union {
+		/*
+		 * The "on" time of the signal.
+		 * Must be lower than the period.
+		 * Valid only if (flags & PTP_PEROUT_DUTY_CYCLE) is set.
+		 */
+		struct ptp_clock_time on;
+		/* Reserved for future use. */
+		unsigned int rsv[4];
+	};
+};
+
+#define ptp_perout_request compat_ptp_perout_request
+
+#endif /* LINUX_VERSION_CODE < 5.9 */
+
 #ifndef PTP_MAX_SAMPLES
 #define PTP_MAX_SAMPLES 25 /* Maximum allowed offset measurement samples. */
 #endif /* PTP_MAX_SAMPLES */
