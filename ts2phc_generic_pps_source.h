@@ -6,9 +6,10 @@
 #ifndef HAVE_TS2PHC_GENERIC_PPS_SOURCE_H
 #define HAVE_TS2PHC_GENERIC_PPS_SOURCE_H
 
+#include "ts2phc.h"
 #include "ts2phc_pps_source.h"
 
-struct ts2phc_pps_source *ts2phc_generic_pps_source_create(struct config *cfg,
+struct ts2phc_pps_source *ts2phc_generic_pps_source_create(struct ts2phc_private *priv,
 							   const char *dev);
 
 #endif

@@ -249,7 +249,7 @@ static int ts2phc_nmea_pps_source_getppstime(struct ts2phc_pps_source *src,
 	return lstab_error;
 }
 
-struct ts2phc_pps_source *ts2phc_nmea_pps_source_create(struct config *cfg,
+struct ts2phc_pps_source *ts2phc_nmea_pps_source_create(struct ts2phc_private *priv,
 							const char *dev)
 {
 	struct ts2phc_nmea_pps_source *s;
@@ -260,7 +260,7 @@ struct ts2phc_pps_source *ts2phc_nmea_pps_source_create(struct config *cfg,
 	if (!s) {
 		return NULL;
 	}
-	s->leapfile = config_get_string(cfg, NULL, "leapfile");
+	s->leapfile = config_get_string(priv->cfg, NULL, "leapfile");
 	s->lstab = lstab_create(s->leapfile);
 	if (!s->lstab) {
 		free(s);
@@ -277,7 +277,7 @@ struct ts2phc_pps_source *ts2phc_nmea_pps_source_create(struct config *cfg,
 	}
 	s->pps_source.destroy = ts2phc_nmea_pps_source_destroy;
 	s->pps_source.getppstime = ts2phc_nmea_pps_source_getppstime;
-	s->config = cfg;
+	s->config = priv->cfg;
 	pthread_mutex_init(&s->mutex, NULL);
 	err = pthread_create(&s->worker, NULL, monitor_nmea_status, s);
 	if (err) {

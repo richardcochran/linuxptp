@@ -12,15 +12,15 @@
 #include "missing.h"
 #include "phc.h"
 #include "print.h"
-#include "ts2phc_phc_pps_source.h"
+#include "ts2phc.h"
 #include "ts2phc_pps_source_private.h"
+#include "ts2phc_pps_source.h"
 #include "util.h"
 
 struct ts2phc_phc_pps_source {
 	struct ts2phc_pps_source pps_source;
-	clockid_t clkid;
+	struct ts2phc_clock *clock;
 	int channel;
-	int fd;
 };
 
 static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
@@ -38,10 +38,10 @@ static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 	desc.func = PTP_PF_PEROUT;
 	desc.chan = s->channel;
 
-	if (phc_pin_setfunc(s->clkid, &desc)) {
+	if (phc_pin_setfunc(s->clock->clkid, &desc)) {
 		pr_warning("Failed to set the pin. Continuing bravely on...");
 	}
-	if (clock_gettime(s->clkid, &ts)) {
+	if (clock_gettime(s->clock->clkid, &ts)) {
 		perror("clock_gettime");
 		return -1;
 	}
@@ -52,7 +52,7 @@ static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 	perout_request.period.sec = 1;
 	perout_request.period.nsec = 0;
 
-	if (ioctl(s->fd, PTP_PEROUT_REQUEST2, &perout_request)) {
+	if (ioctl(s->clock->fd, PTP_PEROUT_REQUEST2, &perout_request)) {
 		pr_err(PTP_PEROUT_REQUEST_FAILED);
 		return -1;
 	}
@@ -67,10 +67,10 @@ static void ts2phc_phc_pps_source_destroy(struct ts2phc_pps_source *src)
 
 	memset(&perout_request, 0, sizeof(perout_request));
 	perout_request.index = m->channel;
-	if (ioctl(m->fd, PTP_PEROUT_REQUEST2, &perout_request)) {
+	if (ioctl(m->clock->fd, PTP_PEROUT_REQUEST2, &perout_request)) {
 		pr_err(PTP_PEROUT_REQUEST_FAILED);
 	}
-	posix_clock_close(m->clkid);
+	ts2phc_clock_destroy(m->clock);
 	free(m);
 }
 
@@ -79,14 +79,13 @@ static int ts2phc_phc_pps_source_getppstime(struct ts2phc_pps_source *src,
 {
 	struct ts2phc_phc_pps_source *s =
 		container_of(src, struct ts2phc_phc_pps_source, pps_source);
-	return clock_gettime(s->clkid, ts);
+	return clock_gettime(s->clock->clkid, ts);
 }
 
-struct ts2phc_pps_source *ts2phc_phc_pps_source_create(struct config *cfg,
+struct ts2phc_pps_source *ts2phc_phc_pps_source_create(struct ts2phc_private *priv,
 						       const char *dev)
 {
 	struct ts2phc_phc_pps_source *s;
-	int junk;
 
 	s = calloc(1, sizeof(*s));
 	if (!s) {
@@ -95,16 +94,16 @@ struct ts2phc_pps_source *ts2phc_phc_pps_source_create(struct config *cfg,
 	s->pps_source.destroy = ts2phc_phc_pps_source_destroy;
 	s->pps_source.getppstime = ts2phc_phc_pps_source_getppstime;
 
-	s->clkid = posix_clock_open(dev, &junk);
-	if (s->clkid == CLOCK_INVALID) {
+	s->clock = ts2phc_clock_add(priv, dev);
+	if (!s->clock) {
 		free(s);
 		return NULL;
 	}
-	s->fd = CLOCKID_TO_FD(s->clkid);
 
-	pr_debug("PHC PPS source %s has ptp index %d", dev, junk);
+	pr_debug("PHC PPS source %s has ptp index %d", dev,
+		 s->clock->phc_index);
 
-	if (ts2phc_phc_pps_source_activate(cfg, dev, s)) {
+	if (ts2phc_phc_pps_source_activate(priv->cfg, dev, s)) {
 		ts2phc_phc_pps_source_destroy(&s->pps_source);
 		return NULL;
 	}

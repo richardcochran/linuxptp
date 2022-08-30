@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
 	} else {
 		pps_type = TS2PHC_PPS_SOURCE_PHC;
 	}
-	priv.src = ts2phc_pps_source_create(cfg, pps_source, pps_type);
+	priv.src = ts2phc_pps_source_create(&priv, pps_source, pps_type);
 	if (!priv.src) {
 		fprintf(stderr, "failed to create PPS source\n");
 		ts2phc_cleanup(&priv);

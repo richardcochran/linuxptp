@@ -47,7 +47,7 @@ static int ts2phc_generic_pps_source_getppstime(struct ts2phc_pps_source *src,
 	return 0;
 }
 
-struct ts2phc_pps_source *ts2phc_generic_pps_source_create(struct config *cfg,
+struct ts2phc_pps_source *ts2phc_generic_pps_source_create(struct ts2phc_private *priv,
 							   const char *dev)
 {
 	struct ts2phc_generic_pps_source *src;

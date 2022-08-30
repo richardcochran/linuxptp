@@ -3,25 +3,27 @@
  * @note Copyright (C) 2019 Richard Cochran <richardcochran@gmail.com>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
+#include "ts2phc.h"
 #include "ts2phc_generic_pps_source.h"
 #include "ts2phc_nmea_pps_source.h"
 #include "ts2phc_phc_pps_source.h"
 #include "ts2phc_pps_source_private.h"
 
-struct ts2phc_pps_source *ts2phc_pps_source_create(struct config *cfg, const char *dev,
+struct ts2phc_pps_source *ts2phc_pps_source_create(struct ts2phc_private *priv,
+						   const char *dev,
 						   enum ts2phc_pps_source_type type)
 {
 	struct ts2phc_pps_source *src = NULL;
 
 	switch (type) {
 	case TS2PHC_PPS_SOURCE_GENERIC:
-		src = ts2phc_generic_pps_source_create(cfg, dev);
+		src = ts2phc_generic_pps_source_create(priv, dev);
 		break;
 	case TS2PHC_PPS_SOURCE_NMEA:
-		src = ts2phc_nmea_pps_source_create(cfg, dev);
+		src = ts2phc_nmea_pps_source_create(priv, dev);
 		break;
 	case TS2PHC_PPS_SOURCE_PHC:
-		src = ts2phc_phc_pps_source_create(cfg, dev);
+		src = ts2phc_phc_pps_source_create(priv, dev);
 		break;
 	}
 	return src;

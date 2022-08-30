@@ -7,6 +7,7 @@
 #ifndef HAVE_TS2PHC_H
 #define HAVE_TS2PHC_H
 
+#include <stdbool.h>
 #include <sys/queue.h>
 #include <time.h>
 
