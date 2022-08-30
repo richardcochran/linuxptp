@@ -99,6 +99,7 @@ struct ts2phc_pps_source *ts2phc_phc_pps_source_create(struct ts2phc_private *pr
 		free(s);
 		return NULL;
 	}
+	s->clock->is_target = false;
 
 	pr_debug("PHC PPS source %s has ptp index %d", dev,
 		 s->clock->phc_index);

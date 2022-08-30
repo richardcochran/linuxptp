@@ -184,6 +184,7 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 		pr_err("failed to open clock");
 		goto no_posix_clock;
 	}
+	sink->clock->is_target = true;
 
 	pr_debug("PPS sink %s has ptp index %d", device,
 		 sink->clock->phc_index);

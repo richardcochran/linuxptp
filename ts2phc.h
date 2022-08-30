@@ -31,6 +31,7 @@ struct ts2phc_clock {
 	enum servo_state servo_state;
 	char *name;
 	bool no_adj;
+	bool is_target;
 	bool is_ts_available;
 	tmv_t last_ts;
 };
@@ -49,6 +50,8 @@ struct ts2phc_private {
 	struct ts2phc_sink_array *polling_array;
 	struct config *cfg;
 	struct pmc_agent *agent;
+	struct ts2phc_clock *ref_clock;
+	bool state_changed;
 	LIST_HEAD(port_head, ts2phc_port) ports;
 	LIST_HEAD(clock_head, ts2phc_clock) clocks;
 };

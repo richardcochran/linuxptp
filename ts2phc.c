@@ -113,6 +113,7 @@ static int ts2phc_recv_subscribed(void *context, struct ptp_message *msg,
 			state = ts2phc_clock_compute_state(priv, clock);
 			if (clock->state != state || clock->new_state) {
 				clock->new_state = state;
+				priv->state_changed = true;
 			}
 		}
 		return 1;
@@ -317,32 +318,125 @@ static int ts2phc_auto_init_ports(struct ts2phc_private *priv)
 	LIST_FOREACH(clock, &priv->clocks, list) {
 		clock->new_state = ts2phc_clock_compute_state(priv, clock);
 	}
+	priv->state_changed = true;
 
 	return 0;
 }
 
-static void ts2phc_synchronize_clocks(struct ts2phc_private *priv)
+static void ts2phc_reconfigure(struct ts2phc_private *priv)
 {
-	struct timespec source_ts;
+	struct ts2phc_clock *c, *ref_clk = NULL, *last = NULL;
+	int num_ref_clocks = 0, num_target_clocks = 0;
+
+	pr_info("reconfiguring after port state change");
+	priv->state_changed = false;
+
+	LIST_FOREACH(c, &priv->clocks, list) {
+		if (c->new_state) {
+			c->state = c->new_state;
+			c->new_state = 0;
+		}
+
+		switch (c->state) {
+		case PS_FAULTY:
+		case PS_DISABLED:
+		case PS_LISTENING:
+		case PS_PRE_MASTER:
+		case PS_MASTER:
+		case PS_PASSIVE:
+			if (!c->is_target) {
+				pr_info("selecting %s for synchronization",
+					c->name);
+				c->is_target = true;
+			}
+			num_target_clocks++;
+			break;
+		case PS_UNCALIBRATED:
+			num_ref_clocks++;
+			break;
+		case PS_SLAVE:
+			ref_clk = c;
+			num_ref_clocks++;
+			break;
+		default:
+			break;
+		}
+		last = c;
+	}
+	if (num_target_clocks >= 1 && !ref_clk) {
+		priv->ref_clock = last;
+		priv->ref_clock->is_target = false;
+		/* Reset to original state in next reconfiguration. */
+		priv->ref_clock->new_state = priv->ref_clock->state;
+		priv->ref_clock->state = PS_SLAVE;
+		pr_info("no reference clock, selecting %s by default",
+			last->name);
+		return;
+	}
+	if (num_ref_clocks > 1) {
+		pr_info("multiple reference clocks available, postponing sync...");
+		priv->ref_clock = NULL;
+		return;
+	}
+	if (num_ref_clocks > 0 && !ref_clk) {
+		pr_info("reference clock not ready, waiting...");
+		priv->ref_clock = NULL;
+		return;
+	}
+	if (!num_ref_clocks && !num_target_clocks) {
+		pr_info("no PHC ready, waiting...");
+		priv->ref_clock = NULL;
+		return;
+	}
+	if (!num_ref_clocks) {
+		pr_info("nothing to synchronize");
+		priv->ref_clock = NULL;
+		return;
+	}
+	ref_clk->is_target = false;
+	priv->ref_clock = ref_clk;
+	pr_info("selecting %s as the reference clock", ref_clk->name);
+}
+
+static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
+{
 	tmv_t source_tmv;
 	struct ts2phc_clock *c;
 	int valid, err;
 
-	err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
-	if (err < 0) {
-		pr_err("source ts not valid");
-		return;
-	}
-	if (source_ts.tv_nsec > NS_PER_SEC / 2)
-		source_ts.tv_sec++;
-	source_ts.tv_nsec = 0;
+	if (autocfg) {
+		if (!priv->ref_clock) {
+			pr_debug("no reference clock, skipping");
+			return;
+		}
+		valid = ts2phc_clock_get_tstamp(priv->ref_clock, &source_tmv);
+		if (!valid) {
+			pr_err("reference clock (%s) timestamp not valid, skipping",
+				priv->ref_clock->name);
+			return;
+		}
+	} else {
+		struct timespec source_ts;
 
-	source_tmv = timespec_to_tmv(source_ts);
+		err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
+		if (err < 0) {
+			pr_err("source ts not valid");
+			return;
+		}
+		if (source_ts.tv_nsec > NS_PER_SEC / 2)
+			source_ts.tv_sec++;
+		source_ts.tv_nsec = 0;
+
+		source_tmv = timespec_to_tmv(source_ts);
+	}
 
 	LIST_FOREACH(c, &priv->clocks, list) {
 		int64_t offset;
 		double adj;
 		tmv_t ts;
+
+		if (!c->is_target)
+			continue;
 
 		valid = ts2phc_clock_get_tstamp(c, &ts);
 		if (!valid) {
@@ -579,6 +673,18 @@ int main(int argc, char *argv[])
 	while (is_running()) {
 		struct ts2phc_clock *c;
 
+		if (autocfg) {
+			/* Collect updates from ptp4l */
+			err = pmc_agent_update(priv.agent);
+			if (err < 0) {
+				pr_err("pmc_agent_update returned %d", err);
+				break;
+			}
+
+			if (priv.state_changed)
+				ts2phc_reconfigure(&priv);
+		}
+
 		LIST_FOREACH(c, &priv.clocks, list)
 			ts2phc_clock_flush_tstamp(c);
 
@@ -588,7 +694,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		if (err > 0)
-			ts2phc_synchronize_clocks(&priv);
+			ts2phc_synchronize_clocks(&priv, autocfg);
 	}
 
 	ts2phc_cleanup(&priv);
