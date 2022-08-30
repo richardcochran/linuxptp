@@ -265,8 +265,8 @@ static int ts2phc_pps_sink_event(struct ts2phc_pps_sink *sink,
 	adj = servo_sample(sink->clock->servo, offset, extts_ts,
 			   SAMPLE_WEIGHT, &sink->clock->servo_state);
 
-	pr_debug("%s source offset %10" PRId64 " s%d freq %+7.0f",
-		 sink->name, offset, sink->clock->servo_state, adj);
+	pr_info("%s source offset %10" PRId64 " s%d freq %+7.0f",
+		sink->name, offset, sink->clock->servo_state, adj);
 
 	switch (sink->clock->servo_state) {
 	case SERVO_UNLOCKED:
