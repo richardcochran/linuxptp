@@ -11,6 +11,7 @@
 #include <sys/queue.h>
 #include <time.h>
 
+#include "pmc_agent.h"
 #include "servo.h"
 #include "ts2phc_pps_source.h"
 #include "ts2phc_pps_sink.h"
@@ -24,10 +25,19 @@ struct ts2phc_clock {
 	clockid_t clkid;
 	int fd;
 	int phc_index;
+	enum port_state state;
+	enum port_state new_state;
 	struct servo *servo;
 	enum servo_state servo_state;
 	char *name;
 	bool no_adj;
+};
+
+struct ts2phc_port {
+	LIST_ENTRY(ts2phc_port) list;
+	unsigned int number;
+	enum port_state state;
+	struct ts2phc_clock *clock;
 };
 
 struct ts2phc_private {
@@ -36,6 +46,8 @@ struct ts2phc_private {
 	unsigned int n_sinks;
 	struct ts2phc_sink_array *polling_array;
 	struct config *cfg;
+	struct pmc_agent *agent;
+	LIST_HEAD(port_head, ts2phc_port) ports;
 	LIST_HEAD(clock_head, ts2phc_clock) clocks;
 };
 

@@ -68,8 +68,9 @@ phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
 
 timemaster: phc.o print.o rtnl.o sk.o timemaster.o util.o version.o
 
-ts2phc: config.o clockadj.o hash.o interface.o phc.o print.o $(SERVOS) sk.o \
- $(TS2PHC) util.o version.o
+ts2phc: config.o clockadj.o hash.o interface.o msg.o phc.o pmc_agent.o \
+ pmc_common.o print.o $(SERVOS) sk.o $(TS2PHC) tlv.o transport.o raw.o \
+ udp.o udp6.o uds.o util.o version.o
 
 version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 

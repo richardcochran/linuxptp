@@ -26,6 +26,21 @@ A single source may be used to distribute time to one or more PHC devices.
 
 .SH OPTIONS
 .TP
+.BI \-a
+Adjust the direction of synchronization automatically. The program determines
+which PHC should the reference clock for time distribution and which should
+be the destinations by querying the port states from the running instance of
+.B ptp4l.
+Note that using this option, the PPS signal distribution hierarchy still
+remains fixed as per the configuration file. This implies that using this
+option, a PPS source of the PHC kind may become a target clock, and a PPS sink
+may become a reference clock. Other, non-PHC types of PPS sources (generic,
+NMEA) cannot become target clocks. Clocks which are not part of
+.B ptp4l's
+list of ports are not synchronized. This option is useful when the
+.B boundary_clock_jbod
+option of ptp4l is also enabled.
+.TP
 .BI \-c " device|name"
 Specifies a PHC to be synchronized.
 The clock may be identified by its character device (like /dev/ptp0)
