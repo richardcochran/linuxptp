@@ -26,21 +26,17 @@
 
 #define NS_PER_SEC		1000000000LL
 #define SAMPLE_WEIGHT		1.0
-#define SERVO_SYNC_INTERVAL	1.0
 
 struct ts2phc_pps_sink {
 	char *name;
 	STAILQ_ENTRY(ts2phc_pps_sink) list;
 	struct ptp_pin_desc pin_desc;
-	enum servo_state state;
 	unsigned int polarity;
 	int32_t correction;
 	uint32_t ignore_lower;
 	uint32_t ignore_upper;
-	struct servo *servo;
-	clockid_t clk;
+	struct ts2phc_clock *clock;
 	int no_adj;
-	int fd;
 };
 
 struct ts2phc_sink_array {
@@ -90,8 +86,10 @@ static int ts2phc_pps_sink_array_create(struct ts2phc_private *priv)
 		i++;
 	}
 	for (i = 0; i < priv->n_sinks; i++) {
+		struct ts2phc_pps_sink *sink = polling_array->sink[i];
+
 		polling_array->pfd[i].events = POLLIN | POLLPRI;
-		polling_array->pfd[i].fd = polling_array->sink[i]->fd;
+		polling_array->pfd[i].fd = sink->clock->fd;
 	}
 
 	priv->polling_array = polling_array;
@@ -126,7 +124,7 @@ static int ts2phc_pps_sink_clear_fifo(struct ts2phc_pps_sink *sink)
 {
 	struct pollfd pfd = {
 		.events = POLLIN | POLLPRI,
-		.fd = sink->fd,
+		.fd = sink->clock->fd,
 	};
 	struct ptp_extts_event event;
 	int cnt, size;
@@ -159,10 +157,9 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 						      const char *device)
 {
 	struct config *cfg = priv->cfg;
-	enum servo_type servo = config_get_int(cfg, NULL, "clock_servo");
-	int err, fadj, junk, max_adj, pulsewidth;
 	struct ptp_extts_request extts;
 	struct ts2phc_pps_sink *sink;
+	int err, pulsewidth;
 
 	sink = calloc(1, sizeof(*sink));
 	if (!sink) {
@@ -186,34 +183,17 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	sink->ignore_upper = 1000000000 - pulsewidth;
 	sink->ignore_lower = pulsewidth;
 
-	sink->clk = posix_clock_open(device, &junk);
-	if (sink->clk == CLOCK_INVALID) {
+	sink->clock = ts2phc_clock_add(priv, device);
+	if (!sink->clock) {
 		pr_err("failed to open clock");
 		goto no_posix_clock;
 	}
-	sink->no_adj = config_get_int(cfg, NULL, "free_running");
-	sink->fd = CLOCKID_TO_FD(sink->clk);
 
-	pr_debug("PPS sink %s has ptp index %d", device, junk);
+	pr_debug("PPS sink %s has ptp index %d", device,
+		 sink->clock->phc_index);
 
-	fadj = (int) clockadj_get_freq(sink->clk);
-	/* Due to a bug in older kernels, the reading may silently fail
-	   and return 0. Set the frequency back to make sure fadj is
-	   the actual frequency of the clock. */
-	if (!sink->no_adj) {
-		clockadj_set_freq(sink->clk, fadj);
-	}
-	max_adj = phc_max_adj(sink->clk);
-
-	sink->servo = servo_create(cfg, servo, -fadj, max_adj, 0);
-	if (!sink->servo) {
-		pr_err("failed to create servo");
-		goto no_servo;
-	}
-	servo_sync_interval(sink->servo, SERVO_SYNC_INTERVAL);
-
-	if (phc_number_pins(sink->clk) > 0) {
-		err = phc_pin_setfunc(sink->clk, &sink->pin_desc);
+	if (phc_number_pins(sink->clock->clkid) > 0) {
+		err = phc_pin_setfunc(sink->clock->clkid, &sink->pin_desc);
 		if (err < 0) {
 			pr_err("PTP_PIN_SETFUNC request failed");
 			goto no_pin_func;
@@ -227,7 +207,7 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	memset(&extts, 0, sizeof(extts));
 	extts.index = sink->pin_desc.chan;
 	extts.flags = 0;
-	if (ioctl(sink->fd, PTP_EXTTS_REQUEST2, &extts)) {
+	if (ioctl(sink->clock->fd, PTP_EXTTS_REQUEST2, &extts)) {
 		pr_err(PTP_EXTTS_REQUEST_FAILED);
 	}
 	if (ts2phc_pps_sink_clear_fifo(sink)) {
@@ -237,9 +217,7 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	return sink;
 no_ext_ts:
 no_pin_func:
-	servo_destroy(sink->servo);
-no_servo:
-	posix_clock_close(sink->clk);
+	ts2phc_clock_destroy(sink->clock);
 no_posix_clock:
 	free(sink->name);
 	free(sink);
@@ -253,11 +231,10 @@ static void ts2phc_pps_sink_destroy(struct ts2phc_pps_sink *sink)
 	memset(&extts, 0, sizeof(extts));
 	extts.index = sink->pin_desc.chan;
 	extts.flags = 0;
-	if (ioctl(sink->fd, PTP_EXTTS_REQUEST2, &extts)) {
+	if (ioctl(sink->clock->fd, PTP_EXTTS_REQUEST2, &extts)) {
 		pr_err(PTP_EXTTS_REQUEST_FAILED);
 	}
-	servo_destroy(sink->servo);
-	posix_clock_close(sink->clk);
+	ts2phc_clock_destroy(sink->clock);
 	free(sink->name);
 	free(sink);
 }
@@ -285,27 +262,22 @@ static int ts2phc_pps_sink_event(struct ts2phc_pps_sink *sink,
 		return 0;
 	}
 
-	if (!source_ts.valid) {
-		pr_debug("%s ignoring invalid source time stamp", sink->name);
-		return 0;
-	}
-
-	adj = servo_sample(sink->servo, offset, extts_ts,
-			   SAMPLE_WEIGHT, &sink->state);
+	adj = servo_sample(sink->clock->servo, offset, extts_ts,
+			   SAMPLE_WEIGHT, &sink->clock->servo_state);
 
 	pr_debug("%s source offset %10" PRId64 " s%d freq %+7.0f",
-		 sink->name, offset, sink->state, adj);
+		 sink->name, offset, sink->clock->servo_state, adj);
 
-	switch (sink->state) {
+	switch (sink->clock->servo_state) {
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
-		clockadj_set_freq(sink->clk, -adj);
-		clockadj_step(sink->clk, -offset);
+		clockadj_set_freq(sink->clock->clkid, -adj);
+		clockadj_step(sink->clock->clkid, -offset);
 		break;
 	case SERVO_LOCKED:
 	case SERVO_LOCKED_STABLE:
-		clockadj_set_freq(sink->clk, -adj);
+		clockadj_set_freq(sink->clock->clkid, -adj);
 		break;
 	}
 	return 0;
@@ -321,7 +293,7 @@ ts2phc_pps_sink_offset(struct ts2phc_pps_sink *sink,
 	uint64_t event_ns, source_ns;
 	int cnt;
 
-	cnt = read(sink->fd, &event, sizeof(event));
+	cnt = read(sink->clock->fd, &event, sizeof(event));
 	if (cnt != sizeof(event)) {
 		pr_err("read extts event failed: %m");
 		return EXTTS_ERROR;
@@ -393,7 +365,7 @@ int ts2phc_pps_sink_arm(struct ts2phc_private *priv)
 	STAILQ_FOREACH(sink, &priv->sinks, list) {
 		extts.index = sink->pin_desc.chan;
 		extts.flags = sink->polarity | PTP_ENABLE_FEATURE;
-		err = ioctl(sink->fd, PTP_EXTTS_REQUEST2, &extts);
+		err = ioctl(sink->clock->fd, PTP_EXTTS_REQUEST2, &extts);
 		if (err < 0) {
 			pr_err(PTP_EXTTS_REQUEST_FAILED);
 			return -1;
@@ -448,6 +420,11 @@ int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 
 	err = ts2phc_pps_source_getppstime(priv->src, &source_ts.ts);
 	source_ts.valid = err ? false : true;
+
+	if (!source_ts.valid) {
+		pr_debug("ignoring invalid source time stamp");
+		return 0;
+	}
 
 	for (i = 0; i < priv->n_sinks; i++) {
 		if (polling_array->pfd[i].revents & (POLLIN|POLLPRI)) {
