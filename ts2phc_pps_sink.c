@@ -21,8 +21,7 @@
 #include "phc.h"
 #include "print.h"
 #include "servo.h"
-#include "ts2phc_pps_sink.h"
-#include "ts2phc_pps_source.h"
+#include "ts2phc.h"
 #include "util.h"
 
 #define NS_PER_SEC		1000000000LL
@@ -47,7 +46,7 @@ struct ts2phc_pps_sink {
 struct ts2phc_sink_array {
 	struct ts2phc_pps_sink **sink;
 	struct pollfd *pfd;
-} polling_array;
+};
 
 struct ts2phc_source_timestamp {
 	struct timespec ts;
@@ -65,49 +64,62 @@ ts2phc_pps_sink_offset(struct ts2phc_pps_sink *sink,
 		       struct ts2phc_source_timestamp ts,
 		       int64_t *offset, uint64_t *local_ts);
 
-static STAILQ_HEAD(pps_sink_ifaces_head, ts2phc_pps_sink) ts2phc_sinks =
-	STAILQ_HEAD_INITIALIZER(ts2phc_sinks);
-
-static unsigned int ts2phc_n_sinks;
-
-static int ts2phc_pps_sink_array_create(void)
+static int ts2phc_pps_sink_array_create(struct ts2phc_private *priv)
 {
+	struct ts2phc_sink_array *polling_array;
 	struct ts2phc_pps_sink *sink;
 	unsigned int i;
 
-	if (polling_array.sink) {
-		return 0;
-	}
-	polling_array.sink = malloc(ts2phc_n_sinks * sizeof(*polling_array.sink));
-	if (!polling_array.sink) {
-		pr_err("low memory");
-		return -1;
-	}
-	polling_array.pfd = malloc(ts2phc_n_sinks * sizeof(*polling_array.pfd));
-	if (!polling_array.pfd) {
-		pr_err("low memory");
-		free(polling_array.sink);
-		polling_array.sink = NULL;
-		return -1;
-	}
+	polling_array = malloc(sizeof(*polling_array));
+	if (!polling_array)
+		goto err_alloc_array;
+
+	polling_array->sink = malloc(priv->n_sinks *
+				     sizeof(*polling_array->sink));
+	if (!polling_array->sink)
+		goto err_alloc_sinks;
+
+	polling_array->pfd = malloc(priv->n_sinks *
+				    sizeof(*polling_array->pfd));
+	if (!polling_array->pfd)
+		goto err_alloc_pfd;
+
 	i = 0;
-	STAILQ_FOREACH(sink, &ts2phc_sinks, list) {
-		polling_array.sink[i] = sink;
+	STAILQ_FOREACH(sink, &priv->sinks, list) {
+		polling_array->sink[i] = sink;
 		i++;
 	}
-	for (i = 0; i < ts2phc_n_sinks; i++) {
-		polling_array.pfd[i].events = POLLIN | POLLPRI;
-		polling_array.pfd[i].fd = polling_array.sink[i]->fd;
+	for (i = 0; i < priv->n_sinks; i++) {
+		polling_array->pfd[i].events = POLLIN | POLLPRI;
+		polling_array->pfd[i].fd = polling_array->sink[i]->fd;
 	}
+
+	priv->polling_array = polling_array;
+
 	return 0;
+
+err_alloc_pfd:
+	free(polling_array->sink);
+err_alloc_sinks:
+	free(polling_array);
+err_alloc_array:
+	pr_err("low memory");
+	return -1;
 }
 
-static void ts2phc_pps_sink_array_destroy(void)
+static void ts2phc_pps_sink_array_destroy(struct ts2phc_private *priv)
 {
-	free(polling_array.sink);
-	free(polling_array.pfd);
-	polling_array.sink = NULL;
-	polling_array.pfd = NULL;
+	struct ts2phc_sink_array *polling_array = priv->polling_array;
+
+	/* Allow sloppy calls of ts2phc_cleanup(), without having previously
+	 * called ts2phc_pps_sink_array_create().
+	 */
+	if (!priv->polling_array)
+		return;
+
+	free(polling_array->sink);
+	free(polling_array->pfd);
+	free(polling_array);
 }
 
 static int ts2phc_pps_sink_clear_fifo(struct ts2phc_pps_sink *sink)
@@ -143,9 +155,10 @@ static int ts2phc_pps_sink_clear_fifo(struct ts2phc_pps_sink *sink)
 	return 0;
 }
 
-static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct config *cfg,
+static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *priv,
 						      const char *device)
 {
+	struct config *cfg = priv->cfg;
 	enum servo_type servo = config_get_int(cfg, NULL, "clock_servo");
 	int err, fadj, junk, max_adj, pulsewidth;
 	struct ptp_extts_request extts;
@@ -348,28 +361,28 @@ ts2phc_pps_sink_offset(struct ts2phc_pps_sink *sink,
 
 /* public methods */
 
-int ts2phc_pps_sink_add(struct config *cfg, const char *name)
+int ts2phc_pps_sink_add(struct ts2phc_private *priv, const char *name)
 {
 	struct ts2phc_pps_sink *sink;
 
 	/* Create each interface only once. */
-	STAILQ_FOREACH(sink, &ts2phc_sinks, list) {
+	STAILQ_FOREACH(sink, &priv->sinks, list) {
 		if (0 == strcmp(name, sink->name)) {
 			return 0;
 		}
 	}
-	sink = ts2phc_pps_sink_create(cfg, name);
+	sink = ts2phc_pps_sink_create(priv, name);
 	if (!sink) {
 		pr_err("failed to create sink");
 		return -1;
 	}
-	STAILQ_INSERT_TAIL(&ts2phc_sinks, sink, list);
-	ts2phc_n_sinks++;
+	STAILQ_INSERT_TAIL(&priv->sinks, sink, list);
+	priv->n_sinks++;
 
 	return 0;
 }
 
-int ts2phc_pps_sink_arm(void)
+int ts2phc_pps_sink_arm(struct ts2phc_private *priv)
 {
 	struct ptp_extts_request extts;
 	struct ts2phc_pps_sink *sink;
@@ -377,7 +390,7 @@ int ts2phc_pps_sink_arm(void)
 
 	memset(&extts, 0, sizeof(extts));
 
-	STAILQ_FOREACH(sink, &ts2phc_sinks, list) {
+	STAILQ_FOREACH(sink, &priv->sinks, list) {
 		extts.index = sink->pin_desc.chan;
 		extts.flags = sink->polarity | PTP_ENABLE_FEATURE;
 		err = ioctl(sink->fd, PTP_EXTTS_REQUEST2, &extts);
@@ -389,29 +402,38 @@ int ts2phc_pps_sink_arm(void)
 	return 0;
 }
 
-void ts2phc_pps_sink_cleanup(void)
+int ts2phc_pps_sinks_init(struct ts2phc_private *priv)
+{
+	int err;
+
+	err = ts2phc_pps_sink_array_create(priv);
+	if (err)
+		return err;
+
+	return ts2phc_pps_sink_arm(priv);
+}
+
+void ts2phc_pps_sink_cleanup(struct ts2phc_private *priv)
 {
 	struct ts2phc_pps_sink *sink;
 
-	ts2phc_pps_sink_array_destroy();
+	ts2phc_pps_sink_array_destroy(priv);
 
-	while ((sink = STAILQ_FIRST(&ts2phc_sinks))) {
-		STAILQ_REMOVE_HEAD(&ts2phc_sinks, list);
+	while ((sink = STAILQ_FIRST(&priv->sinks))) {
+		STAILQ_REMOVE_HEAD(&priv->sinks, list);
 		ts2phc_pps_sink_destroy(sink);
-		ts2phc_n_sinks--;
+		priv->n_sinks--;
 	}
 }
 
-int ts2phc_pps_sink_poll(struct ts2phc_pps_source *src)
+int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 {
+	struct ts2phc_sink_array *polling_array = priv->polling_array;
 	struct ts2phc_source_timestamp source_ts;
 	unsigned int i;
 	int cnt, err;
 
-	if (ts2phc_pps_sink_array_create()) {
-		return -1;
-	}
-	cnt = poll(polling_array.pfd, ts2phc_n_sinks, 2000);
+	cnt = poll(polling_array->pfd, priv->n_sinks, 2000);
 	if (cnt < 0) {
 		if (EINTR == errno) {
 			return 0;
@@ -424,12 +446,12 @@ int ts2phc_pps_sink_poll(struct ts2phc_pps_source *src)
 		return 0;
 	}
 
-	err = ts2phc_pps_source_getppstime(src, &source_ts.ts);
+	err = ts2phc_pps_source_getppstime(priv->src, &source_ts.ts);
 	source_ts.valid = err ? false : true;
 
-	for (i = 0; i < ts2phc_n_sinks; i++) {
-		if (polling_array.pfd[i].revents & (POLLIN|POLLPRI)) {
-			ts2phc_pps_sink_event(polling_array.sink[i], source_ts);
+	for (i = 0; i < priv->n_sinks; i++) {
+		if (polling_array->pfd[i].revents & (POLLIN|POLLPRI)) {
+			ts2phc_pps_sink_event(polling_array->sink[i], source_ts);
 		}
 	}
 	return 0;

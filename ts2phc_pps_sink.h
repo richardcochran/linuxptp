@@ -7,14 +7,16 @@
 #ifndef HAVE_TS2PHC_PPS_SINK_H
 #define HAVE_TS2PHC_PPS_SINK_H
 
-#include "ts2phc_pps_source.h"
+#include "ts2phc.h"
 
-int ts2phc_pps_sink_add(struct config *cfg, const char *name);
+struct ts2phc_private;
 
-int ts2phc_pps_sink_arm(void);
+int ts2phc_pps_sink_add(struct ts2phc_private *priv, const char *name);
 
-void ts2phc_pps_sink_cleanup(void);
+int ts2phc_pps_sinks_init(struct ts2phc_private *priv);
 
-int ts2phc_pps_sink_poll(struct ts2phc_pps_source *src);
+void ts2phc_pps_sink_cleanup(struct ts2phc_private *priv);
+
+int ts2phc_pps_sink_poll(struct ts2phc_private *priv);
 
 #endif
