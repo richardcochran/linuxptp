@@ -280,10 +280,6 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
 
 #if TSPROC
-	fprintf(stderr, "t1===========%ld\n", tsp->t1.ns);
-	fprintf(stderr, "t2===========%ld\n", tsp->t2.ns);
-	fprintf(stderr, "t3===========%ld\n", tsp->t3.ns);
-	fprintf(stderr, "t4===========%ld\n", tsp->t4.ns);
 	fprintf(stderr, "start_delay: %ld\n", delay.ns);
 	fprintf(stderr, "start_offset: %ld\n",
 		tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay).ns);
