@@ -114,6 +114,9 @@ static double pi_sample(struct servo *servo,
 		fprintf(stderr, "s->offset[1]: %ld\n", s->offset[1]);
 #endif
 		localdiff = (s->local[1] - s->local[0]) / 1e9;
+#if FIX_CLK_UNLOCK
+		localdiff *= 1e2;
+#endif
 		localdiff += localdiff * FREQ_EST_MARGIN;
 		freq_est_interval = 0.016 / s->ki;
 		if (freq_est_interval > 1000.0) {
