@@ -993,6 +993,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 #if CLOCK
 	fprintf(stderr, "%s\n", __func__);
 #endif
+
 	clock_gettime(CLOCK_REALTIME, &ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 
@@ -1960,6 +1961,7 @@ static void clock_synchronize_locked(struct clock *c, double adj)
 {
 #if CLOCK
 	fprintf(stderr, "%s\n", __func__);
+	fprintf(stderr, "%s: ppb: %f\n", __func__, adj);
 #endif
 	clockadj_set_freq(c->clkid, -adj);
 	if (c->clkid == CLOCK_REALTIME) {
@@ -2017,6 +2019,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	c->servo_state = state;
 
 #if CLOCK
+	fprintf(stderr, "%s ppb: %f\n", __func__, adj);
 	fprintf(stderr, "c->master_offset: %ld\n", c->master_offset.ns);
 	fprintf(stderr, "offset: %ld\n", offset);
 	fprintf(stderr, "ingress: %ld\n", tmv_to_nanoseconds(ingress));

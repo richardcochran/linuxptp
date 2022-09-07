@@ -81,6 +81,7 @@ static double pi_sample(struct servo *servo,
 	fprintf(stderr, "pi_local_ts: %ld\n", local_ts);
 	fprintf(stderr, "pi_weight: %f\n", weight);
 	fprintf(stderr, "s->count: %d\n", s->count);
+	fprintf(stderr, "servo->max_frequency: %f\n", servo->max_frequency);
 #endif
 	switch (s->count) {
 	case 0:
@@ -109,6 +110,8 @@ static double pi_sample(struct servo *servo,
 #if PI
 		fprintf(stderr, "s->local[0]: %ld\n", s->local[0]);
 		fprintf(stderr, "s->local[1]: %ld\n", s->local[1]);
+		fprintf(stderr, "s->offset[0]: %ld\n", s->offset[0]);
+		fprintf(stderr, "s->offset[1]: %ld\n", s->offset[1]);
 #endif
 		localdiff = (s->local[1] - s->local[0]) / 1e9;
 		localdiff += localdiff * FREQ_EST_MARGIN;
@@ -121,11 +124,15 @@ static double pi_sample(struct servo *servo,
 #if PI
 			fprintf(stderr, "state = 0 due to localdiff < freq_est_interval!\n");
 			fprintf(stderr, "localdiff: %f\n", localdiff);
-			fprintf(stderr, "freq_est_interval: %f\n", freq_est_interval);
+			fprintf(stderr, "fre q_est_interval: %f\n", freq_est_interval);
+			fprintf(stderr, "pre_s->drift: %f\n", s->drift);
 #endif
 			break;
 		}
 
+#if PI
+		fprintf(stderr,"s->drift += (1e9 - s->drift) * (s->offset[1] - s->offset[0])/(s->local[1] - s->local[0])\n");
+#endif
 		/* Adjust drift by the measured frequency offset. */
 		s->drift += (1e9 - s->drift) * (s->offset[1] - s->offset[0]) /
 						(s->local[1] - s->local[0]);
@@ -145,6 +152,9 @@ static double pi_sample(struct servo *servo,
 			*state = SERVO_LOCKED;
 
 		ppb = s->drift;
+#if PI
+		fprintf(stderr, "%s: s1_s->drift_ppb: %f\n", __func__, ppb);
+#endif
 		s->count = 2;
 		break;
 	case 2:
@@ -164,9 +174,26 @@ static double pi_sample(struct servo *servo,
 
 		ki_term = s->ki * offset * weight;
 		ppb = s->kp * offset * weight + s->drift + ki_term;
+#if PI
+		fprintf(stderr, "%s ki_term = s->ki * offset * weight\n", __func__);
+		fprintf(stderr, "%s ppb = s->kp * offset * weight + s->drift + ki_term\n", __func__);
+		fprintf(stderr, "%s ki_term: %f\n", __func__, ki_term);
+		fprintf(stderr, "%s ppb: %f\n", __func__, ppb);
+		fprintf(stderr, "%s s->kp: %f\n", __func__, s->kp);
+		fprintf(stderr, "%s s->ki: %f\n", __func__, s->ki);
+		fprintf(stderr, "%s offset: %ld\n", __func__, offset);
+		fprintf(stderr, "%s weight: %f\n", __func__, weight);
+		fprintf(stderr, "%s s->drift: %f\n", __func__, s->drift);
+#endif
 		if (ppb < -servo->max_frequency) {
+#if PI
+			fprintf(stderr, "%s ppb = -servo->max_frequency\n", __func__);
+#endif
 			ppb = -servo->max_frequency;
 		} else if (ppb > servo->max_frequency) {
+#if PI
+			fprintf(stderr, "%s ppb = servo->max_frequency\n", __func__);
+#endif
 			ppb = servo->max_frequency;
 		} else {
 			s->drift += ki_term;

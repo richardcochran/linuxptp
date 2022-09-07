@@ -24,6 +24,7 @@
 #include "clockadj.h"
 #include "missing.h"
 #include "print.h"
+#include "test.h"
 
 #define NS_PER_SEC 1000000000LL
 
@@ -51,8 +52,14 @@ void clockadj_set_freq(clockid_t clkid, double freq)
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
 
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* With system clock set also the tick length. */
 	if (clkid == CLOCK_REALTIME && realtime_nominal_tick) {
+#if CLOCKADJ
+	fprintf(stderr, "%s: enter_clkid\n", __func__);
+#endif
 		tx.modes |= ADJ_TICK;
 		tx.tick = round(freq / 1e3 / realtime_hz) + realtime_nominal_tick;
 		freq -= 1e3 * realtime_hz * (tx.tick - realtime_nominal_tick);
@@ -60,6 +67,9 @@ void clockadj_set_freq(clockid_t clkid, double freq)
 
 	tx.modes |= ADJ_FREQUENCY;
 	tx.freq = (long) (freq * 65.536);
+#if CLOCKADJ
+	fprintf(stderr, "%s: do_phy_driver_adjfine: %ld\n", __func__, tx.freq);
+#endif
 	if (clock_adjtime(clkid, &tx) < 0)
 		pr_err("failed to adjust the clock: %m");
 }
@@ -69,6 +79,9 @@ double clockadj_get_freq(clockid_t clkid)
 	double f = 0.0;
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (clock_adjtime(clkid, &tx) < 0) {
 		pr_err("failed to read out the clock frequency adjustment: %m");
 	} else {
@@ -84,6 +97,9 @@ void clockadj_set_phase(clockid_t clkid, long offset)
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
 
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	tx.modes = ADJ_OFFSET | ADJ_NANO;
 	tx.offset = offset;
 	if (clock_adjtime(clkid, &tx) < 0) {
@@ -95,6 +111,9 @@ void clockadj_step(clockid_t clkid, int64_t step)
 {
 	struct timex tx;
 	int sign = 1;
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (step < 0) {
 		sign = -1;
 		step *= -1;
@@ -120,6 +139,9 @@ int clockadj_max_freq(clockid_t clkid)
 	int f = 0;
 	struct timex tx;
 
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&tx, 0, sizeof(tx));
 	if (clock_adjtime(clkid, &tx) < 0)
 		pr_err("failed to read out the clock maximum adjustment: %m");
@@ -146,6 +168,9 @@ void sysclk_set_leap(int leap)
 	const char *m = NULL;
 	memset(&tx, 0, sizeof(tx));
 	tx.modes = ADJ_STATUS;
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	switch (leap) {
 	case -1:
 		tx.status = STA_DEL;
@@ -169,6 +194,9 @@ void sysclk_set_tai_offset(int offset)
 {
 	clockid_t clkid = CLOCK_REALTIME;
 	struct timex tx;
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&tx, 0, sizeof(tx));
 	tx.modes = ADJ_TAI;
 	tx.constant = offset;
@@ -178,6 +206,9 @@ void sysclk_set_tai_offset(int offset)
 
 int sysclk_max_freq(void)
 {
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	return clockadj_max_freq(CLOCK_REALTIME);
 }
 
@@ -186,6 +217,9 @@ void sysclk_set_sync(void)
 	clockid_t clkid = CLOCK_REALTIME;
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
+#if CLOCKADJ
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	/* Clear the STA_UNSYNC flag from the status and keep the maxerror
 	   value (which is increased automatically by 500 ppm) below 16 seconds
 	   to avoid getting the STA_UNSYNC flag back. */

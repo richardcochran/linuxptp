@@ -229,7 +229,7 @@ int tsproc_update_delay(struct tsproc *tsp, tmv_t *delay)
 		break;
 	}
 #if TSPROC
-	fprintf(stderr, "raw_delay: %ld\n", raw_delay.ns);
+//	fprintf(stderr, "raw_delay: %ld\n", raw_delay.ns);
 	fprintf(stderr, "tsp->filtered_delay: %ld\n", tsp->filtered_delay.ns);
 #endif
 
@@ -280,8 +280,13 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
 
 #if TSPROC
-	fprintf(stderr, "start_delay: %ld\n", delay.ns);
-	fprintf(stderr, "start_offset: %ld\n",
+	fprintf(stderr, "tsp->t1: %ld\n", tsp->t1.ns);
+	fprintf(stderr, "tsp->t2: %ld\n", tsp->t2.ns);
+	fprintf(stderr, "tsp->t3: %ld\n", tsp->t3.ns);
+	fprintf(stderr, "tsp->t4: %ld\n", tsp->t4.ns);
+	fprintf(stderr, "delay: %ld\n", delay.ns);
+	fprintf(stderr, "offset = t2 - t1 - delay\n");
+	fprintf(stderr, "offset: %ld\n",
 		tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay).ns);
 #endif
 	if (!weight)

@@ -115,6 +115,9 @@ int clockcheck_sample(struct clockcheck *cc, uint64_t ts)
 
 void clockcheck_set_freq(struct clockcheck *cc, int freq)
 {
+#if CLOCK
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (cc->max_freq < freq)
 		cc->max_freq = freq;
 	if (cc->min_freq > freq)

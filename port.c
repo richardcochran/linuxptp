@@ -1793,8 +1793,6 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 
 	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
 
-	fprintf(stderr, "follow_up_ts: %d\n", fup->follow_up.preciseOriginTimestamp.nanoseconds);
-
 	if (dst) {
 		fup->address = *dst;
 		fup->header.flagField[0] |= UNICAST;

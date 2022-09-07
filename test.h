@@ -55,6 +55,12 @@
 /* pi.c */
 #define PI		DEBUG_INFO
 
+/* clockadj.c */
+#define CLOCKADJ	DEBUG_INFO
+
+/* phc.c */
+#define PHC		DEBUG_INFO
+
 #define SYNC_TYPE	0x0
 #define FOLLOW_UP_TYPE	0x8
 #define DELAY_REQ	0x1

@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include "phc.h"
+#include "test.h"
 
 /*
  * On 32 bit platforms, the PHC driver's maximum adjustment (type
@@ -45,7 +46,9 @@ clockid_t phc_open(const char *phc)
 	struct timespec ts;
 	struct timex tx;
 	int fd;
-
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	memset(&tx, 0, sizeof(tx));
 
 	fd = open(phc, O_RDWR);
@@ -68,6 +71,9 @@ clockid_t phc_open(const char *phc)
 
 void phc_close(clockid_t clkid)
 {
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (clkid == CLOCK_INVALID)
 		return;
 
@@ -78,6 +84,9 @@ static int phc_get_caps(clockid_t clkid, struct ptp_clock_caps *caps)
 {
 	int fd = CLOCKID_TO_FD(clkid), err;
 
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	err = ioctl(fd, PTP_CLOCK_GETCAPS, caps);
 	if (err)
 		perror("PTP_CLOCK_GETCAPS");
@@ -89,6 +98,9 @@ int phc_max_adj(clockid_t clkid)
 	int max;
 	struct ptp_clock_caps caps;
 
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (phc_get_caps(clkid, &caps))
 		return 0;
 
@@ -104,6 +116,9 @@ int phc_number_pins(clockid_t clkid)
 {
 	struct ptp_clock_caps caps;
 
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (phc_get_caps(clkid, &caps)) {
 		return 0;
 	}
@@ -113,6 +128,9 @@ int phc_number_pins(clockid_t clkid)
 int phc_pin_setfunc(clockid_t clkid, struct ptp_pin_desc *desc)
 {
 	int err = ioctl(CLOCKID_TO_FD(clkid), PTP_PIN_SETFUNC2, desc);
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (err) {
 		fprintf(stderr, PTP_PIN_SETFUNC_FAILED "\n");
 	}
@@ -123,6 +141,9 @@ int phc_has_pps(clockid_t clkid)
 {
 	struct ptp_clock_caps caps;
 
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (phc_get_caps(clkid, &caps))
 		return 0;
 	return caps.pps;
@@ -132,6 +153,9 @@ int phc_has_writephase(clockid_t clkid)
 {
 	struct ptp_clock_caps caps;
 
+#if PHC
+	fprintf(stderr, "%s\n", __func__);
+#endif
 	if (phc_get_caps(clkid, &caps)) {
 		return 0;
 	}
