@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #define DEBUG_INFO	0
+#define FIX_NS_OVERFLOW	1
 
 /* sk.c */
 #define SK_RECE		DEBUG_INFO

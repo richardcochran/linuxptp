@@ -148,7 +148,13 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 	tmv_t t23, t41, delay;
 
 	/* delay = ((t2 - t3) * rr + (t4 - t1)) / 2 */
+#if FIX_NS_OVERFLOW
+	if (tsp->t4.ns < tsp->t1.ns)
+		tsp->t4.ns += 1e9;
 
+	if (tsp->t3.ns < tsp->t2.ns)
+		tsp->t3.ns += 1e9;
+#endif
 	if (tsp->t3.ns > tsp->t2.ns) {
 		t23 = tmv_sub(tsp->t2, tsp->t3);
 	} else {
