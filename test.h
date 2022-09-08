@@ -8,6 +8,7 @@
 #define DEBUG_INFO	0
 #define FIX_NS_OVERFLOW	1
 #define FIX_CLK_UNLOCK	1
+#define CLK_LOCK_NUM	1e3
 
 /* sk.c */
 #define SK_RECE		DEBUG_INFO
