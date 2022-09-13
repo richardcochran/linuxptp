@@ -354,6 +354,9 @@ int sk_receive(int fd, void *buf, int buflen,
 	if (flags == MSG_ERRQUEUE) {
 		struct pollfd pfd = { fd, sk_events, 0 };
 		res = poll(&pfd, 1, sk_tx_timeout);
+		/* Retry once on EINTR to avoid logging errors before exit */
+		if (res < 0 && errno == EINTR)
+			res = poll(&pfd, 1, sk_tx_timeout);
 		if (res < 1) {
 			pr_err(res ? "poll for tx timestamp failed: %m" :
 			             "timed out while polling for tx timestamp");
