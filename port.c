@@ -3412,7 +3412,7 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 	if (PS_FAULTY == next) {
 		struct fault_interval i;
 		fault_interval(p, last_fault_type(p), &i);
-		if (clear_fault_asap(&i)) {
+		if (port_link_status_get(p) && clear_fault_asap(&i)) {
 			pr_notice("%s: clearing fault immediately", p->log_name);
 			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
 		}
