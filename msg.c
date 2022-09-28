@@ -445,7 +445,7 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 	switch (type) {
 	case SYNC:
 		/* change ptp sync for ns */
-#if 0
+#if REMOVE_TS_SECONDS
 		m->sync.originTimestamp.seconds_lsb = 0;
 		m->sync.originTimestamp.seconds_msb = 0;
 #endif
@@ -463,6 +463,11 @@ int msg_post_recv(struct ptp_message *m, int cnt)
 		timestamp_post_recv(m, &m->follow_up.preciseOriginTimestamp);
 		break;
 	case DELAY_RESP:
+		/* change ptp delay_resp for ns */
+#if REMOVE_TS_SECONDS
+		m->delay_resp.receiveTimestamp.seconds_lsb = 0;
+		m->delay_resp.receiveTimestamp.seconds_msb = 0;
+#endif
 		timestamp_post_recv(m, &m->delay_resp.receiveTimestamp);
 		port_id_post_recv(&m->delay_resp.requestingPortIdentity);
 		break;
