@@ -558,7 +558,7 @@ int main(int argc, char *argv[])
 	enum ts2phc_pps_source_type pps_type;
 	struct ts2phc_private priv = {0};
 	char *config = NULL, *progname;
-	const char *pps_source = NULL;
+	const char *tod_source = NULL;
 	struct config *cfg = NULL;
 	struct interface *iface;
 	struct option *opts;
@@ -622,12 +622,12 @@ int main(int argc, char *argv[])
 			print_set_syslog(0);
 			break;
 		case 's':
-			if (pps_source) {
+			if (tod_source) {
 				fprintf(stderr, "too many PPS sources\n");
 				ts2phc_cleanup(&priv);
 				return -1;
 			}
-			pps_source = optarg;
+			tod_source = optarg;
 			break;
 		case 'v':
 			ts2phc_cleanup(&priv);
@@ -681,12 +681,12 @@ int main(int argc, char *argv[])
 		if (1 == config_get_int(cfg, dev, "ts2phc.master")) {
 			int perout_phase;
 
-			if (pps_source) {
+			if (tod_source) {
 				fprintf(stderr, "too many PPS sources\n");
 				ts2phc_cleanup(&priv);
 				return -1;
 			}
-			pps_source = dev;
+			tod_source = dev;
 			perout_phase = config_get_int(cfg, dev,
 						      "ts2phc.perout_phase");
 			/*
@@ -714,7 +714,8 @@ int main(int argc, char *argv[])
 		usage(progname);
 		return -1;
 	}
-	if (!pps_source) {
+
+	if (!tod_source) {
 		fprintf(stderr, "no PPS source specified\n");
 		ts2phc_cleanup(&priv);
 		usage(progname);
@@ -726,14 +727,14 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (!strcasecmp(pps_source, "generic")) {
+	if (!strcasecmp(tod_source, "generic")) {
 		pps_type = TS2PHC_PPS_SOURCE_GENERIC;
-	} else if (!strcasecmp(pps_source, "nmea")) {
+	} else if (!strcasecmp(tod_source, "nmea")) {
 		pps_type = TS2PHC_PPS_SOURCE_NMEA;
 	} else {
 		pps_type = TS2PHC_PPS_SOURCE_PHC;
 	}
-	priv.src = ts2phc_pps_source_create(&priv, pps_source, pps_type);
+	priv.src = ts2phc_pps_source_create(&priv, tod_source, pps_type);
 	if (!priv.src) {
 		fprintf(stderr, "failed to create PPS source\n");
 		ts2phc_cleanup(&priv);
