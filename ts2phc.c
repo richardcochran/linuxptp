@@ -715,6 +715,9 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (!tod_source)
+		tod_source = config_get_string(cfg, NULL, "ts2phc.tod_source");
+
 	if (!tod_source) {
 		fprintf(stderr, "no PPS source specified\n");
 		ts2phc_cleanup(&priv);
