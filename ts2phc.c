@@ -718,12 +718,6 @@ int main(int argc, char *argv[])
 	if (!tod_source)
 		tod_source = config_get_string(cfg, NULL, "ts2phc.tod_source");
 
-	if (!tod_source) {
-		fprintf(stderr, "no PPS source specified\n");
-		ts2phc_cleanup(&priv);
-		usage(progname);
-		return -1;
-	}
 	if (ts2phc_pps_sinks_init(&priv)) {
 		fprintf(stderr, "failed to initialize PPS sinks\n");
 		ts2phc_cleanup(&priv);
