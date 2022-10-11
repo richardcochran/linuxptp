@@ -23,6 +23,7 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,7 @@
 #include "config.h"
 #include "contain.h"
 #include "ether.h"
+#include "missing.h"
 #include "print.h"
 #include "raw.h"
 #include "sk.h"
@@ -64,6 +66,9 @@ struct raw {
 
 #define N_RAW_FILTER    12
 #define RAW_FILTER_TEST 9
+
+#define PRP_MIN_PACKET_LEN 70
+#define PRP_TRAILER_LEN 6
 
 static struct sock_filter raw_filter[N_RAW_FILTER] = {
 	{OP_LDH,  0, 0, OFF_ETYPE   },
@@ -206,6 +211,64 @@ static void addr_to_mac(void *mac, struct address *addr)
 	memcpy(mac, &addr->sll.sll_addr, MAC_LEN);
 }
 
+/* Determines if the packet has Parallel Redundancy Protocol (PRP) trailer. */
+static bool has_prp_trailer(unsigned char *ptr, int cnt, int eth_hlen)
+{
+	unsigned short suffix_id, lane_size_field, lsdu_size;
+	int ptp_msg_len, trailer_start, padding_len;
+	struct ptp_header *hdr;
+
+	/* try to parse like a PTP message to find out the message length */
+	if (cnt < sizeof(struct ptp_header))
+		return false;
+
+	hdr = (struct ptp_header *)ptr;
+	if ((hdr->ver & MAJOR_VERSION_MASK) != PTP_MAJOR_VERSION)
+		return false;
+
+	ptp_msg_len = ntohs(hdr->messageLength);
+
+	/* PRP requires ethernet packets to be minimum 70 bytes, including trailer */
+	trailer_start = ptp_msg_len;
+	padding_len = 0;
+	if ((eth_hlen + ptp_msg_len + PRP_TRAILER_LEN) < PRP_MIN_PACKET_LEN)
+	{
+		padding_len = PRP_MIN_PACKET_LEN - (eth_hlen + ptp_msg_len + PRP_TRAILER_LEN);
+		trailer_start += padding_len;
+	}
+
+	if (cnt < (trailer_start + PRP_TRAILER_LEN))
+		return false;
+
+	/* PRP trailer (RCT) consists of 3 uint16.
+	 | -------------------------------------------------------- |
+	 | SeqNr(0-15) | LanId(0-3) LSDUsize(4-15) | Suffix (0-15)  |
+	 | -------------------------------------------------------- |
+	 - Sequence number is a running number and can't be verified
+	 - LanId should be 0x1010 or 0x1011 (but should not be used for verification)
+	 - LSDUsize should match LSDU length
+	   (including possible padding and the RCT itself)
+	 - Suffix should be 0x88FB
+	*/
+
+	/* Verify that the size in the RCT matches.
+	   Size is the lower 12 bits
+	*/
+	lane_size_field = ntohs(*(unsigned short*)(ptr + trailer_start + 2));
+	lsdu_size = lane_size_field & 0x0FFF;
+	if (lsdu_size != cnt)
+		return false;
+
+	/* Verify the suffix */
+	suffix_id = ntohs(*(unsigned short*)(ptr + trailer_start + 4));
+	if (suffix_id == ETH_P_PRP)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 static int raw_open(struct transport *t, struct interface *iface,
 		    struct fdarray *fda, enum timestamp_type ts_type)
 {
@@ -266,10 +329,10 @@ no_mac:
 static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts)
 {
-	int cnt, hlen;
+	struct raw *raw = container_of(t, struct raw, t);
 	unsigned char *ptr = buf;
 	struct eth_hdr *hdr;
-	struct raw *raw = container_of(t, struct raw, t);
+	int cnt, hlen;
 
 	if (raw->vlan) {
 		hlen = sizeof(struct vlan_hdr);
@@ -286,6 +349,9 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 		cnt -= hlen;
 	if (cnt < 0)
 		return cnt;
+
+	if (has_prp_trailer(buf, cnt, hlen))
+		cnt -= PRP_TRAILER_LEN;
 
 	if (raw->vlan) {
 		if (ETH_P_1588 == ntohs(hdr->type)) {

@@ -50,6 +50,11 @@
 #define FD_TO_CLOCKID(fd)	((clockid_t) ((((unsigned int) ~fd) << 3) | CLOCKFD))
 #define CLOCKID_TO_FD(clk)	((unsigned int) ~((clk) >> 3))
 
+#ifndef ETH_P_PRP
+/* ETH_P_PRP is defined in if_ether.h from kernel 3.13 */
+#define ETH_P_PRP   0x88FB   /* IEC 62439-3 PRP/HSRv0  */
+#endif
+
 #ifndef HAVE_ONESTEP_SYNC
 enum _missing_hwtstamp_tx_types {
 	HWTSTAMP_TX_ONESTEP_SYNC = 2,
