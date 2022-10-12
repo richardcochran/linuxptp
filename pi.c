@@ -93,6 +93,9 @@ static double pi_sample(struct servo *servo,
 	case 1:
 		s->offset[1] = offset;
 		s->local[1] = local_ts;
+#if ENLARGE_LOCAL_FREQ_DIFF
+		s->local[1] += LOCAL_FREQ_DIFF;
+#endif
 
 		/* Make sure the first sample is older than the second. */
 		if (s->local[0] >= s->local[1]) {

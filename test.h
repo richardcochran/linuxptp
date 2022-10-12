@@ -9,6 +9,8 @@
 #define FIX_NS_OVERFLOW		1
 #define FIX_CLK_UNLOCK		1
 #define REMOVE_TS_SECONDS	1
+#define ENLARGE_LOCAL_FREQ_DIFF	1
+#define LOCAL_FREQ_DIFF		(10)
 #define CLK_LOCK_NUM		(3 * 1e3)
 
 /* sk.c */
