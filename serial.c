@@ -89,6 +89,15 @@ int serial_open(const char *name, int bps, int icrnl, int hwfc)
 	case 115200:
 		baud = B115200;
 		break;
+	case 230400:
+		baud = B230400;
+		break;
+	case 460800:
+		baud = B460800;
+		break;
+	case 921600:
+		baud = B921600;
+		break;
 	default:
 		return -1;
 	}
