@@ -1144,12 +1144,6 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clockadj_get_freq(c->clkid);
-		/* Due to a bug in older kernels, the reading may silently fail
-		   and return 0. Set the frequency back to make sure fadj is
-		   the actual frequency of the clock. */
-		if (!c->free_running) {
-			clockadj_set_freq(c->clkid, fadj);
-		}
 		/* Disable write phase mode if not implemented by driver */
 		if (c->write_phase_mode && !phc_has_writephase(c->clkid)) {
 			pr_err("clock does not support write phase mode");
@@ -1755,7 +1749,6 @@ int clock_switch_phc(struct clock *c, int phc_index)
 		return -1;
 	}
 	fadj = (int) clockadj_get_freq(clkid);
-	clockadj_set_freq(clkid, fadj);
 	servo = servo_create(c->config, c->servo_type, -fadj, max_adj, 0);
 	if (!servo) {
 		pr_err("Switching PHC, failed to create clock servo");

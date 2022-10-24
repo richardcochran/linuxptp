@@ -129,13 +129,6 @@ static struct servo *ts2phc_servo_create(struct ts2phc_private *priv,
 	int fadj, max_adj;
 
 	fadj = (int) clockadj_get_freq(clock->clkid);
-	/* Due to a bug in older kernels, the reading may silently fail
-	 * and return 0. Set the frequency back to make sure fadj is
-	 * the actual frequency of the clock.
-	 */
-	if (!clock->no_adj) {
-		clockadj_set_freq(clock->clkid, fadj);
-	}
 
 	max_adj = phc_max_adj(clock->clkid);
 

@@ -128,10 +128,6 @@ static struct servo *servo_add(struct phc2sys_private *priv,
 
 	clockadj_init(clock->clkid);
 	ppb = clockadj_get_freq(clock->clkid);
-	/* The reading may silently fail and return 0, reset the frequency to
-	   make sure ppb is the actual frequency of the clock. */
-	if (!priv->free_running)
-		clockadj_set_freq(clock->clkid, ppb);
 	if (clock->clkid == CLOCK_REALTIME) {
 		sysclk_set_leap(0);
 		max_ppb = sysclk_max_freq();
