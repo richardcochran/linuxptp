@@ -619,8 +619,10 @@ This option used to be called
 The maximum allowed frequency offset between uncorrected clock and the system
 monotonic clock in parts per billion (ppb). This is used as a sanity check of
 the synchronized clock. When a larger offset is measured, a warning message
-will be printed and the servo will be reset. When set to 0, the sanity check is
-disabled. The default is 200000000 (20%).
+will be printed and the servo will be reset. If the frequency correction set by
+ptp4l changes unexpectedly between updates of the clock (e.g. due to another
+process trying to control the clock), a warning message will be printed. When
+set to 0, the sanity check is disabled. The default is 200000000 (20%).
 .TP
 .B initial_delay
 The initial path delay of the clock in nanoseconds used for synchronization of

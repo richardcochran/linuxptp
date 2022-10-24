@@ -1776,6 +1776,9 @@ static void clock_step_window(struct clock *c)
 
 static void clock_synchronize_locked(struct clock *c, double adj)
 {
+	if (c->sanity_check) {
+		clockcheck_freq(c->sanity_check, clockadj_get_freq(c->clkid));
+	}
 	clockadj_set_freq(c->clkid, -adj);
 	if (c->clkid == CLOCK_REALTIME) {
 		sysclk_set_sync();

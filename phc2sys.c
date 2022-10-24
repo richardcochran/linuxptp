@@ -561,6 +561,9 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 		/* Fall through. */
 	case SERVO_LOCKED:
 	case SERVO_LOCKED_STABLE:
+		if (clock->sanity_check)
+			clockcheck_freq(clock->sanity_check,
+					clockadj_get_freq(clock->clkid));
 		clockadj_set_freq(clock->clkid, -ppb);
 		if (clock->clkid == CLOCK_REALTIME)
 			sysclk_set_sync();
