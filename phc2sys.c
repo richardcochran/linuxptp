@@ -64,6 +64,8 @@
 
 #define PHC_PPS_OFFSET_LIMIT 10000000
 
+#define MAX_DST_CLOCKS 128
+
 struct clock {
 	LIST_ENTRY(clock) list;
 	LIST_ENTRY(clock) dst_list;
@@ -1056,9 +1058,10 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *config = NULL, *last_dst_name = NULL, *progname, *src_name = NULL;
+	char *config = NULL, *progname, *src_name = NULL;
+	const char *dst_names[MAX_DST_CLOCKS];
 	char uds_local[MAX_IFNAME_SIZE + 1];
-	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment, offset;
+	int i, autocfg = 0, c, domain_number = 0, index, ntpshm_segment, offset;
 	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0;
 	int wait_sync = 0, dst_cnt = 0;
 	struct config *cfg;
@@ -1104,13 +1107,11 @@ int main(int argc, char *argv[])
 			rt++;
 			break;
 		case 'c':
-			last_dst_name = optarg;
-			r = phc2sys_static_dst_configuration(&priv,
-							     last_dst_name);
-			if (r) {
-				goto end;
+			if (dst_cnt == MAX_DST_CLOCKS) {
+				fprintf(stderr, "too many sink clocks\n");
+				goto bad_usage;
 			}
-			dst_cnt++;
+			dst_names[dst_cnt++] = optarg;
 			break;
 		case 'd':
 			pps_fd = open(optarg, O_RDONLY);
@@ -1261,7 +1262,11 @@ int main(int argc, char *argv[])
 		return c;
 	}
 
-	if (autocfg && (src_name || last_dst_name || hardpps_configured(pps_fd) ||
+	if (!autocfg && dst_cnt == 0) {
+		dst_names[dst_cnt++] = "CLOCK_REALTIME";
+	}
+
+	if (autocfg && (src_name || dst_cnt > 0 || hardpps_configured(pps_fd) ||
 			wait_sync || priv.forced_sync_offset)) {
 		fprintf(stderr,
 			"autoconfiguration cannot be mixed with manual config options.\n");
@@ -1279,15 +1284,8 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
-	if (!last_dst_name) {
-		last_dst_name = "CLOCK_REALTIME";
-		r = phc2sys_static_dst_configuration(&priv, last_dst_name);
-		if (r) {
-			goto end;
-		}
-	}
-	if (hardpps_configured(pps_fd) && (dst_cnt > 1 ||
-	    strcmp(last_dst_name, "CLOCK_REALTIME"))) {
+	if (hardpps_configured(pps_fd) && (dst_cnt != 1 ||
+	    strcmp(dst_names[0], "CLOCK_REALTIME"))) {
 		fprintf(stderr,
 			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		goto bad_usage;
@@ -1307,6 +1305,13 @@ int main(int argc, char *argv[])
 	}
 	priv.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
 	priv.sanity_freq_limit = config_get_int(cfg, NULL, "sanity_freq_limit");
+
+	for (i = 0; i < dst_cnt; i++) {
+		r = phc2sys_static_dst_configuration(&priv, dst_names[i]);
+		if (r) {
+			goto end;
+		}
+	}
 
 	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d",
 		 getpid());
