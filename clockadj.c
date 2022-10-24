@@ -19,6 +19,7 @@
 
 #include <errno.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -72,6 +73,7 @@ double clockadj_get_freq(clockid_t clkid)
 	memset(&tx, 0, sizeof(tx));
 	if (clock_adjtime(clkid, &tx) < 0) {
 		pr_err("failed to read out the clock frequency adjustment: %m");
+		exit(1);
 	} else {
 		f = tx.freq / 65.536;
 		if (clkid == CLOCK_REALTIME && realtime_nominal_tick && tx.tick)
