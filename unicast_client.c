@@ -339,11 +339,14 @@ int unicast_client_cancel(struct port *p, struct ptp_message *m,
 	if (cancel->message_type_flags & CANCEL_UNICAST_MAINTAIN_GRANT) {
 		return 0;
 	}
+
 	pr_warning("%s: server unilaterally canceled unicast %s grant",
 		   p->log_name, msg_type_string(mtype));
 
 	ucma->state = unicast_fsm(ucma->state, UC_EV_CANCEL);
 	ucma->granted &= ~(1 << mtype);
+	// trigger clock state change event
+	clock_set_sde(p->clock, 1);
 
 	/* Respond with ACK. */
 	msg = port_signaling_uc_construct(p, &ucma->address, &ucma->portIdentity);
@@ -446,6 +449,8 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 			   p->log_name, msg_type_string(mtype));
 		if (mtype != PDELAY_RESP) {
 			ucma->state = UC_WAIT;
+			// trigger clock state change event
+			clock_set_sde(p->clock, 1);
 		}
 		return;
 	}
