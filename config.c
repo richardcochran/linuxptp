@@ -362,7 +362,8 @@ static struct config_item *config_section_item(struct config *cfg,
 {
 	char buf[CONFIG_LABEL_SIZE + MAX_IFNAME_SIZE];
 
-	snprintf(buf, sizeof(buf), "%s.%s", section, name);
+	if (snprintf(buf, sizeof(buf), "%s.%s", section, name) >= sizeof(buf))
+		return NULL;
 	return hash_lookup(cfg->htab, buf);
 }
 
@@ -919,7 +920,11 @@ struct config *config_create(void)
 	for (i = 0; i < N_CONFIG_ITEMS; i++) {
 		ci = &config_tab[i];
 		ci->flags |= CFG_ITEM_STATIC;
-		snprintf(buf, sizeof(buf), "global.%s", ci->label);
+		if (snprintf(buf, sizeof(buf), "global.%s", ci->label) >=
+		    sizeof(buf)) {
+			fprintf(stderr, "option %s too long\n", ci->label);
+			goto fail;
+		}
 		if (hash_insert(cfg->htab, buf, ci)) {
 			fprintf(stderr, "duplicate item %s\n", ci->label);
 			goto fail;
