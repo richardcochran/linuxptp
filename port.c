@@ -2697,10 +2697,13 @@ static void port_change_phc(struct port *p)
 {
 	int required_modes;
 
-	/* Only switch a non-vclock PHC with HW time stamping. */
-	if (!interface_tsinfo_valid(p->iface) ||
+	/* Try to switch only if the interface is up, it has HW time stamping
+	   using a non-vclock PHC, and the PHC actually changed. */
+	if (!(p->link_status & LINK_UP) ||
+	    !interface_tsinfo_valid(p->iface) ||
 	    interface_get_vclock(p->iface) >= 0 ||
-	    interface_phc_index(p->iface) < 0)
+	    interface_phc_index(p->iface) < 0 ||
+	    p->phc_index == interface_phc_index(p->iface))
 		return;
 
 	required_modes = clock_required_modes(p->clock);
@@ -2714,7 +2717,7 @@ static void port_change_phc(struct port *p)
 			   "command line, not the attached ptp%d",
 			   p->log_name, p->phc_index,
 			   interface_phc_index(p->iface));
-	} else if (p->phc_index != interface_phc_index(p->iface)) {
+	} else {
 		p->phc_index = interface_phc_index(p->iface);
 
 		if (clock_switch_phc(p->clock, p->phc_index)) {
@@ -2749,18 +2752,12 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		pr_notice("%s: ts label changed to %s", p->log_name, ts_label);
 	}
 
-	/* phc index may changed while ts_label keeps the same after failover.
-	 * e.g. vlan over bond. Since the lower link changed, we still set
-	 * the TS_LABEL_CHANGED flag.
-	 */
+	/* The PHC index may change even with the same ts_label, e.g. after
+	   failover with VLAN over bond. */
 	interface_get_tsinfo(p->iface);
-	if (p->phc_index != interface_phc_index(p->iface))
-		p->link_status |= TS_LABEL_CHANGED;
 
-	/* Both link down/up and change ts_label may change phc index. */
-	if (p->link_status & LINK_UP &&
-	    (p->link_status & LINK_STATE_CHANGED || p->link_status & TS_LABEL_CHANGED))
-		port_change_phc(p);
+	/* Switch the clock if needed */
+	port_change_phc(p);
 
 	/*
 	 * A port going down can affect the BMCA result.
