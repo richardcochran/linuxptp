@@ -1590,6 +1590,7 @@ void clock_set_sde(struct clock *c, int sde)
 int clock_poll(struct clock *c)
 {
 	int cnt, i;
+	enum port_state prior_state;
 	enum fsm_event event;
 	struct pollfd *cur;
 	struct port *p;
@@ -1613,6 +1614,7 @@ int clock_poll(struct clock *c)
 		/* Let the ports handle their events. */
 		for (i = 0; i < N_POLLFD; i++) {
 			if (cur[i].revents & (POLLIN|POLLPRI|POLLERR)) {
+				prior_state = port_state(p);
 				if (cur[i].revents & POLLERR) {
 					pr_err("%s: unexpected socket error",
 					       port_log_name(p));
@@ -1628,7 +1630,7 @@ int clock_poll(struct clock *c)
 				}
 				port_dispatch(p, event, 0);
 				/* Clear any fault after a little while. */
-				if (PS_FAULTY == port_state(p)) {
+				if ((PS_FAULTY == port_state(p)) && (prior_state != PS_FAULTY)) {
 					clock_fault_timeout(p, 1);
 					break;
 				}
