@@ -12,6 +12,7 @@
 #define ENLARGE_LOCAL_FREQ_DIFF	1
 #define LOCAL_FREQ_DIFF		(10)
 #define CLK_LOCK_NUM		(3 * 1e3)
+#define FIX_CORRECTION		0
 
 /* sk.c */
 #define SK_RECE		DEBUG_INFO
