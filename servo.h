@@ -77,7 +77,7 @@ enum servo_state {
  * @return A pointer to a new servo on success, NULL otherwise.
  */
 struct servo *servo_create(struct config *cfg, enum servo_type type,
-			   int fadj, int max_ppb, int sw_ts);
+			   double fadj, int max_ppb, int sw_ts);
 
 /**
  * Destroy an instance of a clock servo.

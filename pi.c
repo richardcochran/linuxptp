@@ -177,7 +177,7 @@ static void pi_reset(struct servo *servo)
 	s->count = 0;
 }
 
-struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts)
+struct servo *pi_servo_create(struct config *cfg, double fadj, int sw_ts)
 {
 	struct pi_servo *s;
 

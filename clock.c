@@ -897,10 +897,11 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
 	char ts_label[IF_NAMESIZE], phc[32], *tmp;
 	enum timestamp_type timestamping;
-	int fadj = 0, max_adj = 0, sw_ts;
 	int phc_index, conf_phc_index, required_modes = 0;
 	struct clock *c = &the_clock;
+	int max_adj = 0, sw_ts;
 	const char *uds_ifname;
+	double fadj = 0.0;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
 	struct interface *iface;
@@ -1143,7 +1144,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->time_flags = c->utc_timescale ? 0 : PTP_TIMESCALE;
 
 	if (c->clkid != CLOCK_INVALID) {
-		fadj = (int) clockadj_get_freq(c->clkid);
+		fadj = clockadj_get_freq(c->clkid);
 		/* Disable write phase mode if not implemented by driver */
 		if (c->write_phase_mode && !phc_has_writephase(c->clkid)) {
 			pr_err("clock does not support write phase mode");
@@ -1732,9 +1733,10 @@ struct tsproc *clock_get_tsproc(struct clock *c)
 int clock_switch_phc(struct clock *c, int phc_index)
 {
 	struct servo *servo;
-	int fadj, max_adj;
 	clockid_t clkid;
 	char phc[32];
+	double fadj;
+	int max_adj;
 
 	snprintf(phc, sizeof(phc), "/dev/ptp%d", phc_index);
 	clkid = phc_open(phc);
@@ -1748,7 +1750,7 @@ int clock_switch_phc(struct clock *c, int phc_index)
 		phc_close(clkid);
 		return -1;
 	}
-	fadj = (int) clockadj_get_freq(clkid);
+	fadj = clockadj_get_freq(clkid);
 	servo = servo_create(c->config, c->servo_type, -fadj, max_adj, 0);
 	if (!servo) {
 		pr_err("Switching PHC, failed to create clock servo");

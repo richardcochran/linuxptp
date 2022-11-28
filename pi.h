@@ -21,6 +21,6 @@
 
 #include "servo.h"
 
-struct servo *pi_servo_create(struct config *cfg, int fadj, int sw_ts);
+struct servo *pi_servo_create(struct config *cfg, double fadj, int sw_ts);
 
 #endif

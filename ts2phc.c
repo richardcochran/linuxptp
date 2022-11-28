@@ -126,9 +126,10 @@ static struct servo *ts2phc_servo_create(struct ts2phc_private *priv,
 {
 	enum servo_type type = config_get_int(priv->cfg, NULL, "clock_servo");
 	struct servo *servo;
-	int fadj, max_adj;
+	double fadj;
+	int max_adj;
 
-	fadj = (int) clockadj_get_freq(clock->clkid);
+	fadj = clockadj_get_freq(clock->clkid);
 
 	max_adj = phc_max_adj(clock->clkid);
 
