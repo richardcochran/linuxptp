@@ -21,6 +21,17 @@
 #include "bmc.h"
 #include "ds.h"
 
+static int portid_cmp(struct PortIdentity *a, struct PortIdentity *b)
+{
+	int diff = memcmp(&a->clockIdentity, &b->clockIdentity, sizeof(a->clockIdentity));
+
+	if (diff == 0) {
+		diff = a->portNumber - b->portNumber;
+	}
+
+	return diff;
+}
+
 int dscmp2(struct dataset *a, struct dataset *b)
 {
 	int diff;
@@ -35,7 +46,7 @@ int dscmp2(struct dataset *a, struct dataset *b)
 	 * standard, since there is nothing we can do about it anyway.
 	 */
 	if (A < B) {
-		diff = memcmp(&b->receiver, &b->sender, sizeof(b->receiver));
+		diff = portid_cmp(&b->receiver, &b->sender);
 		if (diff < 0)
 			return A_BETTER;
 		if (diff > 0)
@@ -44,7 +55,7 @@ int dscmp2(struct dataset *a, struct dataset *b)
 		return 0;
 	}
 	if (A > B) {
-		diff = memcmp(&a->receiver, &a->sender, sizeof(a->receiver));
+		diff = portid_cmp(&a->receiver, &a->sender);
 		if (diff < 0)
 			return B_BETTER;
 		if (diff > 0)
@@ -53,7 +64,7 @@ int dscmp2(struct dataset *a, struct dataset *b)
 		return 0;
 	}
 
-	diff = memcmp(&a->sender, &b->sender, sizeof(a->sender));
+	diff = portid_cmp(&a->sender, &b->sender);
 	if (diff < 0)
 		return A_BETTER_TOPO;
 	if (diff > 0)
