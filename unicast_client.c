@@ -592,28 +592,39 @@ int unicast_client_msg_is_from_master_table_entry(struct port *p, struct ptp_mes
 }
 
 int unicast_client_tx_cancel(struct port *p,
-			     struct unicast_master_address *dst)
+			     struct unicast_master_address *dst,
+			     unsigned int bitmask)
 {
 	struct ptp_message *msg;
 	int err;
 
+	if (!(dst->granted & bitmask)) {
+		return 0;
+	}
 	msg = port_signaling_uc_construct(p, &dst->address, &dst->portIdentity);
 	if (!msg) {
 		return -1;
 	}
-	err = attach_cancel(msg, ANNOUNCE);
-	if (err) {
-		goto out;
+	if (dst->granted & (bitmask & (1 << ANNOUNCE))) {
+		err = attach_cancel(msg, ANNOUNCE);
+		if (err) {
+			goto out;
+		}
+		dst->granted &= ~(1 << ANNOUNCE);
 	}
-	err = attach_cancel(msg, SYNC);
-	if (err) {
-		goto out;
+	if (dst->granted & (bitmask & (1 << SYNC))) {
+		err = attach_cancel(msg, SYNC);
+		if (err) {
+			goto out;
+		}
+		dst->granted &= ~(1 << SYNC);
 	}
-	if (p->delayMechanism != DM_P2P) {
+	if (dst->granted & (bitmask & (1 << DELAY_RESP))) {
 		err = attach_cancel(msg, DELAY_RESP);
 		if (err) {
 			goto out;
 		}
+		dst->granted &= ~(1 << DELAY_RESP);
 	}
 
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);

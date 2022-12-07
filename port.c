@@ -177,7 +177,7 @@ static void port_cancel_unicast(struct port *p)
 
 	STAILQ_FOREACH(ucma, &p->unicast_master_table->addrs, list) {
 		if (ucma) {
-			unicast_client_tx_cancel(p, ucma);
+			unicast_client_tx_cancel(p, ucma, UNICAST_CANCEL_ALL);
 		}
 	}
 }
@@ -194,7 +194,7 @@ static int port_unicast_message_valid(struct port *p, struct ptp_message *m)
 		pr_warning("%s: new foreign master %s not in unicast master table",
 			   p->log_name, pid2str(&m->header.sourcePortIdentity));
 
-		if (unicast_client_tx_cancel(p, &master)) {
+		if (unicast_client_tx_cancel(p, &master, (1 << msg_type(m)))) {
 			pr_warning("%s: cancel unicast transmission to %s failed",
 				   p->log_name, pid2str(&m->header.sourcePortIdentity));
 		}

@@ -20,6 +20,9 @@
 #ifndef HAVE_UNICAST_CLIENT_H
 #define HAVE_UNICAST_CLIENT_H
 
+#define UNICAST_CANCEL_ALL  (1 << ANNOUNCE | 1 << SYNC | 1 << DELAY_RESP)
+#define UNICAST_CANCEL_SYDY (1 << SYNC | 1 << DELAY_RESP)
+
 /**
  * Handles a CANCEL_UNICAST_TRANSMISSION TLV from the grantor.
  * @param p      The port on which the signaling message was received.
@@ -95,10 +98,13 @@ int unicast_client_msg_is_from_master_table_entry(struct port *p,
 
 /**
  * Transmit CANCEL_UNICAST_TRANSMISSION TLV to destination address.
- * @param p      The port in question.
- * @param dst    The destination address.
+ * @param p        The port in question.
+ * @param dst      The destination address.
+ * @param bitmask  Cancel message type bitmask
+ * @param
  * @return       Zero on success, non-zero otherwise.
  */
 int unicast_client_tx_cancel(struct port *p,
-			     struct unicast_master_address *dst);
+			     struct unicast_master_address *dst,
+			     unsigned int bitmask);
 #endif
