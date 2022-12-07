@@ -93,7 +93,7 @@ int unicast_client_timer(struct port *p);
  * @return       One (1) if the message is from an entry in the unicast
  *               master table, or zero otherwise.
  */
-int unicast_client_msg_is_from_master_table_entry(struct port *p, 
+int unicast_client_msg_is_from_master_table_entry(struct port *p,
 						  struct ptp_message *m);
 
 /**
