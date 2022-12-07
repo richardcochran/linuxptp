@@ -527,6 +527,7 @@ void unicast_client_state_changed(struct port *p)
 {
 	struct unicast_master_address *ucma;
 	struct PortIdentity pid;
+	enum unicast_state prev_state;
 
 	if (!unicast_client_enabled(p)) {
 		return;
@@ -537,7 +538,13 @@ void unicast_client_state_changed(struct port *p)
 		if (pid_eq(&ucma->portIdentity, &pid)) {
 			ucma->state = unicast_fsm(ucma->state, UC_EV_SELECTED);
 		} else {
+			prev_state = ucma->state;
+
 			ucma->state = unicast_fsm(ucma->state, UC_EV_UNSELECTED);
+
+			if ((prev_state != ucma->state) && (prev_state == UC_HAVE_SYDY)) {
+				unicast_client_tx_cancel(p, ucma, UNICAST_CANCEL_SYDY);
+			}
 		}
 	}
 }
