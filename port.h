@@ -357,4 +357,11 @@ enum bmca_select port_bmca(struct port *p);
  */
 void tc_cleanup(void);
 
+/**
+ * Update port's unicast state if port's unicast_state_dirty is true.
+ *
+ * @param port  A port instance.
+ */
+void port_update_unicast_state(struct port *p);
+
 #endif

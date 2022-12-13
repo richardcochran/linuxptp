@@ -3451,13 +3451,13 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 	}
 
 	if (mdiff) {
-		unicast_client_state_changed(p);
+		p->unicast_state_dirty = true;
 	}
 	if (next != p->state) {
 		port_show_transition(p, next, event);
 		p->state = next;
 		port_notify_event(p, NOTIFY_PORT_STATE);
-		unicast_client_state_changed(p);
+		p->unicast_state_dirty = true;
 		return 1;
 	}
 
@@ -3467,4 +3467,12 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 enum bmca_select port_bmca(struct port *p)
 {
 	return p->bmca;
+}
+
+void port_update_unicast_state(struct port *p)
+{
+	if (p->unicast_state_dirty) {
+		unicast_client_state_changed(p);
+		p->unicast_state_dirty = false;
+	}
 }

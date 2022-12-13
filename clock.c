@@ -669,7 +669,9 @@ static void clock_update_grandmaster(struct clock *c)
 	struct parentDS *pds = &c->dad.pds;
 	memset(&c->cur, 0, sizeof(c->cur));
 	memset(c->ptl, 0, sizeof(c->ptl));
+
 	pds->parentPortIdentity.clockIdentity   = c->dds.clockIdentity;
+	/* Follow IEEE 1588 Table 30: Updates for state decision code M1 and M2 */
 	pds->parentPortIdentity.portNumber      = 0;
 	pds->grandmasterIdentity                = c->dds.clockIdentity;
 	pds->grandmasterClockQuality            = c->dds.clockQuality;
@@ -2050,6 +2052,10 @@ static void handle_state_decision_event(struct clock *c)
 			break;
 		}
 		port_dispatch(piter, event, fresh_best);
+	}
+
+	LIST_FOREACH(piter, &c->ports, list) {
+		port_update_unicast_state(piter);
 	}
 }
 
