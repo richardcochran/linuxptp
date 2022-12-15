@@ -193,7 +193,7 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 	fprintf(stderr, "%s: tsp->t3: %ld\n", __func__, tsp->t3.ns);
 	fprintf(stderr, "%s: tsp->t4: %ld\n", __func__, tsp->t4.ns);
 	fprintf(stderr, "%s: negative delay %ld\n", __func__, tmv_to_nanoseconds(delay));
-	fprintf(stderr, "%s: delay = ((t2 - t3) * rr + (t4 - t1)) / 2\n");
+	fprintf(stderr, "%s: delay = ((t2 - t3) * rr + (t4 - t1)) / 2\n", __func__);
 	fprintf(stderr, "%s: t2 - t3 = %ld\n", __func__, tmv_to_nanoseconds(t23));
 	fprintf(stderr, "%s: t4 - t1 = %ld\n", __func__, tmv_to_nanoseconds(t41));
 	fprintf(stderr, "%s: rr = %.9f\n", __func__, tsp->clock_rate_ratio);
