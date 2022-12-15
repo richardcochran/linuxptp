@@ -188,15 +188,15 @@ tmv_t get_raw_delay(struct tsproc *tsp)
 	}
 #if TSPROC
 	fprintf(stderr, "%s\n", __func__);
-	fprintf(stderr, "tsp->t1: %ld\n", tsp->t1.ns);
-	fprintf(stderr, "tsp->t2: %ld\n", tsp->t2.ns);
-	fprintf(stderr, "tsp->t3: %ld\n", tsp->t3.ns);
-	fprintf(stderr, "tsp->t4: %ld\n", tsp->t4.ns);
-	fprintf(stderr, "negative delay %ld\n", tmv_to_nanoseconds(delay));
-	fprintf(stderr, "delay = ((t2 - t3) * rr + (t4 - t1)) / 2\n");
-	fprintf(stderr, "t2 - t3 = %ld\n", tmv_to_nanoseconds(t23));
-	fprintf(stderr, "t4 - t1 = %ld\n", tmv_to_nanoseconds(t41));
-	fprintf(stderr, "rr = %.9f\n", tsp->clock_rate_ratio);
+	fprintf(stderr, "%s: tsp->t1: %ld\n", __func__, tsp->t1.ns);
+	fprintf(stderr, "%s: tsp->t2: %ld\n", __func__, tsp->t2.ns);
+	fprintf(stderr, "%s: tsp->t3: %ld\n", __func__, tsp->t3.ns);
+	fprintf(stderr, "%s: tsp->t4: %ld\n", __func__, tsp->t4.ns);
+	fprintf(stderr, "%s: negative delay %ld\n", __func__, tmv_to_nanoseconds(delay));
+	fprintf(stderr, "%s: delay = ((t2 - t3) * rr + (t4 - t1)) / 2\n");
+	fprintf(stderr, "%s: t2 - t3 = %ld\n", __func__, tmv_to_nanoseconds(t23));
+	fprintf(stderr, "%s: t4 - t1 = %ld\n", __func__, tmv_to_nanoseconds(t41));
+	fprintf(stderr, "%s: rr = %.9f\n", __func__, tsp->clock_rate_ratio);
 #endif
 
 	return delay;
@@ -286,13 +286,13 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 	*offset = tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay);
 
 #if TSPROC
-	fprintf(stderr, "tsp->t1: %ld\n", tsp->t1.ns);
-	fprintf(stderr, "tsp->t2: %ld\n", tsp->t2.ns);
-	fprintf(stderr, "tsp->t3: %ld\n", tsp->t3.ns);
-	fprintf(stderr, "tsp->t4: %ld\n", tsp->t4.ns);
-	fprintf(stderr, "delay: %ld\n", delay.ns);
-	fprintf(stderr, "offset = t2 - t1 - delay\n");
-	fprintf(stderr, "offset: %ld\n",
+	fprintf(stderr, "%s: tsp->t1: %ld\n", __func__, tsp->t1.ns);
+	fprintf(stderr, "%s: tsp->t2: %ld\n", __func__, tsp->t2.ns);
+	fprintf(stderr, "%s: tsp->t3: %ld\n", __func__, tsp->t3.ns);
+	fprintf(stderr, "%s: tsp->t4: %ld\n", __func__, tsp->t4.ns);
+	fprintf(stderr, "%s: delay: %ld\n", __func__, delay.ns);
+	fprintf(stderr, "%s: offset = t2 - t1 - delay\n", __func__);
+	fprintf(stderr, "%s: offset: %ld\n", __func__,
 		tmv_sub(tmv_sub(tsp->t2, tsp->t1), delay).ns);
 #endif
 	if (!weight)
