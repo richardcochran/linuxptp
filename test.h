@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #define DEBUG_INFO		0
+#define FIX_P2P_RESERVED2	1
 #define FIX_NS_OVERFLOW		1
 #define FIX_CLK_UNLOCK		1
 #define REMOVE_TS_SECONDS	1
