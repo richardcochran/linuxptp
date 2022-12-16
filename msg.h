@@ -484,5 +484,12 @@ static inline int64_t net2host64(int64_t val)
 {
 	return __be64_to_cpu(val);
 }
+/**
+ * Convert a 32 bit word into host byte order.
+ */
+static inline int64_t net2host32(int64_t val)
+{
+	return __be32_to_cpu(val);
+}
 
 #endif

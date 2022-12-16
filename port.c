@@ -2315,6 +2315,8 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 #if PORT
 	fprintf(stderr, "%s\n", __func__);
+	fprintf(stderr, "delay_req_resv2: %ld\n",
+			net2host32(m->header.reserved2) & 0xffffffff);
 #endif
 	switch (p->timestamping) {
 	case TS_SOFTWARE:
@@ -2385,6 +2387,7 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 		rsp->header.correction = m->header.correction;
 		rsp->header.correction += p->tx_timestamp_offset;
 		rsp->header.correction += p->rx_timestamp_offset;
+		rsp->header.reserved2 = m->header.reserved2;
 	} else {
 		rsp->header.flagField[0] |= TWO_STEP;
 		rsp->pdelay_resp.requestReceiptTimestamp =
