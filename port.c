@@ -2512,6 +2512,15 @@ calc:
 				    clock_rate_ratio(p->clock));
 	tsproc_up_ts(p->tsproc, t1, t2);
 	tsproc_down_ts(p->tsproc, t3c, t4);
+	/* How to calculation p2p one-step path delay?
+	 * for example:
+	 * tsp->t1 = pdelay_req->correction = t3-t2
+	 * tsp->t2 = pdelay_resp->arr_time = rsp->hwts.ts = t4
+	 * tsp->t3 = pdelay_req->dep_time = req->hwts.ts = t1
+	 * tsp->t4 = t2 = 0
+	 * delay = ((tsp->t4 - tsp->t3) + (tsp->t2 - tsp->t1)) / 2
+	 * so delay = ((t4-t3)+(t2-t1)) / 2
+	 */
 	if (tsproc_update_delay(p->tsproc, &p->peer_delay))
 		return;
 
