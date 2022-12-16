@@ -2514,7 +2514,7 @@ calc:
 	tsproc_down_ts(p->tsproc, t3c, t4);
 	/* How to calculation p2p one-step path delay?
 	 * for example:
-	 * tsp->t1 = pdelay_req->correction = t3-t2
+	 * tsp->t1 = pdelay_resp->correction = t3-t2 : hardware handle
 	 * tsp->t2 = pdelay_resp->arr_time = rsp->hwts.ts = t4
 	 * tsp->t3 = pdelay_req->dep_time = req->hwts.ts = t1
 	 * tsp->t4 = t2 = 0
