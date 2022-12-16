@@ -2469,6 +2469,12 @@ static void port_peer_delay(struct port *p)
 	t1 = req->hwts.ts;
 	t4 = rsp->hwts.ts;
 	c1 = correction_to_tmv(rsp->header.correction + p->asymmetry);
+#if PORT
+	fprintf(stderr, "dep-time req->hwts.ts: %ld\n", t1.ns);
+	fprintf(stderr, "arr-time rsp->hwts.ts: %ld\n", t4.ns);
+	fprintf(stderr, "rsp->header.correction: %ld\n", c1.ns);
+#endif
+
 
 	/* Process one-step response immediately. */
 	if (one_step(rsp)) {
