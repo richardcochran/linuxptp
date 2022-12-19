@@ -69,11 +69,17 @@
 /* phc.c */
 #define PHC		DEBUG_INFO
 
-#define SYNC_TYPE	0x0
-#define FOLLOW_UP_TYPE	0x8
-#define DELAY_REQ	0x1
-#define DELAY_RESP	0x9
-#define PTP_ANNOUNCE	0xb
+/* Values for the messageType field */
+#define TEST_SYNC                  0x0
+#define TEST_DELAY_REQ             0x1
+#define TEST_PDELAY_REQ            0x2
+#define TEST_PDELAY_RESP           0x3
+#define TEST_FOLLOW_UP             0x8
+#define TEST_DELAY_RESP            0x9
+#define TEST_PDELAY_RESP_FOLLOW_UP 0xA
+#define TEST_ANNOUNCE              0xB
+#define TEST_SIGNALING             0xC
+#define TEST_MANAGEMENT            0xD
 #define PTP_TYPE_BIT	14
 #define PTPV2_BIT1	12
 #define PTPV2_BIT2	13
@@ -86,20 +92,29 @@ static inline void get_ptp_type(unsigned char *ptr)
 		fprintf(stderr, "get_ptp_type\n");
 
 		switch (ptr[PTP_TYPE_BIT]) {
-			case SYNC_TYPE:
+			case TEST_SYNC:
 				fprintf(stderr, "sync\n");
 				break;
-			case FOLLOW_UP_TYPE:
+			case TEST_FOLLOW_UP:
 				fprintf(stderr, "follow_up\n");
 				break;
-			case DELAY_REQ:
+			case TEST_DELAY_REQ:
 				fprintf(stderr, "delay_req\n");
 				break;
-			case DELAY_RESP:
+			case TEST_DELAY_RESP:
 				fprintf(stderr, "delay_resp\n");
 				break;
-			case PTP_ANNOUNCE:
+			case TEST_ANNOUNCE:
 				fprintf(stderr, "announce\n");
+				break;
+			case TEST_PDELAY_REQ:
+				fprintf(stderr, "pdelay_req\n");
+				break;
+			case TEST_PDELAY_RESP:
+				fprintf(stderr, "pdelay_resp\n");
+				break;
+			case TEST_PDELAY_RESP_FOLLOW_UP:
+				fprintf(stderr, "pdelay_resp_follow_up\n");
 				break;
 			default:
 				fprintf(stderr, "other type\n");
