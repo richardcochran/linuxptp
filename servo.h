@@ -48,7 +48,7 @@ enum servo_state {
 	SERVO_UNLOCKED,
 
 	/**
-	 * The is ready to track and requests a clock jump to
+	 * The servo is ready to track and requests a clock jump to
 	 * immediately correct the estimated offset.
 	 */
 	SERVO_JUMP,
