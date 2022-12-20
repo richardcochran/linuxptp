@@ -119,10 +119,10 @@ command line option.
 
 .TP
 .B first_step_threshold
-The maximum offset, specified in seconds, that the servo will correct
-by changing the clock frequency instead of stepping the clock. This is
-only applied on the first update. When set to 0.0, the servo will not
-step the clock on start.
+The maximum offset, specified in seconds, that the servo will correct by
+changing the clock frequency (phase when using nullf servo) instead of stepping
+the clock. This is only applied on the first update. When set to 0.0, the servo
+will not step the clock on start.
 The default is 0.00002 (20 microseconds).
 .TP
 .B free_running

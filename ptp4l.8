@@ -591,18 +591,18 @@ the PI controller from the sync interval.
 The default is 0.3.
 .TP
 .B step_threshold
-The maximum offset the servo will correct by changing the clock
-frequency instead of stepping the clock. When set to 0.0, the servo will
-never step the clock except on start. It's specified in seconds.
+The maximum offset the servo will correct by changing the clock frequency (phase
+when using nullf servo) instead of stepping the clock. When set to 0.0, the
+servo will never step the clock except on start. It's specified in seconds.
 The default is 0.0.
 This option used to be called
 .BR pi_offset_const .
 .TP
 .B first_step_threshold
-The maximum offset the servo will correct by changing the clock
-frequency instead of stepping the clock. This is only applied on the first
-update. It's specified in seconds. When set to 0.0, the servo won't step
-the clock on start.
+The maximum offset the servo will correct by changing the clock frequency (phase
+when using nullf servo) instead of stepping the clock. This is only applied on
+the first update. It's specified in seconds. When set to 0.0, the servo won't
+step the clock on start.
 The default is 0.00002 (20 microseconds).
 This option used to be called
 .BR pi_f_offset_const .
