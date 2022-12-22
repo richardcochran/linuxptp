@@ -30,4 +30,6 @@
 	(type *)( (char *)__mptr - offsetof(type, member) );	\
 })
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 #endif

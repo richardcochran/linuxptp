@@ -55,50 +55,94 @@ struct raw {
 	int vlan;
 };
 
-#define OP_AND  (BPF_ALU | BPF_AND | BPF_K)
-#define OP_JEQ  (BPF_JMP | BPF_JEQ | BPF_K)
-#define OP_JUN  (BPF_JMP | BPF_JA)
-#define OP_LDB  (BPF_LD  | BPF_B   | BPF_ABS)
-#define OP_LDH  (BPF_LD  | BPF_H   | BPF_ABS)
-#define OP_RETK (BPF_RET | BPF_K)
-
 #define PTP_GEN_BIT 0x08 /* indicates general message, if set in message type */
-
-#define N_RAW_FILTER    12
-#define RAW_FILTER_TEST 9
 
 #define PRP_MIN_PACKET_LEN 70
 #define PRP_TRAILER_LEN 6
 
-static struct sock_filter raw_filter[N_RAW_FILTER] = {
-	{OP_LDH,  0, 0, OFF_ETYPE   },
-	{OP_JEQ,  0, 4, ETH_P_8021Q          }, /*f goto non-vlan block*/
-	{OP_LDH,  0, 0, OFF_ETYPE + 4        },
-	{OP_JEQ,  0, 7, ETH_P_1588           }, /*f goto reject*/
-	{OP_LDB,  0, 0, ETH_HLEN + VLAN_HLEN },
-	{OP_JUN,  0, 0, 2                    }, /*goto test general bit*/
-	{OP_JEQ,  0, 4, ETH_P_1588  }, /*f goto reject*/
-	{OP_LDB,  0, 0, ETH_HLEN    },
-	{OP_AND,  0, 0, PTP_GEN_BIT }, /*test general bit*/
-	{OP_JEQ,  0, 1, 0           }, /*0,1=accept event; 1,0=accept general*/
-	{OP_RETK, 0, 0, 1500        }, /*accept*/
-	{OP_RETK, 0, 0, 0           }, /*reject*/
+/*
+ * tcpdump -d \
+ * '   (ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 == 0x8) '\
+ * 'or (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 == 0x8) '
+ *
+ * (000) ldh      [12]
+ * (001) jeq      #0x8100          jt 2    jf 7
+ * (002) ldh      [16]
+ * (003) jeq      #0x88f7          jt 4    jf 12
+ * (004) ldb      [18]
+ * (005) and      #0x8
+ * (006) jeq      #0x8             jt 11   jf 12
+ * (007) jeq      #0x88f7          jt 8    jf 12
+ * (008) ldb      [14]
+ * (009) and      #0x8
+ * (010) jeq      #0x8             jt 11   jf 12
+ * (011) ret      #262144
+ * (012) ret      #0
+*/
+static struct sock_filter raw_filter_vlan_norm_general[] = {
+	{ 0x28, 0, 0, 0x0000000c },
+	{ 0x15, 0, 5, 0x00008100 },
+	{ 0x28, 0, 0, 0x00000010 },
+	{ 0x15, 0, 8, 0x000088f7 },
+	{ 0x30, 0, 0, 0x00000012 },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 4, 5, 0x00000008 },
+	{ 0x15, 0, 4, 0x000088f7 },
+	{ 0x30, 0, 0, 0x0000000e },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 0, 1, 0x00000008 },
+	{ 0x6, 0, 0, 0x00040000 },
+	{ 0x6, 0, 0, 0x00000000 },
+};
+
+/*
+ * tcpdump -d \
+ *  '   (ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 != 0x8) '\
+ *  'or (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 != 0x8) '
+ *
+ * (000) ldh      [12]
+ * (001) jeq      #0x8100          jt 2    jf 7
+ * (002) ldh      [16]
+ * (003) jeq      #0x88f7          jt 4    jf 12
+ * (004) ldb      [18]
+ * (005) and      #0x8
+ * (006) jeq      #0x8             jt 12   jf 11
+ * (007) jeq      #0x88f7          jt 8    jf 12
+ * (008) ldb      [14]
+ * (009) and      #0x8
+ * (010) jeq      #0x8             jt 12   jf 11
+ * (011) ret      #262144
+ * (012) ret      #0
+ */
+static struct sock_filter raw_filter_vlan_norm_event[] = {
+	{ 0x28, 0, 0, 0x0000000c },
+	{ 0x15, 0, 5, 0x00008100 },
+	{ 0x28, 0, 0, 0x00000010 },
+	{ 0x15, 0, 8, 0x000088f7 },
+	{ 0x30, 0, 0, 0x00000012 },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 5, 4, 0x00000008 },
+	{ 0x15, 0, 4, 0x000088f7 },
+	{ 0x30, 0, 0, 0x0000000e },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 1, 0, 0x00000008 },
+	{ 0x6, 0, 0, 0x00040000 },
+	{ 0x6, 0, 0, 0x00000000 },
 };
 
 static int raw_configure(int fd, int event, int index,
 			 unsigned char *addr1, unsigned char *addr2, int enable)
 {
-	int err1, err2, filter_test, option;
+	int err1, err2, option;
 	struct packet_mreq mreq;
-	struct sock_fprog prg = { N_RAW_FILTER, raw_filter };
+	struct sock_fprog prg;
 
-	filter_test = RAW_FILTER_TEST;
 	if (event) {
-		raw_filter[filter_test].jt = 0;
-		raw_filter[filter_test].jf = 1;
+		prg.len = ARRAY_SIZE(raw_filter_vlan_norm_event);
+		prg.filter = raw_filter_vlan_norm_event;
 	} else {
-		raw_filter[filter_test].jt = 1;
-		raw_filter[filter_test].jf = 0;
+		prg.len = ARRAY_SIZE(raw_filter_vlan_norm_general);
+		prg.filter = raw_filter_vlan_norm_general;
 	}
 
 	if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &prg, sizeof(prg))) {
