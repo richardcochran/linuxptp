@@ -395,6 +395,20 @@ struct tlv_extra {
 	};
 };
 
+/* Organizationally Unique Identifiers */
+#define ITU_T_COMMITTEE 0x00, 0x19, 0xA7
+extern uint8_t itu_t_id[3];
+
+struct msg_interface_rate_tlv {
+       Enumeration16 type;
+       UInteger16    length;
+       Octet         id[3];
+       Octet         subtype[3];
+       UInteger64    interfaceBitPeriod;
+       UInteger16    numberOfBitsBeforeTimestamp;
+       UInteger16    numberOfBitsAfterTimestamp;
+} PACKED;
+
 /**
  * Allocates a new tlv_extra structure.
  * @return  Pointer to a new structure on success or NULL otherwise.

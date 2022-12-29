@@ -1854,6 +1854,7 @@ int port_initialize(struct port *p)
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
 	p->min_neighbor_prop_delay = config_get_int(cfg, p->name, "min_neighbor_prop_delay");
 	p->delay_response_timeout  = config_get_int(cfg, p->name, "delay_response_timeout");
+	p->iface_rate_tlv 	   = config_get_int(cfg, p->name, "interface_rate_tlv");
 
 	if (config_get_int(cfg, p->name, "asCapable") == AS_CAPABLE_TRUE) {
 		p->asCapable = ALWAYS_CAPABLE;

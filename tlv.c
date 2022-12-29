@@ -35,6 +35,7 @@
 	(tlv->length < sizeof(struct type) - sizeof(struct TLV))
 
 uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };
+uint8_t itu_t_id[3] = { ITU_T_COMMITTEE };
 
 static TAILQ_HEAD(tlv_pool, tlv_extra) tlv_pool =
 	TAILQ_HEAD_INITIALIZER(tlv_pool);
