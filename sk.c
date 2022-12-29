@@ -205,6 +205,77 @@ failed:
 	return -1;
 }
 
+int sk_get_if_info(const char *name, struct sk_if_info *if_info)
+{
+#ifdef ETHTOOL_GLINKSETTINGS
+	struct ifreq ifr;
+	int fd, err;
+
+	struct {
+		struct ethtool_link_settings req;
+		/*
+		 * link_mode_data consists of supported[], advertising[],
+		 * lp_advertising[] with size up to 127 each.
+		 * The actual size is provided by the kernel.
+		 */
+		__u32 link_mode_data[3 * 127];
+	} ecmd;
+
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&ecmd, 0, sizeof(ecmd));
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		goto failed;
+	}
+
+	ecmd.req.cmd = ETHTOOL_GLINKSETTINGS;
+
+	strncpy(ifr.ifr_name, name, IFNAMSIZ - 1);
+	ifr.ifr_data = (char *) &ecmd;
+
+	/* Handshake with kernel to determine number of words for link
+	 * mode bitmaps. When requested number of bitmap words is not
+	 * the one expected by kernel, the latter returns the integer
+	 * opposite of what it is expecting. We request length 0 below
+	 * (aka. invalid bitmap length) to get this info.
+	 */
+	err = ioctl(fd, SIOCETHTOOL, &ifr);
+	if (err < 0) {
+		pr_err("ioctl SIOCETHTOOL failed: %m");
+		close(fd);
+		goto failed;
+	}
+
+	if (ecmd.req.link_mode_masks_nwords >= 0 ||
+			ecmd.req.cmd != ETHTOOL_GLINKSETTINGS) {
+		return 1;
+	}
+	ecmd.req.link_mode_masks_nwords = -ecmd.req.link_mode_masks_nwords;
+
+	err = ioctl(fd, SIOCETHTOOL, &ifr);
+	if (err < 0) {
+		pr_err("ioctl SIOCETHTOOL failed: %m");
+		close(fd);
+		goto failed;
+	}
+
+	close(fd);
+
+	/* copy the necessary data to sk_info */
+	memset(if_info, 0, sizeof(struct sk_if_info));
+	if_info->valid = 1;
+	if_info->speed = ecmd.req.speed;
+
+	return 0;
+failed:
+#endif
+	/* clear data and ensure it is not marked valid */
+	memset(if_info, 0, sizeof(struct sk_if_info));
+	return -1;
+}
+
+
 static int sk_interface_guidaddr(const char *name, unsigned char *guid)
 {
 	char file_name[64], buf[64], addr[8];
