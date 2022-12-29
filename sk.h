@@ -54,10 +54,12 @@ struct sk_ts_info {
  * Contains interface information returned by the GLINKSETTINGS ioctl.
  * @valid:            set to non-zero when the info struct contains valid data.
  * @speed:            interface speed.
+ * @iface_bit_period  interface bit period in attoseconds per bit.
  */
 struct sk_if_info {
 	bool valid;
 	uint32_t speed;
+	uint64_t iface_bit_period;
 };
 
 /**

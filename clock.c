@@ -1005,11 +1005,13 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		memset(ts_label, 0, sizeof(ts_label));
 		if (!rtnl_get_ts_device(interface_name(iface), ts_label))
 			interface_set_label(iface, ts_label);
+		/* Interface speed information */
+		interface_get_ifinfo(iface);
 		interface_get_tsinfo(iface);
 		if (interface_tsinfo_valid(iface) &&
-		    !interface_tsmodes_supported(iface, required_modes)) {
+				!interface_tsmodes_supported(iface, required_modes)) {
 			pr_err("interface '%s' does not support requested timestamping mode",
-			       interface_name(iface));
+					interface_name(iface));
 			return NULL;
 		}
 	}

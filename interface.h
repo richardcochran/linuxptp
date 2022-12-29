@@ -41,6 +41,13 @@ void interface_destroy(struct interface *iface);
 int interface_get_tsinfo(struct interface *iface);
 
 /**
+ * Populate the time stamping information of a given interface.
+ * @param iface  The interface of interest.
+ * @return       zero on success, negative on failure.
+ */
+int interface_get_ifinfo(struct interface *iface);
+
+/**
  * Obtain the time stamping label of a network interface.  This can be
  * different from the name of the interface when bonding is in effect.
  *
@@ -76,6 +83,13 @@ void interface_set_label(struct interface *iface, const char *label);
  * @return       True if the time stamping information is valid, false otherwise.
  */
 bool interface_tsinfo_valid(struct interface *iface);
+
+/**
+ * Tests whether an interface's interface information is valid or not.
+ * @param iface  The interface of interest.
+ * @return       True if the interface information is valid, false otherwise.
+ */
+bool interface_ifinfo_valid(struct interface *iface);
 
 /**
  * Tests whether an interface supports a set of given time stamping modes.

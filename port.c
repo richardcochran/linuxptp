@@ -2741,6 +2741,11 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 		p->link_status = link_state;
 	} else {
 		p->link_status = link_state | LINK_STATE_CHANGED;
+		/* Update Interface speed information on Link up*/
+		if (linkup) {
+			interface_get_ifinfo(p->iface);
+		}
+
 		pr_notice("%s: link %s", p->log_name, linkup ? "up" : "down");
 	}
 

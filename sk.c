@@ -267,6 +267,8 @@ int sk_get_if_info(const char *name, struct sk_if_info *if_info)
 	if_info->valid = 1;
 	if_info->speed = ecmd.req.speed;
 
+	/* Megabits per second converted to attoseconds per bit */
+	if_info->iface_bit_period = (1000000000000ULL/if_info->speed);
 	return 0;
 failed:
 #endif
