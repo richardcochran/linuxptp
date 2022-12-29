@@ -103,10 +103,37 @@ static int process_interval_request(struct port *p,
 	return 0;
 }
 
+static int process_interface_rate(struct port *p,
+                                 struct msg_interface_rate_tlv *r)
+{
+       Integer64 delayAsymmetry;
+       double    nsDelay;
+       Integer64 slaveBitPeriod;
+       Integer64 masterBitPeriod;
+
+       if (p->iface_rate_tlv && interface_ifinfo_valid(p->iface)) {
+               slaveBitPeriod = interface_bitperiod(p->iface);
+               masterBitPeriod = r->interfaceBitPeriod;
+
+               /* Delay Asymmetry Calculation */
+               nsDelay = (double)(masterBitPeriod - slaveBitPeriod) / (2 * 1.0e9);
+               delayAsymmetry =
+                       (r->numberOfBitsAfterTimestamp - r->numberOfBitsBeforeTimestamp)  * nsDelay;
+
+               if (delayAsymmetry != p->portAsymmetry) {
+                       p->asymmetry += ((delayAsymmetry - p->portAsymmetry) << 16);
+                       p->portAsymmetry = delayAsymmetry;
+               }
+       }
+       return 0;
+}
+
 int process_signaling(struct port *p, struct ptp_message *m)
 {
 	struct tlv_extra *extra;
+	struct organization_tlv *org;
 	struct msg_interval_req_tlv *r;
+	struct msg_interface_rate_tlv *rate;
 	int err = 0, result;
 
 	switch (p->state) {
@@ -160,11 +187,17 @@ int process_signaling(struct port *p, struct ptp_message *m)
 			break;
 
 		case TLV_ORGANIZATION_EXTENSION:
-			r = (struct msg_interval_req_tlv *) extra->tlv;
+			org = (struct organization_tlv *)extra->tlv;
 
-			if (0 == memcmp(r->id, ieee8021_id, sizeof(ieee8021_id)) &&
-			    r->subtype[0] == 0 && r->subtype[1] == 0 && r->subtype[2] == 2)
+			if (0 == memcmp(org->id, ieee8021_id, sizeof(ieee8021_id)) &&
+			    org->subtype[0] == 0 && org->subtype[1] == 0 && org->subtype[2] == 2) {
+				r = (struct msg_interval_req_tlv *) extra->tlv;
 				err = process_interval_request(p, r);
+			} else if (0 == memcmp(org->id, itu_t_id, sizeof(itu_t_id)) &&
+				   org->subtype[0] == 0 && org->subtype[1] == 0 && org->subtype[2] == 2) {
+				rate = (struct msg_interface_rate_tlv *) extra->tlv;
+				err = process_interface_rate(p, rate);
+			}
 			break;
 		}
 	}

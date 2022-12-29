@@ -94,3 +94,8 @@ int interface_get_vclock(struct interface *iface)
 {
 	return iface->vclock;
 }
+
+uint64_t interface_bitperiod(struct interface *iface)
+{
+	return iface->if_info.iface_bit_period;
+}

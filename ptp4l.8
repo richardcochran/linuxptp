@@ -697,6 +697,13 @@ The default is 0 (disabled).
 Print messages to the system log if enabled.
 The default is 1 (enabled).
 .TP
+.B interface_rate_tlv
+When the client and server are operating are operating at different interface rate,
+delay asymmetry caused due to different interface rate needs to be compensated.
+The server sends its interface rate using interface rate TLV
+as per G.8275.2 Annex D.
+The default is 0 (does not support interface rate tlv).
+.TP
 .B summary_interval
 The time interval in which are printed summary statistics of the clock. It is
 specified as a power of two in seconds. The statistics include offset root mean

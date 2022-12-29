@@ -146,6 +146,7 @@ struct port {
 	UInteger8	    delay_response_counter;
 	UInteger8	    delay_response_timeout;
 	bool		    iface_rate_tlv;
+	Integer64	    portAsymmetry;
 	struct PortStats    stats;
 	struct PortServiceStats    service_stats;
 	/* foreignMasterDS */

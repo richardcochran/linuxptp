@@ -113,4 +113,11 @@ void interface_set_vclock(struct interface *iface, int vclock);
  */
 int interface_get_vclock(struct interface *iface);
 
+/**
+ * Obtains the interface bit period based on the speed.
+ * @param iface  The interface of interest.
+ * @return       return interface bitperiod in atto seconds.
+ */
+uint64_t interface_bitperiod(struct interface *iface);
+
 #endif
