@@ -185,6 +185,7 @@ int port_is_enabled(struct port *p);
 void port_link_status(void *ctx, int index, int linkup);
 int port_set_announce_tmo(struct port *p);
 int port_set_delay_tmo(struct port *p);
+int port_set_sync_rx_tmo(struct port *p);
 int port_set_qualification_tmo(struct port *p);
 void port_show_transition(struct port *p, enum port_state next,
 			  enum fsm_event event);

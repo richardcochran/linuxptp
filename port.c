@@ -1231,7 +1231,7 @@ int port_set_qualification_tmo(struct port *p)
 		       1+clock_steps_removed(p->clock), p->logAnnounceInterval);
 }
 
-static int port_set_sync_rx_tmo(struct port *p)
+int port_set_sync_rx_tmo(struct port *p)
 {
 	return set_tmo_log(p->fda.fd[FD_SYNC_RX_TIMER],
 			   p->syncReceiptTimeout, p->logSyncInterval);

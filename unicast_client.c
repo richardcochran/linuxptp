@@ -502,6 +502,7 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 			}
 			unicast_client_set_renewal(p, ucma, g->durationField);
 			clock_sync_interval(p->clock, g->logInterMessagePeriod);
+			port_set_sync_rx_tmo(p);
 			break;
 		}
 		break;
