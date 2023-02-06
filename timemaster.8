@@ -17,9 +17,9 @@ timemaster - run NTP with PTP as reference clocks
 \fBtimemaster\fR is a program that uses \fBptp4l\fR and \fBphc2sys\fR in
 combination with \fBchronyd\fR or \fBntpd\fR to synchronize the system clock to
 NTP and PTP time sources. The PTP time is provided by \fBphc2sys\fR and
-\fBptp4l\fR via SHM reference clocks to \fBchronyd\fR/\fBntpd\fR, which
-can compare all time sources and use the best sources to synchronize the system
-clock.
+\fBptp4l\fR via SOCK reference clock to \fBchronyd\fR or SHM reference clock to
+\fBntpd\fR, which can compare all time sources and use the best sources to
+synchronize the system clock.
 
 On start, \fBtimemaster\fR reads a configuration file that specifies the NTP
 and PTP time sources, checks which network interfaces have and share a PTP
@@ -154,14 +154,14 @@ specified also in other PTP domains and virtual clocks are disabled, only the
 
 .TP
 .B ntp_poll
-Specify the polling interval of the NTP SHM reference clock reading samples
+Specify the polling interval of the SOCK/SHM reference clock reading samples
 from \fBptp4l\fR or \fBphc2sys\fR. It's specified as a power of two in seconds.
 The default value is 2 (4 seconds).
 
 .TP
 .B phc2sys_poll
 Specify the polling interval used by \fBphc2sys\fR to read a PTP clock
-synchronized by \fBptp4l\fR and update the SHM sample for
+synchronized by \fBptp4l\fR and update the SOCK/SHM sample for
 \fBchronyd\fR/\fBntpd\fR. It's specified as a power of two in seconds. The
 default value is 0 (1 second).
 

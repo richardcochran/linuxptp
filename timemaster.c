@@ -674,10 +674,25 @@ static char **get_phc2sys_command(struct program_config *config,
 		      xstrdup("-z"), xstrdup(uds_path),
 		      xstrdup("-t"), xstrdup(message_tag),
 		      xstrdup("-n"), string_newf("%d", domain),
-		      xstrdup("-E"), xstrdup("ntpshm"),
-		      xstrdup("-M"), string_newf("%d", refclock_id +
-						 tconfig->first_shm_segment),
-		      NULL);
+		      xstrdup("-E"), NULL);
+
+	switch (tconfig->ntp_program) {
+	case CHRONYD:
+		parray_extend((void ***)&command,
+			      xstrdup("refclock_sock"),
+			      xstrdup("--refclock_sock_address"),
+			      string_newf("%s/chrony.SOCK%d",
+					  tconfig->rundir, refclock_id),
+			      NULL);
+		break;
+	case NTPD:
+		parray_extend((void ***)&command,
+			      xstrdup("ntpshm"), xstrdup("-M"),
+			      string_newf("%d", refclock_id +
+					  tconfig->first_shm_segment),
+			      NULL);
+		break;
+	}
 
 	return command;
 }
@@ -705,21 +720,24 @@ static void add_command(char **command, int command_group,
 	parray_append((void ***)&script->command_groups, group);
 }
 
-static void add_refclock_source(int refclock_id, int poll, int dpoll,
+static void add_refclock_source(int refclock_id, int poll, int phc_poll,
 				double delay, char *ntp_options, char *prefix,
 				struct timemaster_config *config,
 				char **ntp_config)
 {
-	int shm_segment = refclock_id + config->first_shm_segment;
+	int filter, shm_segment = refclock_id + config->first_shm_segment;
 	char *refid = get_refid(prefix, refclock_id);
 
 	switch (config->ntp_program) {
 	case CHRONYD:
+		/* set filter to the expected number of samples per poll */
+		filter = (poll >= phc_poll) ? 1 << (poll - phc_poll) : 1;
 		string_appendf(ntp_config,
-			       "refclock SHM %d poll %d dpoll %d "
-			       "refid %s precision 1.0e-9 delay %.1e %s\n",
-			       shm_segment, poll, dpoll, refid, delay,
-			       ntp_options);
+			       "refclock SOCK %s/chrony.SOCK%d poll %d "
+			       "filter %d refid %s precision 1.0e-9 "
+			       "delay %.1e %s\n",
+			       config->rundir, refclock_id, poll,
+			       filter, refid, delay, ntp_options);
 		break;
 	case NTPD:
 		string_appendf(ntp_config,
@@ -922,10 +940,22 @@ static int add_ptp_source(struct ptp_domain *source,
 						    interfaces, NULL, 0);
 			add_command(command, (*command_group)++, script);
 
-			string_appendf(&config_file->content,
-				       "clock_servo ntpshm\n"
-				       "ntpshm_segment %d\n",
-				       *refclock_id + config->first_shm_segment);
+			switch (config->ntp_program) {
+			case CHRONYD:
+				string_appendf(&config_file->content,
+					       "clock_servo refclock_sock\n"
+					       "refclock_sock_address "
+					       "%s/chrony.SOCK%d\n",
+					       config->rundir, *refclock_id);
+				break;
+			case NTPD:
+				string_appendf(&config_file->content,
+					       "clock_servo ntpshm\n"
+					       "ntpshm_segment %d\n",
+					       *refclock_id +
+					       config->first_shm_segment);
+				break;
+			}
 		}
 
 		parray_append((void ***)&script->configs, config_file);
