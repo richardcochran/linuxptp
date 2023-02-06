@@ -527,10 +527,10 @@ The default is 0 (disabled).
 .B clock_servo
 The servo which is used to synchronize the local clock. Valid values
 are "pi" for a PI controller, "linreg" for an adaptive controller
-using linear regression, "ntpshm" for the NTP SHM reference clock to
-allow another process to synchronize the local clock, and "nullf"
-for a servo that
-always dials frequency offset zero (for use in SyncE nodes).
+using linear regression, "ntpshm" and "refclock_sock" for the NTP SHM and
+chrony SOCK reference clocks respectively to allow another process to
+synchronize the local clock, and "nullf" for a servo that always dials
+frequency offset zero (for use in SyncE nodes).
 The default is "pi."
 .TP
 .B clock_type
@@ -629,6 +629,10 @@ The initial path delay of the clock in nanoseconds used for synchronization of
 the clock before the delay is measured using the E2E or P2P delay mechanism. If
 set to 0, the clock will not be updated until the delay is measured.
 The default is 0.
+.TP
+.B refclock_sock_address
+The address of the UNIX domain socket to be used by the refclock_sock servo.
+The default is /var/run/refclock.ptp.sock.
 .TP
 .B ntpshm_segment
 The number of the SHM segment used by ntpshm servo.

@@ -125,8 +125,8 @@ option. This option may be given up to 128 times.
 .BI \-E " servo"
 Specify which clock servo should be used. Valid values are pi for a PI
 controller, linreg for an adaptive controller using linear regression, and
-ntpshm for the NTP SHM reference clock to allow another process to synchronize
-the local clock.
+ntpshm and refclock_sock for the NTP SHM and chrony SOCK reference clocks
+respectively to allow another process to synchronize the local clock.
 The default is pi.
 .TP
 .BI \-P " kp"
@@ -381,6 +381,11 @@ seconds. The value of 0.0 disables stepping on start. The default is
 Same as option
 .B \-F
 (see above).
+
+.TP
+.B refclock_sock_address
+The address of the UNIX domain socket to be used by the refclock_sock servo.
+The default is /var/run/refclock.ptp.sock.
 
 .TP
 .B ntpshm_segment

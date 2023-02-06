@@ -1140,6 +1140,9 @@ int main(int argc, char *argv[])
 			} else if (!strcasecmp(optarg, "ntpshm")) {
 				config_set_int(cfg, "clock_servo",
 					       CLOCK_SERVO_NTPSHM);
+			} else if (!strcasecmp(optarg, "refclock_sock")) {
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_REFCLOCK_SOCK);
 			} else {
 				fprintf(stderr,
 					"invalid servo name %s\n", optarg);
