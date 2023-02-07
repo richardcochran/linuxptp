@@ -454,6 +454,12 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 		}
 		return;
 	}
+	if (abs(g->logInterMessagePeriod) > 30) {
+		pr_warning("%s: ignore bogus unicast message interval 2^%d",
+			   p->log_name, g->logInterMessagePeriod);
+		return;
+	}
+
 	pr_debug("%s: unicast %s granted for %u sec",
 		 p->log_name, msg_type_string(mtype), g->durationField);
 

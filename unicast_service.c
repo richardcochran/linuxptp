@@ -327,6 +327,10 @@ int unicast_service_add(struct port *p, struct ptp_message *m,
 		return SERVICE_DENIED;
 	}
 
+	if (abs(req->logInterMessagePeriod) > 30) {
+		return SERVICE_DENIED;
+	}
+
 	LIST_FOREACH(itmp, &p->unicast_service->intervals, list) {
 		/*
 		 * Remember the interval of interest.
