@@ -20,6 +20,14 @@ struct lstab;
 struct lstab *lstab_create(const char *filename);
 
 /**
+ * Updates an instance of a leap second table from the associated file.
+ * @param lstab  Pointer to lstab to be updated.
+ * @return 0 if lstab is up to date, don't use a file or was successfully updated.
+ *         non-zero - on error
+ */
+int update_leapsecond_table(struct lstab *lstab);
+
+/**
  * Destroys a leap second table instance.
  * @param lstab  A pointer obtained via lstab_create().
  */

@@ -6,6 +6,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "lstab.h"
 
@@ -45,6 +46,8 @@ struct epoch_marker {
 struct lstab {
 	struct epoch_marker lstab[N_LEAPS];
 	uint64_t expiration_utc;
+	const char *leapfile;
+	time_t lsfile_mtime;
 	int length;
 };
 
@@ -157,6 +160,8 @@ static int lstab_read(struct lstab *lstab, const char *name)
 struct lstab *lstab_create(const char *filename)
 {
 	struct lstab *lstab = calloc(1, sizeof(*lstab));
+	struct stat statbuf;
+	int err;
 
 	if (!lstab) {
 		return NULL;
@@ -166,10 +171,52 @@ struct lstab *lstab_create(const char *filename)
 			free(lstab);
 			return NULL;
 		}
+		lstab->leapfile = filename;
+
+		err = stat(lstab->leapfile, &statbuf);
+		if (err) {
+			fprintf(stderr, "file status failed on %s: %m",
+				lstab->leapfile);
+			free(lstab);
+			return NULL;
+		}
+
+		lstab->lsfile_mtime = statbuf.st_mtim.tv_sec;
+
 	} else {
 		lstab_init(lstab);
 	}
 	return lstab;
+}
+
+int update_leapsecond_table(struct lstab *lstab)
+{
+	const char* leapfile;
+	struct stat statbuf;
+	int err;
+
+	if (!lstab->leapfile) {
+		return 0;
+	}
+	err = stat(lstab->leapfile, &statbuf);
+	if (err) {
+		fprintf(stderr, "file status failed on %s: %m",
+			lstab->leapfile);
+		return -1;
+	}
+	if (lstab->lsfile_mtime == statbuf.st_mtim.tv_sec) {
+		return 0;
+	}
+	printf("updating leap seconds file\n");
+	leapfile = lstab->leapfile;
+	lstab_destroy(lstab);
+
+	lstab = lstab_create(leapfile);
+	if (!lstab) {
+		return -1;
+	}
+
+	return 0;
 }
 
 void lstab_destroy(struct lstab *lstab)
@@ -181,6 +228,11 @@ enum lstab_result lstab_utc2tai(struct lstab *lstab, uint64_t utctime,
 				int *tai_offset)
 {
 	int epoch = -1, index, next;
+
+	if (update_leapsecond_table(lstab)) {
+		fprintf(stderr, "Failed to update leap seconds table");
+		return LSTAB_UNKNOWN;
+	}
 
 	for (index = lstab->length - 1; index > -1; index--) {
 		if (utctime >= lstab->lstab[index].utc) {
