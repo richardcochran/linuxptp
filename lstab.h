@@ -42,6 +42,12 @@ enum lstab_result {
 	LSTAB_UNKNOWN,
 
 	/**
+	 * The given lstab is past its expiry date and the tai_offset return
+	 * value may not be correct.
+	 */
+	LSTAB_EXPIRED,
+
+	/**
 	 * The given UTC value is ambiguous.  The corresponding TAI time is either
 	 *
 	 *     utctime + tai_offset

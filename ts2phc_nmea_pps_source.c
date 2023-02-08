@@ -188,7 +188,7 @@ static int ts2phc_nmea_pps_source_getppstime(struct ts2phc_pps_source *src,
 	struct ts2phc_nmea_pps_source *m =
 		container_of(src, struct ts2phc_nmea_pps_source, pps_source);
 	tmv_t delay_t1, delay_t2, duration_since_rmc, local_t1, local_t2, rmc;
-	int lstab_error = 0, tai_offset = 0;
+	int lstab_error = -1, tai_offset = 0;
 	enum lstab_result result;
 	struct timespec now;
 	int64_t utc_time;
@@ -237,11 +237,12 @@ static int ts2phc_nmea_pps_source_getppstime(struct ts2phc_pps_source *src,
 		break;
 	case LSTAB_UNKNOWN:
 		pr_err("nmea: unable to find utc time in leap second table");
-		lstab_error = -1;
+		break;
+	case LSTAB_EXPIRED:
+		pr_err("nmea: utc time is past leap second table expiry date");
 		break;
 	case LSTAB_AMBIGUOUS:
 		pr_err("nmea: utc time stamp is ambiguous");
-		lstab_error = -1;
 		break;
 	}
 	ts->tv_sec += tai_offset;

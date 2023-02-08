@@ -182,10 +182,6 @@ enum lstab_result lstab_utc2tai(struct lstab *lstab, uint64_t utctime,
 {
 	int epoch = -1, index, next;
 
-	if (utctime > lstab->expiration_utc) {
-		return LSTAB_UNKNOWN;
-	}
-
 	for (index = lstab->length - 1; index > -1; index--) {
 		if (utctime >= lstab->lstab[index].utc) {
 			epoch = index;
@@ -203,5 +199,10 @@ enum lstab_result lstab_utc2tai(struct lstab *lstab, uint64_t utctime,
 	if (next < lstab->length && utctime == lstab->lstab[next].utc - 1) {
 		return LSTAB_AMBIGUOUS;
 	}
+
+	if (utctime > lstab->expiration_utc) {
+		return LSTAB_EXPIRED;
+	}
+
 	return LSTAB_OK;
 }
