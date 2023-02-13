@@ -555,7 +555,9 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
-		clockadj_step(clock->clkid, -offset);
+		if (clockadj_step(clock->clkid, -offset)) {
+			goto servo_unlock;
+		}
 		if (clock->sanity_check)
 			clockcheck_step(clock->sanity_check, -offset);
 		/* Fall through. */
@@ -564,7 +566,9 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 		if (clock->sanity_check)
 			clockcheck_freq(clock->sanity_check,
 					clockadj_get_freq(clock->clkid));
-		clockadj_set_freq(clock->clkid, -ppb);
+		if (clockadj_set_freq(clock->clkid, -ppb)) {
+			goto servo_unlock;
+		}
 		if (clock->clkid == CLOCK_REALTIME)
 			sysclk_set_sync();
 		if (clock->sanity_check)
@@ -587,6 +591,11 @@ report:
 				offset, state, ppb);
 		}
 	}
+	return;
+
+servo_unlock:
+	servo_reset(clock->servo);
+	clock->servo_state = SERVO_UNLOCKED;
 }
 
 static void enable_pps_output(clockid_t src)
