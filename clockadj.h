@@ -33,8 +33,9 @@ void clockadj_init(clockid_t clkid);
  * Set clock's frequency offset.
  * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @param freq  The frequency offset in parts per billion (ppb).
+ * @return      0 on success, -1 on failure
  */
-void clockadj_set_freq(clockid_t clkid, double freq);
+int clockadj_set_freq(clockid_t clkid, double freq);
 
 /**
  * Read clock's frequency offset.
@@ -47,15 +48,17 @@ double clockadj_get_freq(clockid_t clkid);
  * Set clock's phase offset.
  * @param clkid  A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @param offset The phase offset in nanoseconds.
+ * @return       0 on success, -1 on failure
  */
-void clockadj_set_phase(clockid_t clkid, long offset);
+int clockadj_set_phase(clockid_t clkid, long offset);
 
 /**
  * Step clock's time.
  * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
  * @param step  The time step in nanoseconds.
+ * @return      0 on success, -1 on failure
  */
-void clockadj_step(clockid_t clkid, int64_t step);
+int clockadj_step(clockid_t clkid, int64_t step);
 
 /**
  * Read maximum frequency adjustment of the target clock.
