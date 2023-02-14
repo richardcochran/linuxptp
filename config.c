@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "as_capable.h"
 #include "bmc.h"
@@ -34,6 +35,8 @@
 #include "util.h"
 
 #include "test.h"
+#define UDS_FILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) /*0660*/
+#define UDS_RO_FILEMODE (UDS_FILEMODE|S_IROTH|S_IWOTH) /*0666*/
 
 struct interface {
 	STAILQ_ENTRY(interface) list;
@@ -142,6 +145,7 @@ static struct config_enum clock_servo_enu[] = {
 	{ "linreg", CLOCK_SERVO_LINREG },
 	{ "ntpshm", CLOCK_SERVO_NTPSHM },
 	{ "nullf",  CLOCK_SERVO_NULLF  },
+	{ "refclock_sock", CLOCK_SERVO_REFCLOCK_SOCK },
 	{ NULL, 0 },
 };
 
@@ -169,6 +173,7 @@ static struct config_enum delay_mech_enu[] = {
 	{ "Auto", DM_AUTO },
 	{ "E2E",  DM_E2E },
 	{ "P2P",  DM_P2P },
+	{ "NONE", DM_NO_MECHANISM },
 	{ NULL, 0 },
 };
 
@@ -251,7 +256,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
 	GLOB_ITEM_INT("free_running", 0, 0, 1),
-	PORT_ITEM_INT("freq_est_interval", 1, 0, INT_MAX),
+	PORT_ITEM_INT("freq_est_interval", 1, INT_MIN, INT_MAX),
 	GLOB_ITEM_INT("G.8275.defaultDS.localPriority", 128, 1, UINT8_MAX),
 	PORT_ITEM_INT("G.8275.portDS.localPriority", 128, 1, UINT8_MAX),
 	GLOB_ITEM_INT("gmCapable", 1, 0, 1),
@@ -264,6 +269,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("inhibit_delay_req", 0, 0, 1),
 	PORT_ITEM_INT("inhibit_multicast_service", 0, 0, 1),
 	GLOB_ITEM_INT("initial_delay", 0, 0, INT_MAX),
+	PORT_ITEM_INT("interface_rate_tlv", 0, 0, 1),
 	GLOB_ITEM_INT("kernel_leap", 1, 0, 1),
 	GLOB_ITEM_STR("leapfile", NULL),
 	PORT_ITEM_INT("logAnnounceInterval", 1, INT8_MIN, INT8_MAX),
@@ -286,6 +292,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("operLogPdelayReqInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("operLogSyncInterval", 0, INT8_MIN, INT8_MAX),
 	PORT_ITEM_INT("path_trace_enabled", 0, 0, 1),
+	PORT_ITEM_INT("phc_index", -1, -1, INT_MAX),
 	GLOB_ITEM_DBL("pi_integral_const", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_exponent", 0.4, -DBL_MAX, DBL_MAX),
 	GLOB_ITEM_DBL("pi_integral_norm_max", 0.3, DBL_MIN, 2.0),
@@ -299,6 +306,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_STR("productDescription", ";;"),
 	PORT_ITEM_STR("ptp_dst_mac", "01:1B:19:00:00:00"),
 	PORT_ITEM_STR("p2p_dst_mac", "01:80:C2:00:00:0E"),
+	GLOB_ITEM_STR("refclock_sock_address", "/var/run/refclock.ptp.sock"),
 	GLOB_ITEM_STR("revisionData", ";;"),
 	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),
 	PORT_ITEM_INT("serverOnly", 0, 0, 1),
@@ -323,15 +331,19 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_STR("ts2phc.nmea_remote_host", ""),
 	GLOB_ITEM_STR("ts2phc.nmea_remote_port", ""),
 	GLOB_ITEM_STR("ts2phc.nmea_serialport", "/dev/ttyS0"),
+	PORT_ITEM_INT("ts2phc.perout_phase", -1, 0, 999999999),
 	PORT_ITEM_INT("ts2phc.pin_index", 0, 0, INT_MAX),
 	GLOB_ITEM_INT("ts2phc.pulsewidth", 500000000, 1000000, 999000000),
+	GLOB_ITEM_STR("ts2phc.tod_source", "generic"),
 	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),
 	GLOB_ITEM_INT("twoStepFlag", 1, 0, 1),
 	GLOB_ITEM_INT("tx_timestamp_timeout", 10, 1, INT_MAX),
 	PORT_ITEM_INT("udp_ttl", 1, 1, 255),
 	PORT_ITEM_INT("udp6_scope", 0x0E, 0x00, 0x0F),
 	GLOB_ITEM_STR("uds_address", "/var/run/ptp4l"),
+	PORT_ITEM_INT("uds_file_mode", UDS_FILEMODE, 0, 0777),
 	GLOB_ITEM_STR("uds_ro_address", "/var/run/ptp4lro"),
+	PORT_ITEM_INT("uds_ro_file_mode", UDS_RO_FILEMODE, 0, 0777),
 	PORT_ITEM_INT("unicast_listen", 0, 0, 1),
 	PORT_ITEM_INT("unicast_master_table", 0, 0, INT_MAX),
 	PORT_ITEM_INT("unicast_req_duration", 3600, 10, INT_MAX),
@@ -358,6 +370,8 @@ static struct config_item *config_section_item(struct config *cfg,
 	fprintf(stderr, "%s\n", __func__);
 #endif
 	snprintf(buf, sizeof(buf), "%s.%s", section, name);
+	if (snprintf(buf, sizeof(buf), "%s.%s", section, name) >= sizeof(buf))
+		return NULL;
 	return hash_lookup(cfg->htab, buf);
 }
 
@@ -968,7 +982,11 @@ struct config *config_create(void)
 	for (i = 0; i < N_CONFIG_ITEMS; i++) {
 		ci = &config_tab[i];
 		ci->flags |= CFG_ITEM_STATIC;
-		snprintf(buf, sizeof(buf), "global.%s", ci->label);
+		if (snprintf(buf, sizeof(buf), "global.%s", ci->label) >=
+		    sizeof(buf)) {
+			fprintf(stderr, "option %s too long\n", ci->label);
+			goto fail;
+		}
 		if (hash_insert(cfg->htab, buf, ci)) {
 			fprintf(stderr, "duplicate item %s\n", ci->label);
 			goto fail;

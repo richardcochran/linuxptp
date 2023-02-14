@@ -722,7 +722,9 @@ static void clock_update_grandmaster(struct clock *c)
 #endif
 	memset(&c->cur, 0, sizeof(c->cur));
 	memset(c->ptl, 0, sizeof(c->ptl));
+
 	pds->parentPortIdentity.clockIdentity   = c->dds.clockIdentity;
+	/* Follow IEEE 1588 Table 30: Updates for state decision code M1 and M2 */
 	pds->parentPortIdentity.portNumber      = 0;
 	pds->grandmasterIdentity                = c->dds.clockIdentity;
 	pds->grandmasterClockQuality            = c->dds.clockQuality;
@@ -980,10 +982,11 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
 	char ts_label[IF_NAMESIZE], phc[32], *tmp;
 	enum timestamp_type timestamping;
-	int fadj = 0, max_adj = 0, sw_ts;
-	int phc_index, required_modes = 0;
+	int phc_index, conf_phc_index, required_modes = 0;
 	struct clock *c = &the_clock;
+	int max_adj = 0, sw_ts;
 	const char *uds_ifname;
+	double fadj = 0.0;
 	struct port *p;
 	unsigned char oui[OUI_LEN];
 	struct interface *iface;
@@ -1089,19 +1092,22 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		memset(ts_label, 0, sizeof(ts_label));
-		rtnl_get_ts_device(interface_name(iface), ts_label);
-		interface_set_label(iface, ts_label);
-		interface_ensure_tslabel(iface);
+		if (!rtnl_get_ts_device(interface_name(iface), ts_label))
+			interface_set_label(iface, ts_label);
+		/* Interface speed information */
+		interface_get_ifinfo(iface);
 		interface_get_tsinfo(iface);
 		if (interface_tsinfo_valid(iface) &&
-		    !interface_tsmodes_supported(iface, required_modes)) {
+				!interface_tsmodes_supported(iface, required_modes)) {
 			pr_err("interface '%s' does not support requested timestamping mode",
-			       interface_name(iface));
+					interface_name(iface));
 			return NULL;
 		}
 	}
 
 	iface = STAILQ_FIRST(&config->interfaces);
+
+	conf_phc_index = config_get_int(config, interface_name(iface), "phc_index");
 
 	/* determine PHC Clock index */
 	if (config_get_int(config, NULL, "free_running")) {
@@ -1112,6 +1118,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		if (1 != sscanf(phc_device, "/dev/ptp%d", &phc_index)) {
 			phc_index = -1;
 		}
+	} else if (conf_phc_index >= 0) {
+		phc_index = conf_phc_index;
 	} else if (interface_tsinfo_valid(iface)) {
 		phc_index = interface_phc_index(iface);
 	} else {
@@ -1227,13 +1235,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->time_flags = c->utc_timescale ? 0 : PTP_TIMESCALE;
 
 	if (c->clkid != CLOCK_INVALID) {
-		fadj = (int) clockadj_get_freq(c->clkid);
-		/* Due to a bug in older kernels, the reading may silently fail
-		   and return 0. Set the frequency back to make sure fadj is
-		   the actual frequency of the clock. */
-		if (!c->free_running) {
-			clockadj_set_freq(c->clkid, fadj);
-		}
+		fadj = clockadj_get_freq(c->clkid);
 		/* Disable write phase mode if not implemented by driver */
 		if (c->write_phase_mode && !phc_has_writephase(c->clkid)) {
 			pr_err("clock does not support write phase mode");
@@ -1620,6 +1622,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 
 	switch (mgt->id) {
 	case MID_PORT_PROPERTIES_NP:
+	case MID_PORT_HWCLOCK_NP:
 		if (p != c->uds_rw_port) {
 			/* Only the UDS-RW port allowed. */
 			clock_management_send_error(p, msg, MID_NOT_SUPPORTED);
@@ -1741,6 +1744,7 @@ void clock_set_sde(struct clock *c, int sde)
 int clock_poll(struct clock *c)
 {
 	int cnt, i;
+	enum port_state prior_state;
 	enum fsm_event event;
 	struct pollfd *cur;
 	struct port *p;
@@ -1767,6 +1771,7 @@ int clock_poll(struct clock *c)
 		/* Let the ports handle their events. */
 		for (i = 0; i < N_POLLFD; i++) {
 			if (cur[i].revents & (POLLIN|POLLPRI|POLLERR)) {
+				prior_state = port_state(p);
 				if (cur[i].revents & POLLERR) {
 					pr_err("%s: unexpected socket error",
 					       port_log_name(p));
@@ -1782,7 +1787,7 @@ int clock_poll(struct clock *c)
 				}
 				port_dispatch(p, event, 0);
 				/* Clear any fault after a little while. */
-				if (PS_FAULTY == port_state(p)) {
+				if ((PS_FAULTY == port_state(p)) && (prior_state != PS_FAULTY)) {
 					clock_fault_timeout(p, 1);
 					break;
 				}
@@ -1911,9 +1916,10 @@ struct tsproc *clock_get_tsproc(struct clock *c)
 int clock_switch_phc(struct clock *c, int phc_index)
 {
 	struct servo *servo;
-	int fadj, max_adj;
 	clockid_t clkid;
 	char phc[32];
+	double fadj;
+	int max_adj;
 
 #if CLOCK
 	fprintf(stderr, "%s\n", __func__);
@@ -1930,8 +1936,7 @@ int clock_switch_phc(struct clock *c, int phc_index)
 		phc_close(clkid);
 		return -1;
 	}
-	fadj = (int) clockadj_get_freq(clkid);
-	clockadj_set_freq(clkid, fadj);
+	fadj = clockadj_get_freq(clkid);
 	servo = servo_create(c->config, c->servo_type, -fadj, max_adj, 0);
 	if (!servo) {
 		pr_err("Switching PHC, failed to create clock servo");
@@ -1943,6 +1948,9 @@ int clock_switch_phc(struct clock *c, int phc_index)
 	c->clkid = clkid;
 	c->servo = servo;
 	c->servo_state = SERVO_UNLOCKED;
+
+	pr_info("Switched to /dev/ptp%d as PTP clock", phc_index);
+
 	return 0;
 }
 
@@ -1963,6 +1971,9 @@ static void clock_synchronize_locked(struct clock *c, double adj)
 	fprintf(stderr, "%s\n", __func__);
 	fprintf(stderr, "%s: ppb: %f\n", __func__, adj);
 #endif
+	if (c->sanity_check) {
+		clockcheck_freq(c->sanity_check, clockadj_get_freq(c->clkid));
+	}
 	clockadj_set_freq(c->clkid, -adj);
 	if (c->clkid == CLOCK_REALTIME) {
 		sysclk_set_sync();
@@ -2203,8 +2214,10 @@ static void handle_state_decision_event(struct clock *c)
 		if (c->sanity_check)
 			clockcheck_reset(c->sanity_check);
 		tsproc_reset(c->tsproc, 1);
-		if (!tmv_is_zero(c->initial_delay))
+		if (!tmv_is_zero(c->initial_delay) || (best &&
+			port_delay_mechanism(best->port) == DM_NO_MECHANISM)) {
 			tsproc_set_delay(c->tsproc, c->initial_delay);
+		}
 		c->ingress_ts = tmv_zero();
 		c->path_delay = c->initial_delay;
 		c->master_local_rr = 1.0;
@@ -2251,6 +2264,10 @@ static void handle_state_decision_event(struct clock *c)
 			break;
 		}
 		port_dispatch(piter, event, fresh_best);
+	}
+
+	LIST_FOREACH(piter, &c->ports, list) {
+		port_update_unicast_state(piter);
 	}
 }
 

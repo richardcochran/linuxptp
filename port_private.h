@@ -145,7 +145,10 @@ struct port {
 	UInteger8           versionNumber; /* UInteger4 */
 	UInteger8	    delay_response_counter;
 	UInteger8	    delay_response_timeout;
+	bool		    iface_rate_tlv;
+	Integer64	    portAsymmetry;
 	struct PortStats    stats;
+	struct PortServiceStats    service_stats;
 	/* foreignMasterDS */
 	LIST_HEAD(fm, foreign_clock) foreign_masters;
 	/* TC book keeping */
@@ -157,6 +160,7 @@ struct port {
 	int inhibit_multicast_service;
 	/* slave event monitoring */
 	struct monitor *slave_event_monitor;
+	bool unicast_state_dirty;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
@@ -182,6 +186,7 @@ void port_link_status(void *ctx, int index, int linkup);
 int port_set_announce_tmo(struct port *p);
 int port_set_delay_tmo(struct port *p);
 int port_set_qualification_tmo(struct port *p);
+int port_set_sync_rx_tmo(struct port *p);
 void port_show_transition(struct port *p, enum port_state next,
 			  enum fsm_event event);
 struct ptp_message *port_signaling_uc_construct(struct port *p,

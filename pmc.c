@@ -88,6 +88,24 @@ static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
 		SHOW_TIMESTAMP(record->syncEventIngressTimestamp));
 }
 
+
+static void pmc_show_unicast_master_entry(struct unicast_master_entry *entry,
+				    FILE *fp)
+{
+	fprintf(fp,
+		IFMT "%s %-24s %-34s %-9s %-10hhu 0x%02hhx         0x%04hx                  %-3hhu %-3hhu",
+		entry->selected ? "yes" : "no ",
+		pid2str(&entry->port_identity),
+		portaddr2str(&entry->address),
+		ustate2str(entry->port_state),
+		entry->clock_quality.clockClass,
+		entry->clock_quality.clockAccuracy,
+		entry->clock_quality.offsetScaledLogVariance,
+		entry->priority1,
+		entry->priority2
+	);
+}
+
 static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 {
 	struct slave_rx_sync_timing_record *sync_record;
@@ -139,11 +157,15 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
+	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
+	struct port_service_stats_np *pssp;
 	struct mgmt_clock_description *cd;
-	struct subscribe_events_np *sen;
 	struct management_tlv_datum *mtd;
+	struct unicast_master_entry *ume;
+	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
 	struct management_tlv *mgt;
 	struct time_status_np *tsn;
@@ -155,6 +177,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct parentDS *pds;
 	struct portDS *p;
 	struct TLV *tlv;
+	uint8_t *buf;
 	int action;
 
 	if (msg_type(msg) == SIGNALING) {
@@ -494,6 +517,60 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pcp->stats.txMsgType[ANNOUNCE],
 			pcp->stats.txMsgType[SIGNALING],
 			pcp->stats.txMsgType[MANAGEMENT]);
+		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		pssp = (struct port_service_stats_np *) mgt->data;
+		fprintf(fp, "PORT_SERVICE_STATS_NP "
+		IFMT "portIdentity              %s"
+		IFMT "announce_timeout          %" PRIu64
+		IFMT "sync_timeout              %" PRIu64
+		IFMT "delay_timeout             %" PRIu64
+		IFMT "unicast_service_timeout   %" PRIu64
+		IFMT "unicast_request_timeout   %" PRIu64
+		IFMT "master_announce_timeout   %" PRIu64
+		IFMT "master_sync_timeout       %" PRIu64
+		IFMT "qualification_timeout     %" PRIu64
+		IFMT "sync_mismatch             %" PRIu64
+		IFMT "followup_mismatch         %" PRIu64,
+		pid2str(&pssp->portIdentity),
+		pssp->stats.announce_timeout,
+		pssp->stats.sync_timeout,
+		pssp->stats.delay_timeout,
+		pssp->stats.unicast_service_timeout,
+		pssp->stats.unicast_request_timeout,
+		pssp->stats.master_announce_timeout,
+		pssp->stats.master_sync_timeout,
+		pssp->stats.qualification_timeout,
+		pssp->stats.sync_mismatch,
+		pssp->stats.followup_mismatch);
+		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		umtn = (struct unicast_master_table_np *) mgt->data;
+		fprintf(fp, "UNICAST_MASTER_TABLE_NP "
+			IFMT "actual_table_size %hu",
+			umtn->actual_table_size);
+		buf = (uint8_t *) umtn->unicast_masters;
+		// table header
+		fprintf(fp,
+			IFMT "%s  %-24s %-34s %-9s %s %s %s %s  %s",
+			"BM", "identity", "address", "state",
+			"clockClass", "clockQuality", "offsetScaledLogVariance",
+			"p1", "p2");
+		for (int i = 0; i < umtn->actual_table_size; i++) {
+			ume = (struct unicast_master_entry *) buf;
+			pmc_show_unicast_master_entry(ume, fp);
+			buf += sizeof(*ume) + ume->address.addressLength;
+		}
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		phn = (struct port_hwclock_np *) mgt->data;
+		fprintf(fp, "PORT_HWCLOCK_NP "
+			IFMT "portIdentity            %s"
+			IFMT "phcIndex                %d"
+			IFMT "flags                   %hhu",
+			pid2str(&phn->portIdentity),
+			phn->phc_index,
+			phn->flags);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;

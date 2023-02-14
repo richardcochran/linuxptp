@@ -50,6 +50,11 @@
 #define FD_TO_CLOCKID(fd)	((clockid_t) ((((unsigned int) ~fd) << 3) | CLOCKFD))
 #define CLOCKID_TO_FD(clk)	((unsigned int) ~((clk) >> 3))
 
+#ifndef ETH_P_PRP
+/* ETH_P_PRP is defined in if_ether.h from kernel 3.13 */
+#define ETH_P_PRP   0x88FB   /* IEC 62439-3 PRP/HSRv0  */
+#endif
+
 #ifndef HAVE_ONESTEP_SYNC
 enum _missing_hwtstamp_tx_types {
 	HWTSTAMP_TX_ONESTEP_SYNC = 2,
@@ -59,6 +64,23 @@ enum _missing_hwtstamp_tx_types {
 #ifndef HAVE_ONESTEP_P2P
 enum {
 	HWTSTAMP_TX_ONESTEP_P2P = 3,
+};
+#endif
+
+#ifndef HAVE_VCLOCKS
+enum {
+	SOF_TIMESTAMPING_BIND_PHC = (1 << 15),
+};
+
+struct so_timestamping {
+	int flags;
+	int bind_phc;
+};
+#endif
+
+#ifndef HWTSTAMP_FLAG_BONDED_PHC_INDEX
+enum {
+	HWTSTAMP_FLAG_BONDED_PHC_INDEX = (1<<0),
 };
 #endif
 
@@ -96,6 +118,58 @@ struct compat_ptp_clock_caps {
 #define ptp_clock_caps compat_ptp_clock_caps
 
 #endif /*LINUX_VERSION_CODE < 5.8*/
+
+/*
+ * Bits of the ptp_perout_request.flags field:
+ */
+
+#ifndef PTP_PEROUT_ONE_SHOT
+#define PTP_PEROUT_ONE_SHOT		(1<<0)
+#endif
+
+#ifndef PTP_PEROUT_DUTY_CYCLE
+#define PTP_PEROUT_DUTY_CYCLE		(1<<1)
+#endif
+
+#ifndef PTP_PEROUT_PHASE
+#define PTP_PEROUT_PHASE		(1<<2)
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,9,0)
+
+struct compat_ptp_perout_request {
+	union {
+		/*
+		 * Absolute start time.
+		 * Valid only if (flags & PTP_PEROUT_PHASE) is unset.
+		 */
+		struct ptp_clock_time start;
+		/*
+		 * Phase offset. The signal should start toggling at an
+		 * unspecified integer multiple of the period, plus this value.
+		 * The start time should be "as soon as possible".
+		 * Valid only if (flags & PTP_PEROUT_PHASE) is set.
+		 */
+		struct ptp_clock_time phase;
+	};
+	struct ptp_clock_time period; /* Desired period, zero means disable. */
+	unsigned int index;           /* Which channel to configure. */
+	unsigned int flags;
+	union {
+		/*
+		 * The "on" time of the signal.
+		 * Must be lower than the period.
+		 * Valid only if (flags & PTP_PEROUT_DUTY_CYCLE) is set.
+		 */
+		struct ptp_clock_time on;
+		/* Reserved for future use. */
+		unsigned int rsv[4];
+	};
+};
+
+#define ptp_perout_request compat_ptp_perout_request
+
+#endif /* LINUX_VERSION_CODE < 5.9 */
 
 #ifndef PTP_MAX_SAMPLES
 #define PTP_MAX_SAMPLES 25 /* Maximum allowed offset measurement samples. */
@@ -250,6 +324,107 @@ enum {
 };
 #define NLA_TYPE_MAX (__NLA_TYPE_MAX - 1)
 #endif /*NLA_TYPE_MAX*/
+
+#ifndef ETHTOOL_GENL_NAME
+#define ETHTOOL_GENL_NAME "ethtool"
+#define ETHTOOL_GENL_VERSION 1
+#endif
+
+#ifndef HAVE_VCLOCKS
+enum {
+	ETHTOOL_MSG_USER_NONE,
+	ETHTOOL_MSG_STRSET_GET,
+	ETHTOOL_MSG_LINKINFO_GET,
+	ETHTOOL_MSG_LINKINFO_SET,
+	ETHTOOL_MSG_LINKMODES_GET,
+	ETHTOOL_MSG_LINKMODES_SET,
+	ETHTOOL_MSG_LINKSTATE_GET,
+	ETHTOOL_MSG_DEBUG_GET,
+	ETHTOOL_MSG_DEBUG_SET,
+	ETHTOOL_MSG_WOL_GET,
+	ETHTOOL_MSG_WOL_SET,
+	ETHTOOL_MSG_FEATURES_GET,
+	ETHTOOL_MSG_FEATURES_SET,
+	ETHTOOL_MSG_PRIVFLAGS_GET,
+	ETHTOOL_MSG_PRIVFLAGS_SET,
+	ETHTOOL_MSG_RINGS_GET,
+	ETHTOOL_MSG_RINGS_SET,
+	ETHTOOL_MSG_CHANNELS_GET,
+	ETHTOOL_MSG_CHANNELS_SET,
+	ETHTOOL_MSG_COALESCE_GET,
+	ETHTOOL_MSG_COALESCE_SET,
+	ETHTOOL_MSG_PAUSE_GET,
+	ETHTOOL_MSG_PAUSE_SET,
+	ETHTOOL_MSG_EEE_GET,
+	ETHTOOL_MSG_EEE_SET,
+	ETHTOOL_MSG_TSINFO_GET,
+	ETHTOOL_MSG_CABLE_TEST_ACT,
+	ETHTOOL_MSG_CABLE_TEST_TDR_ACT,
+	ETHTOOL_MSG_TUNNEL_INFO_GET,
+	ETHTOOL_MSG_FEC_GET,
+	ETHTOOL_MSG_FEC_SET,
+	ETHTOOL_MSG_MODULE_EEPROM_GET,
+	ETHTOOL_MSG_STATS_GET,
+	ETHTOOL_MSG_PHC_VCLOCKS_GET,
+};
+
+enum {
+	ETHTOOL_MSG_KERNEL_NONE,
+	ETHTOOL_MSG_STRSET_GET_REPLY,
+	ETHTOOL_MSG_LINKINFO_GET_REPLY,
+	ETHTOOL_MSG_LINKINFO_NTF,
+	ETHTOOL_MSG_LINKMODES_GET_REPLY,
+	ETHTOOL_MSG_LINKMODES_NTF,
+	ETHTOOL_MSG_LINKSTATE_GET_REPLY,
+	ETHTOOL_MSG_DEBUG_GET_REPLY,
+	ETHTOOL_MSG_DEBUG_NTF,
+	ETHTOOL_MSG_WOL_GET_REPLY,
+	ETHTOOL_MSG_WOL_NTF,
+	ETHTOOL_MSG_FEATURES_GET_REPLY,
+	ETHTOOL_MSG_FEATURES_SET_REPLY,
+	ETHTOOL_MSG_FEATURES_NTF,
+	ETHTOOL_MSG_PRIVFLAGS_GET_REPLY,
+	ETHTOOL_MSG_PRIVFLAGS_NTF,
+	ETHTOOL_MSG_RINGS_GET_REPLY,
+	ETHTOOL_MSG_RINGS_NTF,
+	ETHTOOL_MSG_CHANNELS_GET_REPLY,
+	ETHTOOL_MSG_CHANNELS_NTF,
+	ETHTOOL_MSG_COALESCE_GET_REPLY,
+	ETHTOOL_MSG_COALESCE_NTF,
+	ETHTOOL_MSG_PAUSE_GET_REPLY,
+	ETHTOOL_MSG_PAUSE_NTF,
+	ETHTOOL_MSG_EEE_GET_REPLY,
+	ETHTOOL_MSG_EEE_NTF,
+	ETHTOOL_MSG_TSINFO_GET_REPLY,
+	ETHTOOL_MSG_CABLE_TEST_NTF,
+	ETHTOOL_MSG_CABLE_TEST_TDR_NTF,
+	ETHTOOL_MSG_TUNNEL_INFO_GET_REPLY,
+	ETHTOOL_MSG_FEC_GET_REPLY,
+	ETHTOOL_MSG_FEC_NTF,
+	ETHTOOL_MSG_MODULE_EEPROM_GET_REPLY,
+	ETHTOOL_MSG_STATS_GET_REPLY,
+	ETHTOOL_MSG_PHC_VCLOCKS_GET_REPLY,
+};
+
+enum {
+	ETHTOOL_A_HEADER_UNSPEC,
+	ETHTOOL_A_HEADER_DEV_INDEX,		/* u32 */
+	ETHTOOL_A_HEADER_DEV_NAME,		/* string */
+	ETHTOOL_A_HEADER_FLAGS,			/* u32 - ETHTOOL_FLAG_* */
+	__ETHTOOL_A_HEADER_CNT,
+	ETHTOOL_A_HEADER_MAX = __ETHTOOL_A_HEADER_CNT - 1
+};
+
+enum {
+	ETHTOOL_A_PHC_VCLOCKS_UNSPEC,
+	ETHTOOL_A_PHC_VCLOCKS_HEADER,			/* nest - _A_HEADER_* */
+	ETHTOOL_A_PHC_VCLOCKS_NUM,			/* u32 */
+	ETHTOOL_A_PHC_VCLOCKS_INDEX,			/* array, s32 */
+	__ETHTOOL_A_PHC_VCLOCKS_CNT,
+	ETHTOOL_A_PHC_VCLOCKS_MAX = (__ETHTOOL_A_PHC_VCLOCKS_CNT - 1)
+};
+
+#endif /* HAVE_VCLOCKS */
 
 #ifdef __UCLIBC__
 

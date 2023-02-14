@@ -38,14 +38,36 @@ void print_set_syslog(int value);
 void print_set_level(int level);
 void print_set_verbose(int value);
 
-#define pr_emerg(x...)   print(LOG_EMERG, x)
-#define pr_alert(x...)   print(LOG_ALERT, x)
-#define pr_crit(x...)    print(LOG_CRIT, x)
-#define pr_err(x...)     print(LOG_ERR, x)
-#define pr_warning(x...) print(LOG_WARNING, x)
-#define pr_notice(x...)  print(LOG_NOTICE, x)
-#define pr_info(x...)    print(LOG_INFO, x)
-#define pr_debug(x...)   print(LOG_DEBUG, x)
+/*
+ * Better check print log level before execution of print itself.
+ * Otherwise all arguments are evaluated and slow down the system.
+ * e.g.   in 'unicast_service.c' unicast_service_clients()
+ *                            pid2str() is the killer
+ *           pr_debug("%s wants 0x%x", pid2str(&client->portIdentity),
+ *                    client->message_types);
+ */
+
+extern int print_level;
+
+static inline int print_get_level(void)
+{
+	return print_level;
+}
+
+#define PRINT_CL(l, x...) /* PRINT Check Level */	\
+do {							\
+	if (print_get_level() >= l)			\
+		print(l, x);				\
+} while (0)
+
+#define pr_emerg(x...)   PRINT_CL(LOG_EMERG, x)
+#define pr_alert(x...)   PRINT_CL(LOG_ALERT, x)
+#define pr_crit(x...)    PRINT_CL(LOG_CRIT, x)
+#define pr_err(x...)     PRINT_CL(LOG_ERR, x)
+#define pr_warning(x...) PRINT_CL(LOG_WARNING, x)
+#define pr_notice(x...)  PRINT_CL(LOG_NOTICE, x)
+#define pr_info(x...)    PRINT_CL(LOG_INFO, x)
+#define pr_debug(x...)   PRINT_CL(LOG_DEBUG, x)
 
 #define PRINT_RL(l, i, x...) \
 	do { \

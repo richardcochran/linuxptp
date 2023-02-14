@@ -21,6 +21,6 @@
 
 #include "servo.h"
 
-struct servo *linreg_servo_create(int fadj);
+struct servo *linreg_servo_create(double fadj);
 
 #endif

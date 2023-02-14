@@ -228,6 +228,13 @@ struct ptp_message *port_signaling_construct(struct port *p,
 enum port_state port_state(struct port *port);
 
 /**
+ * Return  port's delay mechanism method.
+ * @param port	A port instance.
+ * @return 	one of the @ref delay_mechanism values.
+ */
+enum delay_mechanism port_delay_mechanism(struct port *port);
+
+/**
  * Update a port's current state based on a given event.
  * @param p        A pointer previously obtained via port_open().
  * @param event    One of the @a fsm_event codes.
@@ -349,5 +356,12 @@ enum bmca_select port_bmca(struct port *p);
  * Release all of the memory in the TC transmit descriptor cache.
  */
 void tc_cleanup(void);
+
+/**
+ * Update port's unicast state if port's unicast_state_dirty is true.
+ *
+ * @param port  A port instance.
+ */
+void port_update_unicast_state(struct port *p);
 
 #endif

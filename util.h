@@ -26,7 +26,9 @@
 #include "address.h"
 #include "ddt.h"
 #include "ether.h"
+#include "fsm.h"
 #include "transport.h"
+#include "unicast_fsm.h"
 
 #define MAX_PRINT_BYTES 16
 #define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
@@ -109,6 +111,15 @@ int count_char(const char *str, char c);
 char *pid2str(struct PortIdentity *id);
 
 char *portaddr2str(struct PortAddress *addr);
+
+const char *ustate2str(enum unicast_state ustate);
+
+/**
+ * Reduce all port states for which the sync direction isn't known to
+ * PS_DISABLED, and report the given port state otherwise. This minimizes port
+ * state transitions for PMC agents when nothing interesting happened.
+ */
+enum port_state port_state_normalize(enum port_state state);
 
 /**
  * Closes a dynamic posix clock.

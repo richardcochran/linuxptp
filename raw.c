@@ -23,6 +23,7 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,13 +40,12 @@
 #include "config.h"
 #include "contain.h"
 #include "ether.h"
+#include "missing.h"
 #include "print.h"
 #include "raw.h"
 #include "sk.h"
 #include "transport_private.h"
 #include "util.h"
-
-#include "test.h"
 
 struct raw {
 	struct transport t;
@@ -55,50 +55,94 @@ struct raw {
 	int vlan;
 };
 
-#define OP_AND  (BPF_ALU | BPF_AND | BPF_K)
-#define OP_JEQ  (BPF_JMP | BPF_JEQ | BPF_K)
-#define OP_JUN  (BPF_JMP | BPF_JA)
-#define OP_LDB  (BPF_LD  | BPF_B   | BPF_ABS)
-#define OP_LDH  (BPF_LD  | BPF_H   | BPF_ABS)
-#define OP_RETK (BPF_RET | BPF_K)
-
 #define PTP_GEN_BIT 0x08 /* indicates general message, if set in message type */
 
-#define N_RAW_FILTER    12
-#define RAW_FILTER_TEST 9
+#define PRP_MIN_PACKET_LEN 70
+#define PRP_TRAILER_LEN 6
 
-static struct sock_filter raw_filter[N_RAW_FILTER] = {
-	{OP_LDH,  0, 0, OFF_ETYPE   },
-	{OP_JEQ,  0, 4, ETH_P_8021Q          }, /*f goto non-vlan block*/
-	{OP_LDH,  0, 0, OFF_ETYPE + 4        },
-	{OP_JEQ,  0, 7, ETH_P_1588           }, /*f goto reject*/
-	{OP_LDB,  0, 0, ETH_HLEN + VLAN_HLEN },
-	{OP_JUN,  0, 0, 2                    }, /*goto test general bit*/
-	{OP_JEQ,  0, 4, ETH_P_1588  }, /*f goto reject*/
-	{OP_LDB,  0, 0, ETH_HLEN    },
-	{OP_AND,  0, 0, PTP_GEN_BIT }, /*test general bit*/
-	{OP_JEQ,  0, 1, 0           }, /*0,1=accept event; 1,0=accept general*/
-	{OP_RETK, 0, 0, 1500        }, /*accept*/
-	{OP_RETK, 0, 0, 0           }, /*reject*/
+/*
+ * tcpdump -d \
+ * '   (ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 == 0x8) '\
+ * 'or (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 == 0x8) '
+ *
+ * (000) ldh      [12]
+ * (001) jeq      #0x8100          jt 2    jf 7
+ * (002) ldh      [16]
+ * (003) jeq      #0x88f7          jt 4    jf 12
+ * (004) ldb      [18]
+ * (005) and      #0x8
+ * (006) jeq      #0x8             jt 11   jf 12
+ * (007) jeq      #0x88f7          jt 8    jf 12
+ * (008) ldb      [14]
+ * (009) and      #0x8
+ * (010) jeq      #0x8             jt 11   jf 12
+ * (011) ret      #262144
+ * (012) ret      #0
+*/
+static struct sock_filter raw_filter_vlan_norm_general[] = {
+	{ 0x28, 0, 0, 0x0000000c },
+	{ 0x15, 0, 5, 0x00008100 },
+	{ 0x28, 0, 0, 0x00000010 },
+	{ 0x15, 0, 8, 0x000088f7 },
+	{ 0x30, 0, 0, 0x00000012 },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 4, 5, 0x00000008 },
+	{ 0x15, 0, 4, 0x000088f7 },
+	{ 0x30, 0, 0, 0x0000000e },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 0, 1, 0x00000008 },
+	{ 0x6, 0, 0, 0x00040000 },
+	{ 0x6, 0, 0, 0x00000000 },
+};
+
+/*
+ * tcpdump -d \
+ *  '   (ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 != 0x8) '\
+ *  'or (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 != 0x8) '
+ *
+ * (000) ldh      [12]
+ * (001) jeq      #0x8100          jt 2    jf 7
+ * (002) ldh      [16]
+ * (003) jeq      #0x88f7          jt 4    jf 12
+ * (004) ldb      [18]
+ * (005) and      #0x8
+ * (006) jeq      #0x8             jt 12   jf 11
+ * (007) jeq      #0x88f7          jt 8    jf 12
+ * (008) ldb      [14]
+ * (009) and      #0x8
+ * (010) jeq      #0x8             jt 12   jf 11
+ * (011) ret      #262144
+ * (012) ret      #0
+ */
+static struct sock_filter raw_filter_vlan_norm_event[] = {
+	{ 0x28, 0, 0, 0x0000000c },
+	{ 0x15, 0, 5, 0x00008100 },
+	{ 0x28, 0, 0, 0x00000010 },
+	{ 0x15, 0, 8, 0x000088f7 },
+	{ 0x30, 0, 0, 0x00000012 },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 5, 4, 0x00000008 },
+	{ 0x15, 0, 4, 0x000088f7 },
+	{ 0x30, 0, 0, 0x0000000e },
+	{ 0x54, 0, 0, 0x00000008 },
+	{ 0x15, 1, 0, 0x00000008 },
+	{ 0x6, 0, 0, 0x00040000 },
+	{ 0x6, 0, 0, 0x00000000 },
 };
 
 static int raw_configure(int fd, int event, int index,
 			 unsigned char *addr1, unsigned char *addr2, int enable)
 {
-	int err1, err2, filter_test, option;
+	int err1, err2, option;
 	struct packet_mreq mreq;
-	struct sock_fprog prg = { N_RAW_FILTER, raw_filter };
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
+	struct sock_fprog prg;
 
-	filter_test = RAW_FILTER_TEST;
 	if (event) {
-		raw_filter[filter_test].jt = 0;
-		raw_filter[filter_test].jf = 1;
+		prg.len = ARRAY_SIZE(raw_filter_vlan_norm_event);
+		prg.filter = raw_filter_vlan_norm_event;
 	} else {
-		raw_filter[filter_test].jt = 1;
-		raw_filter[filter_test].jf = 0;
+		prg.len = ARRAY_SIZE(raw_filter_vlan_norm_general);
+		prg.filter = raw_filter_vlan_norm_general;
 	}
 
 	if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &prg, sizeof(prg))) {
@@ -149,9 +193,6 @@ static int raw_configure(int fd, int event, int index,
 
 static int raw_close(struct transport *t, struct fdarray *fda)
 {
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	close(fda->fd[0]);
 	close(fda->fd[1]);
 	return 0;
@@ -163,9 +204,6 @@ static int open_socket(const char *name, int event, unsigned char *ptp_dst_mac,
 	struct sockaddr_ll addr;
 	int fd, index;
 
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if (fd < 0) {
 		pr_err("socket failed: %m");
@@ -206,9 +244,6 @@ no_socket:
 
 static void mac_to_addr(struct address *addr, void *mac)
 {
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	addr->sll.sll_family = AF_PACKET;
 	addr->sll.sll_halen = MAC_LEN;
 	memcpy(addr->sll.sll_addr, mac, MAC_LEN);
@@ -217,10 +252,65 @@ static void mac_to_addr(struct address *addr, void *mac)
 
 static void addr_to_mac(void *mac, struct address *addr)
 {
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	memcpy(mac, &addr->sll.sll_addr, MAC_LEN);
+}
+
+/* Determines if the packet has Parallel Redundancy Protocol (PRP) trailer. */
+static bool has_prp_trailer(unsigned char *ptr, int cnt, int eth_hlen)
+{
+	unsigned short suffix_id, lane_size_field, lsdu_size;
+	int ptp_msg_len, trailer_start, padding_len;
+	struct ptp_header *hdr;
+
+	/* try to parse like a PTP message to find out the message length */
+	if (cnt < sizeof(struct ptp_header))
+		return false;
+
+	hdr = (struct ptp_header *)ptr;
+	if ((hdr->ver & MAJOR_VERSION_MASK) != PTP_MAJOR_VERSION)
+		return false;
+
+	ptp_msg_len = ntohs(hdr->messageLength);
+
+	/* PRP requires ethernet packets to be minimum 70 bytes, including trailer */
+	trailer_start = ptp_msg_len;
+	padding_len = 0;
+	if ((eth_hlen + ptp_msg_len + PRP_TRAILER_LEN) < PRP_MIN_PACKET_LEN)
+	{
+		padding_len = PRP_MIN_PACKET_LEN - (eth_hlen + ptp_msg_len + PRP_TRAILER_LEN);
+		trailer_start += padding_len;
+	}
+
+	if (cnt < (trailer_start + PRP_TRAILER_LEN))
+		return false;
+
+	/* PRP trailer (RCT) consists of 3 uint16.
+	 | -------------------------------------------------------- |
+	 | SeqNr(0-15) | LanId(0-3) LSDUsize(4-15) | Suffix (0-15)  |
+	 | -------------------------------------------------------- |
+	 - Sequence number is a running number and can't be verified
+	 - LanId should be 0x1010 or 0x1011 (but should not be used for verification)
+	 - LSDUsize should match LSDU length
+	   (including possible padding and the RCT itself)
+	 - Suffix should be 0x88FB
+	*/
+
+	/* Verify that the size in the RCT matches.
+	   Size is the lower 12 bits
+	*/
+	lane_size_field = ntohs(*(unsigned short*)(ptr + trailer_start + 2));
+	lsdu_size = lane_size_field & 0x0FFF;
+	if (lsdu_size != cnt)
+		return false;
+
+	/* Verify the suffix */
+	suffix_id = ntohs(*(unsigned short*)(ptr + trailer_start + 4));
+	if (suffix_id == ETH_P_PRP)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 static int raw_open(struct transport *t, struct interface *iface,
@@ -233,9 +323,6 @@ static int raw_open(struct transport *t, struct interface *iface,
 	const char *name;
 	char *str;
 
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	name = interface_label(iface);
 	str = config_get_string(t->cfg, name, "ptp_dst_mac");
 	if (str2mac(str, ptp_dst_mac)) {
@@ -263,7 +350,8 @@ static int raw_open(struct transport *t, struct interface *iface,
 	if (gfd < 0)
 		goto no_general;
 
-	if (sk_timestamping_init(efd, name, ts_type, TRANS_IEEE_802_3))
+	if (sk_timestamping_init(efd, name, ts_type, TRANS_IEEE_802_3,
+				 interface_get_vclock(iface)))
 		goto no_timestamping;
 
 	if (sk_general_init(gfd))
@@ -285,14 +373,11 @@ no_mac:
 static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 		    struct address *addr, struct hw_timestamp *hwts)
 {
-	int cnt, hlen;
+	struct raw *raw = container_of(t, struct raw, t);
 	unsigned char *ptr = buf;
 	struct eth_hdr *hdr;
-	struct raw *raw = container_of(t, struct raw, t);
+	int cnt, hlen;
 
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	if (raw->vlan) {
 		hlen = sizeof(struct vlan_hdr);
 	} else {
@@ -303,34 +388,14 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	hdr = (struct eth_hdr *) ptr;
 
 	cnt = sk_receive(fd, ptr, buflen, addr, hwts, MSG_DONTWAIT);
-#if RAW_RECV
-		fprintf(stderr, "raw_recv_sk_timestamp:%ld\n", hwts->ts.ns);
-#endif
 
-#if RAW_RECV
-	fprintf(stderr, "[======== raw_recv ========]\n");
-	fprintf(stderr, "raw_recv_data_len: %d \n", buflen);
-
-	int i, count = 0;
-	for (i = 0; i < buflen; i++) {
-		if ((i & 0xf) == 0) {
-			fprintf(stderr, "\n RECV >");
-			count ++;
-		}
-		fprintf(stderr, "%02x ", ptr[i]);
-		if (count == 7)
-			break;
-	}
-
-	fprintf(stderr, "\n");
-	get_ptp_type(&ptr[0]);
-	get_ptp_seqid(&ptr[0]);
-	fprintf(stderr, "\n");
-#endif
 	if (cnt >= 0)
 		cnt -= hlen;
 	if (cnt < 0)
 		return cnt;
+
+	if (has_prp_trailer(buf, cnt, hlen))
+		cnt -= PRP_TRAILER_LEN;
 
 	if (raw->vlan) {
 		if (ETH_P_1588 == ntohs(hdr->type)) {
@@ -356,9 +421,6 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 	struct eth_hdr *hdr;
 	int fd = -1;
 
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	switch (event) {
 	case TRANS_GENERAL:
 		fd = fda->fd[FD_GENERAL];
@@ -374,17 +436,6 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 	ptr -= sizeof(*hdr);
 	len += sizeof(*hdr);
 
-#if RAW_SEND
-	fprintf(stderr, "[======== raw_send ========]\n");
-	fprintf(stderr, "raw_send_data_len: %d \n", len);
-
-	int i;
-	for (i = 0; i < len; i++) {
-		if ((i & 0xf) == 0) fprintf(stderr, "\n SEND > ");
-		fprintf(stderr, "%02x ", ptr[i]);
-	}
-	fprintf(stderr, "\n");
-#endif
 	if (!addr)
 		addr = peer ? &raw->p2p_addr : &raw->ptp_addr;
 
@@ -396,39 +447,23 @@ static int raw_send(struct transport *t, struct fdarray *fda,
 
 	cnt = send(fd, ptr, len, 0);
 	if (cnt < 1) {
-#if RAW_DEBUG
-		fprintf(stderr, "raw_send --> cnt < 1\n");
-#endif
 		return -errno;
 	}
 	/*
 	 * Get the time stamp right away.
 	 */
-	
-#if RAW_DEBUG
-	fprintf(stderr, "Get the time stamp right away!\n");
-#endif
-#if RAW_RECV
-		fprintf(stderr, "raw_send_sk_timestamp:%ld\n", hwts->ts.ns);
-#endif
 	return event == TRANS_EVENT ? sk_receive(fd, pkt, len, NULL, hwts, MSG_ERRQUEUE) : cnt;
 }
 
 static void raw_release(struct transport *t)
 {
 	struct raw *raw = container_of(t, struct raw, t);
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	free(raw);
 }
 
 static int raw_physical_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	addr_to_mac(addr, &raw->src_addr);
 	return MAC_LEN;
 }
@@ -436,9 +471,6 @@ static int raw_physical_addr(struct transport *t, uint8_t *addr)
 static int raw_protocol_addr(struct transport *t, uint8_t *addr)
 {
 	struct raw *raw = container_of(t, struct raw, t);
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	addr_to_mac(addr, &raw->src_addr);
 	return MAC_LEN;
 }
@@ -446,9 +478,6 @@ static int raw_protocol_addr(struct transport *t, uint8_t *addr)
 struct transport *raw_transport_create(void)
 {
 	struct raw *raw;
-#if RAW
-	fprintf(stderr, "%s\n", __func__);
-#endif
 	raw = calloc(1, sizeof(*raw));
 	if (!raw)
 		return NULL;

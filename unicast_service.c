@@ -84,6 +84,30 @@ static int attach_grant(struct ptp_message *msg,
 	return 0;
 }
 
+static int attach_interface_rate(struct ptp_message *msg,
+                                uint64_t iface_bit_period,
+                                uint16_t  no_of_bits_before_ts,
+                                uint16_t  no_of_bits_after_ts)
+{
+	struct msg_interface_rate_tlv *mir;
+	struct tlv_extra *extra;
+
+	extra = msg_tlv_append(msg, sizeof(*mir));
+	if (!extra) {
+		return -1;
+	}
+	mir = (struct msg_interface_rate_tlv *) extra->tlv;
+	mir->type = TLV_ORGANIZATION_EXTENSION;
+	mir->length = sizeof(*mir) - sizeof(mir->type) - sizeof(mir->length);
+	memcpy(mir->id, itu_t_id, sizeof(itu_t_id));
+	mir->subtype[2] = 2;
+	mir->interfaceBitPeriod = iface_bit_period;
+	mir->numberOfBitsBeforeTimestamp = no_of_bits_before_ts;
+	mir->numberOfBitsAfterTimestamp = no_of_bits_after_ts;
+
+	return 0;
+}
+
 static int compare_timeout(void *ain, void *bin)
 {
 	struct unicast_service_interval *a, *b;
@@ -256,6 +280,14 @@ static int unicast_service_reply(struct port *p, struct ptp_message *dst,
 	if (err) {
 		goto out;
 	}
+	if (p->iface_rate_tlv && duration > 0 && interface_ifinfo_valid(p->iface)) {
+		err = attach_interface_rate(msg,
+				interface_bitperiod(p->iface), 64, 720);
+		if (err) {
+			goto out;
+		}
+	}
+
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
 	if (err) {
 		pr_err("%s: signaling message failed", p->log_name);
@@ -292,6 +324,10 @@ int unicast_service_add(struct port *p, struct ptp_message *m,
 	case PDELAY_RESP:
 		return SERVICE_GRANTED;
 	default:
+		return SERVICE_DENIED;
+	}
+
+	if (abs(req->logInterMessagePeriod) > 30) {
 		return SERVICE_DENIED;
 	}
 

@@ -38,14 +38,17 @@ static double nullf_sample(struct servo *servo, int64_t offset,
 			   uint64_t local_ts, double weight,
 			   enum servo_state *state)
 {
-	if (!offset) {
+	long long int abs_offset = llabs(offset);
+
+	if ((servo->offset_threshold && abs_offset < servo->offset_threshold) ||
+	    (servo->step_threshold && servo->step_threshold >= abs_offset)) {
 		*state = SERVO_LOCKED;
 		return 0.0;
 	}
 
 	if ((servo->first_update && servo->first_step_threshold &&
-	     servo->first_step_threshold < llabs(offset)) ||
-	    (servo->step_threshold && servo->step_threshold < llabs(offset))) {
+	     servo->first_step_threshold < abs_offset) ||
+	    (servo->step_threshold && servo->step_threshold < abs_offset)) {
 		*state = SERVO_JUMP;
 	} else {
 		*state = SERVO_UNLOCKED;

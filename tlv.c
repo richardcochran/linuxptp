@@ -35,6 +35,7 @@
 	(tlv->length < sizeof(struct type) - sizeof(struct TLV))
 
 uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };
+uint8_t itu_t_id[3] = { ITU_T_COMMITTEE };
 
 static TAILQ_HEAD(tlv_pool, tlv_extra) tlv_pool =
 	TAILQ_HEAD_INITIALIZER(tlv_pool);
@@ -113,10 +114,14 @@ static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_siz
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
+	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
+	struct port_service_stats_np *pssn;
 	struct mgmt_clock_description *cd;
+	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
@@ -331,6 +336,69 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		}
 		extra_len = sizeof(struct port_stats_np);
 		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		if (data_len < sizeof(struct port_service_stats_np))
+			goto bad_length;
+		pssn = (struct port_service_stats_np *)m->data;
+		pssn->portIdentity.portNumber =
+			htons(pssn->portIdentity.portNumber);
+		pssn->stats.announce_timeout =
+			__le64_to_cpu(pssn->stats.announce_timeout);
+		pssn->stats.sync_timeout =
+			__le64_to_cpu(pssn->stats.sync_timeout);
+		pssn->stats.delay_timeout =
+			__le64_to_cpu(pssn->stats.delay_timeout);
+		pssn->stats.unicast_service_timeout =
+			__le64_to_cpu(pssn->stats.unicast_service_timeout);
+		pssn->stats.unicast_request_timeout =
+			__le64_to_cpu(pssn->stats.unicast_request_timeout);
+		pssn->stats.master_announce_timeout =
+			__le64_to_cpu(pssn->stats.master_announce_timeout);
+		pssn->stats.master_sync_timeout =
+			__le64_to_cpu(pssn->stats.master_sync_timeout);
+		pssn->stats.qualification_timeout =
+			__le64_to_cpu(pssn->stats.qualification_timeout);
+		pssn->stats.sync_mismatch =
+			__le64_to_cpu(pssn->stats.sync_mismatch);
+		pssn->stats.followup_mismatch =
+			__le64_to_cpu(pssn->stats.followup_mismatch);
+		extra_len = sizeof(struct port_service_stats_np);
+		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		if (data_len < sizeof(struct unicast_master_table_np))
+			goto bad_length;
+		len = sizeof(struct unicast_master_table_np);
+		umtn = (struct unicast_master_table_np *)m->data;
+		umtn->actual_table_size =
+			ntohs(umtn->actual_table_size);
+		buf = (uint8_t *) umtn->unicast_masters;
+		for (int i = 0; i < umtn->actual_table_size; i++) {
+			len += sizeof(struct unicast_master_entry);
+			if (data_len < len)
+				goto bad_length;
+			ume = (struct unicast_master_entry *) buf;
+			ume->port_identity.portNumber =
+				ntohs(ume->port_identity.portNumber);
+			ume->clock_quality.offsetScaledLogVariance =
+				ntohs(ume->clock_quality.offsetScaledLogVariance);
+			ume->address.networkProtocol =
+				ntohs(ume->address.networkProtocol);
+			ume->address.addressLength =
+				ntohs(ume->address.addressLength);
+			len += ume->address.addressLength;
+			if (data_len < len)
+				goto bad_length;
+			buf += sizeof(*ume) + ume->address.addressLength;
+		}
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		if (data_len < sizeof(struct port_hwclock_np))
+			goto bad_length;
+		phn = (struct port_hwclock_np *)m->data;
+		phn->portIdentity.portNumber = ntohs(phn->portIdentity.portNumber);
+		phn->phc_index = ntohl(phn->phc_index);
+		extra_len = sizeof(struct port_hwclock_np);
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -354,10 +422,14 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
+	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
+	struct port_service_stats_np *pssn;
 	struct mgmt_clock_description *cd;
+	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
+	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
@@ -366,6 +438,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct currentDS *cds;
 	struct parentDS *pds;
 	struct portDS *p;
+	uint8_t *buf;
 	int i;
 
 	switch (m->id) {
@@ -447,6 +520,55 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 			psn->stats.rxMsgType[i] = __cpu_to_le64(psn->stats.rxMsgType[i]);
 			psn->stats.txMsgType[i] = __cpu_to_le64(psn->stats.txMsgType[i]);
 		}
+		break;
+	case MID_PORT_SERVICE_STATS_NP:
+		pssn = (struct port_service_stats_np *)m->data;
+		pssn->portIdentity.portNumber =
+			htons(pssn->portIdentity.portNumber);
+		pssn->stats.announce_timeout =
+			__cpu_to_le64(pssn->stats.announce_timeout);
+		pssn->stats.sync_timeout =
+			__cpu_to_le64(pssn->stats.sync_timeout);
+		pssn->stats.delay_timeout =
+			__cpu_to_le64(pssn->stats.delay_timeout);
+		pssn->stats.unicast_service_timeout =
+			__cpu_to_le64(pssn->stats.unicast_service_timeout);
+		pssn->stats.unicast_request_timeout =
+			__cpu_to_le64(pssn->stats.unicast_request_timeout);
+		pssn->stats.master_announce_timeout =
+			__cpu_to_le64(pssn->stats.master_announce_timeout);
+		pssn->stats.master_sync_timeout =
+			__cpu_to_le64(pssn->stats.master_sync_timeout);
+		pssn->stats.qualification_timeout =
+			__cpu_to_le64(pssn->stats.qualification_timeout);
+		pssn->stats.sync_mismatch =
+			__cpu_to_le64(pssn->stats.sync_mismatch);
+		pssn->stats.followup_mismatch =
+			__cpu_to_le64(pssn->stats.followup_mismatch);
+		break;
+	case MID_UNICAST_MASTER_TABLE_NP:
+		umtn = (struct unicast_master_table_np *)m->data;
+		buf = (uint8_t *) umtn->unicast_masters;
+		for (int i = 0; i < umtn->actual_table_size; i++) {
+			ume = (struct unicast_master_entry *) buf;
+			// update pointer before the conversion
+			buf += sizeof(*ume) + ume->address.addressLength;
+			ume->port_identity.portNumber =
+				htons(ume->port_identity.portNumber);
+			ume->clock_quality.offsetScaledLogVariance =
+				htons(ume->clock_quality.offsetScaledLogVariance);
+			ume->address.networkProtocol =
+				htons(ume->address.networkProtocol);
+			ume->address.addressLength =
+				htons(ume->address.addressLength);
+		}
+		umtn->actual_table_size =
+			htons(umtn->actual_table_size);
+		break;
+	case MID_PORT_HWCLOCK_NP:
+		phn = (struct port_hwclock_np *)m->data;
+		phn->portIdentity.portNumber = htons(phn->portIdentity.portNumber);
+		phn->phc_index = htonl(phn->phc_index);
 		break;
 	}
 }
@@ -559,6 +681,7 @@ static void nsm_resp_pre_send(struct tlv_extra *extra)
 static int org_post_recv(struct organization_tlv *org)
 {
 	struct follow_up_info_tlv *f;
+	struct msg_interface_rate_tlv *m;
 
 	if (0 == memcmp(org->id, ieee8021_id, sizeof(ieee8021_id))) {
 		if (org->subtype[0] || org->subtype[1]) {
@@ -579,6 +702,21 @@ static int org_post_recv(struct organization_tlv *org)
 			if (org->length + sizeof(struct TLV) != sizeof(struct msg_interval_req_tlv))
 				goto bad_length;
 		}
+	} else if (0 == memcmp(org->id, itu_t_id, sizeof(itu_t_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return 0;
+		}
+		switch (org->subtype[2]) {
+		case 2:
+			if (org->length + sizeof(struct TLV) != sizeof(struct msg_interface_rate_tlv))
+				goto bad_length;
+			m = (struct msg_interface_rate_tlv *)org;
+			m->interfaceBitPeriod = net2host64(m->interfaceBitPeriod);
+			m->numberOfBitsBeforeTimestamp = ntohs(m->numberOfBitsBeforeTimestamp);
+			m->numberOfBitsAfterTimestamp = ntohs(m->numberOfBitsAfterTimestamp);
+			break;
+		}
+
 	}
 	return 0;
 bad_length:
@@ -588,6 +726,7 @@ bad_length:
 static void org_pre_send(struct organization_tlv *org)
 {
 	struct follow_up_info_tlv *f;
+	struct msg_interface_rate_tlv *m;
 
 	if (0 == memcmp(org->id, ieee8021_id, sizeof(ieee8021_id))) {
 		if (org->subtype[0] || org->subtype[1]) {
@@ -600,6 +739,18 @@ static void org_pre_send(struct organization_tlv *org)
 			f->gmTimeBaseIndicator = htons(f->gmTimeBaseIndicator);
 			scaled_ns_h2n(&f->lastGmPhaseChange);
 			f->scaledLastGmPhaseChange = htonl(f->scaledLastGmPhaseChange);
+			break;
+		}
+	} else if (0 == memcmp(org->id, itu_t_id, sizeof(itu_t_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return;
+		}
+		switch (org->subtype[2]) {
+		case 2:
+			m = (struct msg_interface_rate_tlv *)org;
+			m->interfaceBitPeriod = host2net64(m->interfaceBitPeriod);
+			m->numberOfBitsBeforeTimestamp = htons(m->numberOfBitsBeforeTimestamp);
+			m->numberOfBitsAfterTimestamp = htons(m->numberOfBitsAfterTimestamp);
 			break;
 		}
 	}

@@ -64,6 +64,8 @@
 
 #define PHC_PPS_OFFSET_LIMIT 10000000
 
+#define MAX_DST_CLOCKS 128
+
 struct clock {
 	LIST_ENTRY(clock) list;
 	LIST_ENTRY(clock) dst_list;
@@ -103,6 +105,7 @@ struct phc2sys_private {
 	int forced_sync_offset;
 	int kernel_leap;
 	int state_changed;
+	int free_running;
 	struct pmc_agent *agent;
 	LIST_HEAD(port_head, port) ports;
 	LIST_HEAD(clock_head, clock) clocks;
@@ -116,8 +119,6 @@ static int clock_handle_leap(struct phc2sys_private *priv,
 			     struct clock *clock,
 			     int64_t offset, uint64_t ts);
 
-static int normalize_state(int state);
-
 static struct servo *servo_add(struct phc2sys_private *priv,
 			       struct clock *clock)
 {
@@ -127,9 +128,6 @@ static struct servo *servo_add(struct phc2sys_private *priv,
 
 	clockadj_init(clock->clkid);
 	ppb = clockadj_get_freq(clock->clkid);
-	/* The reading may silently fail and return 0, reset the frequency to
-	   make sure ppb is the actual frequency of the clock. */
-	clockadj_set_freq(clock->clkid, ppb);
 	if (clock->clkid == CLOCK_REALTIME) {
 		sysclk_set_leap(0);
 		max_ppb = sysclk_max_freq();
@@ -153,14 +151,21 @@ static struct servo *servo_add(struct phc2sys_private *priv,
 	return servo;
 }
 
-static struct clock *clock_add(struct phc2sys_private *priv, const char *device)
+static struct clock *clock_add(struct phc2sys_private *priv, const char *device,
+			       int phc_index)
 {
 	struct clock *c;
 	clockid_t clkid = CLOCK_INVALID;
-	int phc_index = -1;
+	char phc_device[19];
 
 	if (device) {
-		clkid = posix_clock_open(device, &phc_index);
+		if (phc_index >= 0) {
+			snprintf(phc_device, sizeof(phc_device), "/dev/ptp%d",
+				 phc_index);
+			clkid = posix_clock_open(phc_device, &phc_index);
+		} else {
+			clkid = posix_clock_open(device, &phc_index);
+		}
 		if (clkid == CLOCK_INVALID)
 			return NULL;
 	}
@@ -257,7 +262,7 @@ static struct port *port_get(struct phc2sys_private *priv, unsigned int number)
 }
 
 static struct port *port_add(struct phc2sys_private *priv, unsigned int number,
-			     char *device)
+			     char *device, int phc_index)
 {
 	struct port *p;
 	struct clock *c = NULL, *tmp;
@@ -274,7 +279,7 @@ static struct port *port_add(struct phc2sys_private *priv, unsigned int number,
 		}
 	}
 	if (!c) {
-		c = clock_add(priv, device);
+		c = clock_add(priv, device, phc_index);
 		if (!c)
 			return NULL;
 	}
@@ -292,10 +297,10 @@ static struct port *port_add(struct phc2sys_private *priv, unsigned int number,
 static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 			 int new_state)
 {
-	int err = -1, phc_index = -1, phc_switched = 0, state, timestamping;
+	int err = -1, phc_index = -1, phc_switched = 0, timestamping;
+	char iface[IFNAMSIZ], phc_device[19];
+	enum port_state state;
 	struct port *p;
-	struct sk_ts_info ts_info;
-	char iface[IFNAMSIZ];
 	clockid_t clkid = CLOCK_INVALID;
 
 	LIST_FOREACH(p, &priv->ports, list) {
@@ -304,9 +309,10 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 		}
 		err = pmc_agent_query_port_properties(priv->agent, 1000,
 						      p->number, &state,
-						      &timestamping, iface);
+						      &timestamping, &phc_index,
+						      iface);
 		if (!err) {
-			p->state = normalize_state(state);
+			p->state = port_state_normalize(state);
 		}
 		break;
 	}
@@ -318,9 +324,10 @@ static void clock_reinit(struct phc2sys_private *priv, struct clock *clock,
 			clock->device = strdup(iface);
 		}
 		/* Check if phc index changed */
-		if (!sk_get_ts_info(clock->device, &ts_info) &&
-		    clock->phc_index != ts_info.phc_index) {
-			clkid = posix_clock_open(clock->device, &phc_index);
+		if (clock->phc_index != phc_index) {
+			snprintf(phc_device, sizeof(phc_device), "/dev/ptp%d",
+				 phc_index);
+			clkid = posix_clock_open(phc_device, &phc_index);
 			if (clkid == CLOCK_INVALID)
 				return;
 
@@ -470,37 +477,6 @@ static void reconfigure(struct phc2sys_private *priv)
 	pr_info("selecting %s as the master clock", src->device);
 }
 
-static int read_phc(clockid_t clkid, clockid_t sysclk, int readings,
-		    int64_t *offset, uint64_t *ts, int64_t *delay)
-{
-	struct timespec tdst1, tdst2, tsrc;
-	int i;
-	int64_t interval, best_interval = INT64_MAX;
-
-	/* Pick the quickest clkid reading. */
-	for (i = 0; i < readings; i++) {
-		if (clock_gettime(sysclk, &tdst1) ||
-				clock_gettime(clkid, &tsrc) ||
-				clock_gettime(sysclk, &tdst2)) {
-			pr_err("failed to read clock: %m");
-			return 0;
-		}
-
-		interval = (tdst2.tv_sec - tdst1.tv_sec) * NS_PER_SEC +
-			tdst2.tv_nsec - tdst1.tv_nsec;
-
-		if (best_interval > interval) {
-			best_interval = interval;
-			*offset = (tdst1.tv_sec - tsrc.tv_sec) * NS_PER_SEC +
-				tdst1.tv_nsec - tsrc.tv_nsec + interval / 2;
-			*ts = tdst2.tv_sec * NS_PER_SEC + tdst2.tv_nsec;
-		}
-	}
-	*delay = best_interval;
-
-	return 1;
-}
-
 static int64_t get_sync_offset(struct phc2sys_private *priv, struct clock *dst)
 {
 	int direction = priv->forced_sync_offset;
@@ -552,8 +528,8 @@ static void update_clock_stats(struct clock *clock, unsigned int max_count,
 static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 			 int64_t offset, uint64_t ts, int64_t delay)
 {
-	enum servo_state state;
-	double ppb;
+	enum servo_state state = SERVO_UNLOCKED;
+	double ppb = 0.0;
 
 	if (!clock->servo) {
 		clock->servo = servo_add(priv, clock);
@@ -565,6 +541,9 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 		return;
 
 	offset += get_sync_offset(priv, clock);
+
+	if (priv->free_running)
+		goto report;
 
 	if (clock->sanity_check && clockcheck_sample(clock->sanity_check, ts))
 		servo_reset(clock->servo);
@@ -582,6 +561,9 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 		/* Fall through. */
 	case SERVO_LOCKED:
 	case SERVO_LOCKED_STABLE:
+		if (clock->sanity_check)
+			clockcheck_freq(clock->sanity_check,
+					clockadj_get_freq(clock->clkid));
 		clockadj_set_freq(clock->clkid, -ppb);
 		if (clock->clkid == CLOCK_REALTIME)
 			sysclk_set_sync();
@@ -590,6 +572,7 @@ static void update_clock(struct phc2sys_private *priv, struct clock *clock,
 		break;
 	}
 
+report:
 	if (clock->offset_stats) {
 		update_clock_stats(clock, priv->stats_max_count, offset, ppb, delay);
 	} else {
@@ -644,6 +627,7 @@ static int do_pps_loop(struct phc2sys_private *priv, struct clock *clock,
 	int64_t pps_offset, phc_offset, phc_delay;
 	uint64_t pps_ts, phc_ts;
 	clockid_t src = priv->master->clkid;
+	int err;
 
 	priv->master->source_label = "pps";
 
@@ -662,8 +646,13 @@ static int do_pps_loop(struct phc2sys_private *priv, struct clock *clock,
 		/* If a PHC is available, use it to get the whole number
 		   of seconds in the offset and PPS for the rest. */
 		if (src != CLOCK_INVALID) {
-			if (!read_phc(src, clock->clkid, priv->phc_readings,
-				      &phc_offset, &phc_ts, &phc_delay))
+			err = clockadj_compare(src, clock->clkid,
+					       priv->phc_readings,
+					       &phc_offset, &phc_ts,
+					       &phc_delay);
+			if (err == -EBUSY)
+				continue;
+			if (err)
 				return -1;
 
 			/* Convert the time stamp to the PHC time. */
@@ -711,6 +700,7 @@ static int do_loop(struct phc2sys_private *priv)
 	struct clock *clock;
 	uint64_t ts;
 	int64_t offset, delay;
+	int err;
 
 	interval.tv_sec = priv->phc_interval;
 	interval.tv_nsec = (priv->phc_interval - interval.tv_sec) * 1e9;
@@ -747,42 +737,36 @@ static int do_loop(struct phc2sys_private *priv)
 			if (clock->clkid == CLOCK_REALTIME &&
 			    priv->master->sysoff_method >= 0) {
 				/* use sysoff */
-				if (sysoff_measure(CLOCKID_TO_FD(priv->master->clkid),
-						   priv->master->sysoff_method,
-						   priv->phc_readings,
-						   &offset, &ts, &delay) < 0)
-					return -1;
+				err = sysoff_measure(CLOCKID_TO_FD(priv->master->clkid),
+						     priv->master->sysoff_method,
+						     priv->phc_readings,
+						     &offset, &ts, &delay);
 			} else if (priv->master->clkid == CLOCK_REALTIME &&
 				   clock->sysoff_method >= 0) {
 				/* use reversed sysoff */
-				if (sysoff_measure(CLOCKID_TO_FD(clock->clkid),
-						   clock->sysoff_method,
-						   priv->phc_readings,
-						   &offset, &ts, &delay) < 0)
-					return -1;
-				offset = -offset;
-				ts += offset;
+				err = sysoff_measure(CLOCKID_TO_FD(clock->clkid),
+						     clock->sysoff_method,
+						     priv->phc_readings,
+						     &offset, &ts, &delay);
+				if (!err) {
+					offset = -offset;
+					ts += offset;
+				}
 			} else {
 				/* use phc */
-				if (!read_phc(priv->master->clkid, clock->clkid,
-					      priv->phc_readings,
-					      &offset, &ts, &delay))
-					continue;
+				err = clockadj_compare(priv->master->clkid,
+						       clock->clkid,
+						       priv->phc_readings,
+						       &offset, &ts, &delay);
 			}
+			if (err == -EBUSY)
+				continue;
+			if (err)
+				return -1;
 			update_clock(priv, clock, offset, ts, delay);
 		}
 	}
 	return 0;
-}
-
-static int normalize_state(int state)
-{
-	if (state != PS_MASTER && state != PS_SLAVE &&
-	    state != PS_PRE_MASTER && state != PS_UNCALIBRATED) {
-		/* treat any other state as "not a master nor a slave" */
-		state = PS_DISABLED;
-	}
-	return state;
 }
 
 static int clock_compute_state(struct phc2sys_private *priv,
@@ -825,7 +809,7 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 				pid2str(&pds->portIdentity));
 			return 1;
 		}
-		state = normalize_state(pds->portState);
+		state = port_state_normalize(pds->portState);
 		if (port->state != state) {
 			pr_info("port %s changed state",
 				pid2str(&pds->portIdentity));
@@ -844,7 +828,8 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 
 static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 {
-	int err, number_ports, state, timestamping;
+	int err, number_ports, phc_index, timestamping;
+	enum port_state state;
 	char iface[IFNAMSIZ];
 	struct clock *clock;
 	struct port *port;
@@ -880,7 +865,7 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 	for (i = 1; i <= number_ports; i++) {
 		err = pmc_agent_query_port_properties(priv->agent, 1000, i,
 						      &state, &timestamping,
-						      iface);
+						      &phc_index, iface);
 		if (err == -ENODEV) {
 			/* port does not exist, ignore the port */
 			continue;
@@ -893,10 +878,10 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 			/* ignore ports with software time stamping */
 			continue;
 		}
-		port = port_add(priv, i, iface);
+		port = port_add(priv, i, iface, phc_index);
 		if (!port)
 			return -1;
-		port->state = normalize_state(state);
+		port->state = port_state_normalize(state);
 	}
 	if (LIST_EMPTY(&priv->clocks)) {
 		pr_err("no suitable ports available");
@@ -908,7 +893,7 @@ static int auto_init_ports(struct phc2sys_private *priv, int add_rt)
 	priv->state_changed = 1;
 
 	if (add_rt) {
-		clock = clock_add(priv, "CLOCK_REALTIME");
+		clock = clock_add(priv, "CLOCK_REALTIME", -1);
 		if (!clock)
 			return -1;
 		if (add_rt == 1)
@@ -985,13 +970,12 @@ static bool hardpps_configured(int fd)
 	return fd >= 0;
 }
 
-static int phc2sys_static_configuration(struct phc2sys_private *priv,
-					const char *src_name,
-					const char *dst_name)
+static int phc2sys_static_src_configuration(struct phc2sys_private *priv,
+					    const char *src_name)
 {
-	struct clock *src, *dst;
+	struct clock *src;
 
-	src = clock_add(priv, src_name);
+	src = clock_add(priv, src_name, -1);
 	if (!src) {
 		fprintf(stderr, "valid source clock must be selected.\n");
 		return -1;
@@ -999,7 +983,15 @@ static int phc2sys_static_configuration(struct phc2sys_private *priv,
 	src->state = PS_SLAVE;
 	priv->master = src;
 
-	dst = clock_add(priv, dst_name);
+	return 0;
+}
+
+static int phc2sys_static_dst_configuration(struct phc2sys_private *priv,
+					    const char *dst_name)
+{
+	struct clock *dst;
+
+	dst = clock_add(priv, dst_name, -1);
 	if (!dst) {
 		fprintf(stderr, "valid destination clock must be selected.\n");
 		return -1;
@@ -1065,11 +1057,12 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	char *config = NULL, *dst_name = NULL, *progname, *src_name = NULL;
+	char *config = NULL, *progname, *src_name = NULL;
+	const char *dst_names[MAX_DST_CLOCKS];
 	char uds_local[MAX_IFNAME_SIZE + 1];
-	int autocfg = 0, c, domain_number = 0, index, ntpshm_segment, offset;
+	int i, autocfg = 0, c, domain_number = 0, index, ntpshm_segment, offset;
 	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0;
-	int wait_sync = 0;
+	int wait_sync = 0, dst_cnt = 0;
 	struct config *cfg;
 	struct option *opts;
 	double phc_rate, tmp;
@@ -1113,7 +1106,11 @@ int main(int argc, char *argv[])
 			rt++;
 			break;
 		case 'c':
-			dst_name = optarg;
+			if (dst_cnt == MAX_DST_CLOCKS) {
+				fprintf(stderr, "too many sink clocks\n");
+				goto bad_usage;
+			}
+			dst_names[dst_cnt++] = optarg;
 			break;
 		case 'd':
 			pps_fd = open(optarg, O_RDONLY);
@@ -1143,6 +1140,9 @@ int main(int argc, char *argv[])
 			} else if (!strcasecmp(optarg, "ntpshm")) {
 				config_set_int(cfg, "clock_servo",
 					       CLOCK_SERVO_NTPSHM);
+			} else if (!strcasecmp(optarg, "refclock_sock")) {
+				config_set_int(cfg, "clock_servo",
+					       CLOCK_SERVO_REFCLOCK_SOCK);
 			} else {
 				fprintf(stderr,
 					"invalid servo name %s\n", optarg);
@@ -1264,7 +1264,11 @@ int main(int argc, char *argv[])
 		return c;
 	}
 
-	if (autocfg && (src_name || dst_name || hardpps_configured(pps_fd) ||
+	if (!autocfg && dst_cnt == 0) {
+		dst_names[dst_cnt++] = "CLOCK_REALTIME";
+	}
+
+	if (autocfg && (src_name || dst_cnt > 0 || hardpps_configured(pps_fd) ||
 			wait_sync || priv.forced_sync_offset)) {
 		fprintf(stderr,
 			"autoconfiguration cannot be mixed with manual config options.\n");
@@ -1282,10 +1286,8 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
-	if (!dst_name) {
-		dst_name = "CLOCK_REALTIME";
-	}
-	if (hardpps_configured(pps_fd) && strcmp(dst_name, "CLOCK_REALTIME")) {
+	if (hardpps_configured(pps_fd) && (dst_cnt != 1 ||
+	    strcmp(dst_names[0], "CLOCK_REALTIME"))) {
 		fprintf(stderr,
 			"cannot use a pps device unless destination is CLOCK_REALTIME\n");
 		goto bad_usage;
@@ -1297,13 +1299,21 @@ int main(int argc, char *argv[])
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
+	priv.free_running = config_get_int(cfg, NULL, "free_running");
 	priv.servo_type = config_get_int(cfg, NULL, "clock_servo");
-	if (priv.servo_type == CLOCK_SERVO_NTPSHM) {
+	if (priv.free_running || priv.servo_type == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
 	priv.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
 	priv.sanity_freq_limit = config_get_int(cfg, NULL, "sanity_freq_limit");
+
+	for (i = 0; i < dst_cnt; i++) {
+		r = phc2sys_static_dst_configuration(&priv, dst_names[i]);
+		if (r) {
+			goto end;
+		}
+	}
 
 	snprintf(uds_local, sizeof(uds_local), "/var/run/phc2sys.%d",
 		 getpid());
@@ -1318,7 +1328,7 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	r = phc2sys_static_configuration(&priv, src_name, dst_name);
+	r = phc2sys_static_src_configuration(&priv, src_name);
 	if (r) {
 		goto end;
 	}

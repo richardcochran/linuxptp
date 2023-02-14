@@ -15,7 +15,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-KBUILD_OUTPUT =
+KBUILD_OUTPUT ?=
 
 DEBUG	=
 CC	= $(CROSS_COMPILE)gcc
@@ -24,10 +24,10 @@ CFLAGS	= -Wall $(VER) $(incdefs) $(DEBUG) $(EXTRA_CFLAGS)
 LDLIBS	= -lm -lrt -pthread $(EXTRA_LDFLAGS)
 PRG	= ptp4l hwstamp_ctl nsm phc2sys phc_ctl pmc timemaster ts2phc
 FILTERS	= filter.o mave.o mmedian.o
-SERVOS	= linreg.o ntpshm.o nullf.o pi.o servo.o
+SERVOS	= linreg.o ntpshm.o nullf.o pi.o refclock_sock.o servo.o
 TRANSP	= raw.o transport.o udp.o udp6.o uds.o
-TS2PHC	= ts2phc.o lstab.o nmea.o serial.o sock.o ts2phc_generic_master.o \
- ts2phc_master.o ts2phc_phc_master.o ts2phc_nmea_master.o ts2phc_slave.o
+TS2PHC	= ts2phc.o lstab.o nmea.o serial.o sock.o ts2phc_generic_pps_source.o \
+ ts2phc_nmea_pps_source.o ts2phc_phc_pps_source.o ts2phc_pps_sink.o ts2phc_pps_source.o
 OBJ	= bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
  e2e_tc.o fault.o $(FILTERS) fsm.o hash.o interface.o monitor.o msg.o phc.o \
  port.o port_signaling.o pqueue.o print.o ptp4l.o p2p_tc.o rtnl.o $(SERVOS) \
@@ -68,8 +68,9 @@ phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
 
 timemaster: phc.o print.o rtnl.o sk.o timemaster.o util.o version.o
 
-ts2phc: config.o clockadj.o hash.o interface.o phc.o print.o $(SERVOS) sk.o \
- $(TS2PHC) util.o version.o
+ts2phc: config.o clockadj.o hash.o interface.o msg.o phc.o pmc_agent.o \
+ pmc_common.o print.o $(SERVOS) sk.o $(TS2PHC) tlv.o transport.o raw.o \
+ udp.o udp6.o uds.o util.o version.o
 
 version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 

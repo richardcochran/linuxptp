@@ -120,13 +120,13 @@ Specify the time sink by device (e.g. /dev/ptp1) or interface (e.g. eth1) or
 by  name. The default is CLOCK_REALTIME (the system clock). Not compatible
 with the
 .B \-a
-option.
+option. This option may be given up to 128 times.
 .TP
 .BI \-E " servo"
 Specify which clock servo should be used. Valid values are pi for a PI
 controller, linreg for an adaptive controller using linear regression, and
-ntpshm for the NTP SHM reference clock to allow another process to synchronize
-the local clock.
+ntpshm and refclock_sock for the NTP SHM and chrony SOCK reference clocks
+respectively to allow another process to synchronize the local clock.
 The default is pi.
 .TP
 .BI \-P " kp"
@@ -324,6 +324,10 @@ Same as option
 (see above).
 
 .TP
+.B free-running
+Don't adjust the sink clock if enabled. The default is 0 (disabled).
+
+.TP
 .B transportSpecific
 The transport specific field. Must be in the range 0 to 255.
 The default is 0.
@@ -358,12 +362,12 @@ Same as option
 
 .TP
 .B step_threshold
-Specifies the step threshold of the servo. It is the maximum offset that
-the servo corrects by changing the clock frequency instead of stepping
-the clock. The clock is stepped on start regardless of the option if the
-offset is larger than 20 microseconds (unless the -F option is used).
-It's  specified  in seconds. The value of 0.0 disables stepping after
-the start. The default is 0.0.
+Specifies the step threshold of the servo. It is the maximum offset that the
+servo corrects by changing the clock frequency (phase when using nullf servo)
+instead of stepping the clock. The clock is stepped on start regardless of the
+option if the offset is larger than 20 microseconds (unless the -F option is
+used). It's specified in seconds. The value of 0.0 disables stepping after the
+start. The default is 0.0.
 Same as option
 .B \-S
 (see above).
@@ -377,6 +381,11 @@ seconds. The value of 0.0 disables stepping on start. The default is
 Same as option
 .B \-F
 (see above).
+
+.TP
+.B refclock_sock_address
+The address of the UNIX domain socket to be used by the refclock_sock servo.
+The default is /var/run/refclock.ptp.sock.
 
 .TP
 .B ntpshm_segment
@@ -461,7 +470,7 @@ does not wait for
 .BR ptp4l .
 
 .RS
-\f(CWphc2sys \-c /dev/ptp0 \-s CLOCK_REALTIME \-O 35\fP
+\f(CWphc2sys \-c /dev/ptp0 \-s CLOCK_REALTIME \-O 37\fP
 .RE
 
 The host is in client mode, system clock is synchronized from PTP clock,
@@ -480,7 +489,7 @@ provided on command line
 does not wait.
 
 .RS
-\f(CWphc2sys \-s eth0 \-O \-35\fP
+\f(CWphc2sys \-s eth0 \-O \-37\fP
 .RE
 
 .SH WARNING

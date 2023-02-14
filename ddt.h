@@ -107,4 +107,27 @@ struct PortStats {
 	uint64_t txMsgType[MAX_MESSAGE_TYPES];
 };
 
+struct PortServiceStats {
+	uint64_t announce_timeout;
+	uint64_t sync_timeout;
+	uint64_t delay_timeout;
+	uint64_t unicast_service_timeout;
+	uint64_t unicast_request_timeout;
+	uint64_t master_announce_timeout;
+	uint64_t master_sync_timeout;
+	uint64_t qualification_timeout;
+	uint64_t sync_mismatch;
+	uint64_t followup_mismatch;
+};
+
+struct unicast_master_entry {
+	struct PortIdentity     port_identity;
+	struct ClockQuality     clock_quality;
+	uint8_t                 selected;
+	Enumeration8            port_state;
+	UInteger8               priority1;
+	UInteger8               priority2;
+	struct PortAddress      address;
+} PACKED;
+
 #endif

@@ -126,6 +126,16 @@ void clockcheck_set_freq(struct clockcheck *cc, int freq)
 	cc->freq_known = 1;
 }
 
+int clockcheck_freq(struct clockcheck *cc, int freq)
+{
+	/* Allow difference of 1 ppb due to conversion to/from double */
+	if (cc->freq_known && abs(cc->current_freq - freq) > 1) {
+		pr_warning("clockcheck: clock frequency changed unexpectedly!");
+		return 1;
+	}
+	return 0;
+}
+
 void clockcheck_step(struct clockcheck *cc, int64_t step)
 {
 	if (cc->last_ts)

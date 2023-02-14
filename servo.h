@@ -35,6 +35,7 @@ enum servo_type {
 	CLOCK_SERVO_LINREG,
 	CLOCK_SERVO_NTPSHM,
 	CLOCK_SERVO_NULLF,
+	CLOCK_SERVO_REFCLOCK_SOCK,
 };
 
 /**
@@ -48,7 +49,7 @@ enum servo_state {
 	SERVO_UNLOCKED,
 
 	/**
-	 * The is ready to track and requests a clock jump to
+	 * The servo is ready to track and requests a clock jump to
 	 * immediately correct the estimated offset.
 	 */
 	SERVO_JUMP,
@@ -77,7 +78,7 @@ enum servo_state {
  * @return A pointer to a new servo on success, NULL otherwise.
  */
 struct servo *servo_create(struct config *cfg, enum servo_type type,
-			   int fadj, int max_ppb, int sw_ts);
+			   double fadj, int max_ppb, int sw_ts);
 
 /**
  * Destroy an instance of a clock servo.

@@ -48,6 +48,4 @@ struct vlan_hdr {
 	uint16_t type;
 } __attribute__((packed));
 
-#define OFF_ETYPE (2 * sizeof(eth_addr))
-
 #endif

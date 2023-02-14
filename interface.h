@@ -34,17 +34,18 @@ struct interface *interface_create(const char *name);
 void interface_destroy(struct interface *iface);
 
 /**
- * Ensures that an interface has a proper time stamping label.
+ * Populate the time stamping information of a given interface.
  * @param iface  The interface of interest.
+ * @return       zero on success, negative on failure.
  */
-void interface_ensure_tslabel(struct interface *iface);
+int interface_get_tsinfo(struct interface *iface);
 
 /**
  * Populate the time stamping information of a given interface.
  * @param iface  The interface of interest.
  * @return       zero on success, negative on failure.
  */
-int interface_get_tsinfo(struct interface *iface);
+int interface_get_ifinfo(struct interface *iface);
 
 /**
  * Obtain the time stamping label of a network interface.  This can be
@@ -84,11 +85,39 @@ void interface_set_label(struct interface *iface, const char *label);
 bool interface_tsinfo_valid(struct interface *iface);
 
 /**
+ * Tests whether an interface's interface information is valid or not.
+ * @param iface  The interface of interest.
+ * @return       True if the interface information is valid, false otherwise.
+ */
+bool interface_ifinfo_valid(struct interface *iface);
+
+/**
  * Tests whether an interface supports a set of given time stamping modes.
  * @param iface  The interface of interest.
  * @param modes  Bit mask of SOF_TIMESTAMPING_ flags.
  * @return       True if the time stamping modes are supported, false otherwise.
  */
 bool interface_tsmodes_supported(struct interface *iface, int modes);
+
+/**
+ * Set the vclock (virtual PHC) to be used for timestamping on an interface.
+ * @param iface  The interface of interest.
+ * @param vclock The index of the vclock.
+ */
+void interface_set_vclock(struct interface *iface, int vclock);
+
+/**
+ * Get the vclock index set for the interface.
+ * @param iface  The interface of interest.
+ * @return       The index of the vclock, or -1 if not set.
+ */
+int interface_get_vclock(struct interface *iface);
+
+/**
+ * Obtains the interface bit period based on the speed.
+ * @param iface  The interface of interest.
+ * @return       return interface bitperiod in atto seconds.
+ */
+uint64_t interface_bitperiod(struct interface *iface);
 
 #endif

@@ -12,6 +12,8 @@ struct interface {
 	char name[MAX_IFNAME_SIZE + 1];
 	char ts_label[MAX_IFNAME_SIZE + 1];
 	struct sk_ts_info ts_info;
+	struct sk_if_info if_info;
+	int vclock;
 };
 
 struct interface *interface_create(const char *name)
@@ -23,6 +25,8 @@ struct interface *interface_create(const char *name)
 		return NULL;
 	}
 	strncpy(iface->name, name, MAX_IFNAME_SIZE);
+	strncpy(iface->ts_label, name, MAX_IFNAME_SIZE);
+	iface->vclock = -1;
 
 	return iface;
 }
@@ -32,22 +36,26 @@ void interface_destroy(struct interface *iface)
 	free(iface);
 }
 
-void interface_ensure_tslabel(struct interface *iface)
-{
-	if (!iface->ts_label[0]) {
-		memcpy(iface->ts_label, iface->name, MAX_IFNAME_SIZE);
-	}
-}
-
 int interface_get_tsinfo(struct interface *iface)
 {
 	return sk_get_ts_info(iface->ts_label, &iface->ts_info);
+}
+
+int interface_get_ifinfo(struct interface *iface)
+{
+	return sk_get_if_info(iface->ts_label, &iface->if_info);
 }
 
 const char *interface_label(struct interface *iface)
 {
 	return iface->ts_label;
 }
+
+bool interface_ifinfo_valid(struct interface *iface)
+{
+       return iface->if_info.valid ? true : false;
+}
+
 
 const char *interface_name(struct interface *iface)
 {
@@ -75,4 +83,19 @@ bool interface_tsmodes_supported(struct interface *iface, int modes)
 		return true;
 	}
 	return false;
+}
+
+void interface_set_vclock(struct interface *iface, int vclock)
+{
+	iface->vclock = vclock;
+}
+
+int interface_get_vclock(struct interface *iface)
+{
+	return iface->vclock;
+}
+
+uint64_t interface_bitperiod(struct interface *iface)
+{
+	return iface->if_info.iface_bit_period;
 }

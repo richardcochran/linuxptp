@@ -26,6 +26,7 @@
 
 #define E2E_SYDY_MASK	(1 << ANNOUNCE | 1 << SYNC | 1 << DELAY_RESP)
 #define P2P_SYDY_MASK	(1 << ANNOUNCE | 1 << SYNC)
+#define E2E_SY_MASK (1 << ANNOUNCE | 1 << SYNC)
 
 static int attach_ack(struct ptp_message *msg, uint8_t message_type_flags)
 {
@@ -60,6 +61,23 @@ static int attach_request(struct ptp_message *msg, int log_period,
 	req->message_type = message_type << 4;
 	req->logInterMessagePeriod = log_period;
 	req->durationField = duration;
+
+	return 0;
+}
+
+static int attach_cancel(struct ptp_message *msg, uint8_t message_type)
+{
+	struct cancel_unicast_xmit_tlv *req;
+	struct tlv_extra *extra;
+
+	extra = msg_tlv_append(msg, sizeof(*req));
+	if (!extra) {
+		return -1;
+	}
+	req = (struct cancel_unicast_xmit_tlv *) extra->tlv;
+	req->type = TLV_CANCEL_UNICAST_TRANSMISSION;
+	req->length = sizeof(*req) - sizeof(req->type) - sizeof(req->length);
+	req->message_type_flags = message_type << 4;
 
 	return 0;
 }
@@ -183,7 +201,8 @@ static int unicast_client_renew(struct port *p,
 		if (err) {
 			goto out;
 		}
-		if (p->delayMechanism != DM_P2P) {
+		if (p->delayMechanism != DM_P2P &&
+				p->delayMechanism != DM_NO_MECHANISM) {
 			err = attach_request(msg, p->logMinDelayReqInterval,
 					     DELAY_RESP,
 					     p->unicast_req_duration);
@@ -236,9 +255,10 @@ static int unicast_client_sydy(struct port *p,
 	if (err) {
 		goto out;
 	}
-	if (p->delayMechanism != DM_P2P) {
+	if (p->delayMechanism != DM_P2P &&
+			p->delayMechanism != DM_NO_MECHANISM) {
 		err = attach_request(msg, p->logMinDelayReqInterval, DELAY_RESP,
-				     p->unicast_req_duration);
+				p->unicast_req_duration);
 		if (err) {
 			goto out;
 		}
@@ -319,11 +339,14 @@ int unicast_client_cancel(struct port *p, struct ptp_message *m,
 	if (cancel->message_type_flags & CANCEL_UNICAST_MAINTAIN_GRANT) {
 		return 0;
 	}
+
 	pr_warning("%s: server unilaterally canceled unicast %s grant",
 		   p->log_name, msg_type_string(mtype));
 
 	ucma->state = unicast_fsm(ucma->state, UC_EV_CANCEL);
 	ucma->granted &= ~(1 << mtype);
+	// trigger clock state change event
+	clock_set_sde(p->clock, 1);
 
 	/* Respond with ACK. */
 	msg = port_signaling_uc_construct(p, &ucma->address, &ucma->portIdentity);
@@ -383,6 +406,8 @@ int unicast_client_initialize(struct port *p)
 		}
 		if (p->delayMechanism == DM_P2P) {
 			master->sydymsk = P2P_SYDY_MASK;
+		} else if (p->delayMechanism == DM_NO_MECHANISM) {
+			master->sydymsk = E2E_SY_MASK;
 		} else {
 			master->sydymsk = E2E_SYDY_MASK;
 		}
@@ -424,9 +449,17 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 			   p->log_name, msg_type_string(mtype));
 		if (mtype != PDELAY_RESP) {
 			ucma->state = UC_WAIT;
+			// trigger clock state change event
+			clock_set_sde(p->clock, 1);
 		}
 		return;
 	}
+	if (abs(g->logInterMessagePeriod) > 30) {
+		pr_warning("%s: ignore bogus unicast message interval 2^%d",
+			   p->log_name, g->logInterMessagePeriod);
+		return;
+	}
+
 	pr_debug("%s: unicast %s granted for %u sec",
 		 p->log_name, msg_type_string(mtype), g->durationField);
 
@@ -450,14 +483,13 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 	ucma->granted |= 1 << mtype;
 
 	switch (ucma->state) {
+	case UC_HAVE_ANN:
 	case UC_WAIT:
 		if (mtype == ANNOUNCE) {
 			ucma->state = unicast_fsm(ucma->state, UC_EV_GRANT_ANN);
 			ucma->portIdentity = m->header.sourcePortIdentity;
 			unicast_client_set_renewal(p, ucma, g->durationField);
 		}
-		break;
-	case UC_HAVE_ANN:
 		break;
 	case UC_NEED_SYDY:
 		switch (mtype) {
@@ -476,6 +508,7 @@ void unicast_client_grant(struct port *p, struct ptp_message *m,
 			}
 			unicast_client_set_renewal(p, ucma, g->durationField);
 			clock_sync_interval(p->clock, g->logInterMessagePeriod);
+			port_set_sync_rx_tmo(p);
 			break;
 		}
 		break;
@@ -501,6 +534,7 @@ void unicast_client_state_changed(struct port *p)
 {
 	struct unicast_master_address *ucma;
 	struct PortIdentity pid;
+	enum unicast_state prev_state;
 
 	if (!unicast_client_enabled(p)) {
 		return;
@@ -511,7 +545,13 @@ void unicast_client_state_changed(struct port *p)
 		if (pid_eq(&ucma->portIdentity, &pid)) {
 			ucma->state = unicast_fsm(ucma->state, UC_EV_SELECTED);
 		} else {
+			prev_state = ucma->state;
+
 			ucma->state = unicast_fsm(ucma->state, UC_EV_UNSELECTED);
+
+			if ((prev_state != ucma->state) && (prev_state == UC_HAVE_SYDY)) {
+				unicast_client_tx_cancel(p, ucma, UNICAST_CANCEL_SYDY);
+			}
 		}
 	}
 }
@@ -545,5 +585,67 @@ int unicast_client_timer(struct port *p)
 	}
 
 	unicast_client_set_tmo(p);
+	return err;
+}
+
+int unicast_client_msg_is_from_master_table_entry(struct port *p, struct ptp_message *m)
+{
+	struct unicast_master_address *ucma;
+	int found = 0;
+
+	if (!unicast_client_enabled(p)) {
+		return found;
+	}
+	STAILQ_FOREACH(ucma, &p->unicast_master_table->addrs, list) {
+		if (addreq(transport_type(p->trp), &ucma->address, &m->address)) {
+			found = 1;
+			break;
+		}
+	}
+	return found;
+}
+
+int unicast_client_tx_cancel(struct port *p,
+			     struct unicast_master_address *dst,
+			     unsigned int bitmask)
+{
+	struct ptp_message *msg;
+	int err;
+
+	if (!(dst->granted & bitmask)) {
+		return 0;
+	}
+	msg = port_signaling_uc_construct(p, &dst->address, &dst->portIdentity);
+	if (!msg) {
+		return -1;
+	}
+	if (dst->granted & (bitmask & (1 << ANNOUNCE))) {
+		err = attach_cancel(msg, ANNOUNCE);
+		if (err) {
+			goto out;
+		}
+		dst->granted &= ~(1 << ANNOUNCE);
+	}
+	if (dst->granted & (bitmask & (1 << SYNC))) {
+		err = attach_cancel(msg, SYNC);
+		if (err) {
+			goto out;
+		}
+		dst->granted &= ~(1 << SYNC);
+	}
+	if (dst->granted & (bitmask & (1 << DELAY_RESP))) {
+		err = attach_cancel(msg, DELAY_RESP);
+		if (err) {
+			goto out;
+		}
+		dst->granted &= ~(1 << DELAY_RESP);
+	}
+
+	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
+	if (err) {
+		pr_err("%s: signaling message failed", p->log_name);
+	}
+out:
+	msg_put(msg);
 	return err;
 }

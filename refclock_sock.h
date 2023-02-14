@@ -1,6 +1,6 @@
 /**
- * @file pi.h
- * @note Copyright (C) 2011 Richard Cochran <richardcochran@gmail.com>
+ * @file refclock_sock.h
+ * @note Copyright (C) 2023 Miroslav Lichvar <mlichvar@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,11 +16,11 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-#ifndef HAVE_PI_H
-#define HAVE_PI_H
+#ifndef HAVE_REFCLOCK_SOCK_H
+#define HAVE_REFCLOCK_SOCK_H
 
 #include "servo.h"
 
-struct servo *pi_servo_create(struct config *cfg, double fadj, int sw_ts);
+struct servo *refclock_sock_servo_create(struct config *cfg);
 
 #endif

@@ -24,6 +24,7 @@
 #include "ntpshm.h"
 #include "nullf.h"
 #include "pi.h"
+#include "refclock_sock.h"
 #include "servo_private.h"
 
 #include "print.h"
@@ -33,7 +34,7 @@
 #define NSEC_PER_SEC 1000000000
 
 struct servo *servo_create(struct config *cfg, enum servo_type type,
-			   int fadj, int max_ppb, int sw_ts)
+			   double fadj, int max_ppb, int sw_ts)
 {
 	double servo_first_step_threshold;
 	double servo_step_threshold;
@@ -55,6 +56,9 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 		break;
 	case CLOCK_SERVO_NULLF:
 		servo = nullf_servo_create();
+		break;
+	case CLOCK_SERVO_REFCLOCK_SOCK:
+		servo = refclock_sock_servo_create(cfg);
 		break;
 	default:
 		return NULL;

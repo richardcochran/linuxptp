@@ -24,6 +24,7 @@
 
 #include <stdbool.h>
 
+#include "fsm.h"
 #include "pmc_common.h"
 
 struct pmc_agent;
@@ -103,12 +104,14 @@ int pmc_agent_query_dds(struct pmc_agent *agent, int timeout);
  * @param port       The port index of interest.
  * @param state      Buffer to hold the returned port state.
  * @param tstamping  Buffer to hold the returned time stamping flavor.
+ * @param phc_index  Buffer to hold the returned PHC index.
  * @param iface      Buffer to hold the returned interface name.
  * @return           Zero on success, negative error code otherwise.
  */
 int pmc_agent_query_port_properties(struct pmc_agent *agent, int timeout,
-				    unsigned int port, int *state,
-				    int *tstamping, char *iface);
+				    unsigned int port, enum port_state *state,
+				    int *tstamping, int *phc_index,
+				    char *iface);
 
 /**
  * Queries the TAI-UTC offset and the current leap adjustment from the

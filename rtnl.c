@@ -19,6 +19,9 @@
 #include <asm/types.h>
 #include <sys/socket.h> /* Must come before linux/netlink.h on some systems. */
 #include <linux/netlink.h>
+#ifdef HAVE_VCLOCKS
+#include <linux/ethtool_netlink.h>
+#endif
 #include <linux/rtnetlink.h>
 #include <linux/genetlink.h>
 #include <linux/if_team.h>
@@ -178,10 +181,10 @@ static int rtnl_rtattr_parse(struct rtattr *tb[], int max, struct rtattr *rta, i
 {
 	unsigned short type;
 
-	memset(tb, 0, sizeof(struct rtattr *) * max);
+	memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
 	while (RTA_OK(rta, len)) {
 		type = rta->rta_type;
-		if ((type < max) && (!tb[type]))
+		if ((type <= max) && (!tb[type]))
 			tb[type] = rta;
 		rta = RTA_NEXT(rta, len);
 	}
@@ -200,8 +203,8 @@ static inline int rtnl_nested_rtattr_parse(struct rtattr *tb[], int max, struct 
 
 static int rtnl_linkinfo_parse(int master_index, struct rtattr *rta)
 {
-	struct rtattr *linkinfo[IFLA_INFO_MAX];
-	struct rtattr *bond[IFLA_BOND_MAX];
+	struct rtattr *linkinfo[IFLA_INFO_MAX+1];
+	struct rtattr *bond[IFLA_BOND_MAX+1];
 	int index = -1;
 	char *kind;
 
@@ -464,4 +467,86 @@ static int get_team_active_iface(int master_index)
 no_info:
 	nl_close(fd);
 	return index;
+}
+
+static int rtnl_search_vclocks(struct rtattr *attr, int phc_index)
+{
+	int i, len = RTA_PAYLOAD(attr);
+
+	for (i = 0; i < len / sizeof (__s32); i++) {
+		if (((__s32 *)RTA_DATA(attr))[i] == phc_index)
+			return 1;
+	}
+
+	return 0;
+}
+
+int rtnl_iface_has_vclock(const char *device, int phc_index)
+{
+	struct rtattr *tb[ETHTOOL_A_PHC_VCLOCKS_MAX + 1];
+	int index, fd, gf_id, len, ret = 0;
+	struct genlmsghdr *gnlh;
+	struct nlmsghdr *nlh;
+	char msg[BUF_SIZE];
+	struct {
+		struct nlattr attr;
+		uint32_t index;
+	} req;
+
+	index = if_nametoindex(device);
+
+	fd = nl_open(NETLINK_GENERIC);
+	if (fd < 0)
+		return 0;
+
+	gf_id = genl_get_family_id(fd, ETHTOOL_GENL_NAME);
+	if (gf_id < 0) {
+		pr_debug("ethtool netlink not supported");
+		goto no_info;
+	}
+
+	req.attr.nla_len = sizeof(req);
+	req.attr.nla_type = ETHTOOL_A_HEADER_DEV_INDEX;
+	req.index = index;
+
+	len = genl_send_msg(fd, gf_id, ETHTOOL_MSG_PHC_VCLOCKS_GET,
+			    ETHTOOL_GENL_VERSION,
+			    NLA_F_NESTED | ETHTOOL_A_PHC_VCLOCKS_HEADER, 
+			    &req, sizeof(req));
+
+	if (len < 0) {
+		pr_err("send vclock request failed: %m");
+		goto no_info;
+	}
+
+	len = recv(fd, msg, sizeof(msg), 0);
+	if (len < 0) {
+		pr_err("recv vclock failed: %m");
+		goto no_info;
+	}
+
+	for (nlh = (struct nlmsghdr *) msg; NLMSG_OK(nlh, len);
+	     nlh = NLMSG_NEXT(nlh, len)) {
+		if (nlh->nlmsg_type != gf_id)
+			continue;
+
+		gnlh = (struct genlmsghdr *) NLMSG_DATA(nlh);
+		if (gnlh->cmd != ETHTOOL_MSG_PHC_VCLOCKS_GET_REPLY)
+			continue;
+
+		if (rtnl_rtattr_parse(tb, ETHTOOL_A_PHC_VCLOCKS_MAX,
+				      (struct rtattr *) GENLMSG_DATA(msg),
+				      NLMSG_PAYLOAD(nlh, GENL_HDRLEN)))
+			continue;
+
+		if (tb[ETHTOOL_A_PHC_VCLOCKS_INDEX]) {
+			ret = rtnl_search_vclocks(tb[ETHTOOL_A_PHC_VCLOCKS_INDEX],
+						  phc_index);
+			break;
+		}
+	}
+
+no_info:
+	nl_close(fd);
+	return ret;
 }

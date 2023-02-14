@@ -330,7 +330,7 @@ static void linreg_leap(struct servo *servo, int leap)
 	s->leap = leap;
 }
 
-struct servo *linreg_servo_create(int fadj)
+struct servo *linreg_servo_create(double fadj)
 {
 	struct linreg_servo *s;
 
