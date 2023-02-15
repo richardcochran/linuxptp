@@ -124,12 +124,14 @@ changing the clock frequency (phase when using nullf servo) instead of stepping
 the clock. This is only applied on the first update. When set to 0.0, the servo
 will not step the clock on start.
 The default is 0.00002 (20 microseconds).
+
 .TP
 .B free_running
 When set to 1, no PHC will be adjusted.
 This option can be useful in test scenarios, for example to determine
 how well synchronized a group of local clocks are to each other.
 The default is 0 (adjust the clocks).
+
 .TP
 .B leapfile
 The path to the current leap seconds definition file. In a Debian
@@ -138,37 +140,32 @@ system this file is provided by the tzdata package and can be found at
 will be reloaded if modified. The default is an empty string, which
 causes the program to use a hard coded table that reflects the known
 leap seconds on the date of the software's release.
+
 .TP
 .B logging_level
 The maximum logging level of messages which should be printed.
 The default is 6 (LOG_INFO).
+
 .TP
 .B max_frequency
 The maximum allowed frequency adjustment of the clock in parts per
 billion.  This is an additional limit to the maximum allowed by the
 hardware. When set to 0, the hardware limit will be used.
 The default is 900000000 (90%).
+
 .TP
 .B message_tag
 The tag which is added to all messages printed to the standard output
 or system log.  The default is an empty string (which cannot be set in
 the configuration file as the option requires an argument).
+
 .TP
 .B step_threshold
 The maximum offset, specified in seconds, that the servo will correct
 by changing the clock frequency instead of stepping the clock. When
 set to 0.0, the servo will never step the clock except on start.
 The default is 0.0.
-.TP
-.B ts2phc.tod_source
-Specifies the source of Time of Day (ToD) data.
-Use the key word "generic" for an external 1-PPS without ToD information.
-When using a PHC as the time source, the clock may be identified by its character
-device (like /dev/ptp0) or its associated network interface (like
-eth0).
-Use the key word "nmea" for an external 1-PPS from a GPS providing ToD
-information via the RMC NMEA sentence.
-The default is "generic"
+
 .TP
 .B ts2phc.nmea_remote_host, ts2phc.nmea_remote_port
 Specifies the remote host providing ToD information when using the
@@ -176,6 +173,7 @@ Specifies the remote host providing ToD information when using the
 specified, then the given remote connection will be used in preference
 to the configured serial port.
 These options default to the empty string, that is, not specified.
+
 .TP
 .B ts2phc.nmea_serialport, ts2phc.nmea_baudrate
 Specifies the serial port and baudrate in bps for character device
@@ -185,6 +183,7 @@ ts2phc.nmea_remote_port, are both specified, then the given remote
 connection will be used in preference to the configured serial port.
 The default serial port is "/dev/ttyS0".
 The default baudrate is 9600 bps.
+
 .TP
 .B ts2phc.perout_phase
 Configures the offset between the beginning of the second and the PPS
@@ -195,6 +194,7 @@ instead PPS will be requested to start at an absolute time equal to the
 nearest 2nd full second since the start of the program. This should yield
 the same effect, but may not work with drivers that do not support
 starting periodic output at an absolute time.
+
 .TP
 .B ts2phc.pulsewidth
 The pulse width of the external PPS signal in nanoseconds.
@@ -205,9 +205,22 @@ emit using this pulse width. If this fails, it is assumed that the specified
 pulse width is correct, and the value is used in the edge rejection algorithm.
 The supported range is 1000000 to 990000000 nanoseconds.
 The default is 500000000 nanoseconds.
+
+.TP
+.B ts2phc.tod_source
+Specifies the source of Time of Day (ToD) data.
+Use the key word "generic" for an external 1-PPS without ToD information.
+When using a PHC as the time source, the clock may be identified by its character
+device (like /dev/ptp0) or its associated network interface (like
+eth0).
+Use the key word "nmea" for an external 1-PPS from a GPS providing ToD
+information via the RMC NMEA sentence.
+The default is "generic"
+
 .TP
 .B use_syslog
 Print messages to the system log if enabled.  The default is 1 (enabled).
+
 .TP
 .B verbose
 Print messages to the standard output if enabled.  The default is 0 (disabled).
