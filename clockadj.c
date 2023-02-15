@@ -49,7 +49,7 @@ void clockadj_init(clockid_t clkid)
 #endif
 }
 
-void clockadj_set_freq(clockid_t clkid, double freq)
+int clockadj_set_freq(clockid_t clkid, double freq)
 {
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
@@ -72,8 +72,11 @@ void clockadj_set_freq(clockid_t clkid, double freq)
 #if CLOCKADJ
 	fprintf(stderr, "%s: do_phy_driver_adjfine: %ld\n", __func__, tx.freq);
 #endif
-	if (clock_adjtime(clkid, &tx) < 0)
+	if (clock_adjtime(clkid, &tx) < 0) {
 		pr_err("failed to adjust the clock: %m");
+		return -1;
+	}
+	return 0;
 }
 
 double clockadj_get_freq(clockid_t clkid)
@@ -95,7 +98,7 @@ double clockadj_get_freq(clockid_t clkid)
 	return f;
 }
 
-void clockadj_set_phase(clockid_t clkid, long offset)
+int clockadj_set_phase(clockid_t clkid, long offset)
 {
 	struct timex tx;
 	memset(&tx, 0, sizeof(tx));
@@ -107,10 +110,12 @@ void clockadj_set_phase(clockid_t clkid, long offset)
 	tx.offset = offset;
 	if (clock_adjtime(clkid, &tx) < 0) {
 		pr_err("failed to set the clock offset: %m");
+		return -1;
 	}
+	return 0;
 }
 
-void clockadj_step(clockid_t clkid, int64_t step)
+int clockadj_step(clockid_t clkid, int64_t step)
 {
 	struct timex tx;
 	int sign = 1;
@@ -133,8 +138,11 @@ void clockadj_step(clockid_t clkid, int64_t step)
 		tx.time.tv_sec  -= 1;
 		tx.time.tv_usec += 1000000000;
 	}
-	if (clock_adjtime(clkid, &tx) < 0)
+	if (clock_adjtime(clkid, &tx) < 0) {
 		pr_err("failed to step clock: %m");
+		return -1;
+	}
+	return 0;
 }
 
 int clockadj_max_freq(clockid_t clkid)

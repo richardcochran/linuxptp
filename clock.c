@@ -1965,7 +1965,7 @@ static void clock_step_window(struct clock *c)
 	c->step_window_counter = c->step_window;
 }
 
-static void clock_synchronize_locked(struct clock *c, double adj)
+static int clock_synchronize_locked(struct clock *c, double adj)
 {
 #if CLOCK
 	fprintf(stderr, "%s\n", __func__);
@@ -1974,13 +1974,16 @@ static void clock_synchronize_locked(struct clock *c, double adj)
 	if (c->sanity_check) {
 		clockcheck_freq(c->sanity_check, clockadj_get_freq(c->clkid));
 	}
-	clockadj_set_freq(c->clkid, -adj);
+	if (clockadj_set_freq(c->clkid, -adj)) {
+		return -1;
+	}
 	if (c->clkid == CLOCK_REALTIME) {
 		sysclk_set_sync();
 	}
 	if (c->sanity_check) {
 		clockcheck_set_freq(c->sanity_check, -adj);
 	}
+	return 0;
 }
 
 enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
@@ -2042,8 +2045,12 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	case SERVO_UNLOCKED:
 		break;
 	case SERVO_JUMP:
-		clockadj_set_freq(c->clkid, -adj);
-		clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset));
+		if (clockadj_set_freq(c->clkid, -adj)) {
+			goto servo_unlock;
+		}
+		if (clockadj_step(c->clkid, -tmv_to_nanoseconds(c->master_offset))) {
+			goto servo_unlock;
+		}
 		c->ingress_ts = tmv_zero();
 		if (c->sanity_check) {
 			clockcheck_set_freq(c->sanity_check, -adj);
@@ -2054,14 +2061,20 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 		clock_step_window(c);
 		break;
 	case SERVO_LOCKED:
-		clock_synchronize_locked(c, adj);
+		if (clock_synchronize_locked(c, adj)) {
+			goto servo_unlock;
+		}
 		break;
 	case SERVO_LOCKED_STABLE:
 		if (c->write_phase_mode) {
-			clockadj_set_phase(c->clkid, -offset);
+			if (clockadj_set_phase(c->clkid, -offset)) {
+				goto servo_unlock;
+			}
 			adj = 0;
 		} else {
-			clock_synchronize_locked(c, adj);
+			if (clock_synchronize_locked(c, adj)) {
+				goto servo_unlock;
+			}
 		}
 		break;
 	}
@@ -2078,6 +2091,11 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	clock_notify_event(c, NOTIFY_TIME_SYNC);
 
 	return state;
+
+servo_unlock:
+	servo_reset(c->servo);
+	c->servo_state = SERVO_UNLOCKED;
+	return SERVO_UNLOCKED;
 }
 
 void clock_sync_interval(struct clock *c, int n)

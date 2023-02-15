@@ -485,14 +485,25 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 		case SERVO_UNLOCKED:
 			break;
 		case SERVO_JUMP:
-			clockadj_set_freq(c->clkid, -adj);
-			clockadj_step(c->clkid, -offset);
+			if (clockadj_set_freq(c->clkid, -adj)) {
+				goto servo_unlock;
+			}
+			if (clockadj_step(c->clkid, -offset)) {
+				goto servo_unlock;
+			}
 			break;
 		case SERVO_LOCKED:
 		case SERVO_LOCKED_STABLE:
-			clockadj_set_freq(c->clkid, -adj);
+			if (clockadj_set_freq(c->clkid, -adj)) {
+				goto servo_unlock;
+			}
 			break;
 		}
+		continue;
+
+servo_unlock:
+		servo_reset(c->servo);
+		c->servo_state = SERVO_UNLOCKED;
 	}
 }
 
