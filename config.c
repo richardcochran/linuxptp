@@ -432,8 +432,10 @@ static struct config_item *config_item_alloc(struct config *cfg,
 static void config_item_free(void *ptr)
 {
 	struct config_item *ci = ptr;
-	if (ci->type == CFG_TYPE_STRING && ci->flags & CFG_ITEM_DYNSTR)
+	if (ci->type == CFG_TYPE_STRING && ci->flags & CFG_ITEM_DYNSTR){
 		free(ci->val.s);
+		ci->flags ^= CFG_ITEM_DYNSTR;	
+	}
 	if (ci->flags & CFG_ITEM_STATIC)
 		return;
 	free(ci);
