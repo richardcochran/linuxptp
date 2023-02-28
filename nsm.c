@@ -394,7 +394,6 @@ static int nsm_request(struct nsm *nsm, char *target)
 	msg->header.correction         = -asymmetry;
 	msg->header.sourcePortIdentity = nsm->port_identity;
 	msg->header.sequenceId         = nsm->sequence_id++;
-	msg->header.control            = CTL_DELAY_REQ;
 	msg->header.logMessageInterval = 0x7f;
 
 	msg->address = dst;

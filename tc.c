@@ -456,7 +456,6 @@ int tc_fwd_sync(struct port *q, struct ptp_message *msg)
 		fup->header.domainNumber       = msg->header.domainNumber;
 		fup->header.sourcePortIdentity = msg->header.sourcePortIdentity;
 		fup->header.sequenceId         = msg->header.sequenceId;
-		fup->header.control            = CTL_FOLLOW_UP;
 		fup->header.logMessageInterval = msg->header.logMessageInterval;
 		fup->follow_up.preciseOriginTimestamp = msg->sync.originTimestamp;
 		msg->header.flagField[0]      |= TWO_STEP;

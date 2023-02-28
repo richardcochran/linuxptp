@@ -1544,7 +1544,6 @@ static int port_pdelay_request(struct port *p)
 	msg->header.correction         = -p->asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
-	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logPdelayReqInterval : 0x7f;
 
@@ -1608,7 +1607,6 @@ int port_delay_request(struct port *p)
 	msg->header.correction         = -p->asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
-	msg->header.control            = CTL_DELAY_REQ;
 	msg->header.logMessageInterval = 0x7f;
 
 	if (p->hybrid_e2e) {
@@ -1660,7 +1658,6 @@ int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = sequence_id;
-	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = p->logAnnounceInterval;
 
 	msg->header.flagField[1] = tp.flags;
@@ -1743,7 +1740,6 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = sequence_id;
-	msg->header.control            = CTL_SYNC;
 	msg->header.logMessageInterval = p->logSyncInterval;
 
 	if (p->timestamping != TS_ONESTEP && p->timestamping != TS_P2P1STEP) {
@@ -1779,7 +1775,6 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	fup->header.domainNumber       = clock_domain_number(p->clock);
 	fup->header.sourcePortIdentity = p->portIdentity;
 	fup->header.sequenceId         = sequence_id;
-	fup->header.control            = CTL_FOLLOW_UP;
 	fup->header.logMessageInterval = p->logSyncInterval;
 
 	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
@@ -2130,7 +2125,6 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.correction         = m->header.correction;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = m->header.sequenceId;
-	msg->header.control            = CTL_DELAY_RESP;
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
 	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
@@ -2321,7 +2315,6 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	rsp->header.domainNumber       = m->header.domainNumber;
 	rsp->header.sourcePortIdentity = p->portIdentity;
 	rsp->header.sequenceId         = m->header.sequenceId;
-	rsp->header.control            = CTL_OTHER;
 	rsp->header.logMessageInterval = 0x7f;
 
 	/*
@@ -2369,7 +2362,6 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	fup->header.correction         = m->header.correction;
 	fup->header.sourcePortIdentity = p->portIdentity;
 	fup->header.sequenceId         = m->header.sequenceId;
-	fup->header.control            = CTL_OTHER;
 	fup->header.logMessageInterval = 0x7f;
 
 	fup->pdelay_resp_fup.requestingPortIdentity = m->header.sourcePortIdentity;
@@ -3210,7 +3202,6 @@ port_management_construct(struct PortIdentity pid, struct port *ingress,
 	msg->header.domainNumber       = clock_domain_number(ingress->clock);
 	msg->header.sourcePortIdentity = pid;
 	msg->header.sequenceId         = sequenceId;
-	msg->header.control            = CTL_MANAGEMENT;
 	msg->header.logMessageInterval = 0x7f;
 
 	if (targetPortIdentity)

@@ -563,7 +563,6 @@ static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
 	msg->header.domainNumber       = pmc->domain_number;
 	msg->header.sourcePortIdentity = pmc->port_identity;
 	msg->header.sequenceId         = pmc->sequence_id++;
-	msg->header.control            = CTL_MANAGEMENT;
 	msg->header.logMessageInterval = 0x7f;
 
 	msg->management.targetPortIdentity = pmc->target;

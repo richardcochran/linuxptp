@@ -83,15 +83,6 @@ struct hw_timestamp {
 	tmv_t sw;
 };
 
-enum controlField {
-	CTL_SYNC,
-	CTL_DELAY_REQ,
-	CTL_FOLLOW_UP,
-	CTL_DELAY_RESP,
-	CTL_MANAGEMENT,
-	CTL_OTHER,
-};
-
 struct ptp_header {
 	uint8_t             tsmt; /* transportSpecific | messageType */
 	uint8_t             ver;  /* minorVersionPTP   | versionPTP  */
