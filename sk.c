@@ -106,7 +106,7 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 			init_ifreq(&ifreq, &cfg, device);
 			cfg.tx_type   = tx_type;
 			cfg.rx_filter = orig_rx_filter = rx_filter2;
-err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
+			err = ioctl(fd, SIOCSHWTSTAMP, &ifreq);
 			if (err < 0) {
 				pr_err("ioctl SIOCSHWTSTAMP failed: %m");
 				return err;

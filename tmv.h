@@ -91,11 +91,8 @@ static inline tmv_t tmv_zero(void)
 static inline tmv_t correction_to_tmv(Integer64 c)
 {
 	tmv_t t;
-#if FIX_CORRECTION
-	t.ns = c;
-#else
+
 	t.ns = (c >> 16);
-#endif
 	return t;
 }
 
