@@ -38,7 +38,8 @@ static void ts2phc_cleanup(struct ts2phc_private *priv)
 	if (priv->cfg)
 		config_destroy(priv->cfg);
 
-	pmc_agent_destroy(priv->agent);
+	if (priv->agent)
+		pmc_agent_destroy(priv->agent);
 
 	/*
 	 * Clocks are destroyed by the cleanup methods of the individual
