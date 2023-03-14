@@ -103,8 +103,12 @@ static int check_offset_threshold(struct servo *s, int64_t offset)
 	long long int abs_offset = llabs(offset);
 
 	if (s->offset_threshold) {
-		if (abs_offset < s->offset_threshold && s->curr_offset_values)
-			s->curr_offset_values--;
+		if (abs_offset < s->offset_threshold) {
+			if (s->curr_offset_values)
+				s->curr_offset_values--;
+		} else {
+			s->curr_offset_values = s->num_offset_values;
+		}
 		return s->curr_offset_values ? 0 : 1;
 	}
 	return 0;
