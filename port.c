@@ -2757,6 +2757,7 @@ static void port_change_phc(struct port *p)
 	/* Try to switch only if the interface is up, it has HW time stamping
 	   using a non-vclock PHC, and the PHC actually changed. */
 	if (!(p->link_status & LINK_UP) ||
+	    p->phc_index < 0 ||
 	    !interface_tsinfo_valid(p->iface) ||
 	    interface_get_vclock(p->iface) >= 0 ||
 	    interface_phc_index(p->iface) < 0 ||
