@@ -28,6 +28,7 @@
 #include "tlv.h"
 #include "transport.h"
 #include "pmc_common.h"
+#include "power_profile.h"
 
 #define BAD_ACTION   -1
 #define BAD_ID       -1
@@ -119,10 +120,10 @@ struct management_id idtab[] = {
 	{ "GRANDMASTER_CLUSTER_TABLE", MID_GRANDMASTER_CLUSTER_TABLE, not_supported },
 	{ "ACCEPTABLE_MASTER_TABLE", MID_ACCEPTABLE_MASTER_TABLE, not_supported },
 	{ "ACCEPTABLE_MASTER_MAX_TABLE_SIZE", MID_ACCEPTABLE_MASTER_MAX_TABLE_SIZE, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_ENABLE", MID_ALTERNATE_TIME_OFFSET_ENABLE, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_NAME", MID_ALTERNATE_TIME_OFFSET_NAME, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_ENABLE", MID_ALTERNATE_TIME_OFFSET_ENABLE, do_set_action },
+	{ "ALTERNATE_TIME_OFFSET_NAME", MID_ALTERNATE_TIME_OFFSET_NAME, do_set_action },
 	{ "ALTERNATE_TIME_OFFSET_MAX_KEY", MID_ALTERNATE_TIME_OFFSET_MAX_KEY, not_supported },
-	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", MID_ALTERNATE_TIME_OFFSET_PROPERTIES, not_supported },
+	{ "ALTERNATE_TIME_OFFSET_PROPERTIES", MID_ALTERNATE_TIME_OFFSET_PROPERTIES, do_set_action },
 	{ "MASTER_ONLY", MID_MASTER_ONLY, do_get_action },
 	{ "TRANSPARENT_CLOCK_DEFAULT_DATA_SET", MID_TRANSPARENT_CLOCK_DEFAULT_DATA_SET, not_supported },
 	{ "PRIMARY_DOMAIN", MID_PRIMARY_DOMAIN, not_supported },
@@ -154,6 +155,7 @@ struct management_id idtab[] = {
 	{ "PORT_SERVICE_STATS_NP", MID_PORT_SERVICE_STATS_NP, do_get_action },
 	{ "UNICAST_MASTER_TABLE_NP", MID_UNICAST_MASTER_TABLE_NP, do_get_action },
 	{ "PORT_HWCLOCK_NP", MID_PORT_HWCLOCK_NP, do_get_action },
+	{ "POWER_PROFILE_SETTINGS_NP", MID_POWER_PROFILE_SETTINGS_NP, do_set_action },
 };
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str)
@@ -168,12 +170,18 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 {
 	int cnt, code = idtab[index].code, freq_traceable, leap_59, leap_61,
 		ptp_timescale, time_traceable, utc_off_valid;
+	struct alternate_time_offset_properties atop;
+	struct ieee_c37_238_settings_np pwr;
 	struct grandmaster_settings_np gsn;
 	struct management_tlv_datum mtd;
 	struct subscribe_events_np sen;
 	struct port_ds_np pnp;
 	char onoff_port_state[4] = "off";
 	char onoff_time_status[4] = "off";
+	char display_name[11] = {0};
+	uint64_t jump;
+	uint8_t key;
+	int enable;
 
 	mtd.reserved = 0;
 
@@ -201,6 +209,50 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			break;
 		}
 		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
+		cnt = sscanf(str,  " %*s %*s keyField %hhu enable %d",
+			     &mtd.val, &enable);
+		if (cnt != 2) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		mtd.reserved = enable ? 1 : 0;
+		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		cnt = sscanf(str, " %*s %*s "
+			     "keyField       %hhu "
+			     "displayName    %10s ",
+			     &key,
+			     display_name);
+		if (cnt != 2) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		pmc_send_set_aton(pmc, code, key, display_name);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		memset(&atop, 0, sizeof(atop));
+		cnt = sscanf(str, " %*s %*s "
+			     "keyField       %hhu "
+			     "currentOffset  %d "
+			     "jumpSeconds    %d "
+			     "timeOfNextJump %" SCNu64,
+			     &atop.keyField,
+			     &atop.currentOffset,
+			     &atop.jumpSeconds,
+			     &jump);
+		if (cnt != 4) {
+			fprintf(stderr, "%s SET needs 4 values\n",
+				idtab[index].name);
+			break;
+		}
+		atop.timeOfNextJump.seconds_lsb = jump & 0xffffffff;
+		atop.timeOfNextJump.seconds_msb = jump >> 32;
+		pmc_send_set_action(pmc, code, &atop, sizeof(atop));
 		break;
 	case MID_GRANDMASTER_SETTINGS_NP:
 		cnt = sscanf(str, " %*s %*s "
@@ -301,6 +353,37 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			break;
 		}
 		pmc_send_set_action(pmc, code, &pnp, sizeof(pnp));
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "version                   %hu "
+			     "grandmasterID             %hx "
+			     "grandmasterTimeInaccuracy %u "
+			     "networkTimeInaccuracy     %u "
+			     "totalTimeInaccuracy       %u ",
+			     &pwr.version,
+			     &pwr.grandmasterID,
+			     &pwr.grandmasterTimeInaccuracy,
+			     &pwr.networkTimeInaccuracy,
+			     &pwr.totalTimeInaccuracy);
+		if (cnt != 5) {
+			fprintf(stderr, "%s SET needs 5 values\n",
+				idtab[index].name);
+			break;
+		}
+		switch (pwr.version) {
+		case IEEE_C37_238_VERSION_NONE:
+		case IEEE_C37_238_VERSION_2011:
+		case IEEE_C37_238_VERSION_2017:
+			pmc_send_set_action(pmc, code, &pwr, sizeof(pwr));
+			break;
+		default:
+			fprintf(stderr, "\nusage: set PROFILE_SETTINGS_NP version "
+				"%hu (none), %hu (2011), or %hu (2017)\n\n",
+				IEEE_C37_238_VERSION_NONE,
+				IEEE_C37_238_VERSION_2011,
+				IEEE_C37_238_VERSION_2017);
+		}
 		break;
 	}
 }
@@ -541,6 +624,15 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 	case MID_TIME_STATUS_NP:
 		len += sizeof(struct time_status_np);
 		break;
+	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
+		len += sizeof(struct management_tlv_datum);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		len += sizeof(struct alternate_time_offset_name);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		len += sizeof(struct alternate_time_offset_properties);
+		break;
 	case MID_GRANDMASTER_SETTINGS_NP:
 		len += sizeof(struct grandmaster_settings_np);
 		break;
@@ -572,6 +664,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_PORT_HWCLOCK_NP:
 		len += sizeof(struct port_hwclock_np);
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		len += sizeof(struct ieee_c37_238_settings_np);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 	case MID_ANNOUNCE_RECEIPT_TIMEOUT:
@@ -660,6 +755,41 @@ int pmc_send_set_action(struct pmc *pmc, int id, void *data, int datasize)
 	mgt->length = 2 + datasize;
 	mgt->id = id;
 	memcpy(mgt->data, data, datasize);
+	pmc_send(pmc, msg);
+	msg_put(msg);
+
+	return 0;
+}
+
+int pmc_send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name)
+{
+	struct alternate_time_offset_name *aton;
+	struct management_tlv *mgt;
+	struct ptp_message *msg;
+	struct tlv_extra *extra;
+	int datasize;
+
+	datasize = sizeof(*aton) + strlen(name);
+	if (datasize % 2) {
+		datasize++;
+	}
+	msg = pmc_message(pmc, SET);
+	if (!msg) {
+		return -1;
+	}
+	extra = msg_tlv_append(msg, sizeof(*mgt) + datasize);
+	if (!extra) {
+		msg_put(msg);
+		return -ENOMEM;
+	}
+	mgt = (struct management_tlv *) extra->tlv;
+	mgt->type = TLV_MANAGEMENT;
+	mgt->length = 2 + datasize;
+	mgt->id = id;
+	aton = (struct alternate_time_offset_name *) mgt->data;
+	aton->keyField = key;
+	ptp_text_set(&aton->displayName, name);
+
 	pmc_send(pmc, msg);
 	msg_put(msg);
 

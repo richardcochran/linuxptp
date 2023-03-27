@@ -35,6 +35,7 @@
 	(tlv->length < sizeof(struct type) - sizeof(struct TLV))
 
 uint8_t ieee8021_id[3] = { IEEE_802_1_COMMITTEE };
+uint8_t ieeec37_238_id[3] = { IEEE_C37_238_PROFILE };
 uint8_t itu_t_id[3] = { ITU_T_COMMITTEE };
 
 static TAILQ_HEAD(tlv_pool, tlv_extra) tlv_pool =
@@ -77,6 +78,22 @@ static uint16_t flip16(void *p)
 	return v;
 }
 
+static void host2net32_unaligned(void *p)
+{
+	int32_t v;
+	memcpy(&v, p, sizeof(v));
+	v = htonl(v);
+	memcpy(p, &v, sizeof(v));
+}
+
+static void net2host32_unaligned(void *p)
+{
+	int32_t v;
+	memcpy(&v, p, sizeof(v));
+	v = ntohl(v);
+	memcpy(p, &v, sizeof(v));
+}
+
 static int64_t host2net64_unaligned(void *p)
 {
 	int64_t v;
@@ -111,9 +128,45 @@ static bool tlv_array_invalid(struct TLV *tlv, size_t base_size, size_t item_siz
 	return (tlv->length == expected_length) ? false : true;
 }
 
+static int alttime_offset_post_recv(struct tlv_extra *extra)
+{
+	struct TLV *tlv = extra->tlv;
+	struct alternate_time_offset_indicator_tlv *atoi =
+		(struct alternate_time_offset_indicator_tlv *) tlv;
+
+	if (tlv->length < sizeof(struct alternate_time_offset_indicator_tlv) +
+	    atoi->displayName.length - sizeof(struct TLV)) {
+		return -EBADMSG;
+	}
+
+	/* Message alignment broken by design. */
+	net2host32_unaligned(&atoi->currentOffset);
+	net2host32_unaligned(&atoi->jumpSeconds);
+	flip16(&atoi->timeOfNextJump.seconds_msb);
+	net2host32_unaligned(&atoi->timeOfNextJump.seconds_lsb);
+
+	return 0;
+}
+
+static void alttime_offset_pre_send(struct tlv_extra *extra)
+{
+	struct alternate_time_offset_indicator_tlv *atoi;
+
+	atoi = (struct alternate_time_offset_indicator_tlv *) extra->tlv;
+
+	/* Message alignment broken by design. */
+	host2net32_unaligned(&atoi->currentOffset);
+	host2net32_unaligned(&atoi->jumpSeconds);
+	flip16(&atoi->timeOfNextJump.seconds_msb);
+	host2net32_unaligned(&atoi->timeOfNextJump.seconds_lsb);
+}
+
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
+	struct alternate_time_offset_properties *atop;
+	struct alternate_time_offset_name *aton;
+	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
 	struct port_service_stats_np *pssn;
@@ -283,6 +336,25 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		p->portIdentity.portNumber = ntohs(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = net2host64(p->peerMeanPathDelay);
 		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		aton = (struct alternate_time_offset_name *) m->data;
+		if (data_len < sizeof(*aton)) {
+			goto bad_length;
+		}
+		extra_len = sizeof(*aton);
+		extra_len += aton->displayName.length;
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		atop = (struct alternate_time_offset_properties *) m->data;
+		if (data_len != sizeof(*atop)) {
+			goto bad_length;
+		}
+		/* Message alignment broken by design. */
+		net2host32_unaligned(&atop->currentOffset);
+		net2host32_unaligned(&atop->jumpSeconds);
+		flip16(&atop->timeOfNextJump.seconds_msb);
+		net2host32_unaligned(&atop->timeOfNextJump.seconds_lsb);
+		break;
 	case MID_TIME_STATUS_NP:
 		if (data_len != sizeof(struct time_status_np))
 			goto bad_length;
@@ -399,6 +471,16 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		phn->phc_index = ntohl(phn->phc_index);
 		extra_len = sizeof(struct port_hwclock_np);
 		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		if (data_len < sizeof(struct ieee_c37_238_settings_np))
+			goto bad_length;
+		pwr = (struct ieee_c37_238_settings_np *)m->data;
+		NTOHS(pwr->version);
+		NTOHS(pwr->grandmasterID);
+		NTOHL(pwr->grandmasterTimeInaccuracy);
+		NTOHL(pwr->networkTimeInaccuracy);
+		NTOHL(pwr->totalTimeInaccuracy);
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -422,6 +504,8 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
+	struct alternate_time_offset_properties *atop;
+	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct grandmaster_settings_np *gsn;
 	struct port_service_stats_np *pssn;
@@ -482,6 +566,16 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		p = (struct portDS *) m->data;
 		p->portIdentity.portNumber = htons(p->portIdentity.portNumber);
 		p->peerMeanPathDelay = host2net64(p->peerMeanPathDelay);
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_NAME:
+		break;
+	case MID_ALTERNATE_TIME_OFFSET_PROPERTIES:
+		atop = (struct alternate_time_offset_properties *) m->data;
+		/* Message alignment broken by design. */
+		host2net32_unaligned(&atop->currentOffset);
+		host2net32_unaligned(&atop->jumpSeconds);
+		flip16(&atop->timeOfNextJump.seconds_msb);
+		host2net32_unaligned(&atop->timeOfNextJump.seconds_lsb);
 		break;
 	case MID_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) m->data;
@@ -569,6 +663,14 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		phn = (struct port_hwclock_np *)m->data;
 		phn->portIdentity.portNumber = htons(phn->portIdentity.portNumber);
 		phn->phc_index = htonl(phn->phc_index);
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		pwr = (struct ieee_c37_238_settings_np *)m->data;
+		HTONS(pwr->version);
+		HTONS(pwr->grandmasterID);
+		HTONL(pwr->grandmasterTimeInaccuracy);
+		HTONL(pwr->networkTimeInaccuracy);
+		HTONL(pwr->totalTimeInaccuracy);
 		break;
 	}
 }
@@ -680,6 +782,7 @@ static void nsm_resp_pre_send(struct tlv_extra *extra)
 
 static int org_post_recv(struct organization_tlv *org)
 {
+	struct ieee_c37_238_2017_tlv *p;
 	struct follow_up_info_tlv *f;
 	struct msg_interface_rate_tlv *m;
 
@@ -718,6 +821,24 @@ static int org_post_recv(struct organization_tlv *org)
 		}
 
 	}
+	if (0 == memcmp(org->id, ieeec37_238_id, sizeof(ieeec37_238_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return 0;
+		}
+		switch (org->subtype[2]) {
+		case 1:
+		case 2:
+			/* Layout of 2011 and 2017 messages is compatible. */
+			if (org->length + sizeof(struct TLV) !=
+			    sizeof(struct ieee_c37_238_2017_tlv))
+				goto bad_length;
+			p = (struct ieee_c37_238_2017_tlv *) org;
+			NTOHS(p->grandmasterID);
+			NTOHL(p->reserved1);
+			NTOHL(p->totalTimeInaccuracy);
+			break;
+		}
+	}
 	return 0;
 bad_length:
 	return -EBADMSG;
@@ -725,6 +846,7 @@ bad_length:
 
 static void org_pre_send(struct organization_tlv *org)
 {
+	struct ieee_c37_238_2017_tlv *p;
 	struct follow_up_info_tlv *f;
 	struct msg_interface_rate_tlv *m;
 
@@ -751,6 +873,21 @@ static void org_pre_send(struct organization_tlv *org)
 			m->interfaceBitPeriod = host2net64(m->interfaceBitPeriod);
 			m->numberOfBitsBeforeTimestamp = htons(m->numberOfBitsBeforeTimestamp);
 			m->numberOfBitsAfterTimestamp = htons(m->numberOfBitsAfterTimestamp);
+			break;
+		}
+	}
+	if (0 == memcmp(org->id, ieeec37_238_id, sizeof(ieeec37_238_id))) {
+		if (org->subtype[0] || org->subtype[1]) {
+			return;
+		}
+		switch (org->subtype[2]) {
+		case 1:
+		case 2:
+			/* Layout of 2011 and 2017 messages is compatible. */
+			p = (struct ieee_c37_238_2017_tlv *) org;
+			HTONS(p->grandmasterID);
+			HTONL(p->reserved1);
+			HTONL(p->totalTimeInaccuracy);
 			break;
 		}
 	}
@@ -1009,6 +1146,8 @@ int tlv_post_recv(struct tlv_extra *extra)
 		}
 		break;
 	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
+		result = alttime_offset_post_recv(extra);
+		break;
 	case TLV_AUTHENTICATION_2008:
 	case TLV_AUTHENTICATION_CHALLENGE:
 	case TLV_SECURITY_ASSOCIATION_UPDATE:
@@ -1072,7 +1211,10 @@ void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)
 		unicast_negotiation_pre_send(tlv);
 		break;
 	case TLV_PATH_TRACE:
+		break;
 	case TLV_ALTERNATE_TIME_OFFSET_INDICATOR:
+		alttime_offset_pre_send(extra);
+		break;
 	case TLV_AUTHENTICATION_2008:
 	case TLV_AUTHENTICATION_CHALLENGE:
 	case TLV_SECURITY_ASSOCIATION_UPDATE:

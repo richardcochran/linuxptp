@@ -1,4 +1,4 @@
-.TH PMC 8 "October 2013" "linuxptp"
+.TH PMC 8 "February 2023" "linuxptp"
 .SH NAME
 pmc \- PTP management client
 
@@ -145,10 +145,6 @@ options. The name of the section is the name of the configured port (e.g.
 The domain attribute of the local clock. The default is 0.
 
 .SH PORT OPTIONS
-.TP
-.B transportSpecific
-The transport specific field. Must be in the range 0 to 255.
-The default is 0.
 
 .TP
 .B network_transport
@@ -159,6 +155,10 @@ is UDPv4.
 .B ptp_dst_mac
 The MAC address to which PTP management messages should be sent. Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
 
+.TP
+.B transportSpecific
+The transport specific field. Must be in the range 0 to 255.
+The default is 0.
 
 .SH MANAGEMENT IDS
 

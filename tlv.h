@@ -128,6 +128,7 @@ enum management_action {
 #define MID_PORT_SERVICE_STATS_NP			0xC007
 #define MID_UNICAST_MASTER_TABLE_NP			0xC008
 #define MID_PORT_HWCLOCK_NP				0xC009
+#define MID_POWER_PROFILE_SETTINGS_NP			0xC00A
 
 /* Management error ID values */
 #define MID_RESPONSE_TOO_BIG				0x0001
@@ -174,6 +175,37 @@ struct grant_unicast_xmit_tlv {
 	uint8_t         flags;
 } PACKED;
 
+struct alternate_time_offset_indicator_tlv {
+	Enumeration16   type;
+	UInteger16      length;
+	UInteger8       keyField;
+	/* Message alignment broken by design. */
+	Integer32       currentOffset;
+	Integer32       jumpSeconds;
+	struct {
+		uint16_t   seconds_msb; /* 16 bits + */
+		uint32_t   seconds_lsb; /* 32 bits = 48 bits*/
+	} PACKED timeOfNextJump;
+	struct PTPText  displayName;
+} PACKED;
+
+struct alternate_time_offset_name {
+	UInteger8       keyField;
+	struct PTPText  displayName;
+} PACKED;
+
+struct alternate_time_offset_properties {
+	UInteger8       keyField;
+	/* Message alignment broken by design. */
+	Integer32       currentOffset;
+	Integer32       jumpSeconds;
+	struct {
+		uint16_t   seconds_msb; /* 16 bits + */
+		uint32_t   seconds_lsb; /* 32 bits = 48 bits*/
+	} PACKED timeOfNextJump;
+	uint8_t pad;
+} PACKED;
+
 struct management_tlv {
 	Enumeration16 type;
 	UInteger16    length;
@@ -213,6 +245,8 @@ struct nsm_resp_tlv_foot {
 /* Organizationally Unique Identifiers */
 #define IEEE_802_1_COMMITTEE 0x00, 0x80, 0xC2
 extern uint8_t ieee8021_id[3];
+#define IEEE_C37_238_PROFILE 0x1C, 0x12, 0x9D
+extern uint8_t ieeec37_238_id[3];
 
 struct organization_tlv {
 	Enumeration16 type;
@@ -298,6 +332,36 @@ struct follow_up_info_tlv {
 	UInteger16    gmTimeBaseIndicator;
 	ScaledNs      lastGmPhaseChange;
 	Integer32     scaledLastGmPhaseChange;
+} PACKED;
+
+struct ieee_c37_238_2011_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Octet         id[3];
+	Octet         subtype[3];
+	UInteger16    grandmasterID;
+	UInteger32    grandmasterTimeInaccuracy;
+	UInteger32    networkTimeInaccuracy;
+	Octet         pad[2];
+} PACKED;
+
+struct ieee_c37_238_2017_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	Octet         id[3];
+	Octet         subtype[3];
+	UInteger16    grandmasterID;
+	UInteger32    reserved1;
+	UInteger32    totalTimeInaccuracy;
+	Octet         pad[2];
+} PACKED;
+
+struct ieee_c37_238_settings_np {
+	Enumeration16 version;
+	UInteger16    grandmasterID;
+	UInteger32    grandmasterTimeInaccuracy;
+	UInteger32    networkTimeInaccuracy;
+	UInteger32    totalTimeInaccuracy;
 } PACKED;
 
 struct msg_interval_req_tlv {

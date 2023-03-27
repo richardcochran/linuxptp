@@ -527,6 +527,46 @@ static int follow_up_info_append(struct ptp_message *m)
 	return 0;
 }
 
+static int ieee_c37_238_append(struct port *p, struct ptp_message *m)
+{
+	struct ieee_c37_238_2017_tlv *p17;
+	struct ieee_c37_238_2011_tlv *p11;
+	struct tlv_extra *extra;
+
+	switch (p->pwr.version) {
+	case IEEE_C37_238_VERSION_NONE:
+		return 0;
+	case IEEE_C37_238_VERSION_2011:
+		extra = msg_tlv_append(m, sizeof(*p11));
+		if (!extra) {
+			return -1;
+		}
+		p11 = (struct ieee_c37_238_2011_tlv *) extra->tlv;
+		p11->type = TLV_ORGANIZATION_EXTENSION;
+		p11->length = sizeof(*p11) - sizeof(p11->type) - sizeof(p11->length);
+		memcpy(p11->id, ieeec37_238_id, sizeof(ieeec37_238_id));
+		p11->subtype[2] = 1;
+		p11->grandmasterID = p->pwr.grandmasterID;
+		p11->grandmasterTimeInaccuracy = p->pwr.grandmasterTimeInaccuracy;
+		p11->networkTimeInaccuracy = p->pwr.networkTimeInaccuracy;
+		break;
+	case IEEE_C37_238_VERSION_2017:
+		extra = msg_tlv_append(m, sizeof(*p17));
+		if (!extra) {
+			return -1;
+		}
+		p17 = (struct ieee_c37_238_2017_tlv *) extra->tlv;
+		p17->type = TLV_ORGANIZATION_EXTENSION;
+		p17->length = sizeof(*p17) - sizeof(p17->type) - sizeof(p17->length);
+		memcpy(p17->id, ieeec37_238_id, sizeof(ieeec37_238_id));
+		p17->subtype[2] = 2;
+		p17->grandmasterID = p->pwr.grandmasterID;
+		p17->totalTimeInaccuracy = p->pwr.totalTimeInaccuracy;
+		break;
+	}
+	return 0;
+}
+
 static int net_sync_resp_append(struct port *p, struct ptp_message *m)
 {
 	struct timePropertiesDS tp = clock_time_properties(p->clock);
@@ -965,6 +1005,7 @@ static const Octet profile_id_8275_2[] = {0x00, 0x19, 0xA7, 0x02, 0x01, 0x02};
 static int port_management_fill_response(struct port *target,
 					 struct ptp_message *rsp, int id)
 {
+	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
 	struct unicast_master_address *ucma;
 	struct port_service_stats_np *pssn;
@@ -1214,6 +1255,11 @@ static int port_management_fill_response(struct port *target,
 			PORT_HWCLOCK_VCLOCK : 0;
 		datalen = sizeof(*phn);
 		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		pwr = (struct ieee_c37_238_settings_np *)tlv->data;
+		memcpy(pwr, &target->pwr, sizeof(*pwr));
+		datalen = sizeof(*pwr);
+		break;
 	default:
 		/* The caller should *not* respond to this message. */
 		tlv_extra_recycle(extra);
@@ -1258,9 +1304,10 @@ static int port_management_set(struct port *target,
 			       struct port *ingress, int id,
 			       struct ptp_message *req)
 {
-	int respond = 0;
+	struct ieee_c37_238_settings_np *pwr;
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
+	int respond = 0;
 
 #if PORT
 	fprintf(stderr, "%s\n", __func__);
@@ -1272,6 +1319,17 @@ static int port_management_set(struct port *target,
 		pdsnp = (struct port_ds_np *) tlv->data;
 		target->neighborPropDelayThresh = pdsnp->neighborPropDelayThresh;
 		respond = 1;
+		break;
+	case MID_POWER_PROFILE_SETTINGS_NP:
+		pwr = (struct ieee_c37_238_settings_np *) tlv->data;
+		switch (pwr->version) {
+		case IEEE_C37_238_VERSION_NONE:
+		case IEEE_C37_238_VERSION_2011:
+		case IEEE_C37_238_VERSION_2017:
+			target->pwr = *pwr;
+			respond = 1;
+			break;
+		}
 		break;
 	}
 	if (respond && !port_management_get_response(target, ingress, id, req))
@@ -1809,6 +1867,12 @@ int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 
 	if (p->path_trace_enabled && path_trace_append(p, msg, dad)) {
 		pr_err("%s: append path trace failed", p->log_name);
+	}
+	if (ieee_c37_238_append(p, msg)) {
+		pr_err("%s: append power profile failed", p->log_name);
+	}
+	if (clock_append_timezones(p->clock, msg)) {
+		pr_err("%s: append time zones failed", p->log_name);
 	}
 
 	err = port_prepare_and_send(p, msg, TRANS_GENERAL);
@@ -3681,6 +3745,16 @@ struct port *port_open(const char *phc_device,
 	p->state = PS_INITIALIZING;
 	p->delayMechanism = config_get_int(cfg, p->name, "delay_mechanism");
 	p->versionNumber = PTP_MAJOR_VERSION;
+	p->pwr.version =
+		config_get_int(cfg, p->name, "power_profile.version");
+	p->pwr.grandmasterID =
+		config_get_int(cfg, p->name, "power_profile.grandmasterID");
+	p->pwr.grandmasterTimeInaccuracy =
+		config_get_int(cfg, p->name, "power_profile.2011.grandmasterTimeInaccuracy");
+	p->pwr.networkTimeInaccuracy =
+		config_get_int(cfg, p->name, "power_profile.2011.networkTimeInaccuracy");
+	p->pwr.totalTimeInaccuracy =
+		config_get_int(cfg, p->name, "power_profile.2017.totalTimeInaccuracy");
 	p->slave_event_monitor = clock_slave_monitor(clock);
 
 	if (!port_is_uds(p) && unicast_client_initialize(p)) {
