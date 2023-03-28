@@ -85,8 +85,8 @@ static int mcast_join(int fd, int index, const struct sockaddr_in *sa)
 
 static int udp_close(struct transport *t, struct fdarray *fda)
 {
-	close(fda->fd[0]);
-	close(fda->fd[1]);
+	close(fda->fd[FD_EVENT]);
+	close(fda->fd[FD_GENERAL]);
 	return 0;
 }
 
