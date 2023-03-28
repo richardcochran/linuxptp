@@ -541,8 +541,8 @@ int main(int argc, char *argv[])
 		batch_mode = 1;
 	}
 
-	pollfd[0].fd = nsm->fda.fd[0];
-	pollfd[1].fd = nsm->fda.fd[1];
+	pollfd[0].fd = nsm->fda.fd[FD_EVENT];
+	pollfd[1].fd = nsm->fda.fd[FD_GENERAL];
 	pollfd[2].fd = batch_mode ? -1 : STDIN_FILENO;
 	pollfd[0].events = POLLIN | POLLPRI;
 	pollfd[1].events = POLLIN | POLLPRI;

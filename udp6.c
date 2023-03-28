@@ -96,8 +96,8 @@ static int mc_join(int fd, int index, const struct sockaddr_in6 *sa)
 
 static int udp6_close(struct transport *t, struct fdarray *fda)
 {
-	close(fda->fd[0]);
-	close(fda->fd[1]);
+	close(fda->fd[FD_EVENT]);
+	close(fda->fd[FD_GENERAL]);
 	return 0;
 }
 
