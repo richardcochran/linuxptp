@@ -2842,6 +2842,24 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	return p->event(p, fd_index);
 }
 
+static enum fsm_event bc_announce_sync_rx_timeout_action(struct port *p)
+{
+	if (p->best) {
+		fc_clear(p->best);
+	}
+
+	delay_req_prune(p);
+	if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
+		port_renew_transport(p)) {
+		return EV_FAULT_DETECTED;
+	}
+
+	if (p->inhibit_announce) {
+		return EV_NONE;
+	}
+	return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
+}
+
 static enum fsm_event bc_event(struct port *p, int fd_index)
 {
 	enum fsm_event event = EV_NONE;
@@ -2850,19 +2868,24 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	switch (fd_index) {
 	case FD_ANNOUNCE_TIMER:
-	case FD_SYNC_RX_TIMER:
-		pr_debug("%s: %s timeout", p->log_name,
-			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
-		timerfd_flush(p, fd, fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
-		if (p->best) {
-			fc_clear(p->best);
+		pr_debug("%s: announce timeout", p->log_name);
+		timerfd_flush(p, fd, "announce");
+
+		p->service_stats.announce_timeout++;
+
+		if (p->inhibit_announce) {
+			port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+		} else {
+			port_set_announce_tmo(p);
 		}
 
-		if (fd_index == FD_SYNC_RX_TIMER) {
-			p->service_stats.sync_timeout++;
-		} else {
-			p->service_stats.announce_timeout++;
-		}
+		return bc_announce_sync_rx_timeout_action(p);
+
+	case FD_SYNC_RX_TIMER:
+		pr_debug("%s: rx sync timeout", p->log_name);
+		timerfd_flush(p, fd, "rx sync");
+
+		p->service_stats.sync_timeout++;
 
 		/*
 		 * Clear out the event returned by poll(). It is only cleared
@@ -2873,22 +2896,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 			port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
 		}
 
-		if (p->inhibit_announce) {
-			port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
-		} else {
-			port_set_announce_tmo(p);
-		}
-
-		delay_req_prune(p);
-		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
-		    port_renew_transport(p)) {
-			return EV_FAULT_DETECTED;
-		}
-
-		if (p->inhibit_announce) {
-			return EV_NONE;
-		}
-		return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
+		return bc_announce_sync_rx_timeout_action(p);
 
 	case FD_DELAY_TIMER:
 		pr_debug("%s: delay timeout", p->log_name);
