@@ -1939,7 +1939,7 @@ int port_initialize(struct port *p)
 		fd[i] = -1;
 	}
 	for (i = 0; i < N_TIMER_FDS; i++) {
-		fd[i] = timerfd_create(CLOCK_MONOTONIC, 0);
+		fd[i] = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 		if (fd[i] < 0) {
 			pr_err("timerfd_create: %s", strerror(errno));
 			goto no_timers;
@@ -3461,7 +3461,7 @@ struct port *port_open(const char *phc_device,
 	port_clear_fda(p, N_POLLFD);
 	p->fault_fd = -1;
 	if (!port_is_uds(p)) {
-		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 		if (p->fault_fd < 0) {
 			pr_err("timerfd_create failed: %m");
 			goto err_tsproc;
