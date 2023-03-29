@@ -231,7 +231,7 @@ struct fdarray *port_fda(struct port *port)
 	return &port->fda;
 }
 
-int set_tmo_log(int fd, unsigned int scale, int log_seconds)
+static int set_tmo_log_periodic(int fd, unsigned int scale, int log_seconds, bool periodic)
 {
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
@@ -255,7 +255,17 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 	} else
 		tmo.it_value.tv_sec = scale * (1 << log_seconds);
 
+	if (periodic) {
+		tmo.it_interval.tv_nsec = tmo.it_value.tv_nsec;
+		tmo.it_interval.tv_sec = tmo.it_value.tv_sec;
+	}
+
 	return timerfd_settime(fd, 0, &tmo, NULL);
+}
+
+int set_tmo_log(int fd, unsigned int scale, int log_seconds)
+{
+	return set_tmo_log_periodic(fd, scale, log_seconds, false);
 }
 
 int set_tmo_lin(int fd, int seconds)
@@ -1297,7 +1307,7 @@ int port_set_sync_rx_tmo(struct port *p)
 
 static int port_set_sync_tx_tmo(struct port *p)
 {
-	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
+	return set_tmo_log_periodic(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval, true);
 }
 
 void port_show_transition(struct port *p, enum port_state next,
@@ -2936,7 +2946,6 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_SYNC_TX_TIMER:
 		pr_debug("%s: master sync timeout", p->log_name);
 		timerfd_flush(p, fd, "master sync timeout");
-		port_set_sync_tx_tmo(p);
 		p->service_stats.master_sync_timeout++;
 		return port_tx_sync(p, NULL, p->seqnum.sync++) ?
 			EV_FAULT_DETECTED : EV_NONE;
