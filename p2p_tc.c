@@ -90,6 +90,15 @@ void p2p_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	};
 }
 
+static enum fsm_event p2p_announce_sync_rx_timeout_action(struct port *p)
+{
+	if (p->best) {
+		fc_clear(p->best);
+	}
+	port_set_announce_tmo(p);
+	return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
+}
+
 enum fsm_event p2p_event(struct port *p, int fd_index)
 {
 	int cnt, fd = p->fda.fd[fd_index];
@@ -98,15 +107,16 @@ enum fsm_event p2p_event(struct port *p, int fd_index)
 
 	switch (fd_index) {
 	case FD_ANNOUNCE_TIMER:
+		pr_debug("%s: announce timeout", p->log_name);
+		timerfd_flush(p, fd, "announce");
+
+		return p2p_announce_sync_rx_timeout_action(p);
+
 	case FD_SYNC_RX_TIMER:
-		pr_debug("%s: %s timeout", p->log_name,
-			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
-		timerfd_flush(p, fd, fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
-		if (p->best) {
-			fc_clear(p->best);
-		}
-		port_set_announce_tmo(p);
-		return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
+		pr_debug("%s: rx sync timeout", p->log_name);
+		timerfd_flush(p, fd, "rx sync");
+
+		return p2p_announce_sync_rx_timeout_action(p);
 
 	case FD_DELAY_TIMER:
 		pr_debug("%s: delay timeout", p->log_name);
