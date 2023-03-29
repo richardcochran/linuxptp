@@ -2853,6 +2853,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_SYNC_RX_TIMER:
 		pr_debug("%s: %s timeout", p->log_name,
 			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
+		timerfd_flush(p, fd, fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
 		if (p->best) {
 			fc_clear(p->best);
 		}
@@ -2891,6 +2892,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_DELAY_TIMER:
 		pr_debug("%s: delay timeout", p->log_name);
+		timerfd_flush(p, fd, "delay");
 		port_set_delay_tmo(p);
 		delay_req_prune(p);
 		p->service_stats.delay_timeout++;
@@ -2910,11 +2912,13 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_QUALIFICATION_TIMER:
 		pr_debug("%s: qualification timeout", p->log_name);
+		timerfd_flush(p, fd, "qualification");
 		p->service_stats.qualification_timeout++;
 		return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 
 	case FD_MANNO_TIMER:
 		pr_debug("%s: master tx announce timeout", p->log_name);
+		timerfd_flush(p, fd, "master announce");
 		port_set_manno_tmo(p);
 		p->service_stats.master_announce_timeout++;
 		clock_update_leap_status(p->clock);
@@ -2923,6 +2927,7 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_SYNC_TX_TIMER:
 		pr_debug("%s: master sync timeout", p->log_name);
+		timerfd_flush(p, fd, "master sync timeout");
 		port_set_sync_tx_tmo(p);
 		p->service_stats.master_sync_timeout++;
 		return port_tx_sync(p, NULL, p->seqnum.sync++) ?
@@ -2930,11 +2935,13 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_UNICAST_SRV_TIMER:
 		pr_debug("%s: unicast service timeout", p->log_name);
+		timerfd_flush(p, fd, "unicast service");
 		p->service_stats.unicast_service_timeout++;
 		return unicast_service_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_UNICAST_REQ_TIMER:
 		pr_debug("%s: unicast request timeout", p->log_name);
+		timerfd_flush(p, fd, "unicast request");
 		p->service_stats.unicast_request_timeout++;
 		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
@@ -3549,4 +3556,25 @@ void port_update_unicast_state(struct port *p)
 		unicast_client_state_changed(p);
 		p->unicast_state_dirty = false;
 	}
+}
+
+uint64_t timerfd_flush(struct port *p, int fd, char *fd_name)
+{
+	uint64_t val = 0;
+	ssize_t res = read(fd, &val, sizeof(val));
+
+	if (res < 0) {
+		pr_err("port %u: Error on read %s timer (%"PRId64 ", %m)",
+			portnum(p), fd_name, res);
+		val = 0;
+	} else if (res != sizeof(val)) {
+		pr_err("port %u: Error on read %s timer (%"PRId64 ")",
+			portnum(p), fd_name, res);
+		val = 0;
+	} else if (val != 1) {
+		pr_warning("port %u: Missing %"PRIu64" ticks on %s timer",
+			portnum(p), val, fd_name);
+	}
+
+	return val;
 }
