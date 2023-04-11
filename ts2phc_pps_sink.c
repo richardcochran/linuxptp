@@ -381,7 +381,7 @@ int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 
 		cnt = poll(polling_array->pfd, priv->n_sinks, 2000);
 		if (cnt < 0) {
-			if (errno == -EINTR) {
+			if (errno == EINTR) {
 				return 0;
 			} else {
 				pr_emerg("poll failed");
