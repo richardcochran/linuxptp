@@ -1790,8 +1790,10 @@ int clock_poll(struct clock *c)
 			if (cur[i].revents & (POLLIN|POLLPRI|POLLERR)) {
 				prior_state = port_state(p);
 				if (cur[i].revents & POLLERR) {
-					pr_err("%s: unexpected socket error",
-					       port_log_name(p));
+					int error = sk_get_error(cur[i].fd);
+					pr_err("%s: error on fda[%d]: %s",
+					       port_log_name(p), i,
+					       strerror(error));
 					event = EV_FAULT_DETECTED;
 				} else {
 					event = port_event(p, i);

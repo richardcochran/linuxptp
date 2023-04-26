@@ -491,6 +491,20 @@ int sk_receive(int fd, void *buf, int buflen,
 	return cnt < 0 ? -errno : cnt;
 }
 
+int sk_get_error(int fd)
+{
+	socklen_t len;
+	int error;
+
+	len = sizeof (error);
+	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+		pr_err("getsockopt SO_ERROR failed: %m");
+		return -1;
+	}
+
+	return error;
+}
+
 int sk_set_priority(int fd, int family, uint8_t dscp)
 {
 	int level, optname, tos;
