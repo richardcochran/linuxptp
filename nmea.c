@@ -125,6 +125,7 @@ static int nmea_scan_rmc(struct nmea_parser *np, struct nmea_rmc *result)
 	pr_debug("nmea sentence: %s", np->sentence);
 	cnt = sscanf(np->payload_checksum, "%02hhx", &checksum);
 	if (cnt != 1) {
+		pr_debug("nmea checksum error!\n");
 		return -1;
 	}
 	if (checksum != np->checksum) {
@@ -140,6 +141,7 @@ static int nmea_scan_rmc(struct nmea_parser *np, struct nmea_rmc *result)
 			     "G%*cRMC,%2d%2d%2d,%c",
 			     &tm.tm_hour, &tm.tm_min, &tm.tm_sec, &status);
 		if (cnt != 4) {
+			pr_debug("nmea time of day error!\n");
 			return -1;
 		}
 	}
@@ -147,12 +149,14 @@ static int nmea_scan_rmc(struct nmea_parser *np, struct nmea_rmc *result)
 	for (i = 0; i < 9; i++) {
 		ptr = strchr(ptr, ',');
 		if (!ptr) {
+			pr_debug("nmea sentence found error!\n");
 			return -1;
 		}
 		ptr++;
 	}
 	cnt = sscanf(ptr, "%2d%2d%2d", &tm.tm_mday, &tm.tm_mon, &tm.tm_year);
 	if (cnt != 3) {
+		pr_debug("nmea time of year error!\n");
 		return -1;
 	}
 	tm.tm_year += 100;
