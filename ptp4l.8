@@ -365,22 +365,21 @@ the interface, or the device specified by the \fB-p\fP option.
 Specifies the time inaccuracy of the GM in nanoseconds.  Relevant only
 when power_profile.version is 2011.  This value may be changed
 dynamically using the POWER_PROFILE_SETTINGS_NP management message.
-The default is 0xFFFFFFFF.
+The default is -1 meaning unknown inaccuracy.
 
 .TP
 .B power_profile.2011.networkTimeInaccuracy
 Specifies the time inaccuracy of the network in nanoseconds.  Relevant
 only when power_profile.version is 2011.  This value may be changed
 dynamically using the POWER_PROFILE_SETTINGS_NP management message.
-The default is 0xFFFFFFFF.
+The default is -1 meaning unknown inaccuracy.
 
 .TP
 .B power_profile.2017.totalTimeInaccuracy
 Specifies the sum of the GM, network, and local node inaccuracies in
 nanoseconds.  Relevant only when power_profile.version is 2017.  This
 value may be changed dynamically using the POWER_PROFILE_SETTINGS_NP
-management message.  The default is 0xFFFFFFFF meaning unknown
-inaccuracy.
+management message.  The default is -1 meaning unknown inaccuracy.
 
 .TP
 .B power_profile.grandmasterID
