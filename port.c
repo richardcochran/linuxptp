@@ -3422,7 +3422,7 @@ struct port *port_open(const char *phc_device,
 		pr_err("%s: E2E TC needs E2E ports", p->log_name);
 		goto err_uc_service;
 	}
-	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
+	if (!port_is_uds(p) && p->hybrid_e2e && p->delayMechanism != DM_E2E) {
 		pr_warning("%s: hybrid_e2e only works with E2E", p->log_name);
 	}
 	if (p->net_sync_monitor && !p->hybrid_e2e) {
