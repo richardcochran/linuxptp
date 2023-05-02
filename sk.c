@@ -66,10 +66,21 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 
 	init_ifreq(&ifreq, &cfg, device);
 
+	/* Test if VLAN over bond is supported. */
 	cfg.flags = HWTSTAMP_FLAG_BONDED_PHC_INDEX;
-	/* Fall back without flag if user run new build on old kernel */
-	if (ioctl(fd, SIOCGHWTSTAMP, &ifreq) == -EINVAL)
-		init_ifreq(&ifreq, &cfg, device);
+	err = ioctl(fd, SIOCGHWTSTAMP, &ifreq);
+	if (err < 0) {
+		/*
+		 * Fall back without flag if user runs new build on old kernel
+		 * or if driver does not support SIOCGHWTSTAMP ioctl.
+		 */
+		if (errno == EINVAL || errno == EOPNOTSUPP) {
+			init_ifreq(&ifreq, &cfg, device);
+		} else {
+			pr_err("ioctl SIOCGHWTSTAMP failed: %m");
+			return err;
+		}
+	}
 
 	switch (sk_hwts_filter_mode) {
 	case HWTS_FILTER_CHECK:
