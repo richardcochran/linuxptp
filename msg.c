@@ -100,13 +100,13 @@ static uint8_t *msg_suffix(struct ptp_message *m)
 {
 	switch (msg_type(m)) {
 	case SYNC:
-		return NULL;
+		return m->sync.suffix;
 	case DELAY_REQ:
 		return m->delay_req.suffix;
 	case PDELAY_REQ:
-		return NULL;
+		return m->pdelay_req.suffix;
 	case PDELAY_RESP:
-		return NULL;
+		return m->pdelay_resp.suffix;
 	case FOLLOW_UP:
 		return m->follow_up.suffix;
 	case DELAY_RESP:
