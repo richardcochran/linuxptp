@@ -577,6 +577,7 @@ int main(int argc, char *argv[])
 		ts2phc_cleanup(&priv);
 		return -1;
 	}
+	priv.cfg = cfg;
 	priv.agent = pmc_agent_create();
 	if (!priv.agent) {
 		ts2phc_cleanup(&priv);
@@ -662,7 +663,6 @@ int main(int argc, char *argv[])
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	STAILQ_INIT(&priv.sinks);
-	priv.cfg = cfg;
 
 	snprintf(uds_local, sizeof(uds_local), "/var/run/ts2phc.%d",
 		 getpid());
