@@ -2740,7 +2740,7 @@ static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		port_e2e_transition(p, p->state);
 	}
 
-	if (p->jbod && p->state == PS_UNCALIBRATED) {
+	if (p->jbod && p->state == PS_UNCALIBRATED && p->phc_index >= 0 ) {
 		if (clock_switch_phc(p->clock, p->phc_index)) {
 			p->last_fault_type = FT_SWITCH_PHC;
 			port_dispatch(p, EV_FAULT_DETECTED, 0);
