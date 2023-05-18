@@ -2086,7 +2086,12 @@ void clock_sync_interval(struct clock *c, int n)
 	}
 	c->fest.max_count = (1U << shift);
 
-	shift = c->stats_interval - n;
+	/* In free-running mode stats accumulate once per freq_est_interval */
+	if (c->free_running)
+		shift = c->stats_interval - n - shift;
+	else
+		shift = c->stats_interval - n;
+
 	if (shift < 0)
 		shift = 0;
 	else if (shift >= sizeof(int) * 8) {
