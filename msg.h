@@ -37,6 +37,9 @@
 
 #define MAJOR_VERSION_MASK	0x0f
 
+/* Values for the transportSpecific field */
+#define TS_IEEE_8021AS (1<<4)
+
 /* Values for the messageType field */
 #define SYNC                  0x0
 #define DELAY_REQ             0x1

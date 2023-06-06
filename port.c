@@ -2433,7 +2433,13 @@ static void port_peer_delay(struct port *p)
 	t3 = timestamp_to_tmv(fup->ts.pdu);
 	c2 = correction_to_tmv(fup->header.correction);
 calc:
-	t3c = tmv_add(t3, tmv_add(c1, c2));
+	/* 802.1AS specifies the peer delay computation differently than 1588. Do
+	 * the 802.1AS computation if transportSpecific matches 802.1AS profile. */
+	if (p->transportSpecific == TS_IEEE_8021AS) {
+		t3c = tmv_add(t3, tmv_sub(c2, c1));
+	} else {
+		t3c = tmv_add(t3, tmv_add(c1, c2));
+	}
 
 	if (p->follow_up_info)
 		port_nrate_calculate(p, t3c, t4);
