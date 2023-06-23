@@ -311,7 +311,7 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 		caps.n_pins,
 		caps.pps ? "has" : "doesn't have",
 		caps.cross_timestamping ? "has" : "doesn't have",
-		#ifdef PTP_CLOCK_GETCAPS2
+		#ifdef HAVE_PTP_CAPS_ADJUST_PHASE
 		caps.adjust_phase ? "has" : "doesn't have"
 		#else
 		"no information regarding"

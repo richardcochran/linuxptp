@@ -63,6 +63,7 @@ kernel_flags()
 {
 	prefix=""
 	tstamp=/usr/include/linux/net_tstamp.h
+	ptp_clock=/usr/include/linux/ptp_clock.h
 
 	if [ "x$KBUILD_OUTPUT" != "x" ]; then
 		# With KBUILD_OUTPUT set, we are building against
@@ -89,6 +90,10 @@ kernel_flags()
 
 	if grep -q SOF_TIMESTAMPING_BIND_PHC ${prefix}${tstamp}; then
 		printf " -DHAVE_VCLOCKS"
+	fi
+
+	if grep -q adjust_phase ${prefix}${ptp_clock}; then
+		printf " -DHAVE_PTP_CAPS_ADJUST_PHASE"
 	fi
 }
 
