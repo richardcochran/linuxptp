@@ -181,8 +181,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	uint64_t next_jump;
 	struct portDS *p;
 	struct TLV *tlv;
+	int action, i;
 	uint8_t *buf;
-	int action;
 
 	if (msg_type(msg) == SIGNALING) {
 		pmc_show_signaling(msg, fp);
@@ -591,7 +591,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			"BM", "identity", "address", "state",
 			"clockClass", "clockQuality", "offsetScaledLogVariance",
 			"p1", "p2");
-		for (int i = 0; i < umtn->actual_table_size; i++) {
+		for (i = 0; i < umtn->actual_table_size; i++) {
 			ume = (struct unicast_master_entry *) buf;
 			pmc_show_unicast_master_entry(ume, fp);
 			buf += sizeof(*ume) + ume->address.addressLength;
