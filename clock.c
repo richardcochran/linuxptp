@@ -819,9 +819,14 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	return state;
 }
 
+static int clock_compare_pds(struct parentDS *pds1, struct parentDS *pds2)
+{
+	return memcmp(pds1, pds2, sizeof (*pds1));
+}
+
 static void clock_update_grandmaster(struct clock *c)
 {
-	struct parentDS *pds = &c->dad.pds;
+	struct parentDS *pds = &c->dad.pds, old_pds = *pds;
 	memset(&c->cur, 0, sizeof(c->cur));
 	memset(c->ptl, 0, sizeof(c->ptl));
 
@@ -836,11 +841,14 @@ static void clock_update_grandmaster(struct clock *c)
 	c->tds.currentUtcOffset                 = c->utc_offset;
 	c->tds.flags                            = c->time_flags;
 	c->tds.timeSource                       = c->time_source;
+
+	if (clock_compare_pds(&old_pds, pds))
+		clock_notify_event(c, NOTIFY_PARENT_DATA_SET);
 }
 
 static void clock_update_slave(struct clock *c)
 {
-	struct parentDS *pds = &c->dad.pds;
+	struct parentDS *pds = &c->dad.pds, old_pds = *pds;
 	struct timePropertiesDS tds;
 	struct ptp_message *msg;
 
@@ -864,6 +872,9 @@ static void clock_update_slave(struct clock *c)
 		pr_warning("running in a temporal vortex");
 	}
 	clock_update_time_properties(c, tds);
+
+	if (clock_compare_pds(&old_pds, pds))
+		clock_notify_event(c, NOTIFY_PARENT_DATA_SET);
 }
 
 static int clock_utc_correct(struct clock *c, tmv_t ingress)
@@ -1721,13 +1732,22 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 void clock_notify_event(struct clock *c, enum notification event)
 {
 	struct port *uds = c->uds_rw_port;
-	struct PortIdentity pid = port_identity(uds);
+	struct PortIdentity pid;
 	struct ptp_message *msg;
 	int id;
+
+	/* A notification may come before UDS is created */
+	if (!uds)
+		return;
+
+	pid = port_identity(uds);
 
 	switch (event) {
 	case NOTIFY_TIME_SYNC:
 		id = MID_TIME_STATUS_NP;
+		break;
+	case NOTIFY_PARENT_DATA_SET:
+		id = MID_PARENT_DATA_SET;
 		break;
 	default:
 		return;
