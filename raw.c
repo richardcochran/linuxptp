@@ -57,7 +57,6 @@ struct raw {
 
 #define PTP_GEN_BIT 0x08 /* indicates general message, if set in message type */
 
-#define PRP_MIN_PACKET_LEN 70
 #define PRP_TRAILER_LEN 6
 
 /*
@@ -256,10 +255,10 @@ static void addr_to_mac(void *mac, struct address *addr)
 }
 
 /* Determines if the packet has Parallel Redundancy Protocol (PRP) trailer. */
-static bool has_prp_trailer(unsigned char *ptr, int cnt, int eth_hlen)
+static bool has_prp_trailer(unsigned char *ptr, int cnt)
 {
 	unsigned short suffix_id, lane_size_field, lsdu_size;
-	int ptp_msg_len, trailer_start, padding_len;
+	int ptp_msg_len, trailer_start;
 	struct ptp_header *hdr;
 
 	/* try to parse like a PTP message to find out the message length */
@@ -272,17 +271,11 @@ static bool has_prp_trailer(unsigned char *ptr, int cnt, int eth_hlen)
 
 	ptp_msg_len = ntohs(hdr->messageLength);
 
-	/* PRP requires ethernet packets to be minimum 70 bytes, including trailer */
-	trailer_start = ptp_msg_len;
-	padding_len = 0;
-	if ((eth_hlen + ptp_msg_len + PRP_TRAILER_LEN) < PRP_MIN_PACKET_LEN)
-	{
-		padding_len = PRP_MIN_PACKET_LEN - (eth_hlen + ptp_msg_len + PRP_TRAILER_LEN);
-		trailer_start += padding_len;
-	}
-
-	if (cnt < (trailer_start + PRP_TRAILER_LEN))
+	if (cnt < (ptp_msg_len + PRP_TRAILER_LEN))
 		return false;
+
+	/* PRP trailer is always in the last six bytes before the FCS */
+	trailer_start = cnt - PRP_TRAILER_LEN;
 
 	/* PRP trailer (RCT) consists of 3 uint16.
 	 | -------------------------------------------------------- |
@@ -394,7 +387,7 @@ static int raw_recv(struct transport *t, int fd, void *buf, int buflen,
 	if (cnt < 0)
 		return cnt;
 
-	if (has_prp_trailer(buf, cnt, hlen))
+	if (has_prp_trailer(buf, cnt))
 		cnt -= PRP_TRAILER_LEN;
 
 	if (raw->vlan) {
