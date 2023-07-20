@@ -1075,7 +1075,8 @@ int main(int argc, char *argv[])
 	struct config *cfg;
 	struct option *opts;
 	double phc_rate, tmp;
-	struct domain domain = {
+	struct domain domain;
+	struct domain settings = {
 		.phc_readings = 5,
 		.phc_interval = 1.0,
 	};
@@ -1084,10 +1085,6 @@ int main(int argc, char *argv[])
 
 	cfg = phc2sys_config = config_create();
 	if (!cfg) {
-		return -1;
-	}
-	domain.agent = pmc_agent_create();
-	if (!domain.agent) {
 		return -1;
 	}
 
@@ -1181,22 +1178,21 @@ int main(int argc, char *argv[])
 		case 'R':
 			if (get_arg_val_d(c, optarg, &phc_rate, 1e-9, DBL_MAX))
 				goto end;
-			domain.phc_interval = 1.0 / phc_rate;
+			settings.phc_interval = 1.0 / phc_rate;
 			break;
 		case 'N':
-			if (get_arg_val_i(c, optarg, &domain.phc_readings, 1, INT_MAX))
+			if (get_arg_val_i(c, optarg, &settings.phc_readings, 1, INT_MAX))
 				goto end;
 			break;
 		case 'O':
 			if (get_arg_val_i(c, optarg, &offset, INT_MIN, INT_MAX)) {
 				goto end;
 			}
-			pmc_agent_set_sync_offset(domain.agent, offset);
-			domain.forced_sync_offset = -1;
+			settings.forced_sync_offset = -1;
 			break;
 		case 'L':
-			if (get_arg_val_i(c, optarg, &domain.sanity_freq_limit, 0, INT_MAX) ||
-			    config_set_int(cfg, "sanity_freq_limit", domain.sanity_freq_limit)) {
+			if (get_arg_val_i(c, optarg, &settings.sanity_freq_limit, 0, INT_MAX) ||
+			    config_set_int(cfg, "sanity_freq_limit", settings.sanity_freq_limit)) {
 				goto end;
 			}
 			break;
@@ -1206,7 +1202,7 @@ int main(int argc, char *argv[])
 				goto end;
 			break;
 		case 'u':
-			if (get_arg_val_ui(c, optarg, &domain.stats_max_count,
+			if (get_arg_val_ui(c, optarg, &settings.stats_max_count,
 					  0, UINT_MAX))
 				goto end;
 			break;
@@ -1278,7 +1274,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (autocfg && (src_name || dst_cnt > 0 || hardpps_configured(pps_fd) ||
-			wait_sync || domain.forced_sync_offset)) {
+			wait_sync || settings.forced_sync_offset)) {
 		fprintf(stderr,
 			"autoconfiguration cannot be mixed with manual config options.\n");
 		goto bad_usage;
@@ -1289,7 +1285,7 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
-	if (!autocfg && !wait_sync && !domain.forced_sync_offset) {
+	if (!autocfg && !wait_sync && !settings.forced_sync_offset) {
 		fprintf(stderr,
 			"time offset must be specified using -w or -O\n");
 		goto bad_usage;
@@ -1308,14 +1304,23 @@ int main(int argc, char *argv[])
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
-	domain.free_running = config_get_int(cfg, NULL, "free_running");
-	domain.servo_type = config_get_int(cfg, NULL, "clock_servo");
-	if (domain.free_running || domain.servo_type == CLOCK_SERVO_NTPSHM) {
+	settings.free_running = config_get_int(cfg, NULL, "free_running");
+	settings.servo_type = config_get_int(cfg, NULL, "clock_servo");
+	if (settings.free_running || settings.servo_type == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
 	}
-	domain.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
-	domain.sanity_freq_limit = config_get_int(cfg, NULL, "sanity_freq_limit");
+	settings.kernel_leap = config_get_int(cfg, NULL, "kernel_leap");
+	settings.sanity_freq_limit = config_get_int(cfg, NULL, "sanity_freq_limit");
+
+	domain = settings;
+	domain.agent = pmc_agent_create();
+	if (!domain.agent) {
+		return -1;
+	}
+
+	if (settings.forced_sync_offset)
+		pmc_agent_set_sync_offset(domain.agent, offset);
 
 	for (i = 0; i < dst_cnt; i++) {
 		r = phc2sys_static_dst_configuration(&domain, dst_names[i]);
