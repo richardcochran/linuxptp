@@ -703,13 +703,62 @@ static int update_needed(struct clock *c)
 	return 0;
 }
 
+static int update_domain_clocks(struct domain *domain)
+{
+	int64_t offset, delay;
+	struct clock *clock;
+	uint64_t ts;
+	int err;
+
+	LIST_FOREACH(clock, &domain->dst_clocks, dst_list) {
+		if (!update_needed(clock))
+			continue;
+
+		/* don't try to synchronize the clock to itself */
+		if (clock->clkid == domain->src_clock->clkid ||
+		    (clock->phc_index >= 0 &&
+		     clock->phc_index == domain->src_clock->phc_index) ||
+		    !strcmp(clock->device, domain->src_clock->device))
+			continue;
+
+		if (clock->clkid == CLOCK_REALTIME &&
+		    domain->src_clock->sysoff_method >= 0) {
+			/* use sysoff */
+			err = sysoff_measure(CLOCKID_TO_FD(domain->src_clock->clkid),
+					     domain->src_clock->sysoff_method,
+					     domain->phc_readings,
+					     &offset, &ts, &delay);
+		} else if (domain->src_clock->clkid == CLOCK_REALTIME &&
+			   clock->sysoff_method >= 0) {
+			/* use reversed sysoff */
+			err = sysoff_measure(CLOCKID_TO_FD(clock->clkid),
+					     clock->sysoff_method,
+					     domain->phc_readings,
+					     &offset, &ts, &delay);
+			if (!err) {
+				offset = -offset;
+				ts += offset;
+			}
+		} else {
+			/* use phc */
+			err = clockadj_compare(domain->src_clock->clkid,
+					       clock->clkid,
+					       domain->phc_readings,
+					       &offset, &ts, &delay);
+		}
+		if (err == -EBUSY)
+			continue;
+		if (err)
+			return -1;
+		update_clock(domain, clock, offset, ts, delay);
+	}
+
+	return 0;
+}
+
 static int do_loop(struct domain *domain)
 {
 	struct timespec interval;
-	struct clock *clock;
-	uint64_t ts;
-	int64_t offset, delay;
-	int err;
 
 	interval.tv_sec = domain->phc_interval;
 	interval.tv_nsec = (domain->phc_interval - interval.tv_sec) * 1e9;
@@ -731,49 +780,8 @@ static int do_loop(struct domain *domain)
 		}
 		if (!domain->src_clock)
 			continue;
-
-		LIST_FOREACH(clock, &domain->dst_clocks, dst_list) {
-			if (!update_needed(clock))
-				continue;
-
-			/* don't try to synchronize the clock to itself */
-			if (clock->clkid == domain->src_clock->clkid ||
-			    (clock->phc_index >= 0 &&
-			     clock->phc_index == domain->src_clock->phc_index) ||
-			    !strcmp(clock->device, domain->src_clock->device))
-				continue;
-
-			if (clock->clkid == CLOCK_REALTIME &&
-			    domain->src_clock->sysoff_method >= 0) {
-				/* use sysoff */
-				err = sysoff_measure(CLOCKID_TO_FD(domain->src_clock->clkid),
-						     domain->src_clock->sysoff_method,
-						     domain->phc_readings,
-						     &offset, &ts, &delay);
-			} else if (domain->src_clock->clkid == CLOCK_REALTIME &&
-				   clock->sysoff_method >= 0) {
-				/* use reversed sysoff */
-				err = sysoff_measure(CLOCKID_TO_FD(clock->clkid),
-						     clock->sysoff_method,
-						     domain->phc_readings,
-						     &offset, &ts, &delay);
-				if (!err) {
-					offset = -offset;
-					ts += offset;
-				}
-			} else {
-				/* use phc */
-				err = clockadj_compare(domain->src_clock->clkid,
-						       clock->clkid,
-						       domain->phc_readings,
-						       &offset, &ts, &delay);
-			}
-			if (err == -EBUSY)
-				continue;
-			if (err)
-				return -1;
-			update_clock(domain, clock, offset, ts, delay);
-		}
+		if (update_domain_clocks(domain))
+			return -1;
 	}
 	return 0;
 }
