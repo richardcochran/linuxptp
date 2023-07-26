@@ -441,12 +441,16 @@ int sk_receive(int fd, void *buf, int buflen,
 		/* Retry once on EINTR to avoid logging errors before exit */
 		if (res < 0 && errno == EINTR)
 			res = poll(&pfd, 1, sk_tx_timeout);
-		if (res < 1) {
-			pr_err(res ? "poll for tx timestamp failed: %m" :
-			             "timed out while polling for tx timestamp");
-			pr_err("increasing tx_timestamp_timeout may correct "
-			       "this issue, but it is likely caused by a driver bug");
+		if (res < 0) {
+			pr_err("poll for tx timestamp failed: %m");
 			return -errno;
+		} else if (!res) {
+			pr_err("timed out while polling for tx timestamp");
+			pr_err("increasing tx_timestamp_timeout or increasing "
+			       "kworker priority may correct this issue, "
+			       "but a driver bug likely causes it");
+			errno = ETIME;
+			return -1;
 		} else if (!(pfd.revents & sk_revents)) {
 			pr_err("poll for tx timestamp woke up on non ERR event");
 			return -1;
