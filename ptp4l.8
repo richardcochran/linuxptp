@@ -1032,6 +1032,46 @@ to maintain the correct offset between UTC and PTP times. See
 .BR phc2sys (8)
 manual page for more details.
 
+.SH KTHREAD PRIORITY
+
+In case of following log,
+
+.RS
+.I timed out while polling for tx timestamp
+.I increasing tx_timestamp_timeout or increasing
+.I kworker priority may correct this issue,
+.I but a driver bug likely causes it
+.RE
+
+one possible cause is that the kworker which processes timestamps is
+being starved.  The system admin might try manually increasing the
+priority of the kworker.
+
+Many device drivers use kworker threads created by the PTP stack.
+Such kworkers are named:
+.RS
+.I ptp<decimal number of clock>
+.RE
+
+The system admin can manually bump the priority of the kworker process
+using chrt.
+
+Example:
+.RS
+\f(CWpgrep \-f "ptp[0-9]+" | xargs \-I {} sudo chrt \-f \-\-pid 75 {}\fP
+.RE
+
+Intel ice driver may create multiple kworkers for one physical NIC and
+names those processes differently.
+
+Example for Intel E810 card:
+.RS
+\f(CWpgrep \-f ice-ptp | xargs \-I {} sudo chrt \-f \-\-pid 75 {}\fP
+.RE
+
+Assigning priority needs careful consideration as assigning too high
+priority to any task might make system unstable.
+
 .SH SEE ALSO
 .BR pmc (8),
 .BR phc2sys (8)
