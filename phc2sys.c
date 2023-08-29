@@ -476,7 +476,7 @@ static int compare_domains(struct domain *a, struct domain *b)
 
 static void reconfigure(struct domain *domains, int n_domains)
 {
-	struct domain *src_domain = NULL;
+	struct domain *src_domain = NULL, *rt_domain = NULL;
 	int i;
 
 	pr_info("reconfiguring after port state change");
@@ -491,14 +491,26 @@ static void reconfigure(struct domain *domains, int n_domains)
 		if (compare_domains(src_domain, &domains[i]) > 0) {
 			src_domain = &domains[i];
 		}
+
+		if (!LIST_EMPTY(&domains[i].clocks) &&
+		    LIST_FIRST(&domains[i].clocks)->clkid == CLOCK_REALTIME) {
+			rt_domain = &domains[i];
+		}
 	}
 
 	if (n_domains <= 1 || !src_domain) {
 		return;
 	}
 
-	pr_info("selecting %s as out-of-domain source clock",
-		src_domain->src_clock->device);
+	if (rt_domain && src_domain != rt_domain) {
+		pr_info("selecting CLOCK_REALTIME for synchronization");
+	}
+	if (src_domain == rt_domain) {
+		pr_info("selecting CLOCK_REALTIME as source clock");
+	} else if (n_domains - !!rt_domain > 1) {
+		pr_info("selecting %s as out-of-domain source clock",
+			src_domain->src_clock->device);
+	}
 
 	for (i = 0; i < n_domains; i++) {
 		if (domains[i].src_clock && domains[i].src_priority > 0)
