@@ -1490,7 +1490,10 @@ int main(int argc, char *argv[])
 	if (wait_sync) {
 		snprintf(uds_local, sizeof(uds_local),
 			 "/var/run/phc2sys.%d", getpid());
-		config_set_string(cfg, "uds_address", uds_remotes[0]);
+
+		if (uds_remote_cnt > 0)
+			config_set_string(cfg, "uds_address",
+					  uds_remotes[uds_remote_cnt - 1]);
 
 		if (init_pmc_node(cfg, domains[0].agent, uds_local,
 				  phc2sys_recv_subscribed, &domains[0]))
