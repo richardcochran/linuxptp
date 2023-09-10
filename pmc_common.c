@@ -486,13 +486,17 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       int zero_datalen)
 {
 	struct pmc *pmc;
+	UInteger32 proc_id;
 
 	pmc = calloc(1, sizeof *pmc);
 	if (!pmc)
 		return NULL;
 
 	if (transport_type == TRANS_UDS) {
-		pmc->port_identity.portNumber = getpid();
+		proc_id = getpid();
+		pmc->port_identity.clockIdentity.id[6] = (proc_id & 0xFF000000) >> 24;
+		pmc->port_identity.clockIdentity.id[7] = (proc_id & 0x00FF0000) >> 16;
+		pmc->port_identity.portNumber = proc_id & 0xFFFF;
 	} else {
 		if (generate_clock_identity(&pmc->port_identity.clockIdentity,
 					    iface_name)) {
