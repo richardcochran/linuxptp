@@ -1585,7 +1585,7 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 				       port_log_name(piter));
 		}
 		if (clock_do_forward_mgmt(c, p, c->uds_rw_port, msg, &msg_ready))
-			pr_err("uds port: management forward failed");
+			pr_debug("uds port: management forward failed");
 		if (msg_ready) {
 			msg_post_recv(msg, pdulen);
 			msg->management.boundaryHops++;
