@@ -357,6 +357,10 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 		"no information regarding"
 		#endif
 		);
+
+	if (caps.max_phase_adj)
+		pr_notice("  %d maximum offset adjustment (ns)\n", caps.max_phase_adj);
+
 	return 0;
 }
 

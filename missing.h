@@ -98,9 +98,9 @@ enum {
 #define PTP_PEROUT_REQUEST2 PTP_PEROUT_REQUEST
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,5,0)
 
-/* from upcoming Linux kernel version 5.8 */
+/* from upcoming Linux kernel version 6.5 */
 struct compat_ptp_clock_caps {
 	int max_adj;   /* Maximum frequency adjustment in parts per billon. */
 	int n_alarm;   /* Number of programmable alarms. */
@@ -112,12 +112,13 @@ struct compat_ptp_clock_caps {
 	int cross_timestamping;
 	/* Whether the clock supports adjust phase */
 	int adjust_phase;
-	int rsv[12];   /* Reserved for future use. */
+	int max_phase_adj;
+	int rsv[11];   /* Reserved for future use. */
 };
 
 #define ptp_clock_caps compat_ptp_clock_caps
 
-#endif /*LINUX_VERSION_CODE < 5.8*/
+#endif /*LINUX_VERSION_CODE < 6.5*/
 
 /*
  * Bits of the ptp_perout_request.flags field:
