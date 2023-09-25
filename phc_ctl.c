@@ -108,13 +108,14 @@ static void usage(const char *progname)
 		" specify commands with arguments. Can specify multiple\n"
 		" commands to be executed in order. Seconds are read as\n"
 		" double precision floating point values.\n"
-		"  set  [seconds]  set PHC time (defaults to time on CLOCK_REALTIME)\n"
-		"  get             get PHC time\n"
-		"  adj  <seconds>  adjust PHC time by offset\n"
-		"  freq [ppb]      adjust PHC frequency (default returns current offset)\n"
-		"  cmp             compare PHC offset to CLOCK_REALTIME\n"
-		"  caps            display device capabilities (default if no command given)\n"
-		"  wait <seconds>  pause between commands\n"
+		"  set   [seconds]  set PHC time (defaults to time on CLOCK_REALTIME)\n"
+		"  get              get PHC time\n"
+		"  adj   <seconds>  adjust PHC time by offset\n"
+		"  freq  [ppb]      adjust PHC frequency (default returns current offset)\n"
+		"  phase <seconds>  pass offset to PHC phase control keyword\n"
+		"  cmp              compare PHC offset to CLOCK_REALTIME\n"
+		"  caps             display device capabilities (default if no command given)\n"
+		"  wait <seconds>   pause between commands\n"
 		"\n",
 		progname);
 }
@@ -279,6 +280,45 @@ static int do_freq(clockid_t clkid, int cmdc, char *cmdv[])
 	return 1;
 }
 
+static int do_phase(clockid_t clkid, int cmdc, char *cmdv[])
+{
+	double offset_arg;
+	long nsecs;
+	enum parser_result r;
+
+	if (cmdc < 1 || name_is_a_command(cmdv[0])) {
+		pr_err("phase: missing required time argument");
+		return -2;
+	}
+
+	/* parse the double time offset argument */
+	r = get_ranged_double(cmdv[0], &offset_arg, -DBL_MAX, DBL_MAX);
+	switch (r) {
+	case PARSED_OK:
+		break;
+	case MALFORMED:
+		pr_err("phase: '%s' is not a valid double", cmdv[0]);
+		return -2;
+	case OUT_OF_RANGE:
+		pr_err("phase: '%s' is out of range.", cmdv[0]);
+		return -2;
+	default:
+		pr_err("phase: couldn't process '%s'", cmdv[0]);
+		return -2;
+	}
+
+	nsecs = (long)(NSEC2SEC * offset_arg);
+
+	clockadj_init(clkid);
+	clockadj_set_phase(clkid, nsecs);
+
+	pr_notice("offset of %lf seconds provided to PHC phase control keyword",
+		  offset_arg);
+
+	/* phase offset always consumes one argument */
+	return 1;
+}
+
 static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 {
 	struct ptp_clock_caps caps;
@@ -401,6 +441,7 @@ static const struct cmd_t all_commands[] = {
 	{ "get", &do_get },
 	{ "adj", &do_adj },
 	{ "freq", &do_freq },
+	{ "phase", &do_phase },
 	{ "cmp", &do_cmp },
 	{ "caps", &do_caps },
 	{ "wait", &do_wait },
