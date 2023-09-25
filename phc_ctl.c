@@ -251,7 +251,7 @@ static int do_freq(clockid_t clkid, int cmdc, char *cmdv[])
 
 	if (cmdc < 1 || name_is_a_command(cmdv[0])) {
 		ppb = clockadj_get_freq(clkid);
-		pr_err("clock frequency offset is %lfppb", ppb);
+		pr_notice("clock frequency offset is %lfppb", ppb);
 
 		/* no argument was used */
 		return 0;
@@ -274,7 +274,7 @@ static int do_freq(clockid_t clkid, int cmdc, char *cmdv[])
 	}
 
 	clockadj_set_freq(clkid, ppb);
-	pr_err("adjusted clock frequency offset to %lfppb", ppb);
+	pr_notice("adjusted clock frequency offset to %lfppb", ppb);
 
 	/* consumed one argument to determine the frequency adjustment value */
 	return 1;
