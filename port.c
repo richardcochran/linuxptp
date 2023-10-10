@@ -245,12 +245,9 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 		for (i = 1, ns = scale * 500000000ULL; i < log_seconds; i++) {
 			ns >>= 1;
 		}
-		tmo.it_value.tv_nsec = ns;
 
-		while (tmo.it_value.tv_nsec >= NS_PER_SEC) {
-			tmo.it_value.tv_nsec -= NS_PER_SEC;
-			tmo.it_value.tv_sec++;
-		}
+		tmo.it_value.tv_sec = ns / NS_PER_SEC;
+		tmo.it_value.tv_nsec = ns % NS_PER_SEC;
 
 	} else
 		tmo.it_value.tv_sec = scale * (1 << log_seconds);
@@ -1354,7 +1351,9 @@ static void port_synchronize(struct port *p,
 	enum servo_state state, last_state;
 	tmv_t t1, t1c, t2, c1, c2;
 
-	port_set_sync_rx_tmo(p);
+	if (port_set_sync_rx_tmo(p) < 0) {
+		pr_err("Failed to set sync rx timeout timer: %s", strerror(errno));
+	}
 
 	t1 = timestamp_to_tmv(origin_ts);
 	t2 = ingress_ts;
