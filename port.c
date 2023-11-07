@@ -723,14 +723,14 @@ int port_capable(struct port *p)
 		goto not_capable;
 	}
 
-	if (p->multiple_seq_pdr_count) {
+	if (p->multiple_seq_pdr_count > p->allowedLostResponses) {
 		if (p->asCapable)
-			pr_debug("%s: multiple sequential peer delay resp, "
-				"resetting asCapable", p->log_name);
+			pr_debug("%s: received %d multiple sequential peer delay resp, "
+				"resetting asCapable", p->log_name, p->multiple_seq_pdr_count);
 		goto not_capable;
 	}
 
-	if (!p->peer_portid_valid) {
+	if (!p->peer_portid_valid && p->multiple_pdr_detected == 0) {
 		if (p->asCapable)
 			pr_debug("%s: invalid peer port id, "
 				"resetting asCapable", p->log_name);
@@ -2463,18 +2463,17 @@ calc:
 int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
 	if (p->peer_delay_resp) {
-		if (!source_pid_eq(p->peer_delay_resp, m)) {
-			pr_err("%s: multiple peer responses", p->log_name);
-			if (!p->multiple_pdr_detected) {
-				p->multiple_pdr_detected = 1;
-				p->multiple_seq_pdr_count++;
-			}
-			if (p->multiple_seq_pdr_count >= 3) {
-				p->last_fault_type = FT_BAD_PEER_NETWORK;
-				return -1;
-			}
-		}
-	}
+                if (!p->multiple_pdr_detected) {
+                        pr_err("%s: multiple peer responses", p->log_name);
+                        p->multiple_pdr_detected = 1;
+                        p->multiple_seq_pdr_count++;
+                }
+                if (p->multiple_seq_pdr_count > p->allowedLostResponses) {
+                        p->last_fault_type = FT_BAD_PEER_NETWORK;
+                        return -1;
+                }
+        }
+
 	if (!p->peer_delay_req) {
 		pr_err("%s: rogue peer delay response", p->log_name);
 		return -1;
