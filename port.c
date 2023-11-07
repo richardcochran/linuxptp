@@ -45,7 +45,6 @@
 #include "unicast_service.h"
 #include "util.h"
 
-#define ALLOWED_LOST_RESPONSES 3
 #define ANNOUNCE_SPAN 1
 
 enum syfu_event {
@@ -717,7 +716,7 @@ int port_capable(struct port *p)
 		goto not_capable;
 	}
 
-	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
+	if (p->pdr_missing > p->allowedLostResponses) {
 		if (p->asCapable)
 			pr_debug("%s: missed %d peer delay resp, "
 				"resetting asCapable", p->log_name, p->pdr_missing);
@@ -1241,7 +1240,7 @@ static void port_nrate_initialize(struct port *p)
 	}
 
 	/* We start in the 'incapable' state. */
-	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
+	p->pdr_missing = p->allowedLostResponses + 1;
 
 	p->peer_portid_valid = 0;
 
@@ -3404,6 +3403,7 @@ struct port *port_open(const char *phc_device,
 	p->pwr.totalTimeInaccuracy =
 		config_get_int(cfg, p->name, "power_profile.2017.totalTimeInaccuracy");
 	p->slave_event_monitor = clock_slave_monitor(clock);
+	p->allowedLostResponses = config_get_int(cfg, p->name, "allowedLostResponses");
 
 	if (!port_is_uds(p) && unicast_client_initialize(p)) {
 		goto err_transport;
