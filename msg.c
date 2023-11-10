@@ -29,6 +29,7 @@
 #include "tlv.h"
 
 int assume_two_step = 0;
+uint8_t ptp_hdr_ver = PTP_VERSION;
 
 /*
  * Head room fits a VLAN Ethernet header, and 'msg' is 64 bit aligned.

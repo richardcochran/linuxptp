@@ -1537,7 +1537,7 @@ static int port_pdelay_request(struct port *p)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = PDELAY_REQ | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct pdelay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.correction         = -p->asymmetry;
@@ -1600,7 +1600,7 @@ int port_delay_request(struct port *p)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = DELAY_REQ | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct delay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.correction         = -p->asymmetry;
@@ -1652,7 +1652,7 @@ int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = ANNOUNCE | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct announce_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
@@ -1734,7 +1734,7 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = SYNC | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct sync_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
@@ -1769,7 +1769,7 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	fup->hwts.type = p->timestamping;
 
 	fup->header.tsmt               = FOLLOW_UP | p->transportSpecific;
-	fup->header.ver                = PTP_VERSION;
+	fup->header.ver                = ptp_hdr_ver;
 	fup->header.messageLength      = sizeof(struct follow_up_msg);
 	fup->header.domainNumber       = clock_domain_number(p->clock);
 	fup->header.sourcePortIdentity = p->portIdentity;
@@ -2118,7 +2118,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = DELAY_RESP | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct delay_resp_msg);
 	msg->header.domainNumber       = m->header.domainNumber;
 	msg->header.correction         = m->header.correction;
@@ -2309,7 +2309,7 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	rsp->hwts.type = p->timestamping;
 
 	rsp->header.tsmt               = PDELAY_RESP | p->transportSpecific;
-	rsp->header.ver                = PTP_VERSION;
+	rsp->header.ver                = ptp_hdr_ver;
 	rsp->header.messageLength      = sizeof(struct pdelay_resp_msg);
 	rsp->header.domainNumber       = m->header.domainNumber;
 	rsp->header.sourcePortIdentity = p->portIdentity;
@@ -2355,7 +2355,7 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	fup->hwts.type = p->timestamping;
 
 	fup->header.tsmt               = PDELAY_RESP_FOLLOW_UP | p->transportSpecific;
-	fup->header.ver                = PTP_VERSION;
+	fup->header.ver                = ptp_hdr_ver;
 	fup->header.messageLength      = sizeof(struct pdelay_resp_fup_msg);
 	fup->header.domainNumber       = m->header.domainNumber;
 	fup->header.correction         = m->header.correction;
@@ -3203,7 +3203,7 @@ port_management_construct(struct PortIdentity pid, struct port *ingress,
 	msg->hwts.type = ingress->timestamping;
 
 	msg->header.tsmt               = MANAGEMENT | ingress->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct management_msg);
 	msg->header.domainNumber       = clock_domain_number(ingress->clock);
 	msg->header.sourcePortIdentity = pid;

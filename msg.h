@@ -442,6 +442,11 @@ static inline Boolean msg_unicast(struct ptp_message *m)
 }
 
 /**
+ * Work around HW assuming PTP message version 2.0
+ */
+extern uint8_t ptp_hdr_ver;
+
+/**
  * Work around buggy 802.1AS switches.
  */
 extern int assume_two_step;
