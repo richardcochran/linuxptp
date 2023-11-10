@@ -192,6 +192,9 @@ int main(int argc, char *argv[])
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 	sk_hwts_filter_mode = config_get_int(cfg, NULL, "hwts_filter");
 
+	ptp_hdr_ver = config_get_int(cfg, NULL, "ptp_minor_version");
+	ptp_hdr_ver = (ptp_hdr_ver << 4) | PTP_MAJOR_VERSION;
+
 	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
