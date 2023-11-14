@@ -390,6 +390,11 @@ static int reconfigure_domain(struct domain *domain)
 		LIST_REMOVE(LIST_FIRST(&domain->dst_clocks), dst_list);
 	}
 
+	if (!domain->has_rt_clock && !domain->agent_subscribed) {
+		domain->src_clock = NULL;
+		return 0;
+	}
+
 	LIST_FOREACH(c, &domain->clocks, list) {
 		if (c->clkid == CLOCK_REALTIME) {
 			/* If present, it can always be a sink clock */
@@ -803,9 +808,9 @@ static int update_domain_clocks(struct domain *domain)
 
 static int do_loop(struct domain *domains, int n_domains)
 {
+	int i, state_changed, prev_sub;
 	struct timespec interval;
 	struct domain *domain;
-	int i, state_changed;
 
 	/* All domains have the same interval */
 	interval.tv_sec = domains[0].phc_interval;
@@ -818,6 +823,17 @@ static int do_loop(struct domain *domains, int n_domains)
 		for (i = 0; i < n_domains; i++) {
 			domain = &domains[i];
 			if (pmc_agent_update(domain->agent) < 0) {
+				continue;
+			}
+
+			prev_sub = domain->agent_subscribed;
+			domain->agent_subscribed =
+				pmc_agent_is_subscribed(domain->agent);
+			if (!domain->has_rt_clock && !domain->agent_subscribed) {
+				if (prev_sub) {
+					pr_err("Lost connection to ptp4l #%d", i + 1);
+					state_changed = 1;
+				}
 				continue;
 			}
 
@@ -879,8 +895,6 @@ static int phc2sys_recv_subscribed(void *context, struct ptp_message *msg,
 	struct portDS *pds;
 	struct port *port;
 	struct clock *clock;
-
-	domain->agent_subscribed = 1;
 
 	mgt_id = management_tlv_id(msg);
 	if (mgt_id == excluded)
