@@ -942,7 +942,7 @@ static int auto_init_ports(struct domain *domain)
 		return -1;
 	}
 
-	err = pmc_agent_subscribe(domain->agent, 1000);
+	err = pmc_agent_subscribe(domain->agent, 1000, domain->phc_interval);
 	if (err) {
 		pr_err("failed to subscribe");
 		return -1;

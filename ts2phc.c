@@ -279,7 +279,7 @@ static int ts2phc_auto_init_ports(struct ts2phc_private *priv)
 		return -1;
 	}
 
-	err = pmc_agent_subscribe(priv->agent, 1000);
+	err = pmc_agent_subscribe(priv->agent, 1000, 1);
 	if (err) {
 		pr_err("failed to subscribe");
 		return -1;
