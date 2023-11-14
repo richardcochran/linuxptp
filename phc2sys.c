@@ -108,6 +108,7 @@ struct domain {
 	int kernel_leap;
 	int state_changed;
 	int free_running;
+	int has_rt_clock;
 	struct pmc_agent *agent;
 	int agent_subscribed;
 	LIST_HEAD(port_head, port) ports;
@@ -492,10 +493,8 @@ static void reconfigure(struct domain *domains, int n_domains)
 			src_domain = &domains[i];
 		}
 
-		if (!LIST_EMPTY(&domains[i].clocks) &&
-		    LIST_FIRST(&domains[i].clocks)->clkid == CLOCK_REALTIME) {
+		if (domains[i].has_rt_clock)
 			rt_domain = &domains[i];
-		}
 	}
 
 	if (n_domains <= 1 || !src_domain) {
@@ -997,6 +996,7 @@ static int auto_init_rt(struct domain *domain, int dest_only)
 		return -1;
 	clock->dest_only = dest_only;
 	domain->src_priority = 0;
+	domain->has_rt_clock = 1;
 	return 0;
 }
 
@@ -1008,7 +1008,7 @@ static int clock_handle_leap(struct domain *domain, struct clock *clock,
 	struct pmc_agent *agent;
 
 	/* The system clock's domain doesn't have a subscribed agent */
-	agent = domain->agent_subscribed ? domain->agent : domain->src_domain->agent;
+	agent = domain->has_rt_clock ? domain->src_domain->agent : domain->agent;
 
 	node_leap = pmc_agent_get_leap(agent);
 	clock->sync_offset = pmc_agent_get_sync_offset(agent);
