@@ -164,6 +164,14 @@ int pmc_agent_subscribe(struct pmc_agent *agent, int timeout);
 int pmc_agent_update(struct pmc_agent *agent);
 
 /**
+ * Checks if last successful subscription did not run out, i.e. ptp4l is still
+ * responding (assuming pmc_agent_update() is called frequently enough).
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @return       True if subscribed, false otherwise.
+ */
+int pmc_agent_is_subscribed(struct pmc_agent *agent);
+
+/**
  * Tests whether the current UTC offset is traceable.
  * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
  * @return       True is the offset is traceable, false otherwise.

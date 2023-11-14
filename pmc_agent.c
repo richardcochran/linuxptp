@@ -426,6 +426,21 @@ int pmc_agent_update(struct pmc_agent *node)
 	return 0;
 }
 
+int pmc_agent_is_subscribed(struct pmc_agent *agent)
+{
+	struct timespec tp;
+	uint64_t ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
+		pr_err("failed to read clock: %m");
+		return 0;
+	}
+	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
+
+	return agent->pmc_last_update > 0 &&
+		ts - agent->pmc_last_update <= PMC_SUBSCRIBE_DURATION * NS_PER_SEC;
+}
+
 bool pmc_agent_utc_offset_traceable(struct pmc_agent *agent)
 {
 	return agent->utc_offset_traceable;
