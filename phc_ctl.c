@@ -48,8 +48,6 @@
 #include "util.h"
 #include "version.h"
 
-#define NSEC2SEC 1000000000.0
-
 /* trap the alarm signal so that pause() will wake up on receipt */
 static void handle_alarm(int s)
 {
@@ -68,7 +66,7 @@ static void double_to_timespec(double d, struct timespec *ts)
 	 * value by our fractional component. This results in a correct
 	 * timespec from the double representing seconds.
 	 */
-	ts->tv_nsec = (long)(NSEC2SEC * fraction);
+	ts->tv_nsec = (long)(NSEC_PER_SEC * fraction);
 }
 
 static int install_handler(int signum, void(*handler)(int))
@@ -231,7 +229,7 @@ static int do_adj(clockid_t clkid, int cmdc, char *cmdv[])
 		return -2;
 	}
 
-	nsecs = (int64_t)(NSEC2SEC * time_arg);
+	nsecs = (int64_t)(NSEC_PER_SEC * time_arg);
 
 	clockadj_init(clkid);
 	clockadj_step(clkid, nsecs);
@@ -258,7 +256,7 @@ static int do_freq(clockid_t clkid, int cmdc, char *cmdv[])
 	}
 
 	/* parse the double ppb argument */
-	r = get_ranged_double(cmdv[0], &ppb, -NSEC2SEC, NSEC2SEC);
+	r = get_ranged_double(cmdv[0], &ppb, -NSEC_PER_SEC, NSEC_PER_SEC);
 	switch (r) {
 	case PARSED_OK:
 		break;
@@ -307,7 +305,7 @@ static int do_phase(clockid_t clkid, int cmdc, char *cmdv[])
 		return -2;
 	}
 
-	nsecs = (long)(NSEC2SEC * offset_arg);
+	nsecs = (long)(NSEC_PER_SEC * offset_arg);
 
 	clockadj_init(clkid);
 	clockadj_set_phase(clkid, nsecs);
