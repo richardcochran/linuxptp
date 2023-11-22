@@ -26,10 +26,9 @@
 #include "pi.h"
 #include "refclock_sock.h"
 #include "servo_private.h"
+#include "util.h"
 
 #include "print.h"
-
-#define NSEC_PER_SEC 1000000000
 
 struct servo *servo_create(struct config *cfg, enum servo_type type,
 			   double fadj, int max_ppb, int sw_ts)
