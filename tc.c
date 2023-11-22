@@ -254,13 +254,12 @@ static void tc_complete(struct port *q, struct port *p,
 
 static int tc_current(struct ptp_message *m, struct timespec now)
 {
-	int64_t t1, t2, tmo;
+	int64_t t1, t2;
 
-	tmo = 1LL * NSEC2SEC;
-	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
-	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+	t1 = m->ts.host.tv_sec * NSEC_PER_SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC_PER_SEC + now.tv_nsec;
 
-	return t2 - t1 < tmo;
+	return t2 - t1 < NSEC_PER_SEC;
 }
 
 static int tc_fwd_event(struct port *q, struct ptp_message *msg)

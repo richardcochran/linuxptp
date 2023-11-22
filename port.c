@@ -137,17 +137,17 @@ static int msg_current(struct ptp_message *m, struct timespec now)
 {
 	int64_t t1, t2, tmo;
 
-	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
-	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+	t1 = m->ts.host.tv_sec * NSEC_PER_SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC_PER_SEC + now.tv_nsec;
 
 	if (m->header.logMessageInterval <= -31) {
 		tmo = 0;
 	} else if (m->header.logMessageInterval >= 31) {
 		tmo = INT64_MAX;
 	} else if (m->header.logMessageInterval < 0) {
-		tmo = 4LL * NSEC2SEC / (1 << -m->header.logMessageInterval);
+		tmo = 4LL * NSEC_PER_SEC / (1 << -m->header.logMessageInterval);
 	} else {
-		tmo = 4LL * (1 << m->header.logMessageInterval) * NSEC2SEC;
+		tmo = 4LL * (1 << m->header.logMessageInterval) * NSEC_PER_SEC;
 	}
 
 	return t2 - t1 < tmo;
@@ -336,10 +336,10 @@ static void fc_prune(struct foreign_clock *fc)
 
 static int delay_req_current(struct ptp_message *m, struct timespec now)
 {
-	int64_t t1, t2, tmo = 5 * NSEC2SEC;
+	int64_t t1, t2, tmo = 5 * NSEC_PER_SEC;
 
-	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
-	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+	t1 = m->ts.host.tv_sec * NSEC_PER_SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC_PER_SEC + now.tv_nsec;
 
 	return t2 - t1 < tmo;
 }

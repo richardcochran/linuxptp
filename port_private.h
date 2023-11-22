@@ -28,8 +28,7 @@
 #include "msg.h"
 #include "power_profile.h"
 #include "tmv.h"
-
-#define NSEC2SEC 1000000000LL
+#include "util.h"
 
 enum syfu_state {
 	SF_EMPTY,
