@@ -26,6 +26,8 @@
 #include "notification.h"
 #include "transport.h"
 
+#define POW2_41 ((double)(1ULL << 41))
+
 /* forward declarations */
 struct interface;
 struct clock;

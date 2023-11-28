@@ -176,6 +176,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
+	struct cmlds_info_np *cmlds;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
 	int extra_len = 0, i, len;
@@ -481,6 +482,14 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		NTOHL(pwr->networkTimeInaccuracy);
 		NTOHL(pwr->totalTimeInaccuracy);
 		break;
+	case MID_CMLDS_INFO_NP:
+		if (data_len < sizeof(struct cmlds_info_np))
+			goto bad_length;
+		cmlds = (struct cmlds_info_np *)m->data;
+		net2host64_unaligned(&cmlds->meanLinkDelay);
+		NTOHL(cmlds->scaledNeighborRateRatio);
+		NTOHL(cmlds->as_capable);
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -514,6 +523,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
+	struct cmlds_info_np *cmlds;
 	struct timePropertiesDS *tp;
 	struct time_status_np *tsn;
 	struct port_stats_np *psn;
@@ -671,6 +681,12 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		HTONL(pwr->grandmasterTimeInaccuracy);
 		HTONL(pwr->networkTimeInaccuracy);
 		HTONL(pwr->totalTimeInaccuracy);
+		break;
+	case MID_CMLDS_INFO_NP:
+		cmlds = (struct cmlds_info_np *)m->data;
+		host2net64_unaligned(&cmlds->meanLinkDelay);
+		HTONL(cmlds->scaledNeighborRateRatio);
+		HTONL(cmlds->as_capable);
 		break;
 	}
 }

@@ -169,6 +169,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct subscribe_events_np *sen;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
+	struct cmlds_info_np *cmlds;
 	struct timePropertiesDS *tp;
 	struct management_tlv *mgt;
 	struct time_status_np *tsn;
@@ -622,6 +623,16 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			pwr->grandmasterTimeInaccuracy,
 			pwr->networkTimeInaccuracy,
 			pwr->totalTimeInaccuracy);
+		break;
+	case MID_CMLDS_INFO_NP:
+		cmlds = (struct cmlds_info_np *) mgt->data;
+		fprintf(fp, "CMLDS_INFO_NP "
+			IFMT "meanLinkDelay           %" PRId64
+			IFMT "scaledNeighborRateRatio %" PRId32
+			IFMT "as_capable              %" PRIu32,
+			cmlds->meanLinkDelay >> 16,
+			cmlds->scaledNeighborRateRatio,
+			cmlds->as_capable);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;

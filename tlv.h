@@ -129,6 +129,7 @@ enum management_action {
 #define MID_UNICAST_MASTER_TABLE_NP			0xC008
 #define MID_PORT_HWCLOCK_NP				0xC009
 #define MID_POWER_PROFILE_SETTINGS_NP			0xC00A
+#define MID_CMLDS_INFO_NP				0xC00B
 
 /* Management error ID values */
 #define MID_RESPONSE_TOO_BIG				0x0001
@@ -322,6 +323,12 @@ typedef struct Integer96 {
 	uint64_t nanoseconds_lsb;
 	uint16_t fractional_nanoseconds;
 } PACKED ScaledNs;
+
+struct cmlds_info_np {
+	TimeInterval meanLinkDelay;
+	Integer32    scaledNeighborRateRatio;
+	uint32_t     as_capable;
+} PACKED;
 
 struct follow_up_info_tlv {
 	Enumeration16 type;

@@ -156,6 +156,7 @@ struct management_id idtab[] = {
 	{ "UNICAST_MASTER_TABLE_NP", MID_UNICAST_MASTER_TABLE_NP, do_get_action },
 	{ "PORT_HWCLOCK_NP", MID_PORT_HWCLOCK_NP, do_get_action },
 	{ "POWER_PROFILE_SETTINGS_NP", MID_POWER_PROFILE_SETTINGS_NP, do_set_action },
+	{ "CMLDS_INFO_NP", MID_CMLDS_INFO_NP, do_get_action },
 };
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str)

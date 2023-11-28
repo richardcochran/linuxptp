@@ -883,6 +883,7 @@ static int port_management_fill_response(struct port *target,
 	struct clock_description *desc;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
+	struct cmlds_info_np *cmlds;
 	struct management_tlv *tlv;
 	struct port_stats_np *psn;
 	struct foreign_clock *fc;
@@ -1124,6 +1125,14 @@ static int port_management_fill_response(struct port *target,
 		pwr = (struct ieee_c37_238_settings_np *)tlv->data;
 		memcpy(pwr, &target->pwr, sizeof(*pwr));
 		datalen = sizeof(*pwr);
+		break;
+	case MID_CMLDS_INFO_NP:
+		cmlds = (struct cmlds_info_np *)tlv->data;
+		cmlds->meanLinkDelay = target->peerMeanPathDelay;
+		cmlds->scaledNeighborRateRatio =
+			(Integer32) (target->nrate.ratio * POW2_41 - POW2_41);
+		cmlds->as_capable = target->asCapable;
+		datalen = sizeof(*cmlds);
 		break;
 	default:
 		/* The caller should *not* respond to this message. */

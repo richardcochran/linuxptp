@@ -47,7 +47,6 @@
 #include "util.h"
 
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
-#define POW2_41 ((double)(1ULL << 41))
 
 struct interface {
 	STAILQ_ENTRY(interface) list;
