@@ -180,6 +180,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	char onoff_port_state[4] = "off";
 	char onoff_time_status[4] = "off";
 	char onoff_parent_data_set[4] = "off";
+	char onoff_cmlds[4] = "off";
 	char display_name[11] = {0};
 	uint64_t jump;
 	uint8_t key;
@@ -306,11 +307,13 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			     "duration          %hu "
 			     "NOTIFY_PORT_STATE %3s "
 			     "NOTIFY_TIME_SYNC  %3s "
-			     "NOTIFY_PARENT_DATA_SET %3s ",
+			     "NOTIFY_PARENT_DATA_SET %3s "
+			     "NOTIFY_CMLDS %3s ",
 			     &sen.duration,
 			     onoff_port_state,
 			     onoff_time_status,
-			     onoff_parent_data_set);
+			     onoff_parent_data_set,
+			     onoff_cmlds);
 		if (cnt < 1) {
 			fprintf(stderr, "%s SET needs at least one value\n",
 				idtab[index].name);
@@ -325,6 +328,9 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 		if (!strcasecmp(onoff_parent_data_set, "on")) {
 			event_bitmask_set(sen.bitmask, NOTIFY_PARENT_DATA_SET,
 					  TRUE);
+		}
+		if (!strcasecmp(onoff_cmlds, "on")) {
+			event_bitmask_set(sen.bitmask, NOTIFY_CMLDS, TRUE);
 		}
 		pmc_send_set_action(pmc, code, &sen, sizeof(sen));
 		break;

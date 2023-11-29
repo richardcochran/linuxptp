@@ -748,6 +748,7 @@ capable:
 	if (p->asCapable == NOT_CAPABLE) {
 		pr_debug("%s: setting asCapable", p->log_name);
 		p->asCapable = AS_CAPABLE;
+		port_notify_event(p, NOTIFY_CMLDS);
 	}
 	return 1;
 
@@ -755,6 +756,7 @@ not_capable:
 	if (p->asCapable)
 		port_nrate_initialize(p);
 	p->asCapable = NOT_CAPABLE;
+	port_notify_event(p, NOTIFY_CMLDS);
 	return 0;
 }
 
@@ -2467,6 +2469,8 @@ calc:
 
 	msg_put(p->peer_delay_req);
 	p->peer_delay_req = NULL;
+
+	port_notify_event(p, NOTIFY_CMLDS);
 }
 
 int process_pdelay_resp(struct port *p, struct ptp_message *m)
@@ -3263,6 +3267,9 @@ void port_notify_event(struct port *p, enum notification event)
 	switch (event) {
 	case NOTIFY_PORT_STATE:
 		id = MID_PORT_DATA_SET;
+		break;
+	case NOTIFY_CMLDS:
+		id = MID_CMLDS_INFO_NP;
 		break;
 	default:
 		return;

@@ -453,11 +453,13 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			IFMT "duration               %hu"
 			IFMT "NOTIFY_PORT_STATE      %s"
 			IFMT "NOTIFY_TIME_SYNC       %s"
-			IFMT "NOTIFY_PARENT_DATA_SET %s",
+			IFMT "NOTIFY_PARENT_DATA_SET %s"
+			IFMT "NOTIFY_CMLDS           %s",
 			sen->duration,
 			event_bitmask_get(sen->bitmask, NOTIFY_PORT_STATE) ? "on" : "off",
 			event_bitmask_get(sen->bitmask, NOTIFY_TIME_SYNC) ? "on" : "off",
-			event_bitmask_get(sen->bitmask, NOTIFY_PARENT_DATA_SET) ? "on" : "off");
+			event_bitmask_get(sen->bitmask, NOTIFY_PARENT_DATA_SET) ? "on" : "off",
+			event_bitmask_get(sen->bitmask, NOTIFY_CMLDS) ? "on" : "off");
 		break;
 	case MID_SYNCHRONIZATION_UNCERTAIN_NP:
 		mtd = (struct management_tlv_datum *) mgt->data;
