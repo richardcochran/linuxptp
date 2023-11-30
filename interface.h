@@ -23,9 +23,10 @@ struct interface;
 /**
  * Creates an instance of an interface.
  * @param name  The device which indentifies this interface.
+ * @param remote  For UDS interfaces, the address of the remote server, possibly NULL.
  * @return      A pointer to an interface instance on success, NULL otherwise.
  */
-struct interface *interface_create(const char *name);
+struct interface *interface_create(const char *name, const char *remote);
 
 /**
  * Destroys an instance of an interface.
@@ -69,6 +70,13 @@ const char *interface_name(struct interface *iface);
  * @return       The PHC index of the interface.
  */
 int interface_phc_index(struct interface *iface);
+
+/**
+ * Obtains the remote address from a UDS interface.
+ * @param iface  The interface of interest.
+ * @return       The device name of the network interface.
+ */
+const char *interface_remote(struct interface *iface);
 
 /**
  * Set the time stamping label of a given interface.

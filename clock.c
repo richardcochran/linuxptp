@@ -1242,7 +1242,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	/* Configure the UDS. */
 
 	uds_ifname = config_get_string(config, NULL, "uds_address");
-	c->uds_rw_if = interface_create(uds_ifname);
+	c->uds_rw_if = interface_create(uds_ifname, NULL);
 	if (config_set_section_int(config, interface_name(c->uds_rw_if),
 				   "announceReceiptTimeout", 0)) {
 		return NULL;
@@ -1261,7 +1261,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	uds_ifname = config_get_string(config, NULL, "uds_ro_address");
-	c->uds_ro_if = interface_create(uds_ifname);
+	c->uds_ro_if = interface_create(uds_ifname, NULL);
 	if (config_set_section_int(config, interface_name(c->uds_ro_if),
 				   "announceReceiptTimeout", 0)) {
 		return NULL;

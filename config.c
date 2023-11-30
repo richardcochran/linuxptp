@@ -896,7 +896,7 @@ struct interface *config_create_interface(const char *name, struct config *cfg)
 			return iface;
 	}
 
-	iface = interface_create(name);
+	iface = interface_create(name, NULL);
 	if (!iface) {
 		fprintf(stderr, "cannot allocate memory for a port\n");
 		return NULL;

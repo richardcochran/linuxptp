@@ -524,7 +524,7 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		goto failed;
 	}
 
-	pmc->iface = interface_create(iface_name);
+	pmc->iface = interface_create(iface_name, NULL);
 	if (!pmc->iface) {
 		pr_err("failed to create interface");
 		goto failed;
