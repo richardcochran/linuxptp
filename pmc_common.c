@@ -488,9 +488,9 @@ struct pmc {
 };
 
 struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
-		       const char *iface_name, UInteger8 boundary_hops,
-		       UInteger8 domain_number, UInteger8 transport_specific,
-		       int zero_datalen)
+		       const char *iface_name, const char *remote_address,
+		       UInteger8 boundary_hops, UInteger8 domain_number,
+		       UInteger8 transport_specific, int zero_datalen)
 {
 	struct pmc *pmc;
 	UInteger32 proc_id;
@@ -524,7 +524,7 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		goto failed;
 	}
 
-	pmc->iface = interface_create(iface_name, NULL);
+	pmc->iface = interface_create(iface_name, remote_address);
 	if (!pmc->iface) {
 		pr_err("failed to create interface");
 		goto failed;

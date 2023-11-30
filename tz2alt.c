@@ -181,7 +181,8 @@ static int update_ptp_serivce(struct tzinfo *tz, struct tzinfo *next)
 	struct pmc *pmc;
 	int err;
 
-	pmc = pmc_create(cfg, TRANS_UDS, uds_local, 0,
+	pmc = pmc_create(cfg, TRANS_UDS, uds_local,
+			 config_get_string(cfg, NULL, "uds_address"), 0,
 			 config_get_int(cfg, NULL, "domainNumber"),
 			 config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
 	if (!pmc) {

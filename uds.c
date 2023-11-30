@@ -54,7 +54,7 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 		    enum timestamp_type tt)
 {
 	char *uds_ro_path = config_get_string(t->cfg, NULL, "uds_ro_address");
-	char *uds_path = config_get_string(t->cfg, NULL, "uds_address");
+	const char *uds_path = interface_remote(iface);
 	struct uds *uds = container_of(t, struct uds, t);
 	const char *name = interface_name(iface);
 	const char* file_mode_cfg;
@@ -89,7 +89,9 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 	/* For client use, pre load the server path. */
 	memset(&sa, 0, sizeof(sa));
 	sa.sun_family = AF_LOCAL;
-	strncpy(sa.sun_path, uds_path, sizeof(sa.sun_path) - 1);
+	if (uds_path) {
+		strncpy(sa.sun_path, uds_path, sizeof(sa.sun_path) - 1);
+	}
 	uds->address.sun = sa;
 	uds->address.len = sizeof(sa);
 

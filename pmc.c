@@ -823,8 +823,10 @@ int main(int argc, char *argv[])
 	print_set_syslog(1);
 	print_set_verbose(1);
 
-	pmc = pmc_create(cfg, transport_type, iface_name, boundary_hops,
-			 domain_number, transport_specific, zero_datalen);
+	pmc = pmc_create(cfg, transport_type, iface_name,
+			 config_get_string(cfg, NULL, "uds_address"),
+			 boundary_hops, domain_number, transport_specific,
+			 zero_datalen);
 	if (!pmc) {
 		fprintf(stderr, "failed to create pmc\n");
 		config_destroy(cfg);

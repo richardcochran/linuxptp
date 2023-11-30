@@ -232,7 +232,8 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 		  pmc_node_recv_subscribed_t *recv_subscribed, void *context)
 {
-	node->pmc = pmc_create(cfg, TRANS_UDS, uds, 0,
+	node->pmc = pmc_create(cfg, TRANS_UDS, uds,
+			       config_get_string(cfg, NULL, "uds_address"), 0,
 			       config_get_int(cfg, NULL, "domainNumber"),
 			       config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
 	if (!node->pmc) {
