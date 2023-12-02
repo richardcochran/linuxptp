@@ -46,6 +46,8 @@
 #include "util.h"
 
 #define ANNOUNCE_SPAN 1
+#define CMLDS_SUBSCRIPTION_INTERVAL	60 /*seconds*/
+#define CMLDS_UPDATE_INTERVAL		(CMLDS_SUBSCRIPTION_INTERVAL / 2)
 
 enum syfu_event {
 	SYNC_MISMATCH,
@@ -698,6 +700,11 @@ int port_capable(struct port *p)
 		goto capable;
 	}
 
+	if (p->delayMechanism == DM_COMMON_P2P) {
+		/* asCapable is calculated by the CMLDS. */
+		return p->asCapable != NOT_CAPABLE ? 1 : 0;
+	}
+
 	if (tmv_to_nanoseconds(p->peer_delay) >	p->neighborPropDelayThresh) {
 		if (p->asCapable)
 			pr_debug("%s: peer_delay (%" PRId64 ") > neighborPropDelayThresh "
@@ -965,7 +972,8 @@ static int port_management_fill_response(struct port *target,
 		ptp_text_copy(cd->userDescription, &desc->userDescription);
 		buf += sizeof(struct PTPText) + cd->userDescription->length;
 
-		if (target->delayMechanism == DM_P2P) {
+		if (target->delayMechanism == DM_P2P ||
+		    target->delayMechanism == DM_COMMON_P2P) {
 			memcpy(buf, profile_id_p2p, PROFILE_ID_LEN);
 		} else {
 			struct config *cfg = clock_config(target->clock);
@@ -1275,14 +1283,16 @@ int port_set_delay_tmo(struct port *p)
 	if (p->inhibit_delay_req) {
 		return 0;
 	}
-
-	if (p->delayMechanism == DM_P2P) {
+	switch (p->delayMechanism) {
+	case DM_COMMON_P2P:
+	case DM_P2P:
 		return set_tmo_log(p->fda.fd[FD_DELAY_TIMER], 1,
-			       p->logPdelayReqInterval);
-	} else {
-		return set_tmo_random(p->fda.fd[FD_DELAY_TIMER], 0, 2,
-				p->logMinDelayReqInterval);
+				   p->logPdelayReqInterval);
+	default:
+		break;
 	}
+	return set_tmo_random(p->fda.fd[FD_DELAY_TIMER], 0, 2,
+			      p->logMinDelayReqInterval);
 }
 
 static int port_set_manno_tmo(struct port *p)
@@ -1526,6 +1536,49 @@ static void port_syfufsm(struct port *p, enum syfu_event event,
 		}
 		break;
 	}
+}
+
+static int port_cmlds_renew(struct port *p, time_t now)
+{
+	struct subscribe_events_np sen = {
+		.duration = CMLDS_SUBSCRIPTION_INTERVAL,
+	};
+	int err;
+
+	event_bitmask_set(sen.bitmask, NOTIFY_CMLDS, TRUE);
+	err = pmc_send_set_action(p->cmlds.pmc, MID_SUBSCRIBE_EVENTS_NP,
+				  &sen, sizeof(sen));
+	if (err) {
+		return err;
+	}
+	p->cmlds.last_renewal = now;
+	return 0;
+}
+
+static enum fsm_event port_cmlds_timeout(struct port *p)
+{
+	struct timespec now;
+	int err;
+
+	if (!p->cmlds.pmc) {
+		return EV_NONE;
+	}
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	if (now.tv_sec - p->cmlds.last_renewal > CMLDS_UPDATE_INTERVAL) {
+		err = port_cmlds_renew(p, now.tv_sec);
+		if (err) {
+			return EV_FAULT_DETECTED;
+		}
+	}
+	p->cmlds.timer_count++;
+	if (p->cmlds.timer_count > p->allowedLostResponses) {
+		p->asCapable = NOT_CAPABLE;
+		err = port_cmlds_renew(p, now.tv_sec);
+		if (err) {
+			return EV_FAULT_DETECTED;
+		}
+	}
+	return EV_NONE;
 }
 
 static int port_pdelay_request(struct port *p)
@@ -1871,6 +1924,33 @@ static void port_clear_fda(struct port *p, int count)
 		p->fda.fd[i] = -1;
 }
 
+static int port_cmlds_initialize(struct port *p)
+{
+	struct config *cfg = clock_config(p->clock);
+	const int zero_datalen = 1;
+	const UInteger8 hops = 0;
+	struct timespec now;
+
+	p->cmlds.port = config_get_int(cfg, p->name, "cmlds.port");
+	if (!p->cmlds.port) {
+		p->cmlds.port = portnum(p);
+	}
+	p->cmlds.pmc = pmc_create(cfg, TRANS_UDS,
+				  config_get_string(cfg, p->name, "cmlds.client_address"),
+				  config_get_string(cfg, p->name, "cmlds.server_address"),
+				  hops,
+				  config_get_int(cfg, p->name, "cmlds.domainNumber"),
+				  config_get_int(cfg, p->name, "cmlds.majorSdoId") << 4,
+				  zero_datalen);
+	if (!p->cmlds.pmc) {
+		return -1;
+	}
+	p->cmlds.timer_count = 0;
+	p->fda.fd[FD_CMLDS] = pmc_get_transport_fd(p->cmlds.pmc);
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return port_cmlds_renew(p, now.tv_sec);
+}
+
 void port_disable(struct port *p)
 {
 	int i;
@@ -1886,6 +1966,12 @@ void port_disable(struct port *p)
 
 	for (i = 0; i < N_TIMER_FDS; i++) {
 		close(p->fda.fd[FD_FIRST_TIMER + i]);
+	}
+
+	if (p->cmlds.pmc) {
+		pmc_destroy(p->cmlds.pmc);
+		p->fda.fd[FD_CMLDS] = -1;
+		p->cmlds.pmc = NULL;
 	}
 
 	/* Keep rtnl socket to get link status info. */
@@ -1960,6 +2046,10 @@ int port_initialize(struct port *p)
 		goto no_tmo;
 	}
 	if (unicast_client_enabled(p) && unicast_client_set_tmo(p)) {
+		goto no_tmo;
+	}
+
+	if (port_delay_mechanism(p) == DM_COMMON_P2P && port_cmlds_initialize(p)) {
 		goto no_tmo;
 	}
 
@@ -2104,6 +2194,65 @@ int process_announce(struct port *p, struct ptp_message *m)
 	return result;
 }
 
+static int process_cmlds(struct port *p)
+{
+	struct cmlds_info_np *cmlds;
+	struct management_tlv *mgt;
+	struct ptp_message *msg;
+	struct TLV *tlv;
+	int err = 0;
+
+	msg = pmc_recv(p->cmlds.pmc);
+	if (!msg) {
+		pr_err("%s: pmc_recv failed", p->log_name);
+		return -1;
+	}
+	if (msg_type(msg) != MANAGEMENT) {
+		pr_err("%s: pmc_recv bad message", p->log_name);
+		err = -1;
+		goto out;
+	}
+	tlv = (struct TLV *) msg->management.suffix;
+	if (tlv->type != TLV_MANAGEMENT) {
+		pr_err("%s: pmc_recv bad message", p->log_name);
+		err = -1;
+		goto out;
+	}
+	mgt = (struct management_tlv *) msg->management.suffix;
+	if (mgt->length == 2 && mgt->id != MID_NULL_MANAGEMENT) {
+		pr_err("%s: pmc_recv bad length", p->log_name);
+		goto out;
+	}
+
+	switch (mgt->id) {
+	case MID_CMLDS_INFO_NP:
+		if (msg->header.sourcePortIdentity.portNumber != p->cmlds.port) {
+			break;
+		}
+		cmlds = (struct cmlds_info_np *) mgt->data;
+		p->peer_delay = nanoseconds_to_tmv(cmlds->meanLinkDelay >> 16);
+		p->peerMeanPathDelay = cmlds->meanLinkDelay;
+		p->nrate.ratio = 1.0 + (double) cmlds->scaledNeighborRateRatio / POW2_41;
+		p->asCapable = cmlds->as_capable;
+		p->cmlds.timer_count = 0;
+		if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
+			const tmv_t tx = tmv_zero();
+			clock_peer_delay(p->clock, p->peer_delay, tx, tx, p->nrate.ratio);
+		}
+		break;
+	case MID_SUBSCRIBE_EVENTS_NP:
+		break;
+	default:
+		pr_err("%s: pmc_recv bad mgt id 0x%x", p->log_name, mgt->id);
+		err = -1;
+		break;
+	}
+
+out:
+	msg_put(msg);
+	return err;
+}
+
 static int process_delay_req(struct port *p, struct ptp_message *m)
 {
 	struct ptp_message *msg;
@@ -2115,7 +2264,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 		return 0;
 	}
 
-	if (p->delayMechanism == DM_P2P) {
+	if (p->delayMechanism == DM_P2P || p->delayMechanism == DM_COMMON_P2P) {
 		pr_warning("%s: delay request on P2P port", p->log_name);
 		return 0;
 	}
@@ -2280,6 +2429,9 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 		return -1;
 	}
 
+	if (p->delayMechanism == DM_COMMON_P2P) {
+		return 0;
+	}
 	if (p->delayMechanism == DM_E2E) {
 		pr_warning("%s: pdelay_req on E2E port", p->log_name);
 		return 0;
@@ -2318,7 +2470,8 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 	rsp->hwts.type = p->timestamping;
 
-	rsp->header.tsmt               = PDELAY_RESP | p->transportSpecific;
+	rsp->header.tsmt               = m->header.tsmt & 0xf0;
+	rsp->header.tsmt               |= PDELAY_RESP;
 	rsp->header.ver                = ptp_hdr_ver;
 	rsp->header.messageLength      = sizeof(struct pdelay_resp_msg);
 	rsp->header.domainNumber       = m->header.domainNumber;
@@ -2475,6 +2628,9 @@ calc:
 
 int process_pdelay_resp(struct port *p, struct ptp_message *m)
 {
+	if (p->delayMechanism == DM_COMMON_P2P) {
+		return 0;
+	}
 	if (p->peer_delay_resp) {
                 if (!p->multiple_pdr_detected) {
                         pr_err("%s: multiple peer responses", p->log_name);
@@ -2750,10 +2906,14 @@ static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		return;
 	}
 
-	if (p->delayMechanism == DM_P2P) {
+	switch (p->delayMechanism) {
+	case DM_COMMON_P2P:
+	case DM_P2P:
 		port_p2p_transition(p, p->state);
-	} else {
+		break;
+	default:
 		port_e2e_transition(p, p->state);
+		break;
 	}
 
 	if (p->jbod && p->state == PS_UNCALIBRATED && p->phc_index >= 0 ) {
@@ -2901,6 +3061,9 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	case FD_DELAY_TIMER:
 		pr_debug("%s: delay timeout", p->log_name);
 		port_set_delay_tmo(p);
+		if (p->delayMechanism == DM_COMMON_P2P) {
+			return port_cmlds_timeout(p);
+		}
 		delay_req_prune(p);
 		p->service_stats.delay_timeout++;
 		if (port_delay_request(p)) {
@@ -2946,6 +3109,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		pr_debug("%s: unicast request timeout", p->log_name);
 		p->service_stats.unicast_request_timeout++;
 		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
+
+	case FD_CMLDS:
+		pr_debug("%s: CMLDS push notification", p->log_name);
+		return process_cmlds(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_RTNL:
 		pr_debug("%s: received link status notification", p->log_name);

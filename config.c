@@ -171,6 +171,7 @@ static struct config_enum delay_filter_enu[] = {
 
 static struct config_enum delay_mech_enu[] = {
 	{ "Auto", DM_AUTO },
+	{ "COMMON_P2P", DM_COMMON_P2P },
 	{ "E2E",  DM_E2E },
 	{ "P2P",  DM_P2P },
 	{ "NONE", DM_NO_MECHANISM },
@@ -249,6 +250,11 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("clock_class_threshold", CLOCK_CLASS_THRESHOLD_DEFAULT, 6, CLOCK_CLASS_THRESHOLD_DEFAULT),
 	GLOB_ITEM_ENU("clock_servo", CLOCK_SERVO_PI, clock_servo_enu),
 	GLOB_ITEM_ENU("clock_type", CLOCK_TYPE_ORDINARY, clock_type_enu),
+	PORT_ITEM_STR("cmlds.client_address", "/var/run/cmlds_client"),
+	PORT_ITEM_INT("cmlds.domainNumber", 0, 0, 255),
+	PORT_ITEM_INT("cmlds.majorSdoId", 2, 0, 0x0F),
+	PORT_ITEM_INT("cmlds.port", 0, 0, UINT16_MAX),
+	PORT_ITEM_STR("cmlds.server_address", "/var/run/cmlds_server"),
 	GLOB_ITEM_ENU("dataset_comparison", DS_CMP_IEEE1588, dataset_comp_enu),
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_ENU("delay_filter", FILTER_MOVING_MEDIAN, delay_filter_enu),

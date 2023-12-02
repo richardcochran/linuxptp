@@ -160,6 +160,41 @@ example phc2sys(8) in "automatic" mode.
 The default is 0 (disabled).
 
 .TP
+.B cmlds.client_address
+Specifies the source address for the UNIX domain socket that receives
+peer delay measurement when using the "COMMON_P2P" delay mechanism.
+The default is /var/run/cmlds_client.
+
+.TP
+.B cmlds.domainNumber
+Specifies the domainNumber message field for communications with the
+local Common Mean Link Delay Service, used with the "COMMON_P2P" delay
+mechanism.
+The default is 0.
+
+.TP
+.B cmlds.majorSdoId
+Specifies the transportSpecific message field for communications with
+the local Common Mean Link Delay Service, used with the "COMMON_P2P"
+delay mechanism.
+The default is 2.
+
+.TP
+.B cmlds.port
+Specifies the port number of local Common Mean Link Delay Service from
+which to accept delay measurements.  The range of valid port numbers
+is one to 65535, but the special value zero configures the port number
+of the port requesting the measurements.
+The default is 0, meaning the requesting port number.
+
+.TP
+.B
+cmlds.server_address
+Specifies the UNIX domain socket address of the local Common Mean Link
+Delay Service, for use with the "COMMON_P2P" delay mechanism.
+The default is /var/run/cmlds_server.
+
+.TP
 .B delayAsymmetry
 The time difference in nanoseconds of the transmit and receive
 paths. This value should be positive when the server-to-client
@@ -179,7 +214,9 @@ The default is 10.
 
 .TP
 .B delay_mechanism
-Select the delay mechanism. Possible values are E2E, P2P, NONE and Auto.
+
+Select the delay mechanism. Possible values are Auto, COMMON_P2P, E2E,
+P2P, and NONE.
 The default is E2E.
 
 .TP

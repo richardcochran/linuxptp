@@ -26,6 +26,7 @@
 #include "fsm.h"
 #include "monitor.h"
 #include "msg.h"
+#include "pmc_common.h"
 #include "power_profile.h"
 #include "tmv.h"
 #include "util.h"
@@ -164,6 +165,12 @@ struct port {
 	/* slave event monitoring */
 	struct monitor *slave_event_monitor;
 	bool unicast_state_dirty;
+	struct {
+		unsigned int timer_count;
+		time_t last_renewal;
+		struct pmc *pmc;
+		int port;
+	} cmlds;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
