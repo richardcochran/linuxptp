@@ -62,14 +62,13 @@ static int open_nmea_connection(const char *host, const char *port,
 
 static void *monitor_nmea_status(void *arg)
 {
+	struct timespec rxtime, rxtime_rt, tmo = { 2, 0 };
 	struct nmea_parser *np = nmea_parser_create();
 	struct pollfd pfd = { -1, POLLIN | POLLPRI };
 	char *host, input[256], *port, *ptr, *uart;
 	struct ts2phc_nmea_pps_source *s = arg;
-	struct timespec rxtime, tmo = { 2, 0 };
 	int cnt, num, parsed, baud;
 	struct nmea_rmc rmc;
-	struct timex ntx;
 
 	if (!np) {
 		pr_err("failed to create NMEA parser");
@@ -79,8 +78,6 @@ static void *monitor_nmea_status(void *arg)
 	port = config_get_string(s->config, NULL, "ts2phc.nmea_remote_port");
 	uart = config_get_string(s->config, NULL, "ts2phc.nmea_serialport");
 	baud = config_get_int(s->config, NULL, "ts2phc.nmea_baudrate");
-	memset(&ntx, 0, sizeof(ntx));
-	ntx.modes = ADJ_NANO;
 
 	while (is_running()) {
 		if (pfd.fd == -1) {
@@ -92,7 +89,7 @@ static void *monitor_nmea_status(void *arg)
 		}
 		num = poll(&pfd, 1, NMEA_TMO);
 		clock_gettime(CLOCK_MONOTONIC, &rxtime);
-		adjtimex(&ntx);
+		clock_gettime(CLOCK_REALTIME, &rxtime_rt);
 		if (num < 0) {
 			pr_err("poll failed");
 			break;
@@ -124,8 +121,7 @@ static void *monitor_nmea_status(void *arg)
 			if (!nmea_parse(np, ptr, cnt, &rmc, &parsed)) {
 				pthread_mutex_lock(&s->mutex);
 				s->local_monotime = rxtime;
-				s->local_utctime.tv_sec = ntx.time.tv_sec;
-				s->local_utctime.tv_nsec = ntx.time.tv_usec;
+				s->local_utctime = rxtime_rt;
 				s->rmc_utctime = rmc.ts;
 				s->rmc_fix_valid = rmc.fix_valid;
 				pthread_mutex_unlock(&s->mutex);

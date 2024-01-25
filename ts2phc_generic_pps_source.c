@@ -38,7 +38,6 @@ static int get_ntx(struct timex *ntx)
 		return -1;
 
 	memset(ntx, 0, sizeof(*ntx));
-	ntx->modes = ADJ_NANO;
 	code = adjtimex(ntx);
 	if (code == -1) {
 		pr_err("adjtimex failed: %m");
@@ -93,7 +92,10 @@ static int ts2phc_generic_pps_source_getppstime(struct ts2phc_pps_source *src,
 	}
 
 	ts->tv_sec  = ntx.time.tv_sec + tai_offset;
-	ts->tv_nsec = ntx.time.tv_usec;
+	if (ntx.status & STA_NANO)
+		ts->tv_nsec = ntx.time.tv_usec;
+	else
+		ts->tv_nsec = ntx.time.tv_usec * 1000;
 
 	return 0;
 }
