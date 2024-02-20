@@ -310,8 +310,8 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			     onoff_port_state,
 			     onoff_time_status,
 			     onoff_parent_data_set);
-		if (cnt != 4) {
-			fprintf(stderr, "%s SET needs 4 values\n",
+		if (cnt < 1) {
+			fprintf(stderr, "%s SET needs at least one value\n",
 				idtab[index].name);
 			break;
 		}
