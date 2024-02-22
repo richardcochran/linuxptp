@@ -137,7 +137,7 @@ static int lstab_read(struct lstab *lstab, const char *name)
 		fprintf(stderr, "failed to open '%s' for reading: %m\n", name);
 		return -1;
 	}
-	while (1) {
+	while (index < N_LEAPS) {
 		if (!fgets(buf, sizeof(buf), fp)) {
 			break;
 		}
