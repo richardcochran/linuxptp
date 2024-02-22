@@ -192,8 +192,8 @@ static int raw_configure(int fd, int event, int index,
 
 static int raw_close(struct transport *t, struct fdarray *fda)
 {
-	close(fda->fd[0]);
-	close(fda->fd[1]);
+	close(fda->fd[FD_EVENT]);
+	close(fda->fd[FD_GENERAL]);
 	return 0;
 }
 

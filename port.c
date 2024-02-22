@@ -230,7 +230,7 @@ struct fdarray *port_fda(struct port *port)
 	return &port->fda;
 }
 
-int set_tmo_log(int fd, unsigned int scale, int log_seconds)
+static int set_tmo_log_periodic(int fd, unsigned int scale, int log_seconds, bool periodic)
 {
 	struct itimerspec tmo = {
 		{0, 0}, {0, 0}
@@ -251,7 +251,17 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 	} else
 		tmo.it_value.tv_sec = scale * (1 << log_seconds);
 
+	if (periodic) {
+		tmo.it_interval.tv_nsec = tmo.it_value.tv_nsec;
+		tmo.it_interval.tv_sec = tmo.it_value.tv_sec;
+	}
+
 	return timerfd_settime(fd, 0, &tmo, NULL);
+}
+
+int set_tmo_log(int fd, unsigned int scale, int log_seconds)
+{
+	return set_tmo_log_periodic(fd, scale, log_seconds, false);
 }
 
 int set_tmo_lin(int fd, int seconds)
@@ -1293,7 +1303,7 @@ int port_set_sync_rx_tmo(struct port *p)
 
 static int port_set_sync_tx_tmo(struct port *p)
 {
-	return set_tmo_log(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval);
+	return set_tmo_log_periodic(p->fda.fd[FD_SYNC_TX_TIMER], 1, p->logSyncInterval, true);
 }
 
 void port_show_transition(struct port *p, enum port_state next,
@@ -1932,7 +1942,7 @@ int port_initialize(struct port *p)
 		fd[i] = -1;
 	}
 	for (i = 0; i < N_TIMER_FDS; i++) {
-		fd[i] = timerfd_create(CLOCK_MONOTONIC, 0);
+		fd[i] = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 		if (fd[i] < 0) {
 			pr_err("timerfd_create: %s", strerror(errno));
 			goto no_timers;
@@ -2838,6 +2848,24 @@ enum fsm_event port_event(struct port *p, int fd_index)
 	return p->event(p, fd_index);
 }
 
+static enum fsm_event bc_announce_sync_rx_timeout_action(struct port *p)
+{
+	if (p->best) {
+		fc_clear(p->best);
+	}
+
+	delay_req_prune(p);
+	if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
+		port_renew_transport(p)) {
+		return EV_FAULT_DETECTED;
+	}
+
+	if (p->inhibit_announce) {
+		return EV_NONE;
+	}
+	return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
+}
+
 static enum fsm_event bc_event(struct port *p, int fd_index)
 {
 	enum fsm_event event = EV_NONE;
@@ -2846,18 +2874,24 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	switch (fd_index) {
 	case FD_ANNOUNCE_TIMER:
-	case FD_SYNC_RX_TIMER:
-		pr_debug("%s: %s timeout", p->log_name,
-			 fd_index == FD_SYNC_RX_TIMER ? "rx sync" : "announce");
-		if (p->best) {
-			fc_clear(p->best);
+		pr_debug("%s: announce timeout", p->log_name);
+		timerfd_flush(p, fd, "announce");
+
+		p->service_stats.announce_timeout++;
+
+		if (p->inhibit_announce) {
+			port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
+		} else {
+			port_set_announce_tmo(p);
 		}
 
-		if (fd_index == FD_SYNC_RX_TIMER) {
-			p->service_stats.sync_timeout++;
-		} else {
-			p->service_stats.announce_timeout++;
-		}
+		return bc_announce_sync_rx_timeout_action(p);
+
+	case FD_SYNC_RX_TIMER:
+		pr_debug("%s: rx sync timeout", p->log_name);
+		timerfd_flush(p, fd, "rx sync");
+
+		p->service_stats.sync_timeout++;
 
 		/*
 		 * Clear out the event returned by poll(). It is only cleared
@@ -2868,25 +2902,11 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 			port_clr_tmo(p->fda.fd[FD_SYNC_RX_TIMER]);
 		}
 
-		if (p->inhibit_announce) {
-			port_clr_tmo(p->fda.fd[FD_ANNOUNCE_TIMER]);
-		} else {
-			port_set_announce_tmo(p);
-		}
-
-		delay_req_prune(p);
-		if (clock_slave_only(p->clock) && p->delayMechanism != DM_P2P &&
-		    port_renew_transport(p)) {
-			return EV_FAULT_DETECTED;
-		}
-
-		if (p->inhibit_announce) {
-			return EV_NONE;
-		}
-		return EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES;
+		return bc_announce_sync_rx_timeout_action(p);
 
 	case FD_DELAY_TIMER:
 		pr_debug("%s: delay timeout", p->log_name);
+		timerfd_flush(p, fd, "delay");
 		port_set_delay_tmo(p);
 		delay_req_prune(p);
 		p->service_stats.delay_timeout++;
@@ -2906,11 +2926,13 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_QUALIFICATION_TIMER:
 		pr_debug("%s: qualification timeout", p->log_name);
+		timerfd_flush(p, fd, "qualification");
 		p->service_stats.qualification_timeout++;
 		return EV_QUALIFICATION_TIMEOUT_EXPIRES;
 
 	case FD_MANNO_TIMER:
 		pr_debug("%s: master tx announce timeout", p->log_name);
+		timerfd_flush(p, fd, "master announce");
 		port_set_manno_tmo(p);
 		p->service_stats.master_announce_timeout++;
 		clock_update_leap_status(p->clock);
@@ -2919,18 +2941,20 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	case FD_SYNC_TX_TIMER:
 		pr_debug("%s: master sync timeout", p->log_name);
-		port_set_sync_tx_tmo(p);
+		timerfd_flush(p, fd, "master sync timeout");
 		p->service_stats.master_sync_timeout++;
 		return port_tx_sync(p, NULL, p->seqnum.sync++) ?
 			EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_UNICAST_SRV_TIMER:
 		pr_debug("%s: unicast service timeout", p->log_name);
+		timerfd_flush(p, fd, "unicast service");
 		p->service_stats.unicast_service_timeout++;
 		return unicast_service_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
 	case FD_UNICAST_REQ_TIMER:
 		pr_debug("%s: unicast request timeout", p->log_name);
+		timerfd_flush(p, fd, "unicast request");
 		p->service_stats.unicast_request_timeout++;
 		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
@@ -3457,7 +3481,7 @@ struct port *port_open(const char *phc_device,
 	port_clear_fda(p, N_POLLFD);
 	p->fault_fd = -1;
 	if (!port_is_uds(p)) {
-		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+		p->fault_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 		if (p->fault_fd < 0) {
 			pr_err("timerfd_create failed: %m");
 			goto err_tsproc;
@@ -3545,4 +3569,25 @@ void port_update_unicast_state(struct port *p)
 		unicast_client_state_changed(p);
 		p->unicast_state_dirty = false;
 	}
+}
+
+uint64_t timerfd_flush(struct port *p, int fd, char *fd_name)
+{
+	uint64_t val = 0;
+	ssize_t res = read(fd, &val, sizeof(val));
+
+	if (res < 0) {
+		pr_err("port %u: Error on read %s timer (%"PRId64 ", %m)",
+			portnum(p), fd_name, res);
+		val = 0;
+	} else if (res != sizeof(val)) {
+		pr_err("port %u: Error on read %s timer (%"PRId64 ")",
+			portnum(p), fd_name, res);
+		val = 0;
+	} else if (val != 1) {
+		pr_warning("port %u: Missing %"PRIu64" ticks on %s timer",
+			portnum(p), val, fd_name);
+	}
+
+	return val;
 }

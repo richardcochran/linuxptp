@@ -364,4 +364,14 @@ void tc_cleanup(void);
  */
 void port_update_unicast_state(struct port *p);
 
+/**
+ * Flush the timer fd reading the number of elapsed tick.
+ *
+ * @param p       A port instance.
+ * @param fd      A file descriptor previously opened with timerfd_create(2).
+ * @param fd_name A symbolic name for error logging
+ * @return        Number of elapsed ticks
+ */
+uint64_t timerfd_flush(struct port *p, int fd, char *fd_name);
+
 #endif
