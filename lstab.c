@@ -195,7 +195,6 @@ struct lstab *lstab_create(const char *filename)
 
 int update_leapsecond_table(struct lstab *lstab)
 {
-	const char* leapfile;
 	struct stat statbuf;
 	int err;
 
@@ -212,13 +211,13 @@ int update_leapsecond_table(struct lstab *lstab)
 		return 0;
 	}
 	printf("updating leap seconds file\n");
-	leapfile = lstab->leapfile;
-	lstab_destroy(lstab);
 
-	lstab = lstab_create(leapfile);
-	if (!lstab) {
+	if (lstab_read(lstab, lstab->leapfile)) {
+		lstab->length = 0;
 		return -1;
 	}
+
+	lstab->lsfile_mtime = statbuf.st_mtim.tv_sec;
 
 	return 0;
 }
