@@ -71,7 +71,8 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 	sa.sun_family = AF_LOCAL;
 	strncpy(sa.sun_path, name, sizeof(sa.sun_path) - 1);
 
-	unlink(name);
+	if (!unlink(name))
+		pr_err("uds: removed existing %s", name);
 
 	err = bind(fd, (struct sockaddr *) &sa, sizeof(sa));
 	if (err < 0) {
