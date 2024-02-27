@@ -260,7 +260,8 @@ int sk_get_if_info(const char *name, struct sk_if_info *if_info)
 
 	if (ecmd.req.link_mode_masks_nwords >= 0 ||
 			ecmd.req.cmd != ETHTOOL_GLINKSETTINGS) {
-		return 1;
+		close(fd);
+		goto failed;
 	}
 	ecmd.req.link_mode_masks_nwords = -ecmd.req.link_mode_masks_nwords;
 
