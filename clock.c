@@ -1312,6 +1312,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		max_adj = sysclk_max_freq();
 		sysclk_set_leap(0);
 	}
+	c->utc_timescale = config_get_int(config, NULL, "utc_timescale");
 	c->utc_offset_set = 0;
 	c->leap_set = 0;
 	c->time_flags = c->utc_timescale ? 0 : PTP_TIMESCALE;

@@ -362,6 +362,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
 	GLOB_ITEM_STR("userDescription", ""),
 	GLOB_ITEM_INT("utc_offset", CURRENT_UTC_OFFSET, 0, INT_MAX),
+	GLOB_ITEM_INT("utc_timescale", 0, 0, 1),
 	GLOB_ITEM_INT("verbose", 0, 0, 1),
 	GLOB_ITEM_INT("write_phase_mode", 0, 0, 1),
 };

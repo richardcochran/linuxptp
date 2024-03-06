@@ -970,6 +970,11 @@ name;location and contain at most 128 utf8 symbols. The default is an
 empty string.
 
 .TP
+.B utc_timescale
+By default TAI timescale is used in case of HW timestamping and UTC for
+SW timestamps. One can override this with the setting. Allowed values 0, 1.
+
+.TP
 .B utc_offset
 The current offset between TAI and UTC.
 The default is 37.
