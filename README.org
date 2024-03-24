@@ -148,14 +148,14 @@ Hardware Receive Filter Modes: none
    Please report any bugs or other issues with the software to the
    linuxptp-users mailing list.
 
-   https://lists.sourceforge.net/lists/listinfo/linuxptp-users
+   https://lists.nwtime.org/sympa/info/linuxptp-users
 
 ** Development
 
    If you would like to get involved in improving the software, please
    join the linuxptp-devel mailing list.
 
-   https://lists.sourceforge.net/lists/listinfo/linuxptp-devel
+   https://lists.nwtime.org/sympa/info/linuxptp-devel
 
 *** Submitting Patches
 
@@ -188,7 +188,7 @@ Hardware Receive Filter Modes: none
       official code base.
 
       #+BEGIN_EXAMPLE
-      git send-email --to linuxptp-devel@lists.sourceforge.net origin/master
+      git send-email --to linuxptp-devel@lists.nwtime.org origin/master
       #+END_EXAMPLE
 
 * Thanks
