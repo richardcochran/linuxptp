@@ -143,6 +143,12 @@ See UNICAST DISCOVERY OPTIONS, below.
 .SH PORT OPTIONS
 
 .TP
+.B allowedLostResponses
+The number of missed peer delay responses before the asCapable variable is
+reset.
+The default is 3.
+
+.TP
 .B announceReceiptTimeout
 The number of missed Announce messages before the last Announce messages
 expires.
