@@ -820,8 +820,8 @@ int config_read(const char *name, struct config *cfg)
 
 		if (parse_section_line(line, &current_section) == PARSED_OK) {
 			if (current_section == PORT_SECTION) {
-				char port[17];
-				if (1 != sscanf(line, " %16s", port)) {
+				char port[129];
+				if (1 != sscanf(line, " %128s", port)) {
 					fprintf(stderr, "could not parse port name on line %d\n",
 							line_num);
 					goto parse_error;
