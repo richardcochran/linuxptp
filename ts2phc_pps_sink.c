@@ -207,6 +207,11 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	if (ioctl(sink->clock->fd, PTP_EXTTS_REQUEST2, &extts)) {
 		pr_err(PTP_EXTTS_REQUEST_FAILED);
 	}
+	if (ioctl(sink->clock->fd, PTP_MASK_CLEAR_ALL)) {
+		pr_debug("PTP_MASK_CLEAR_ALL_FAILED request failed");
+	} else if (ioctl(sink->clock->fd, PTP_MASK_EN_SINGLE, &extts.index)) {
+		pr_debug("PTP_MASK_EN_SINGLE request failed for channel: %d", extts.index);
+	}
 	if (ts2phc_pps_sink_clear_fifo(sink)) {
 		goto no_ext_ts;
 	}

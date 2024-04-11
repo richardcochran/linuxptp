@@ -207,6 +207,14 @@ struct ptp_sys_offset_precise {
 
 #endif /* PTP_SYS_OFFSET_PRECISE */
 
+#ifndef PTP_MASK_CLEAR_ALL
+#define PTP_MASK_CLEAR_ALL  _IO(PTP_CLK_MAGIC, 19)
+#endif
+
+#ifndef PTP_MASK_EN_SINGLE
+#define PTP_MASK_EN_SINGLE  _IOW(PTP_CLK_MAGIC, 20, unsigned int)
+#endif
+
 #ifndef PTP_SYS_OFFSET_EXTENDED
 
 #define PTP_SYS_OFFSET_EXTENDED \
