@@ -55,82 +55,105 @@ struct raw {
 	int vlan;
 };
 
-#define PTP_GEN_BIT 0x08 /* indicates general message, if set in message type */
-
 #define PRP_TRAILER_LEN 6
 
 /*
  * tcpdump -d \
- * '   (ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 == 0x8) '\
- * 'or (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 == 0x8) '
+ * '((ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 == 0x8) or '\
+ * ' (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 == 0x8)) and '\
+ * 'not ether src de:ad:de:ad:be:ef'
  *
  * (000) ldh      [12]
  * (001) jeq      #0x8100          jt 2    jf 7
  * (002) ldh      [16]
- * (003) jeq      #0x88f7          jt 4    jf 12
+ * (003) jeq      #0x88f7          jt 4    jf 16
  * (004) ldb      [18]
  * (005) and      #0x8
- * (006) jeq      #0x8             jt 11   jf 12
- * (007) jeq      #0x88f7          jt 8    jf 12
+ * (006) jeq      #0x8             jt 11   jf 16
+ * (007) jeq      #0x88f7          jt 8    jf 16
  * (008) ldb      [14]
  * (009) and      #0x8
- * (010) jeq      #0x8             jt 11   jf 12
- * (011) ret      #262144
- * (012) ret      #0
-*/
+ * (010) jeq      #0x8             jt 11   jf 16
+ * (011) ld       [8]
+ * (012) jeq      #0xdeadbeef      jt 13   jf 15
+ * (013) ldh      [6]
+ * (014) jeq      #0xdead          jt 16   jf 15
+ * (015) ret      #262144
+ * (016) ret      #0
+ */
 static struct sock_filter raw_filter_vlan_norm_general[] = {
 	{ 0x28, 0, 0, 0x0000000c },
 	{ 0x15, 0, 5, 0x00008100 },
 	{ 0x28, 0, 0, 0x00000010 },
-	{ 0x15, 0, 8, 0x000088f7 },
+	{ 0x15, 0, 12, 0x000088f7 },
 	{ 0x30, 0, 0, 0x00000012 },
 	{ 0x54, 0, 0, 0x00000008 },
-	{ 0x15, 4, 5, 0x00000008 },
-	{ 0x15, 0, 4, 0x000088f7 },
+	{ 0x15, 4, 9, 0x00000008 },
+	{ 0x15, 0, 8, 0x000088f7 },
 	{ 0x30, 0, 0, 0x0000000e },
 	{ 0x54, 0, 0, 0x00000008 },
-	{ 0x15, 0, 1, 0x00000008 },
+	{ 0x15, 0, 5, 0x00000008 },
+	{ 0x20, 0, 0, 0x00000008 },
+	{ 0x15, 0, 2, 0xdeadbeef },
+	{ 0x28, 0, 0, 0x00000006 },
+	{ 0x15, 1, 0, 0x0000dead },
 	{ 0x6, 0, 0, 0x00040000 },
 	{ 0x6, 0, 0, 0x00000000 },
 };
 
+#define FILTER_EVENT_POS_SRC0 14
+#define FILTER_EVENT_POS_SRC2 12
+
 /*
  * tcpdump -d \
- *  '   (ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 != 0x8) '\
- *  'or (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 != 0x8) '
+ *  '((ether[12:2] == 0x8100 and ether[12 + 4 :2] == 0x88F7 and ether[14+4 :1] & 0x8 != 0x8) or '\
+ *  ' (ether[12:2] == 0x88F7 and                                ether[14   :1] & 0x8 != 0x8)) and '\
+ *  'not ether src de:ad:de:ad:be:ef'
  *
  * (000) ldh      [12]
  * (001) jeq      #0x8100          jt 2    jf 7
  * (002) ldh      [16]
- * (003) jeq      #0x88f7          jt 4    jf 12
+ * (003) jeq      #0x88f7          jt 4    jf 16
  * (004) ldb      [18]
  * (005) and      #0x8
- * (006) jeq      #0x8             jt 12   jf 11
- * (007) jeq      #0x88f7          jt 8    jf 12
+ * (006) jeq      #0x8             jt 16   jf 11
+ * (007) jeq      #0x88f7          jt 8    jf 16
  * (008) ldb      [14]
  * (009) and      #0x8
- * (010) jeq      #0x8             jt 12   jf 11
- * (011) ret      #262144
- * (012) ret      #0
+ * (010) jeq      #0x8             jt 16   jf 11
+ * (011) ld       [8]
+ * (012) jeq      #0xdeadbeef      jt 13   jf 15
+ * (013) ldh      [6]
+ * (014) jeq      #0xdead          jt 16   jf 15
+ * (015) ret      #262144
+ * (016) ret      #0
  */
 static struct sock_filter raw_filter_vlan_norm_event[] = {
 	{ 0x28, 0, 0, 0x0000000c },
 	{ 0x15, 0, 5, 0x00008100 },
 	{ 0x28, 0, 0, 0x00000010 },
-	{ 0x15, 0, 8, 0x000088f7 },
+	{ 0x15, 0, 12, 0x000088f7 },
 	{ 0x30, 0, 0, 0x00000012 },
 	{ 0x54, 0, 0, 0x00000008 },
-	{ 0x15, 5, 4, 0x00000008 },
-	{ 0x15, 0, 4, 0x000088f7 },
+	{ 0x15, 9, 4, 0x00000008 },
+	{ 0x15, 0, 8, 0x000088f7 },
 	{ 0x30, 0, 0, 0x0000000e },
 	{ 0x54, 0, 0, 0x00000008 },
-	{ 0x15, 1, 0, 0x00000008 },
+	{ 0x15, 5, 0, 0x00000008 },
+	{ 0x20, 0, 0, 0x00000008 },
+	{ 0x15, 0, 2, 0xdeadbeef },
+	{ 0x28, 0, 0, 0x00000006 },
+	{ 0x15, 1, 0, 0x0000dead },
 	{ 0x6, 0, 0, 0x00040000 },
 	{ 0x6, 0, 0, 0x00000000 },
 };
 
+#define FILTER_GENERAL_POS_SRC0 14
+#define FILTER_GENERAL_POS_SRC2 12
+
 static int raw_configure(int fd, int event, int index,
-			 unsigned char *addr1, unsigned char *addr2, int enable)
+			 unsigned char *local_addr, unsigned char *addr1,
+			 unsigned char *addr2, int enable)
 {
 	int err1, err2, option;
 	struct packet_mreq mreq;
@@ -139,9 +162,23 @@ static int raw_configure(int fd, int event, int index,
 	if (event) {
 		prg.len = ARRAY_SIZE(raw_filter_vlan_norm_event);
 		prg.filter = raw_filter_vlan_norm_event;
+
+		memcpy(&prg.filter[FILTER_EVENT_POS_SRC0].k, local_addr, 2);
+		memcpy(&prg.filter[FILTER_EVENT_POS_SRC2].k, local_addr + 2, 4);
+		prg.filter[FILTER_EVENT_POS_SRC0].k =
+			ntohs(prg.filter[FILTER_EVENT_POS_SRC0].k);
+		prg.filter[FILTER_EVENT_POS_SRC2].k =
+			ntohl(prg.filter[FILTER_EVENT_POS_SRC2].k);
 	} else {
 		prg.len = ARRAY_SIZE(raw_filter_vlan_norm_general);
 		prg.filter = raw_filter_vlan_norm_general;
+
+		memcpy(&prg.filter[FILTER_GENERAL_POS_SRC0].k, local_addr, 2);
+		memcpy(&prg.filter[FILTER_GENERAL_POS_SRC2].k, local_addr + 2, 4);
+		prg.filter[FILTER_GENERAL_POS_SRC0].k =
+			ntohs(prg.filter[FILTER_GENERAL_POS_SRC0].k);
+		prg.filter[FILTER_GENERAL_POS_SRC2].k =
+			ntohl(prg.filter[FILTER_GENERAL_POS_SRC2].k);
 	}
 
 	if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &prg, sizeof(prg))) {
@@ -197,8 +234,9 @@ static int raw_close(struct transport *t, struct fdarray *fda)
 	return 0;
 }
 
-static int open_socket(const char *name, int event, unsigned char *ptp_dst_mac,
-		       unsigned char *p2p_dst_mac, int socket_priority)
+static int open_socket(const char *name, int event, unsigned char *local_addr,
+		       unsigned char *ptp_dst_mac, unsigned char *p2p_dst_mac,
+		       int socket_priority)
 {
 	struct sockaddr_ll addr;
 	int fd, index;
@@ -231,7 +269,8 @@ static int open_socket(const char *name, int event, unsigned char *ptp_dst_mac,
 		pr_err("setsockopt SO_PRIORITY failed: %m");
 		goto no_option;
 	}
-	if (raw_configure(fd, event, index, ptp_dst_mac, p2p_dst_mac, 1))
+	if (raw_configure(fd, event, index, local_addr, ptp_dst_mac,
+			  p2p_dst_mac, 1))
 		goto no_option;
 
 	return fd;
@@ -335,11 +374,13 @@ static int raw_open(struct transport *t, struct interface *iface,
 
 	socket_priority = config_get_int(t->cfg, "global", "socket_priority");
 
-	efd = open_socket(name, 1, ptp_dst_mac, p2p_dst_mac, socket_priority);
+	efd = open_socket(name, 1, raw->src_addr.sll.sll_addr, ptp_dst_mac,
+			  p2p_dst_mac, socket_priority);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, 0, ptp_dst_mac, p2p_dst_mac, socket_priority);
+	gfd = open_socket(name, 0, raw->src_addr.sll.sll_addr, p2p_dst_mac,
+			  p2p_dst_mac, socket_priority);
 	if (gfd < 0)
 		goto no_general;
 
