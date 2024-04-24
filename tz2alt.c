@@ -293,6 +293,7 @@ static void usage(char *progname)
 		" -f [file] read configuration from 'file'\n"
 		" -h        prints this message and exits\n"
 		" -k [num]  key field for the ALTERNATE_TIME_OFFSET_INDICATOR TLV\n"
+		" -l [num]  set the logging level to 'num'\n"
 		" -p [num]  period between updates in seconds, default %d\n"
 		" -v        prints the software version and exits\n"
 		" -w [num]  look ahead time window in seconds, default %d\n"
@@ -305,7 +306,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *config = NULL, *progname, *timezone = DEFAULT_TZ;
-	int c, err = 0, index;
+	int c, cmd_line_print_level, err = 0, index;
 	struct option *opts;
 
 	if (handle_term_signals()) {
@@ -322,7 +323,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt_long(argc, argv, "f:hk:p:vw:z:", opts, &index))) {
+	while (EOF != (c = getopt_long(argc, argv, "f:hk:l:p:vw:z:", opts, &index))) {
 		switch (c) {
 		case 0:
 			if (config_parse_option(cfg, opts[index].name, optarg)) {
@@ -335,6 +336,12 @@ int main(int argc, char *argv[])
 			break;
 		case 'k':
 			key_field = atoi(optarg);
+			break;
+		case 'l':
+			if (get_arg_val_i(c, optarg, &cmd_line_print_level,
+					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
+				return -1;
+			config_set_int(cfg, "logging_level", cmd_line_print_level);
 			break;
 		case 'p':
 			period = atoi(optarg);
@@ -363,6 +370,7 @@ int main(int argc, char *argv[])
 
 	print_set_syslog(0);
 	print_set_verbose(1);
+	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	if (config && (err = config_read(config, cfg))) {
 		goto out;
