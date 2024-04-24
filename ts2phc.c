@@ -745,7 +745,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (is_running()) {
-		struct ts2phc_clock *c;
+		struct ts2phc_clock *clk;
 
 		if (autocfg) {
 			/* Collect updates from ptp4l */
@@ -759,8 +759,8 @@ int main(int argc, char *argv[])
 				ts2phc_reconfigure(&priv);
 		}
 
-		LIST_FOREACH(c, &priv.clocks, list)
-			ts2phc_clock_flush_tstamp(c);
+		LIST_FOREACH(clk, &priv.clocks, list)
+			ts2phc_clock_flush_tstamp(clk);
 
 		err = ts2phc_pps_sink_poll(&priv);
 		if (err < 0) {
