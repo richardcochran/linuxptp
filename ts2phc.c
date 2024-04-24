@@ -559,7 +559,7 @@ static void usage(char *progname)
 
 int main(int argc, char *argv[])
 {
-	int c, err = 0, have_sink = 0, index, print_level;
+	int c, err = 0, have_sink = 0, index, cmd_line_print_level;
 	char uds_local[MAX_IFNAME_SIZE + 1];
 	enum ts2phc_pps_source_type pps_type;
 	struct ts2phc_private priv = {0};
@@ -612,13 +612,12 @@ int main(int argc, char *argv[])
 			config = optarg;
 			break;
 		case 'l':
-			if (get_arg_val_i(c, optarg, &print_level,
+			if (get_arg_val_i(c, optarg, &cmd_line_print_level,
 					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX)) {
 				ts2phc_cleanup(&priv);
 				return -1;
 			}
-			config_set_int(cfg, "logging_level", print_level);
-			print_set_level(print_level);
+			config_set_int(cfg, "logging_level", cmd_line_print_level);
 			break;
 		case 'm':
 			config_set_int(cfg, "verbose", 1);

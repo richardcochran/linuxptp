@@ -502,7 +502,7 @@ static int run_cmds(clockid_t clkid, int cmdc, char *cmdv[])
 
 int main(int argc, char *argv[])
 {
-	int c, cmdc, junk, print_level = LOG_INFO, result;
+	int c, cmdc, junk, cmd_line_print_level, result;
 	char **cmdv, *default_cmdv[] = { "caps" };
 	int use_syslog = 1, verbose = 1;
 	const char *progname;
@@ -517,9 +517,10 @@ int main(int argc, char *argv[])
 				  "l:qQvh"))) {
 		switch (c) {
 		case 'l':
-			if (get_arg_val_i(c, optarg, &print_level,
+			if (get_arg_val_i(c, optarg, &cmd_line_print_level,
 					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX))
 				return -1;
+			print_set_level(cmd_line_print_level);
 			break;
 		case 'q':
 			use_syslog = 0;
@@ -542,7 +543,6 @@ int main(int argc, char *argv[])
 	print_set_progname(progname);
 	print_set_verbose(verbose);
 	print_set_syslog(use_syslog);
-	print_set_level(print_level);
 
 	if ((argc - optind) < 1) {
 		usage(progname);

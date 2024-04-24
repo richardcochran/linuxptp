@@ -1174,7 +1174,7 @@ int main(int argc, char *argv[])
 	char uds_local[MAX_IFNAME_SIZE + 1];
 	int domain_numbers[MAX_DOMAINS], domain_number_cnt = 0;
 	int i, autocfg = 0, c, index, ntpshm_segment, offset = 0;
-	int pps_fd = -1, print_level = LOG_INFO, r = -1, rt = 0;
+	int pps_fd = -1, cmd_line_print_level, r = -1, rt = 0;
 	int wait_sync = 0, dst_cnt = 0, uds_remote_cnt = 0;
 	struct config *cfg;
 	struct option *opts;
@@ -1346,9 +1346,9 @@ int main(int argc, char *argv[])
 			n_domains++;
 			break;
 		case 'l':
-			if (get_arg_val_i(c, optarg, &print_level,
+			if (get_arg_val_i(c, optarg, &cmd_line_print_level,
 					  PRINT_LEVEL_MIN, PRINT_LEVEL_MAX) ||
-			    config_set_int(cfg, "logging_level", print_level)) {
+			    config_set_int(cfg, "logging_level", cmd_line_print_level)) {
 				goto end;
 			}
 			break;
