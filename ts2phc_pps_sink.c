@@ -77,7 +77,7 @@ static int ts2phc_pps_sink_array_create(struct ts2phc_private *priv)
 		i++;
 	}
 	for (i = 0; i < priv->n_sinks; i++) {
-		struct ts2phc_pps_sink *sink = polling_array->sink[i];
+		sink = polling_array->sink[i];
 
 		polling_array->pfd[i].events = POLLIN | POLLPRI;
 		polling_array->pfd[i].fd = sink->clock->fd;
