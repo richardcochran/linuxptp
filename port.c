@@ -2768,11 +2768,11 @@ void port_close(struct port *p)
 
 struct foreign_clock *port_compute_best(struct port *p)
 {
-	int (*dscmp)(struct dataset *a, struct dataset *b);
+	int (*clk_dscmp)(struct dataset *a, struct dataset *b);
 	struct foreign_clock *fc;
 	struct ptp_message *tmp;
 
-	dscmp = clock_dscmp(p->clock);
+	clk_dscmp = clock_dscmp(p->clock);
 	p->best = NULL;
 
 	if (p->master_only)
@@ -2792,7 +2792,7 @@ struct foreign_clock *port_compute_best(struct port *p)
 
 		if (!p->best)
 			p->best = fc;
-		else if (dscmp(&fc->dataset, &p->best->dataset) > 0)
+		else if (clk_dscmp(&fc->dataset, &p->best->dataset) > 0)
 			p->best = fc;
 		else
 			fc_clear(fc);
