@@ -441,6 +441,27 @@ POWER_PROFILE_SETTINGS_NP management message.
 The default is "none".
 
 .TP
+.B ptp_dst_ipv4
+The IPv4 address to which PTP messages should be sent.
+Relevant only with UDPv4 transport. The default is 224.0.1.129.
+
+.TP
+.B p2p_dst_ipv4
+The IPv4 address to which peer delay messages should be sent.
+Relevant only with UDPv4 transport. The default is 224.0.0.107.
+
+.TP
+.B ptp_dst_ipv6
+The IPv6 address to which PTP messages should be sent.
+The second byte of the address is substituted with udp6_scope.
+Relevant only with UDPv6 transport. The default is FF0E:0:0:0:0:0:0:181.
+
+.TP
+.B p2p_dst_ipv6
+The IPv6 address to which peer delay messages should be sent.
+Relevant only with UDPv6 transport. The default is FF02:0:0:0:0:0:0:6B.
+
+.TP
 .B ptp_dst_mac
 The MAC address to which PTP messages should be sent.
 Relevant only with L2 transport. The default is 01:1B:19:00:00:00.

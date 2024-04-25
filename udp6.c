@@ -40,10 +40,6 @@
 #define EVENT_PORT        319
 #define GENERAL_PORT      320
 
-/* The 0x0e in second byte is substituted with udp6_scope at runtime. */
-#define PTP_PRIMARY_MCAST_IP6ADDR "FF0E:0:0:0:0:0:0:181"
-#define PTP_PDELAY_MCAST_IP6ADDR  "FF02:0:0:0:0:0:0:6B"
-
 enum { MC_PRIMARY, MC_PDELAY };
 
 struct udp6 {
@@ -167,6 +163,7 @@ static int udp6_open(struct transport *t, struct interface *iface,
 	const char *name = interface_name(iface);
 	uint8_t event_dscp, general_dscp;
 	int efd, gfd, hop_limit;
+	char *str;
 
 	hop_limit = config_get_int(t->cfg, name, "udp_ttl");
 	udp6->mac.len = 0;
@@ -175,16 +172,20 @@ static int udp6_open(struct transport *t, struct interface *iface,
 	udp6->ip.len = 0;
 	sk_interface_addr(name, AF_INET6, &udp6->ip);
 
-	if (1 != inet_pton(AF_INET6, PTP_PRIMARY_MCAST_IP6ADDR,
-			   &udp6->mc6_addr[MC_PRIMARY]))
+	str = config_get_string(t->cfg, name, "ptp_dst_ipv6");
+	if (1 != inet_pton(AF_INET6, str, &udp6->mc6_addr[MC_PRIMARY])) {
+		pr_err("invalid ptp_dst_ipv6 %s", str);
 		return -1;
+	}
 
 	udp6->mc6_addr[MC_PRIMARY].s6_addr[1] = config_get_int(t->cfg, name,
 							       "udp6_scope");
 
-	if (1 != inet_pton(AF_INET6, PTP_PDELAY_MCAST_IP6ADDR,
-			   &udp6->mc6_addr[MC_PDELAY]))
+	str = config_get_string(t->cfg, name, "p2p_dst_ipv6");
+	if (1 != inet_pton(AF_INET6, str, &udp6->mc6_addr[MC_PDELAY])) {
+		pr_err("invalid p2p_dst_ipv6 %s", str);
 		return -1;
+	}
 
 	efd = open_socket_ipv6(name, udp6->mc6_addr, EVENT_PORT, &udp6->index,
 			       hop_limit);

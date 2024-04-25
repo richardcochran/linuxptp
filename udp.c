@@ -39,8 +39,6 @@
 
 #define EVENT_PORT        319
 #define GENERAL_PORT      320
-#define PTP_PRIMARY_MCAST_IPADDR "224.0.1.129"
-#define PTP_PDELAY_MCAST_IPADDR  "224.0.0.107"
 
 struct udp {
 	struct transport t;
@@ -157,6 +155,7 @@ static int udp_open(struct transport *t, struct interface *iface,
 	const char *name = interface_name(iface);
 	uint8_t event_dscp, general_dscp;
 	int efd, gfd, ttl;
+	char *str;
 
 	ttl = config_get_int(t->cfg, name, "udp_ttl");
 	udp->mac.len = 0;
@@ -165,11 +164,17 @@ static int udp_open(struct transport *t, struct interface *iface,
 	udp->ip.len = 0;
 	sk_interface_addr(name, AF_INET, &udp->ip);
 
-	if (!inet_aton(PTP_PRIMARY_MCAST_IPADDR, &mcast_addr[MC_PRIMARY]))
+	str = config_get_string(t->cfg, name, "ptp_dst_ipv4");
+	if (!inet_aton(str, &mcast_addr[MC_PRIMARY])) {
+		pr_err("invalid ptp_dst_ipv4 %s", str);
 		return -1;
+	}
 
-	if (!inet_aton(PTP_PDELAY_MCAST_IPADDR, &mcast_addr[MC_PDELAY]))
+	str = config_get_string(t->cfg, name, "p2p_dst_ipv4");
+	if (!inet_aton(str, &mcast_addr[MC_PDELAY])) {
+		pr_err("invalid p2p_dst_ipv4 %s", str);
 		return -1;
+	}
 
 	efd = open_socket(name, mcast_addr, EVENT_PORT, ttl);
 	if (efd < 0)
