@@ -288,8 +288,8 @@ int tsproc_update_offset(struct tsproc *tsp, tmv_t *offset, double *weight)
 #if TSPROC
 	fprintf(stderr, "%s: tsp->t1: %ld\n", __func__, tsp->t1.ns);
 	fprintf(stderr, "%s: tsp->t2: %ld\n", __func__, tsp->t2.ns);
-	fprintf(stderr, "%s: tsp->t3: %ld\n", __func__, tsp->t3.ns);
-	fprintf(stderr, "%s: tsp->t4: %ld\n", __func__, tsp->t4.ns);
+//	fprintf(stderr, "%s: tsp->t3: %ld\n", __func__, tsp->t3.ns);
+//	fprintf(stderr, "%s: tsp->t4: %ld\n", __func__, tsp->t4.ns);
 	fprintf(stderr, "%s: delay: %ld\n", __func__, delay.ns);
 	fprintf(stderr, "%s: offset = t2 - t1 - delay\n", __func__);
 	fprintf(stderr, "%s: offset: %ld\n", __func__,
