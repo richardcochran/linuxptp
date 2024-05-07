@@ -2206,6 +2206,7 @@ enum servo_state clock_synchronize(struct clock *c, tmv_t ingress, tmv_t origin)
 	fprintf(stderr, "%s ppb: %f\n", __func__, adj);
 	fprintf(stderr, "c->master_offset: %ld\n", c->master_offset.ns);
 	fprintf(stderr, "offset: %ld\n", offset);
+	fprintf(stderr, "origin: %ld\n", tmv_to_nanoseconds(origin));
 	fprintf(stderr, "ingress: %ld\n", tmv_to_nanoseconds(ingress));
 	fprintf(stderr, "state: %d\n",state);
 #endif

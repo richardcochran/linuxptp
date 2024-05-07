@@ -21,11 +21,12 @@
 #elif JLSEMI_AUTOPHY
 	#define DEBUG_INFO		0
 	#define FIX_NS_OVERFLOW		0
-	#define FIX_CLK_UNLOCK		0
-	#define REMOVE_TS_SECONDS	0
-	#define ENLARGE_LOCAL_FREQ_DIFF	0
-	#define LOCAL_FREQ_DIFF		(0)
-	#define CLK_LOCK_NUM		(0)
+	#define FIX_GPTP_CORRECTION	1
+	#define FIX_CLK_UNLOCK		1
+	#define REMOVE_TS_SECONDS	1
+	#define ENLARGE_LOCAL_FREQ_DIFF	1
+	#define LOCAL_FREQ_DIFF		(999)
+	#define CLK_LOCK_NUM		(1)
 	#define FIX_CORRECTION		1
 	#define FIX_P2P_RESERVED2	1
 #else

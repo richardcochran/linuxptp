@@ -93,10 +93,6 @@ static double pi_sample(struct servo *servo,
 	case 1:
 		s->offset[1] = offset;
 		s->local[1] = local_ts;
-#if ENLARGE_LOCAL_FREQ_DIFF
-		s->local[1] += LOCAL_FREQ_DIFF;
-#endif
-
 		/* Make sure the first sample is older than the second. */
 		if (s->local[0] >= s->local[1]) {
 			*state = SERVO_UNLOCKED;
@@ -117,6 +113,11 @@ static double pi_sample(struct servo *servo,
 		fprintf(stderr, "s->offset[1]: %ld\n", s->offset[1]);
 #endif
 		localdiff = (s->local[1] - s->local[0]) / 1e9;
+
+#if ENLARGE_LOCAL_FREQ_DIFF
+		localdiff += LOCAL_FREQ_DIFF;
+#endif
+
 #if FIX_CLK_UNLOCK
 		localdiff *= CLK_LOCK_NUM;
 #endif

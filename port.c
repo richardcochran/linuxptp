@@ -1531,8 +1531,13 @@ static void port_synchronize(struct port *p,
 
 	t1 = timestamp_to_tmv(origin_ts);
 	t2 = ingress_ts;
+#if FIX_GPTP_CORRECTION
+	c1 = tmv_zero();
+	c2 = tmv_zero();
+#else
 	c1 = correction_to_tmv(correction1);
 	c2 = correction_to_tmv(correction2);
+#endif
 	t1c = tmv_add(t1, tmv_add(c1, c2));
 
 	switch (p->state) {
