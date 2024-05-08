@@ -27,8 +27,8 @@
 	#define ENLARGE_LOCAL_FREQ_DIFF	1
 	#define LOCAL_FREQ_DIFF		(999)
 	#define CLK_LOCK_NUM		(1)
-	#define FIX_CORRECTION		1
-	#define FIX_P2P_RESERVED2	1
+	#define FIX_CORRECTION		0	//r5p0 must 0
+	#define FIX_P2P_RESERVED2	1	//r5p0 must 1
 #else
 	/*resv*/
 #endif
