@@ -275,21 +275,22 @@ static enum extts_result ts2phc_pps_sink_event(struct ts2phc_private *priv,
 		goto out;
 	}
 
-	err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
-	if (err < 0) {
-		pr_debug("source ts not valid");
-		return 0;
-	}
+	if (sink->polarity == (PTP_RISING_EDGE | PTP_FALLING_EDGE)) {
+		err = ts2phc_pps_source_getppstime(priv->src, &source_ts);
+		if (err < 0) {
+			pr_debug("source ts not valid");
+			return 0;
+		}
 
-	if (sink->polarity == (PTP_RISING_EDGE | PTP_FALLING_EDGE) &&
-	    ts2phc_pps_sink_ignore(priv, sink, source_ts)) {
+		if (ts2phc_pps_sink_ignore(priv, sink, source_ts)) {
+			pr_debug("%s SKIP extts index %u at %lld.%09u src %" PRIi64 ".%ld",
+				 sink->name, event.index, event.t.sec,
+				 event.t.nsec, (int64_t)source_ts.tv_sec,
+				 source_ts.tv_nsec);
 
-		pr_debug("%s SKIP extts index %u at %lld.%09u src %" PRIi64 ".%ld",
-		 sink->name, event.index, event.t.sec, event.t.nsec,
-		 (int64_t) source_ts.tv_sec, source_ts.tv_nsec);
-
-		result = EXTTS_IGNORE;
-		goto out;
+			result = EXTTS_IGNORE;
+			goto out;
+		}
 	}
 
 out:
