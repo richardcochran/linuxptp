@@ -435,9 +435,10 @@ static int ts2phc_pps_source_implicit_tstamp(struct ts2phc_private *priv,
 
 static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 {
+	struct timespec source_ts, now;
 	tmv_t source_tmv;
 	struct ts2phc_clock *c;
-	int valid, err;
+	int holdover, valid;
 
 	if (autocfg) {
 		if (!priv->ref_clock) {
@@ -451,9 +452,20 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 			return;
 		}
 	} else {
-		err = ts2phc_pps_source_implicit_tstamp(priv, &source_tmv);
-		if (err < 0)
+		valid = !ts2phc_pps_source_implicit_tstamp(priv, &source_tmv);
+	}
+
+	if (valid) {
+		priv->holdover_start = 0;
+		holdover = 0;
+	} else {
+		clock_gettime(CLOCK_MONOTONIC, &now);
+
+		if (!priv->holdover_start)
+			priv->holdover_start = now.tv_sec;
+		if (now.tv_sec >= priv->holdover_start + priv->holdover_length)
 			return;
+		holdover = 1;
 	}
 
 	LIST_FOREACH(c, &priv->clocks, list) {
@@ -470,6 +482,16 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 			continue;
 		}
 
+		if (holdover) {
+			if (c->servo_state != SERVO_LOCKED_STABLE)
+				continue;
+			source_ts = tmv_to_timespec(ts);
+			if (source_ts.tv_nsec > NS_PER_SEC / 2)
+				source_ts.tv_sec++;
+			source_ts.tv_nsec = 0;
+			source_tmv = timespec_to_tmv(source_ts);
+		}
+
 		offset = tmv_to_nanoseconds(tmv_sub(ts, source_tmv));
 
 		if (c->no_adj) {
@@ -481,8 +503,15 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 		adj = servo_sample(c->servo, offset, tmv_to_nanoseconds(ts),
 				   SAMPLE_WEIGHT, &c->servo_state);
 
-		pr_info("%s offset %10" PRId64 " s%d freq %+7.0f",
-			c->name, offset, c->servo_state, adj);
+		if (holdover && c->servo_state != SERVO_LOCKED_STABLE) {
+			pr_info("%s lost holdover lock (offset %10" PRId64 ")",
+				c->name, offset);
+			continue;
+		}
+
+		pr_info("%s offset %10" PRId64 " s%d freq %+7.0f%s",
+			c->name, offset, c->servo_state, adj,
+			holdover ? " holdover" : "");
 
 		switch (c->servo_state) {
 		case SERVO_UNLOCKED:
@@ -750,6 +779,9 @@ int main(int argc, char *argv[])
 		ts2phc_cleanup(&priv);
 		return -1;
 	}
+
+	priv.holdover_length = config_get_int(cfg, NULL, "ts2phc.holdover");
+	priv.holdover_start = 0;
 
 	while (is_running()) {
 		struct ts2phc_clock *clk;

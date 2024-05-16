@@ -55,6 +55,8 @@ struct ts2phc_private {
 	bool state_changed;
 	LIST_HEAD(port_head, ts2phc_port) ports;
 	LIST_HEAD(clock_head, ts2phc_clock) clocks;
+	int holdover_length;
+	time_t holdover_start;
 };
 
 struct ts2phc_clock *ts2phc_clock_add(struct ts2phc_private *priv,

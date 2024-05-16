@@ -171,6 +171,16 @@ with the log level of the message as a number.  The default is an empty string
 argument).
 
 .TP
+.B ts2phc.holdover
+The holdover interval, specified in seconds. When the ToD information stops
+working (e.g. GNSS receiver lost its fix), ts2phc is allowed for the specified
+interval to continue synchronizing the target clock as long as the servo is in
+the SERVO_LOCKED_STABLE state. The servo state needs be enabled by the
+\fBservo_num_offset_values\fP option. The holdover is not supported with the
+\fB-a\fP option and when \fBts2phc.extts_polarity\fP is set to \fIboth\fP.
+The default is 0 (disabled).
+
+.TP
 .B sa_file
 Specifies the location of the file containing Security Associations used
 for immediate security processing of the Authentication TLV in support of

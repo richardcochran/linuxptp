@@ -370,6 +370,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("ts2phc.channel", 0, 0, INT_MAX),
 	PORT_ITEM_INT("ts2phc.extts_correction", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_ENU("ts2phc.extts_polarity", PTP_RISING_EDGE, extts_polarity_enu),
+	PORT_ITEM_INT("ts2phc.holdover", 0, 0, INT_MAX),
 	PORT_ITEM_INT("ts2phc.master", 0, 0, 1),
 	PORT_ITEM_INT("ts2phc.nmea_baudrate", 9600, 300, INT_MAX),
 	GLOB_ITEM_STR("ts2phc.nmea_remote_host", ""),
