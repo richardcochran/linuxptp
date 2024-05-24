@@ -26,6 +26,21 @@ struct security_association {
 };
 
 /**
+ * inbound message authentication processing:
+ *  1. check seqid (on sync/followup)
+ *  2. check for matching ICV
+ * @param cfg  pointer to config that contains sad
+ * @param spp  security parameters pointer for desired sa
+ * @param msg  pointer to formatted message
+ * @param raw  pointer to duplicated raw message used for icv compare
+ * @return     -EBADMSG if message field expectations are not met
+ *             -EPROTO if failed authentication (seqid or icv fail)
+ */
+int sad_process_auth(struct config *cfg, int spp,
+		     struct ptp_message *msg,
+		     struct ptp_message *raw);
+
+/**
  * Read the defined security association file and append to config.
  * @param cfg  config where security association database should be stored
  * @return     -1 if the read failed, 0 otherwise

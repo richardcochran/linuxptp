@@ -24,6 +24,167 @@ static struct integrity_alg_info supported_algorithms [] = {
 	{ NULL, 0, 0, 0 },
 };
 
+/* spp should be in the range [0 - 255] */
+static inline struct security_association *sad_get_association(struct config *cfg,
+								int spp)
+{
+	struct security_association *sa;
+	STAILQ_FOREACH(sa, &cfg->security_association_database, list) {
+		if (sa->spp == spp) {
+			return sa;
+		}
+	}
+
+	pr_debug("sa %u not present", spp);
+	return NULL;
+}
+
+/* key_id should be in the range [1 - 2^32-1] */
+static inline struct security_association_key *sad_get_key(struct security_association *sa,
+							   size_t key_id)
+{
+	struct security_association_key *key;
+	if (key_id < 1 || key_id > UINT32_MAX) {
+		return NULL;
+	}
+
+	STAILQ_FOREACH(key, &sa->keys, list) {
+		if (key->key_id == key_id) {
+			return key;
+		}
+	}
+
+	pr_debug("sa %u: key %zu not present", sa->spp, key_id);
+	return NULL;
+}
+
+static inline size_t sad_get_auth_tlv_len(struct security_association *sa,
+					  size_t icv_len)
+{
+	return sizeof(struct authentication_tlv) + /* size of base tlv */
+	       (sa->res_ind ? sa->res_len : 0) + /* size of res field */
+	       (sa->seqnum_ind ? sa->seqnum_len : 0) + /* size of seqnum field */
+	       icv_len; /* size of icv (defined by key) */
+}
+
+static int sad_check_auth_tlv(struct security_association *sa,
+			      struct ptp_message *msg,
+			      struct ptp_message *raw)
+{
+	struct tlv_extra *extra;
+	struct authentication_tlv *auth;
+	struct security_association_key *key;
+	void *icv;
+	int err = -EPROTO;
+	size_t data_len, tlv_count = 0;
+	Enumeration16 last_tlv = 0;
+	/* process any/all authentication tlvs now */
+	TAILQ_FOREACH(extra, &msg->tlv_list, list) {
+		tlv_count++;
+		last_tlv = extra->tlv->type;
+		if (extra->tlv->type != TLV_AUTHENTICATION) {
+			continue;
+		}
+		auth = (struct authentication_tlv *) extra->tlv;
+
+		/* verify spp matches expectations */
+		if (sa->spp != auth->spp) {
+			pr_debug("sa %u: received auth tlv"
+				 " with unexpected spp %u",
+				 sa->spp, auth->spp);
+			return -EBADMSG;
+		}
+
+		/* verify res, seqnum, disclosedKey field indicators match expectations */
+		if ((sa->res_ind != ((auth->secParamIndicator & 0x1) != 0)) ||
+		    (sa->seqnum_ind != ((auth->secParamIndicator & 0x2) != 0)) ||
+		    (sa->immediate_ind == ((auth->secParamIndicator & 0x4) != 0))) {
+			pr_debug("sa %u: received auth tlv"
+				 " with unexpected sec param %d",
+				 sa->spp, auth->secParamIndicator);
+			return -EBADMSG;
+		}
+
+		/* retrieve key specified in keyID field */
+		key = sad_get_key(sa, auth->keyID);
+		if (!key) {
+			pr_debug("sa %u: received auth tlv"
+				 " with unexpected key %u",
+				 sa->spp, auth->keyID);
+			return -EBADMSG;
+		}
+
+		/* verify TLV length matches expectation */
+		if (auth->length != sad_get_auth_tlv_len(sa, key->icv->digest_len) - 4) {
+			pr_debug("sa %u: received auth tlv"
+				 " with unexpected length",
+				 sa->spp);
+			return -EBADMSG;
+		}
+
+		/* set correction to zero if mutable fields are allowed */
+		if (sa->mutable) {
+			if (raw->header.correction != 0) {
+				pr_debug("sa %u: mutable set: correction field"
+					 " not secured by auth tlv", sa->spp);
+			}
+			raw->header.correction = 0;
+		}
+
+		/* determine start address of icv and data length */
+		icv = (char *) auth + sad_get_auth_tlv_len(sa, 0);
+		data_len = (char *) icv - (char *) msg;
+
+		if (sad_verify(key->data, raw, data_len,
+			     icv, key->icv->digest_len) != 0) {
+			pr_debug("sa %u: icv compare failed",
+				 sa->spp);
+			return -EBADMSG;
+		}
+		err = 0;
+	}
+	/* enforce an authentication tlv be last */
+	if (tlv_count == 0) {
+		pr_debug("sa %u: received message with no auth tlv",
+			 sa->spp);
+		return -EBADMSG;
+	}
+	if (last_tlv != TLV_AUTHENTICATION) {
+		pr_debug("sa %u: received %u tlv after auth tlv",
+			 sa->spp, last_tlv);
+		return -EBADMSG;
+	}
+
+	return err;
+}
+
+/**
+ * Perform any necessary authentication processing on inbound messages
+ * This includes:
+ * 1. retrieve security assocation specified to port
+ * 2. check header seqid for SYNC/FOLLOWUP
+ * 3. check attached auth tlvs
+ */
+int sad_process_auth(struct config *cfg, int spp,
+		     struct ptp_message *msg,
+		     struct ptp_message *raw)
+{
+	struct security_association* sa;
+	int err = 0;
+	/* immediately return if security is not configured */
+	if (spp < 0) {
+		return err;
+	}
+	/* retrieve sa specified by spp */
+	sa = sad_get_association(cfg, spp);
+	if (!sa) {
+		return -EPROTO;
+	}
+	/* detect and process any auth tlvs  */
+	err = sad_check_auth_tlv(sa, msg, raw);
+	return err;
+}
+
 static void sad_destroy_association(struct security_association *sa)
 {
 	struct security_association_key *key;
