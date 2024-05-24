@@ -67,6 +67,73 @@ static inline size_t sad_get_auth_tlv_len(struct security_association *sa,
 	       icv_len; /* size of icv (defined by key) */
 }
 
+/**
+ * update the last received seqid
+ */
+void sad_set_last_seqid(struct config *cfg,
+			int spp, Integer32 seqid)
+{
+	struct security_association* sa;
+	/* immediately return if security is not configured */
+	if (spp < 0) {
+		return;
+	}
+	/* retrieve sa specified by spp */
+	sa = sad_get_association(cfg, spp);
+	if (!sa) {
+		return;
+	}
+
+	sa->last_seqid = (seqid == -1) ? seqid : (UInteger16) seqid;
+}
+
+/**
+ * confirm seqid from inbound message header is with in seqid window.
+ */
+static int sad_check_seqid(struct ptp_message *msg,
+			   Integer32 last_seqid,
+			   UInteger16 seqid_window)
+{
+	UInteger16 new_seqid;
+	/* do not check seqid if seqid_window is zero */
+	if (seqid_window < 1) {
+		return 0;
+	}
+
+	/* (for now) only check seqid on sync/followup msgs */
+	switch (msg_type(msg)) {
+	case SYNC:
+	case FOLLOW_UP:
+		new_seqid = msg->header.sequenceId;
+		/* last_seqid < 0 means unitialized */
+		if (last_seqid < 0) {
+			return 0;
+		/* verify received seqid is greater than last */
+		/* use mod(uint16) to handle wrap within window */
+		} else if (new_seqid < (UInteger16)(last_seqid + 1) &&
+			   (UInteger16)(new_seqid + seqid_window) <
+			   (UInteger16)(last_seqid + 1 + seqid_window)) {
+			pr_debug("replayed seqid: received seqid %u "
+				 "smaller than last %u",
+				 new_seqid, last_seqid);
+			return -EBADMSG;
+		/* verify received seqid is less than seqid window */
+		/* use mod(uint16) to handle wrap within window */
+		} else if (new_seqid > (UInteger16)(last_seqid + seqid_window) &&
+			   (UInteger16)(new_seqid + seqid_window) >
+			   (UInteger16)(last_seqid + 2 * seqid_window)) {
+			pr_debug("replayed seqid: received seqid %u "
+				 "beyond seqid_window %u + %d",
+				 new_seqid, last_seqid, seqid_window);
+			return -EBADMSG;
+		}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 static int sad_check_auth_tlv(struct security_association *sa,
 			      struct ptp_message *msg,
 			      struct ptp_message *raw)
@@ -179,6 +246,11 @@ int sad_process_auth(struct config *cfg, int spp,
 	sa = sad_get_association(cfg, spp);
 	if (!sa) {
 		return -EPROTO;
+	}
+	/* check seqid in header first (sync/followup only) */
+	err = sad_check_seqid(msg, sa->last_seqid, sa->seqid_window);
+	if (err) {
+		return err;
 	}
 	/* detect and process any auth tlvs  */
 	err = sad_check_auth_tlv(sa, msg, raw);

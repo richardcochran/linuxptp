@@ -1399,6 +1399,8 @@ static void port_synchronize(struct port *p,
 		break;
 	}
 
+	sad_set_last_seqid(clock_config(p->clock), p->spp, seqid);
+
 	last_state = clock_servo_state(p->clock);
 	state = clock_synchronize(p->clock, t2, t1c);
 	switch (state) {
@@ -2824,6 +2826,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 	case PS_FAULTY:
 	case PS_DISABLED:
 		port_disable(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		break;
 	case PS_LISTENING:
 		port_set_announce_tmo(p);
@@ -2837,6 +2840,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 			set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
 		}
 		port_set_sync_tx_tmo(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -2844,6 +2848,7 @@ static void port_e2e_transition(struct port *p, enum port_state next)
 	case PS_UNCALIBRATED:
 		flush_last_sync(p);
 		flush_delay_req(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
@@ -2868,6 +2873,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 	case PS_FAULTY:
 	case PS_DISABLED:
 		port_disable(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		break;
 	case PS_LISTENING:
 		port_set_announce_tmo(p);
@@ -2882,6 +2888,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 			set_tmo_log(p->fda.fd[FD_MANNO_TIMER], 1, -10); /*~1ms*/
 		}
 		port_set_sync_tx_tmo(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -2889,6 +2896,7 @@ static void port_p2p_transition(struct port *p, enum port_state next)
 	case PS_UNCALIBRATED:
 		flush_last_sync(p);
 		flush_peer_delay(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);

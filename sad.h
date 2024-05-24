@@ -26,6 +26,15 @@ struct security_association {
 };
 
 /**
+ * Set the last received sequence id for SYNC/FOLLOW_UP
+ * @param cfg    pointer to config that contains sad
+ * @param spp    security parameters pointer for desired sa
+ * @param seqid  sequence id to store in SA
+*/
+void sad_set_last_seqid(struct config *cfg,
+			int spp, Integer32 seqid);
+
+/**
  * inbound message authentication processing:
  *  1. check seqid (on sync/followup)
  *  2. check for matching ICV
