@@ -199,7 +199,15 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	fprintf(fp, "\t%s seq %hu %s ",
 		pid2str(&msg->header.sourcePortIdentity),
 		msg->header.sequenceId, pmc_action_string(action));
-	if (msg_tlv_count(msg) != 1) {
+	switch (msg_tlv_count(msg)) {
+	case 1:
+		break;
+	case 2:
+		extra = TAILQ_LAST(&msg->tlv_list, tlv_list);
+		if (extra->tlv->type == TLV_AUTHENTICATION) {
+			break;
+		}
+	default:
 		goto out;
 	}
 	extra = TAILQ_FIRST(&msg->tlv_list);

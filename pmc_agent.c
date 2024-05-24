@@ -72,14 +72,24 @@ static int check_clock_identity(struct pmc_agent *node, struct ptp_message *msg)
 
 static int is_msg_mgt(struct ptp_message *msg)
 {
+	struct tlv_extra *extra;
 	struct TLV *tlv;
 
 	if (msg_type(msg) != MANAGEMENT)
 		return 0;
 	if (management_action(msg) != RESPONSE)
 		return 0;
-	if (msg_tlv_count(msg) != 1)
+	switch (msg_tlv_count(msg)) {
+	case 1:
+		break;
+	case 2:
+		extra = TAILQ_LAST(&msg->tlv_list, tlv_list);
+		if (extra->tlv->type == TLV_AUTHENTICATION) {
+			break;
+		}
+	default:
 		return 0;
+	}
 	tlv = (struct TLV *) msg->management.suffix;
 	if (tlv->type == TLV_MANAGEMENT)
 		return 1;

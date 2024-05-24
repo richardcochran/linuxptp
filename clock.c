@@ -1615,6 +1615,7 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 {
 	int changed = 0, res, answers;
 	struct port *piter;
+	struct tlv_extra *extra;
 	struct management_tlv *mgt;
 	struct ClockIdentity *tcid, wildcard = {
 		{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
@@ -1628,7 +1629,15 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 	if (!cid_eq(tcid, &wildcard) && !cid_eq(tcid, &c->dds.clockIdentity)) {
 		return changed;
 	}
-	if (msg_tlv_count(msg) != 1) {
+	switch (msg_tlv_count(msg)) {
+	case 1:
+		break;
+	case 2:
+		extra = TAILQ_LAST(&msg->tlv_list, tlv_list);
+		if (extra->tlv->type == TLV_AUTHENTICATION) {
+			break;
+		}
+	default:
 		return changed;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
