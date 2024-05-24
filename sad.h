@@ -53,4 +53,13 @@ int sad_create(struct config *cfg);
  */
 void sad_destroy(struct config *cfg);
 
+/**
+ * Check the everything is ready for security when initializing a port
+ * @param spp           security parameters pointer for the port
+ * @param active_key_id key_id for outbound messages on the port
+ * @param cfg           pointer to config that contains sad
+ */
+int sad_readiness_check(int spp, size_t active_key_id,
+                        struct config *cfg);
+
 #endif

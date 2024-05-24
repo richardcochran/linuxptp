@@ -36,6 +36,7 @@
 #include "port_private.h"
 #include "print.h"
 #include "rtnl.h"
+#include "sad.h"
 #include "sk.h"
 #include "tc.h"
 #include "tlv.h"
@@ -58,6 +59,7 @@ enum syfu_event {
 
 static int port_is_ieee8021as(struct port *p);
 static int port_is_uds(struct port *p);
+static int port_has_security(struct port *p);
 static void port_nrate_initialize(struct port *p);
 
 static int announce_compare(struct ptp_message *m1, struct ptp_message *m2)
@@ -865,6 +867,11 @@ static int port_is_ieee8021as(struct port *p)
 static int port_is_uds(struct port *p)
 {
 	return transport_type(p->trp) == TRANS_UDS;
+}
+
+static int port_has_security(struct port *p)
+{
+	return p->spp >= 0;
 }
 
 static void port_management_send_error(struct port *p, struct port *ingress,
@@ -3014,7 +3021,7 @@ enum fsm_event port_event(struct port *p, int fd_index)
 static enum fsm_event bc_event(struct port *p, int fd_index)
 {
 	enum fsm_event event = EV_NONE;
-	struct ptp_message *msg;
+	struct ptp_message *msg, *dup = NULL;
 	int cnt, fd = p->fda.fd[fd_index], err;
 
 	switch (fd_index) {
@@ -3138,6 +3145,13 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
 	}
+	if (port_has_security(p)) {
+		dup = msg_duplicate(msg, 0);
+		if (!dup) {
+			msg_put(msg);
+			return EV_NONE;
+		}
+	}
 	err = msg_post_recv(msg, cnt);
 	if (err) {
 		switch (err) {
@@ -3149,11 +3163,17 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 			break;
 		}
 		msg_put(msg);
+		if (dup) {
+			msg_put(dup);
+		}
 		return EV_NONE;
 	}
 	port_stats_inc_rx(p, msg);
 	if (port_ignore(p, msg)) {
 		msg_put(msg);
+		if (dup) {
+			msg_put(dup);
+		}
 		return EV_NONE;
 	}
 	if (msg_sots_missing(msg) &&
@@ -3161,6 +3181,25 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		pr_err("%s: received %s without timestamp",
 		       p->log_name, msg_type_string(msg_type(msg)));
 		msg_put(msg);
+		if (dup) {
+			msg_put(dup);
+		}
+		return EV_NONE;
+	}
+	err = sad_process_auth(clock_config(p->clock), p->spp, msg, dup);
+	if (err) {
+		switch (err) {
+		case -EBADMSG:
+			pr_err("%s: auth: bad message", p->log_name);
+			break;
+		case -EPROTO:
+			pr_debug("%s: auth: ignoring message", p->log_name);
+			break;
+		}
+		msg_put(msg);
+		if (dup) {
+			msg_put(dup);
+		}
 		return EV_NONE;
 	}
 	if (msg_sots_valid(msg)) {
@@ -3212,6 +3251,9 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	}
 
 	msg_put(msg);
+	if (dup) {
+		msg_put(dup);
+	}
 	return event;
 }
 
@@ -3586,6 +3628,8 @@ struct port *port_open(const char *phc_device,
 		config_get_int(cfg, p->name, "power_profile.2017.totalTimeInaccuracy");
 	p->slave_event_monitor = clock_slave_monitor(clock);
 	p->allowedLostResponses = config_get_int(cfg, p->name, "allowedLostResponses");
+	p->spp = config_get_int(cfg, p->name, "spp");
+	p->active_key_id = config_get_uint(cfg, p->name, "active_key_id");
 
 	if (!port_is_uds(p) && unicast_client_initialize(p)) {
 		goto err_transport;
@@ -3614,6 +3658,19 @@ struct port *port_open(const char *phc_device,
 	}
 	if (p->net_sync_monitor && !p->hybrid_e2e) {
 		pr_warning("%s: net_sync_monitor needs hybrid_e2e", p->log_name);
+	}
+	if (sad_readiness_check(p->spp, p->active_key_id, clock_config(p->clock))) {
+		pr_err("%s: security readiness check failed", p->log_name);
+		goto err_uc_service;
+	}
+	if (port_has_security(p) && (p->timestamping == TS_ONESTEP ||
+				     p->timestamping == TS_P2P1STEP)) {
+		pr_err("%s: spp not supported on one-step ports", p->log_name);
+		goto err_uc_service;
+	}
+	if (port_has_security(p) && (config_get_int(cfg, NULL, "ptp_minor_version") < 1)) {
+		pr_err("%s: spp needs at least PTPv2.1", p->log_name);
+		goto err_uc_service;
 	}
 
 	/* Set fault timeouts to a default value */

@@ -577,3 +577,49 @@ int sad_create(struct config *cfg)
 	fclose(fp);
 	return 0;
 }
+
+int sad_readiness_check(int spp, size_t active_key_id, struct config *cfg)
+{
+        struct security_association *sa;
+        if (spp < 0 && active_key_id < 1) {
+                return 0;
+        }
+#if !defined (HAVE_NETTLE) && !defined (HAVE_GNUTLS) && \
+    !defined (HAVE_GNUPG) && !defined (HAVE_OPENSSL)
+        if (spp >= 0 || active_key_id > 0) {
+                pr_err("spp or active_key_id set but security not supported");
+                return -1;
+        }
+#endif
+        if (spp >= 0) {
+                if (!config_get_string(cfg, NULL, "sa_file")) {
+                        pr_err("sa_file required when spp set");
+                        return -1;
+                }
+                if (STAILQ_EMPTY(&cfg->security_association_database)) {
+                        pr_err("spp set but sad is empty");
+                        return -1;
+                }
+                sa = sad_get_association(cfg, spp);
+                if (!sa) {
+                        pr_err("spp set but sa %u not defined", spp);
+                        return -1;
+                }
+                if (active_key_id < 1) {
+                        pr_err("active_key_id required when spp set");
+                        return -1;
+                } else {
+                        if (!sad_get_key(sa, active_key_id)) {
+                                pr_err("sa %u: active_key_id set but key %zu"
+                                        " not defined", spp, active_key_id);
+                                return -1;
+                        }
+                }
+        } else {
+                if (active_key_id > 0) {
+                        pr_err("spp required when active_key_id set");
+                        return -1;
+                }
+        }
+        return 0;
+}

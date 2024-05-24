@@ -64,6 +64,9 @@ double config_get_double(struct config *cfg, const char *section,
 int config_get_int(struct config *cfg, const char *section,
 		   const char *option);
 
+uint32_t config_get_uint(struct config *cfg, const char *section,
+			 const char *option);
+
 char *config_get_string(struct config *cfg, const char *section,
 			const char *option);
 
@@ -86,6 +89,8 @@ static inline int config_set_int(struct config *cfg,
 {
 	return config_set_section_int(cfg, NULL, option, val);
 }
+
+int config_set_uint(struct config *cfg, const char *option, uint32_t val);
 
 int config_set_string(struct config *cfg, const char *option,
 		      const char *val);

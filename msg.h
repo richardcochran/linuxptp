@@ -366,7 +366,8 @@ void msg_cleanup(void);
  * @param msg  A message obtained using @ref msg_allocate().
  *             The passed message must be in network byte order, not
  *             having been passed to @ref msg_post_recv().
- *
+ * @param cnt  The size of 'msg' in bytes. set to zero when
+ *             @ref msg_post_recv() is not required (icv calculation)
  * @return     Pointer to a message on success, NULL otherwise.
  *             The returned message will be in host byte order, having
  *             been passed to @ref msg_post_recv().

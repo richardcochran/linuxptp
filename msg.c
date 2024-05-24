@@ -308,6 +308,10 @@ struct ptp_message *msg_duplicate(struct ptp_message *msg, int cnt)
 	dup->refcnt = 1;
 	TAILQ_INIT(&dup->tlv_list);
 
+	if (!cnt) {
+		return dup;
+	}
+
 	err = msg_post_recv(dup, cnt);
 	if (err) {
 		switch (err) {

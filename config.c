@@ -54,6 +54,7 @@ enum config_type {
 	CFG_TYPE_DOUBLE,
 	CFG_TYPE_ENUM,
 	CFG_TYPE_STRING,
+	CFG_TYPE_UINT,
 };
 
 struct config_enum {
@@ -65,6 +66,7 @@ typedef union {
 	int i;
 	double d;
 	char *s;
+	uint32_t u;
 } any_t;
 
 #define CONFIG_LABEL_SIZE 64
@@ -109,6 +111,14 @@ struct config_item {
 	.min.i	= _min,					\
 	.max.i	= _max,					\
 }
+#define CONFIG_ITEM_UINT(_label, _port, _default, _min, _max) {	\
+	.label	= _label,				\
+	.type	= CFG_TYPE_UINT,			\
+	.flags	= _port ? CFG_ITEM_PORT : 0,		\
+	.val.u	= _default,				\
+	.min.u	= _min,					\
+	.max.u	= _max,					\
+}
 #define CONFIG_ITEM_STRING(_label, _port, _default) {	\
 	.label	= _label,				\
 	.type	= CFG_TYPE_STRING,			\
@@ -125,6 +135,9 @@ struct config_item {
 #define GLOB_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 0, _default, min, max)
 
+#define GLOB_ITEM_UIN(label, _default, min, max) \
+	CONFIG_ITEM_UINT(label, 0, _default, min, max)
+
 #define GLOB_ITEM_STR(label, _default) \
 	CONFIG_ITEM_STRING(label, 0, _default)
 
@@ -136,6 +149,9 @@ struct config_item {
 
 #define PORT_ITEM_INT(label, _default, min, max) \
 	CONFIG_ITEM_INT(label, 1, _default, min, max)
+
+#define PORT_ITEM_UIN(label, _default, min, max) \
+	CONFIG_ITEM_UINT(label, 1, _default, min, max)
 
 #define PORT_ITEM_STR(label, _default) \
 	CONFIG_ITEM_STRING(label, 1, _default)
@@ -236,6 +252,7 @@ static struct config_enum bmca_enu[] = {
 };
 
 struct config_item config_tab[] = {
+	PORT_ITEM_UIN("active_key_id", 0, 0, UINT32_MAX),
 	PORT_ITEM_INT("allowedLostResponses", 3, 1, 255),
 	PORT_ITEM_INT("announceReceiptTimeout", 3, 2, UINT8_MAX),
 	PORT_ITEM_ENU("asCapable", AS_CAPABLE_AUTO, as_capable_enu),
@@ -340,6 +357,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_STR("slave_event_monitor", ""),
 	GLOB_ITEM_INT("slaveOnly", 0, 0, 1), /*deprecated*/
 	GLOB_ITEM_INT("socket_priority", 0, 0, 15),
+	PORT_ITEM_INT("spp", -1, -1, UINT8_MAX),
 	GLOB_ITEM_DBL("step_threshold", 0.0, 0.0, DBL_MAX),
 	GLOB_ITEM_INT("step_window", 0, 0, INT_MAX),
 	GLOB_ITEM_INT("summary_interval", 0, INT_MIN, INT_MAX),
@@ -574,6 +592,7 @@ static enum parser_result parse_item(struct config *cfg,
 	struct config_enum *cte;
 	double df;
 	int val;
+	uint32_t uval;
 
 	r = parse_fault_interval(cfg, section, option, value);
 	if (r != NOT_PARSED)
@@ -605,6 +624,9 @@ static enum parser_result parse_item(struct config *cfg,
 		break;
 	case CFG_TYPE_STRING:
 		r = PARSED_OK;
+		break;
+	case CFG_TYPE_UINT:
+		r = get_ranged_uint(value, &uval, cgi->min.u, cgi->max.u);
 		break;
 	}
 	if (r != PARSED_OK) {
@@ -649,6 +671,9 @@ static enum parser_result parse_item(struct config *cfg,
 			return NOT_PARSED;
 		}
 		dst->flags |= CFG_ITEM_DYNSTR;
+		break;
+	case CFG_TYPE_UINT:
+		dst->val.u = uval;
 		break;
 	}
 
@@ -1029,6 +1054,7 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 	switch (ci->type) {
 	case CFG_TYPE_DOUBLE:
 	case CFG_TYPE_STRING:
+	case CFG_TYPE_UINT:
 		pr_err("bug: config option %s type mismatch!", option);
 		exit(-1);
 	case CFG_TYPE_INT:
@@ -1037,6 +1063,19 @@ int config_get_int(struct config *cfg, const char *section, const char *option)
 	}
 	pr_debug("config item %s.%s is %d", section, option, ci->val.i);
 	return ci->val.i;
+}
+
+uint32_t config_get_uint(struct config *cfg, const char *section,
+			 const char *option)
+{
+	struct config_item *ci = config_find_item(cfg, section, option);
+
+	if (!ci || ci->type != CFG_TYPE_UINT) {
+		pr_err("bug: config option %s missing or invalid!", option);
+		exit(-1);
+	}
+	pr_debug("config item %s.%s is %u", section, option, ci->val.u);
+	return ci->val.u;
 }
 
 char *config_get_string(struct config *cfg, const char *section,
@@ -1146,6 +1185,7 @@ int config_set_section_int(struct config *cfg, const char *section,
 	switch (cgi->type) {
 	case CFG_TYPE_DOUBLE:
 	case CFG_TYPE_STRING:
+	case CFG_TYPE_UINT:
 		pr_err("bug: config option %s type mismatch!", option);
 		return -1;
 	case CFG_TYPE_INT:
@@ -1168,6 +1208,20 @@ int config_set_section_int(struct config *cfg, const char *section,
 	}
 	dst->val.i = val;
 	pr_debug("section item %s.%s now %d", section, option, dst->val.i);
+	return 0;
+}
+
+int config_set_uint(struct config *cfg, const char *option, uint32_t val)
+{
+	struct config_item *ci = config_find_item(cfg, NULL, option);
+
+	if (!ci || ci->type != CFG_TYPE_UINT) {
+		pr_err("bug: config option %s missing or invalid!", option);
+		return -1;
+	}
+	ci->flags |= CFG_ITEM_LOCKED;
+	ci->val.u = val;
+	pr_debug("locked item global.%s as %u", option, ci->val.u);
 	return 0;
 }
 
