@@ -1956,7 +1956,7 @@ static int port_cmlds_initialize(struct port *p)
 				  hops,
 				  config_get_int(cfg, p->name, "cmlds.domainNumber"),
 				  config_get_int(cfg, p->name, "cmlds.majorSdoId") << 4,
-				  zero_datalen);
+				  0, zero_datalen);
 	if (!p->cmlds.pmc) {
 		return -1;
 	}

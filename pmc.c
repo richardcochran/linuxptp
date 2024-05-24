@@ -31,6 +31,7 @@
 #include "notification.h"
 #include "pmc_common.h"
 #include "print.h"
+#include "sad.h"
 #include "tlv.h"
 #include "uds.h"
 #include "util.h"
@@ -712,7 +713,7 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	char line[1024], *command = NULL, uds_local[MAX_IFNAME_SIZE + 1];
 	enum transport_type transport_type = TRANS_UDP_IPV4;
-	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0;
+	UInteger8 boundary_hops = 1, domain_number = 0, transport_specific = 0, allow_unauth = 0;
 	struct ptp_message *msg;
 	struct option *opts;
 	struct config *cfg;
@@ -826,6 +827,11 @@ int main(int argc, char *argv[])
 	transport_type = config_get_int(cfg, NULL, "network_transport");
 	transport_specific = config_get_int(cfg, NULL, "transportSpecific") << 4;
 	domain_number = config_get_int(cfg, NULL, "domainNumber");
+	allow_unauth = config_get_int(cfg, NULL, "allow_unauth");
+
+	if (sad_create(cfg)) {
+		goto out;
+	}
 
 	if (!iface_name) {
 		if (transport_type == TRANS_UDS) {
@@ -847,7 +853,7 @@ int main(int argc, char *argv[])
 	pmc = pmc_create(cfg, transport_type, iface_name,
 			 config_get_string(cfg, NULL, "uds_address"),
 			 boundary_hops, domain_number, transport_specific,
-			 zero_datalen);
+			 allow_unauth, zero_datalen);
 	if (!pmc) {
 		fprintf(stderr, "failed to create pmc\n");
 		config_destroy(cfg);
@@ -928,6 +934,7 @@ int main(int argc, char *argv[])
 	msg_cleanup();
 
 out:
+	sad_destroy(cfg);
 	config_destroy(cfg);
 	return ret;
 }

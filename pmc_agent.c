@@ -245,7 +245,7 @@ int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 	node->pmc = pmc_create(cfg, TRANS_UDS, uds,
 			       config_get_string(cfg, NULL, "uds_address"), 0,
 			       config_get_int(cfg, NULL, "domainNumber"),
-			       config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
+			       config_get_int(cfg, NULL, "transportSpecific") << 4, 0, 1);
 	if (!node->pmc) {
 		pr_err("failed to create pmc");
 		return -1;

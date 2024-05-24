@@ -1,4 +1,4 @@
-.TH PMC 8 "February 2023" "linuxptp"
+.TH PMC 8 "March 2024" "linuxptp"
 .SH NAME
 pmc \- PTP management client
 
@@ -144,7 +144,37 @@ options. The name of the section is the name of the configured port (e.g.
 .B domainNumber
 The domain attribute of the local clock. The default is 0.
 
+.TP
+.B sa_file
+Specifies the location of the file containing Security Associations
+used for immediate security processing of the Authentication TLV in
+support of the optional security mechanism defined in ieee1588-2019
+ch 14.16. See \fBSECURITY ASSOCIATION OPTIONS\fR for information on how
+this file should be formatted. \fBspp\fR and \fBactive_key_id\fR should
+be specifed for each port to indicate which Security Association from
+the /fBsa_file/fR should be used. The default is an empty string.
+
 .SH PORT OPTIONS
+
+.TP
+.B active_key_id
+Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
+specify which key from the \fBspp\fR defined Security Association
+should be used for outbound icv calculations. All Security Assocations
+are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
+and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
+inclusive. The default is 0 (disabled).
+
+.TP
+.B allow_unauth
+Allows for pmc to accept unauthenticated management response and
+signaling messages when authentication is enabled and \fBspp\fR,
+\fBactive_key_id\fR and \fBsa_file\fR are set. Possible values are:
+  0: normal receiving
+  1: accept mgmt resp/signaling without Authentication TLV
+  2: accept mgmt resp/signaling without Authentication TLV or with wrong
+     Authentication TLV
+The default is 0 (disabled).
 
 .TP
 .B network_transport
@@ -154,6 +184,20 @@ is UDPv4.
 .TP
 .B ptp_dst_mac
 The MAC address to which PTP management messages should be sent. Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
+
+.TP
+.B spp
+Specifies the Security Parameters Pointer of the desired Security
+Association to be used for Authentication TLV support for a given port.
+Any port with an assigned spp will attach Authentication TLVs to all
+outbound messages and check for Authentication TLVs on all inbound
+messages in accordance to the corresponding security association
+sourced via the \fBsa_file\fR directive. Outbound Authentication TLVs
+are generated using the key specified by \fBactive_key_id\fR. Not
+compatible with one step ports or advertised versions less then
+PTPv2.1. Requires \fBsa_file\fR and \fBactive_key_id\fR directives.
+Must be in the range of 0 to 255, inclusive.
+The default is -1 (disabled).
 
 .TP
 .B transportSpecific

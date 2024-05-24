@@ -25,6 +25,7 @@
 
 #include "notification.h"
 #include "print.h"
+#include "sad.h"
 #include "tlv.h"
 #include "transport.h"
 #include "pmc_common.h"
@@ -481,6 +482,7 @@ static void print_help(FILE *fp)
 }
 
 struct pmc {
+	struct config *cfg;
 	UInteger16 sequence_id;
 	UInteger8 boundary_hops;
 	UInteger8 domain_number;
@@ -492,12 +494,16 @@ struct pmc {
 	struct interface *iface;
 	struct fdarray fdarray;
 	int zero_length_gets;
+	int spp;
+	UInteger32 active_key_id;
+	UInteger8 allow_unauth;
 };
 
 struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       const char *iface_name, const char *remote_address,
 		       UInteger8 boundary_hops, UInteger8 domain_number,
-		       UInteger8 transport_specific, int zero_datalen)
+		       UInteger8 transport_specific, UInteger8 allow_unauth,
+		       int zero_datalen)
 {
 	struct pmc *pmc;
 	UInteger32 proc_id;
@@ -524,6 +530,14 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 	pmc->boundary_hops = boundary_hops;
 	pmc->domain_number = domain_number;
 	pmc->transport_specific = transport_specific;
+	pmc->cfg = cfg;
+	pmc->spp = config_get_int(cfg, NULL, "spp");
+	pmc->active_key_id = config_get_uint(cfg, NULL, "active_key_id");
+	pmc->allow_unauth = allow_unauth;
+
+	if (sad_readiness_check(pmc->spp, pmc->active_key_id, pmc->cfg)) {
+		goto failed;
+	}
 
 	pmc->transport = transport_create(cfg, transport_type);
 	if (!pmc->transport) {
@@ -595,7 +609,12 @@ static int pmc_send(struct pmc *pmc, struct ptp_message *msg)
 {
 	int err;
 
-	err = msg_pre_send(msg);
+	if (pmc->spp >= 0) {
+		err = sad_append_auth_tlv(pmc->cfg, pmc->spp,
+					  pmc->active_key_id, msg);
+	} else {
+		err = msg_pre_send(msg);
+	}
 	if (err) {
 		pr_err("msg_pre_send failed");
 		return -1;
@@ -815,8 +834,9 @@ int pmc_send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name)
 
 struct ptp_message *pmc_recv(struct pmc *pmc)
 {
-	struct ptp_message *msg;
-	int cnt, err;
+	struct ptp_message *msg, *dup = NULL;
+	int cnt, err, spp = pmc->spp;
+	struct tlv_extra *extra;
 
 	msg = msg_allocate();
 	if (!msg) {
@@ -828,6 +848,12 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 	if (cnt <= 0) {
 		pr_err("recv message failed");
 		goto failed;
+	}
+	if (spp >= 0) {
+		dup = msg_duplicate(msg, 0);
+		if (!dup) {
+			goto failed;
+		}
 	}
 	err = msg_post_recv(msg, cnt);
 	if (err) {
@@ -846,10 +872,40 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 		       msg_type_string(msg_type(msg)));
 		goto failed;
 	}
-
+	if (pmc->allow_unauth && (msg_type(msg) == SIGNALING ||
+	    (msg_type(msg) == MANAGEMENT && management_action(msg) == RESPONSE))) {
+		spp = -1;
+		TAILQ_FOREACH(extra, &msg->tlv_list, list) {
+			if (extra->tlv->type == TLV_AUTHENTICATION) {
+				spp = pmc->spp;
+			}
+		}
+	}
+	err = sad_process_auth(pmc->cfg, spp, msg, dup);
+	if (err) {
+		if (pmc->allow_unauth == 2) {
+			pr_notice("auth failed but allow_unauth set");
+		} else {
+			switch (err) {
+			case -EBADMSG:
+				pr_err("auth: bad message");
+				break;
+			case -EPROTO:
+				pr_debug("auth: ignoring message");
+				break;
+			}
+			goto failed;
+		}
+	}
+	if (dup) {
+		msg_put(dup);
+	}
 	return msg;
 failed:
 	msg_put(msg);
+	if (dup) {
+		msg_put(dup);
+	}
 	return NULL;
 }
 

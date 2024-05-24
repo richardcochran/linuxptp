@@ -18,6 +18,7 @@
 #include "interface.h"
 #include "phc.h"
 #include "print.h"
+#include "sad.h"
 #include "ts2phc.h"
 #include "version.h"
 
@@ -35,9 +36,10 @@ static void ts2phc_cleanup(struct ts2phc_private *priv)
 	ts2phc_pps_sink_cleanup(priv);
 	if (priv->src)
 		ts2phc_pps_source_destroy(priv->src);
-	if (priv->cfg)
+	if (priv->cfg) {
+		sad_destroy(priv->cfg);
 		config_destroy(priv->cfg);
-
+	}
 	if (priv->agent)
 		pmc_agent_destroy(priv->agent);
 
@@ -662,6 +664,12 @@ int main(int argc, char *argv[])
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	STAILQ_INIT(&priv.sinks);
+
+	if (sad_create(cfg)) {
+		fprintf(stderr, "failed to get security associations\n");
+		ts2phc_cleanup(&priv);
+		return -1;
+	}
 
 	snprintf(uds_local, sizeof(uds_local), "/var/run/ts2phc.%d",
 		 getpid());

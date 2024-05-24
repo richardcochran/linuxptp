@@ -49,6 +49,7 @@
 #include "pi.h"
 #include "pmc_agent.h"
 #include "print.h"
+#include "sad.h"
 #include "servo.h"
 #include "sk.h"
 #include "stats.h"
@@ -1445,6 +1446,10 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		n_domains = 1;
+	}
+
+	if (sad_create(cfg)) {
+		goto end;
 	}
 
 	for (i = 0; i < n_domains; i++) {

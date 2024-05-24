@@ -15,6 +15,7 @@
 #include "lstab.h"
 #include "pmc_common.h"
 #include "print.h"
+#include "sad.h"
 #include "version.h"
 #include "tz.h"
 
@@ -184,7 +185,7 @@ static int update_ptp_serivce(struct tzinfo *tz, struct tzinfo *next)
 	pmc = pmc_create(cfg, TRANS_UDS, uds_local,
 			 config_get_string(cfg, NULL, "uds_address"), 0,
 			 config_get_int(cfg, NULL, "domainNumber"),
-			 config_get_int(cfg, NULL, "transportSpecific") << 4, 1);
+			 config_get_int(cfg, NULL, "transportSpecific") << 4, 0, 1);
 	if (!pmc) {
 		return -1;
 	}
@@ -376,6 +377,10 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (sad_create(cfg)) {
+		goto out;
+	}
+
 	print_set_progname(progname);
 	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
@@ -383,6 +388,7 @@ int main(int argc, char *argv[])
 
 	err = do_tztool(timezone);
 out:
+	sad_destroy(cfg);
 	config_destroy(cfg);
 	return err;
 }

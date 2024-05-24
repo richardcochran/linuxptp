@@ -1,4 +1,4 @@
-.TH PHC2SYS 8 "February 2023" "linuxptp"
+.TH PHC2SYS 8 "March 2024" "linuxptp"
 .SH NAME
 phc2sys \- synchronize two or more clocks
 
@@ -271,6 +271,15 @@ sets the program options. This is the only used option.
 .SH FILE OPTIONS
 
 .TP
+.B active_key_id
+Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
+specify which key from the \fBspp\fR defined Security Association
+should be used for outbound icv calculations. All Security Assocations
+are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
+and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
+inclusive. The default is 0 (disabled).
+
+.TP
 .B clock_servo
 The servo which is used to synchronize the local clock. Valid values
 are "pi" for a PI controller, "linreg" for an adaptive controller using
@@ -358,6 +367,14 @@ The address of the UNIX domain socket to be used by the refclock_sock servo.
 The default is /var/run/refclock.ptp.sock.
 
 .TP
+.B sa_file
+Specifies the location of the file containing Security Associations used
+for immediate security processing of the Authentication TLV in support of
+the optional security mechanism defined in ieee1588-2019 ch 14.16. See
+\fBSECURITY ASSOCIATION OPTIONS\fR for more info on file contents.
+The default is an empty string. (disabled).
+
+.TP
 .B sanity_freq_limit
 The maximum allowed frequency offset between uncorrected clock and the
 system monotonic clock in parts per billion (ppb). This is used as a
@@ -379,6 +396,15 @@ start. The default is 0.0.
 Same as option
 .B \-S
 (see above).
+
+.TP
+.B spp
+Specifies the security parameters pointer for the desired security association
+to be used for authentication tlv support. If specified, the port owning the
+spp will attempt to attach (outbound) and check (inbound) authentication tlvs
+for all messages in accordance to the corresponding security association
+sourced via the \fBsa_file\fR directive. Not compatible with one step ports.
+Must be in the range of -1 to 255, inclusive. The default is -1 (disabled).
 
 .TP
 .B transportSpecific

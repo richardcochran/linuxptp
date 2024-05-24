@@ -31,7 +31,8 @@ struct pmc;
 struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       const char *iface_name, const char *remote_address,
 		       UInteger8 boundary_hops, UInteger8 domain_number,
-		       UInteger8 transport_specific, int zero_datalen);
+		       UInteger8 transport_specific, UInteger8 allow_unauth,
+		       int zero_datalen);
 
 void pmc_destroy(struct pmc *pmc);
 

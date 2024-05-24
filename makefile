@@ -74,12 +74,12 @@ ptp4l: $(OBJ)
 nsm: config.o $(FILTERS) hash.o interface.o msg.o nsm.o phc.o print.o \
  rtnl.o sk.o $(TRANSP) tlv.o tsproc.o util.o version.o
 
-pmc: config.o hash.o interface.o msg.o phc.o pmc.o pmc_common.o print.o sk.o \
- tlv.o $(TRANSP) util.o version.o
+pmc: config.o hash.o interface.o msg.o phc.o pmc.o pmc_common.o print.o \
+ $(SECURITY) sk.o tlv.o $(TRANSP) util.o version.o
 
 phc2sys: clockadj.o clockcheck.o config.o hash.o interface.o msg.o \
- phc.o phc2sys.o pmc_agent.o pmc_common.o print.o $(SERVOS) sk.o stats.o \
- sysoff.o tlv.o $(TRANSP) util.o version.o
+ phc.o phc2sys.o pmc_agent.o pmc_common.o print.o $(SECURITY) $(SERVOS) \
+ sk.o stats.o sysoff.o tlv.o $(TRANSP) util.o version.o
 
 hwstamp_ctl: hwstamp_ctl.o version.o
 
@@ -88,11 +88,11 @@ phc_ctl: phc_ctl.o phc.o sk.o util.o clockadj.o sysoff.o print.o version.o
 timemaster: phc.o print.o rtnl.o sk.o timemaster.o util.o version.o
 
 ts2phc: config.o clockadj.o hash.o interface.o msg.o phc.o pmc_agent.o \
- pmc_common.o print.o $(SERVOS) sk.o $(TS2PHC) tlv.o transport.o raw.o \
- udp.o udp6.o uds.o util.o version.o
+ pmc_common.o print.o $(SECURITY) $(SERVOS) sk.o $(TS2PHC) tlv.o transport.o \
+ raw.o udp.o udp6.o uds.o util.o version.o
 
 tz2alt: config.o hash.o interface.o lstab.o msg.o phc.o pmc_common.o print.o \
- sk.o tlv.o $(TRANSP) tz2alt.o util.o version.o
+ $(SECURITY) sk.o tlv.o $(TRANSP) tz2alt.o util.o version.o
 
 version.o: .version version.sh $(filter-out version.d,$(DEPEND))
 

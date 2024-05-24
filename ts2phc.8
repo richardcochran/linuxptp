@@ -1,4 +1,4 @@
-.TH TS2PHC 8 "February 2023" "linuxptp"
+.TH TS2PHC 8 "March 2024" "linuxptp"
 .SH NAME
 ts2phc - Synchronizes one or more PTP Hardware Clocks using external time stamps.
 
@@ -118,6 +118,15 @@ command line option.
 .SH GLOBAL OPTIONS
 
 .TP
+.B active_key_id
+Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
+specify which key from the \fBspp\fR defined Security Association
+should be used for outbound icv calculations. All Security Assocations
+are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
+and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
+inclusive. The default is 0 (disabled).
+
+.TP
 .B first_step_threshold
 The maximum offset, specified in seconds, that the servo will correct by
 changing the clock frequency (phase when using nullf servo) instead of stepping
@@ -162,11 +171,28 @@ with the log level of the message as a number.  The default is an empty string
 argument).
 
 .TP
+.B sa_file
+Specifies the location of the file containing Security Associations used
+for immediate security processing of the Authentication TLV in support of
+the optional security mechanism defined in ieee1588-2019 ch 14.16. See
+\fBSECURITY ASSOCIATION OPTIONS\fR for more info on file contents.
+The default is an empty string. (disabled).
+
+.TP
 .B step_threshold
 The maximum offset, specified in seconds, that the servo will correct
 by changing the clock frequency instead of stepping the clock. When
 set to 0.0, the servo will never step the clock except on start.
 The default is 0.0.
+
+.TP
+.B spp
+Specifies the security parameters pointer for the desired security association
+to be used for authentication tlv support. If specified, the port owning the
+spp will attempt to attach (outbound) and check (inbound) authentication tlvs
+for all messages in accordance to the corresponding security association
+sourced via the \fBsa_file\fR directive. Not compatible with one step ports.
+Must be in the range of -1 to 255, inclusive. The default is -1 (disabled).
 
 .TP
 .B ts2phc.nmea_remote_host, ts2phc.nmea_remote_port
