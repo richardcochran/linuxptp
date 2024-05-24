@@ -228,6 +228,15 @@ struct management_error_status {
 	Octet         data[0];
 } PACKED;
 
+struct authentication_tlv {
+	Enumeration16 type;
+	UInteger16    length;
+	UInteger8     spp;
+	Octet         secParamIndicator;
+	UInteger32    keyID;
+	Octet         data[0];
+} PACKED;
+
 struct nsm_resp_tlv_head {
 	Enumeration16           type;
 	UInteger16              length;

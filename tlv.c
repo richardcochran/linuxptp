@@ -1009,6 +1009,26 @@ static void slave_rx_sync_timing_data_pre_send(struct tlv_extra *extra)
 	}
 }
 
+static int auth_post_recv(struct tlv_extra *extra)
+{
+	struct authentication_tlv *auth = (struct authentication_tlv *) extra->tlv;
+
+	if (auth->length < sizeof(*auth)) {
+		return -EBADMSG;
+	}
+
+	NTOHL(auth->keyID);
+
+	return 0;
+}
+
+static void auth_pre_send(struct tlv_extra *extra)
+{
+	struct authentication_tlv *auth = (struct authentication_tlv *) extra->tlv;
+
+	HTONL(auth->keyID);
+}
+
 static int unicast_message_type_valid(uint8_t message_type)
 {
 	message_type >>= 4;
@@ -1191,7 +1211,10 @@ int tlv_post_recv(struct tlv_extra *extra)
 		break;
 	case TLV_CUMULATIVE_RATE_RATIO:
 	case TLV_PAD:
+		break;
 	case TLV_AUTHENTICATION:
+		result = auth_post_recv(extra);
+		break;
 	default:
 		break;
 	}
@@ -1258,7 +1281,10 @@ void tlv_pre_send(struct TLV *tlv, struct tlv_extra *extra)
 		break;
 	case TLV_CUMULATIVE_RATE_RATIO:
 	case TLV_PAD:
+		break;
 	case TLV_AUTHENTICATION:
+		auth_pre_send(extra);
+		break;
 	default:
 		break;
 	}
