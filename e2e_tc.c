@@ -22,6 +22,7 @@
 #include "port_private.h"
 #include "print.h"
 #include "rtnl.h"
+#include "sad.h"
 #include "tc.h"
 
 void e2e_dispatch(struct port *p, enum fsm_event event, int mdiff)
@@ -50,6 +51,7 @@ void e2e_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	case PS_FAULTY:
 	case PS_DISABLED:
 		port_disable(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		break;
 	case PS_LISTENING:
 		port_set_announce_tmo(p);
@@ -60,6 +62,7 @@ void e2e_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		break;
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		break;
 	case PS_PASSIVE:
 		port_set_announce_tmo(p);
@@ -67,6 +70,7 @@ void e2e_dispatch(struct port *p, enum fsm_event event, int mdiff)
 	case PS_UNCALIBRATED:
 		flush_last_sync(p);
 		flush_delay_req(p);
+		sad_set_last_seqid(clock_config(p->clock), p->spp, -1);
 		/* fall through */
 	case PS_SLAVE:
 		port_set_announce_tmo(p);
@@ -76,7 +80,7 @@ void e2e_dispatch(struct port *p, enum fsm_event event, int mdiff)
 
 enum fsm_event e2e_event(struct port *p, int fd_index)
 {
-	int cnt, fd = p->fda.fd[fd_index];
+	int cnt, err, fd = p->fda.fd[fd_index];
 	enum fsm_event event = EV_NONE;
 	struct ptp_message *msg, *dup;
 
@@ -160,9 +164,27 @@ enum fsm_event e2e_event(struct port *p, int fd_index)
 		msg_put(msg);
 		return EV_NONE;
 	}
+	msg_tlv_copy(dup, msg);
 	if (tc_ignore(p, dup)) {
 		msg_put(dup);
 		dup = NULL;
+	} else {
+		err = sad_process_auth(clock_config(p->clock), p->spp, dup, msg);
+		if (err) {
+			switch (err) {
+			case -EBADMSG:
+				pr_err("%s: auth: bad message", p->log_name);
+				break;
+			case -EPROTO:
+				pr_debug("%s: auth: ignoring message", p->log_name);
+				break;
+			}
+			msg_put(msg);
+			if (dup) {
+				msg_put(dup);
+			}
+			return EV_NONE;
+		}
 	}
 
 	switch (msg_type(msg)) {

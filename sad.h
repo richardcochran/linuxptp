@@ -26,6 +26,17 @@ struct security_association {
 };
 
 /**
+ * Update authentication tlvs for message passing through (tc). Pass
+ * a network byte order message that still contains tlv pointers.
+ * Attempt to recalculate icv for each authentication tlv attached.
+ * @param cfg  pointer to config that contains sad
+ * @param msg  msg that the authentication tlvs should be updated for
+ * @return     -1 if sa/key is unknown, otherwise 0
+ */
+int sad_update_auth_tlv(struct config *cfg,
+			struct ptp_message *msg);
+
+/**
  * Append authentication tlv to outbound messages. Includes
  * msg_pre_send() to put message in network byte order so the icv can
  * be calculated.

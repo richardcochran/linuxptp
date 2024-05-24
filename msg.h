@@ -309,6 +309,18 @@ struct tlv_extra *msg_tlv_append(struct ptp_message *msg, int length);
  */
 void msg_tlv_attach(struct ptp_message *msg, struct tlv_extra *extra);
 
+/**
+ * Copy list of TLVs from message that has gone through @ref msg_post_recv()
+ * to a network byte order duplicate message. This is useful for TC applications
+ * where any auth tlvs must be updated on the raw forwarded messages.
+ * @param msg  A message obtained using @ref msg_allocate().
+ *             The passed message must have been passed to @ref msg_post_recv()
+ *             in order to have tlv pointers attached.
+ * @param dup  A duplicate of msg that is still in network byte order.
+ * @return     -1 if the messages do not match, otherwise 0
+ */
+int msg_tlv_copy(struct ptp_message *msg, struct ptp_message *dup);
+
 /*
  * Return the number of TLVs attached to a message.
  * @param msg  A message obtained using @ref msg_allocate().

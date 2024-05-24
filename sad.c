@@ -99,6 +99,60 @@ static int sad_generate_icv(struct security_association *sa,
 	return icv_len;
 }
 
+int sad_update_auth_tlv(struct config *cfg,
+			struct ptp_message *msg)
+{
+	struct tlv_extra *extra;
+	struct authentication_tlv *auth;
+	struct security_association *sa;
+	struct security_association_key *key;
+	void *sequenceNo, *res, *icv;
+	/* update any/all authentication tlvs now */
+	TAILQ_FOREACH(extra, &msg->tlv_list, list) {
+		if (ntohs(extra->tlv->type) != TLV_AUTHENTICATION) {
+			continue;
+		}
+		auth = (struct authentication_tlv *) extra->tlv;
+		/* retrieve sa specified by spp in tlv */
+		sa = sad_get_association(cfg, auth->spp);
+		if (!sa) {
+			return -1;
+		}
+		/* verify res, seqnum, disclosedKey field indicators match expectations */
+		if ((sa->res_ind != ((auth->secParamIndicator & 0x1) != 0)) ||
+		    (sa->seqnum_ind != ((auth->secParamIndicator & 0x2) != 0)) ||
+		    (sa->immediate_ind == ((auth->secParamIndicator & 0x4) != 0))) {
+			pr_debug("sa %u: unable to update auth tlv,"
+				 " sec param %d does not match",
+				 sa->spp, auth->secParamIndicator);
+			return -1;
+		}
+		/* retrieve key specified by keyid in tlv */
+		key = sad_get_key(sa, ntohl(auth->keyID));
+		if (!key) {
+			pr_debug("sa %u: unable to update auth tlv,"
+				 " unable to retrieve key %u",
+				 sa->spp, ntohl(auth->keyID));
+			return -1;
+		}
+		/* confirm tlv length to be generated matches what already exists */
+		if (ntohs(auth->length) != sad_get_auth_tlv_len(sa, key->icv->digest_len) - 4) {
+			pr_debug("sa %u: unable to update auth tlv,"
+				 " length is not maintained", sa->spp);
+			return -1;
+		}
+		/* set pointers to extra data used for icv generation */
+		sequenceNo = auth->data;
+		res = sequenceNo + (sa->seqnum_ind ? sa->seqnum_len : 0);
+		icv = res + (sa->res_ind ? sa->res_len : 0);
+		if (!sad_generate_icv(sa, key, msg, icv)) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /**
  * append auth tlv to outbound messages. This includes:
  * 1. retrieve security association, key

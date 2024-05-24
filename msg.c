@@ -190,6 +190,8 @@ static int suffix_post_recv(struct ptp_message *msg, int len)
 	if (!ptr)
 		return 0;
 
+	msg_tlv_recycle(msg);
+
 	while (len >= sizeof(struct TLV)) {
 		extra = tlv_extra_alloc();
 		if (!extra) {
@@ -234,7 +236,6 @@ static void suffix_pre_send(struct ptp_message *msg)
 		tlv->type = htons(tlv->type);
 		tlv->length = htons(tlv->length);
 	}
-	msg_tlv_recycle(msg);
 }
 
 static void timestamp_post_recv(struct ptp_message *m, struct Timestamp *ts)
@@ -515,6 +516,27 @@ int msg_tlv_count(struct ptp_message *msg)
 		count++;
 
 	return count;
+}
+
+int msg_tlv_copy(struct ptp_message *msg, struct ptp_message *dup) {
+	struct tlv_extra *extra, *dup_extra;
+	struct TLV *tlv;
+
+	if (msg_type(msg) != msg_type(dup)) {
+		return -1;
+	}
+	if (msg->header.messageLength != ntohs(dup->header.messageLength)) {
+		return -1;
+	}
+
+	TAILQ_FOREACH(extra, &msg->tlv_list, list) {
+		tlv = (void *) extra->tlv - (void *) msg + (void *) dup;
+		dup_extra = tlv_extra_alloc();
+		dup_extra->tlv = tlv;
+		msg_tlv_attach(dup, dup_extra);
+	}
+
+	return 0;
 }
 
 const char *msg_type_string(int type)

@@ -20,6 +20,7 @@
 
 #include "port.h"
 #include "print.h"
+#include "sad.h"
 #include "tc.h"
 #include "tmv.h"
 
@@ -162,6 +163,7 @@ static void tc_complete_response(struct port *q, struct port *p,
 	c1 = net2host64(resp->header.correction);
 	c2 = c1 + tmv_to_TimeInterval(residence);
 	resp->header.correction = host2net64(c2);
+	sad_update_auth_tlv(clock_config(q->clock), resp);
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, resp);
 	if (cnt <= 0) {
 		pr_err("tc failed to forward response on %s", p->log_name);
@@ -223,6 +225,7 @@ static void tc_complete_syfup(struct port *q, struct port *p,
 	c2 += tmv_to_TimeInterval(q->peer_delay);
 	c2 += q->asymmetry;
 	fup->header.correction = host2net64(c2);
+	sad_update_auth_tlv(clock_config(q->clock), fup);
 	cnt = transport_send(p->trp, &p->fda, TRANS_GENERAL, fup);
 	if (cnt <= 0) {
 		pr_err("tc failed to forward follow up on %s", p->log_name);
@@ -388,6 +391,7 @@ int tc_forward(struct port *q, struct ptp_message *msg)
 	if (q->tc_spanning_tree && msg_type(msg) == ANNOUNCE) {
 		steps_removed = ntohs(msg->announce.stepsRemoved);
 		msg->announce.stepsRemoved = htons(1 + steps_removed);
+		sad_update_auth_tlv(clock_config(q->clock), msg);
 	}
 
 	for (p = clock_first_port(q->clock); p; p = LIST_NEXT(p, list)) {
@@ -457,7 +461,10 @@ int tc_fwd_sync(struct port *q, struct ptp_message *msg)
 		fup->header.sequenceId         = msg->header.sequenceId;
 		fup->header.logMessageInterval = msg->header.logMessageInterval;
 		fup->follow_up.preciseOriginTimestamp = msg->sync.originTimestamp;
+		sad_append_auth_tlv(clock_config(q->clock), q->spp,
+				    q->active_key_id, fup);
 		msg->header.flagField[0]      |= TWO_STEP;
+		sad_update_auth_tlv(clock_config(q->clock), msg);
 	}
 	err = tc_fwd_event(q, msg);
 	if (err) {

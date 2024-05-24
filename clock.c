@@ -36,6 +36,7 @@
 #include "msg.h"
 #include "phc.h"
 #include "port.h"
+#include "sad.h"
 #include "servo.h"
 #include "stats.h"
 #include "print.h"
@@ -335,6 +336,7 @@ void clock_send_notification(struct clock *c, struct ptp_message *msg,
 		msg->management.targetPortIdentity.portNumber =
 			htons(s->targetPortIdentity.portNumber);
 		msg->address = s->addr;
+		sad_update_auth_tlv(clock_config(c), msg);
 		port_forward_to(uds, msg);
 	}
 }
@@ -1576,6 +1578,7 @@ static int clock_do_forward_mgmt(struct clock *c,
 		/* delay calling msg_pre_send until
 		 * actually forwarding */
 		msg_pre_send(msg);
+		sad_update_auth_tlv(clock_config(c), msg);
 		*pre_sent = 1;
 	}
 	return port_forward(out, msg);
