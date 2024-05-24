@@ -44,6 +44,11 @@ incdefs := $(shell CC="$(CC)" $(srcdir)/incdefs.sh)
 version := $(shell $(srcdir)/version.sh $(srcdir))
 VPATH	= $(srcdir)
 
+ifneq (,$(findstring -DHAVE_NETTLE, $(incdefs)))
+LDLIBS += -lnettle
+SECURITY += sad_nettle.o
+endif
+
 prefix	= /usr/local
 sbindir	= $(prefix)/sbin
 mandir	= $(prefix)/man

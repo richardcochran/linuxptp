@@ -36,6 +36,21 @@ struct security_association_key {
 	UInteger32 key_id;        /* symmetric key ID */
 };
 
+#if defined (HAVE_NETTLE)
+struct mac_data *sad_init_mac(integrity_alg_type algorithm,
+			      const unsigned char *key, size_t key_len);
+
+void sad_deinit_mac(struct mac_data *parms);
+
+int sad_hash(struct mac_data *parms,
+	     const void *data, size_t data_len,
+	     unsigned char *mac, size_t mac_len);
+
+int sad_verify(struct mac_data *mac_data,
+	       const void *data, size_t data_len,
+	       unsigned char *mac, size_t mac_len);
+
+#else
 static inline struct mac_data *sad_init_mac(integrity_alg_type algorithm,
 					    const unsigned char *key,
 					    size_t key_len)
@@ -65,5 +80,7 @@ static inline int sad_verify(struct mac_data *mac_data,
 	pr_err("security configured but not supported");
 	return -1;
 }
+
+#endif
 
 #endif

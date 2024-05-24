@@ -365,8 +365,10 @@ int sad_create(struct config *cfg)
 		return 0;
 	}
 
+#if !defined (HAVE_NETTLE)
 	pr_err("sa_file set but security not supported");
 	return -1;
+#endif
 
 	FILE *fp = fopen(sa_file, "r");
 	if (!fp) {

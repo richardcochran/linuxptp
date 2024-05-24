@@ -50,6 +50,43 @@ user_flags()
 			fi
 		done
 	done
+
+	# Look for nettle support.
+	for d in $dirs; do
+		sdirs=$(find $d -type d -name "nettle")
+		for s in $sdirs; do
+			have_hmac="0"
+			files=$(find $s -type f -name hmac.h)
+			for f in $files; do
+				if grep -q hmac_sha256_set_key $f; then
+					have_hmac="1"
+					break 1;
+				fi
+			done
+			have_memops="0"
+			files=$(find $s -type f -name memops.h)
+			for f in $files; do
+				if grep -q memeql_sec $f; then
+					have_memops="1"
+					break 1;
+				fi
+			done
+			have_nettle_meta="0"
+			files=$(find $s -type f -name nettle-meta.h)
+			for f in $files; do
+				if grep -q nettle_get_macs $f; then
+					have_nettle_meta="1"
+					break 1;
+				fi
+			done
+			if [ $have_hmac = "1" ] &&
+			   [ $have_memops = "1" ] &&
+			   [ $have_nettle_meta = "1" ]; then
+				printf " -DHAVE_NETTLE"
+				break 2
+			fi
+		done
+	done
 }
 
 #
