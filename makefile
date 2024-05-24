@@ -47,6 +47,9 @@ VPATH	= $(srcdir)
 ifneq (,$(findstring -DHAVE_NETTLE, $(incdefs)))
 LDLIBS += -lnettle
 SECURITY += sad_nettle.o
+else ifneq (,$(findstring -DHAVE_GNUTLS, $(incdefs)))
+LDLIBS += -lgnutls
+SECURITY += sad_gnutls.o
 endif
 
 prefix	= /usr/local

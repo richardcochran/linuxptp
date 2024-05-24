@@ -87,6 +87,20 @@ user_flags()
 			fi
 		done
 	done
+
+	# Look for gnutls support.
+	for d in $dirs; do
+		sdirs=$(find $d -type d -name "gnutls")
+		for s in $sdirs; do
+			files=$(find $s -type f -name crypto.h)
+			for f in $files; do
+				if grep -q gnutls_hmac_init $f; then
+					printf " -DHAVE_GNUTLS"
+					break 3
+				fi
+			done
+		done
+	done
 }
 
 #
