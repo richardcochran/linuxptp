@@ -51,6 +51,13 @@
 
   - Supports bonded, IPoIB, and vlan interfaces.
 
+  - Supports Authentication TLV using Nettle, GnuTLS, or OpenSSL
+
+    - NOTE: OpenSSLv3+ is distributed under Apache 2 license. When
+            compiled with this library, LinuxPTP is distributed
+            under GPL3. An additional flag is required for linking:
+            ~make EXTRA_CFLAGS=-DUSE_OPENSSL~
+
 * Getting the Code
 
   You can download the latest released version at Source Forge.

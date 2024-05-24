@@ -1,4 +1,4 @@
-.TH PTP4l 8 "February 2023" "linuxptp"
+.TH PTP4l 8 "March 2024" "linuxptp"
 .SH NAME
 ptp4l - PTP Boundary/Ordinary/Transparent Clock
 
@@ -141,6 +141,15 @@ Tables for configuring unicast discovery begin with
 See UNICAST DISCOVERY OPTIONS, below.
 
 .SH PORT OPTIONS
+
+.TP
+.B active_key_id
+Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
+specify which key from the \fBspp\fR defined Security Association
+should be used for outbound icv calculations. All Security Assocations
+are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
+and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
+inclusive. The default is 0 (disabled).
 
 .TP
 .B allowedLostResponses
@@ -478,6 +487,20 @@ client state. In addition, the local clock will ignore Announce
 messages received on this port. This option's intended use is to
 support the Telecom Profiles according to ITU-T G.8265.1, G.8275.1,
 and G.8275.2. The default value is zero or false.
+
+.TP
+.B spp
+Specifies the Security Parameters Pointer of the desired Security
+Association to be used for Authentication TLV support for a given port.
+Any port with an assigned spp will attach Authentication TLVs to all
+outbound messages and check for Authentication TLVs on all inbound
+messages in accordance to the corresponding security association
+sourced via the \fBsa_file\fR directive. Outbound Authentication TLVs
+are generated using the key specified by \fBactive_key_id\fR. Not
+compatible with one step ports or advertised versions less then
+PTPv2.1. Requires \fBsa_file\fR and \fBactive_key_id\fR directives.
+Must be in the range of 0 to 255, inclusive.
+The default is -1 (disabled).
 
 .TP
 .B syncReceiptTimeout
@@ -892,6 +915,16 @@ the form HW;FW;SW and contain at most 32 utf8 symbols. The default is
 an ";;".
 
 .TP
+.B sa_file
+Specifies the location of the file containing Security Associations
+used for immediate security processing of the Authentication TLV in
+support of the optional security mechanism defined in ieee1588-2019
+ch 14.16. See \fBSECURITY ASSOCIATION OPTIONS\fR for information on how
+this file should be formatted. \fBspp\fR and \fBactive_key_id\fR should
+be specifed for each port to indicate which Security Association from
+the /fBsa_file/fR should be used. The default is an empty string.
+
+.TP
 .B sanity_freq_limit
 The maximum allowed frequency offset between uncorrected clock and the system
 monotonic clock in parts per billion (ppb). This is used as a sanity check of
@@ -1083,6 +1116,67 @@ delay requests.
 Each table must begin with a unique, positive table ID.  The port that
 claims a given table does so by including the ID as the value of
 its 'unicast_master_table' option.
+
+.SH SECURITY ASSOCIATION OPTIONS
+
+.TP
+.B spp
+Each security association must begin with a unique spp. The port that
+claims a given security association does so by including the spp as the
+value of its 'spp' option. Must be in the range of 0 to 255,
+inclusive.
+
+.TP
+.B seqid_window
+This option defines how far sequence id of an incoming sync/follow_up
+message can advance from the last successfully processed sync/follow_up
+before being considered a replayed message. Sync/follow_up seqid
+tracking is reset on port state change and updated upon successful
+processing. When set to zero, no seqid checking will be performed.
+Must be in the range of 0 to 32767 (0x7FFF) inclusive. The default
+value is 3.
+
+.TP
+.B allow_mutable
+This option allows for mutable correction fields if on path
+authentication tlv support is not possible. This option is NOT
+recommended as it leaves the correction field unprotected.
+The default value is 0 (disabled).
+
+.TP
+.B key (format: id type length value)
+Each security association must have at least one key entry. These
+entries should use the format 'id type length value'.
+- Key id:     Must be in the range of 1 to 2^32-1, inclusive.
+- Key type:   Allowed are SHA256-128, SHA256, AES128, AES256.
+- Key length: Optional verification key length in octets. Used to
+              verify the key value is of the length specified.
+- Key value:  Can be read as ASCII characters with the "ASCII:" prefix,
+              as a hexadecimal number with the "HEX:" prefix or as a
+              Base64 encoded string with the "B64:" prefix. If no
+              prefix is included, ASCII is assumed. Key values should
+              be randomally generated if possible. Ciphers (AES)
+              require the key length to match the cipher length
+              (ie AES-128 requires key of 128 bits or 16 bytes).
+
+.TP
+.B Example
+The following is an example of a security associations file:
+
+.EX
+[security_association]
+spp 0
+allow_mutable 1
+1 SHA256-128 HEX:F8ADC6B8B8E9AA709106BA42481EC9E29607334DE2C3C737A11A12931DB27F8C
+2 SHA256 32 HEX:EE91D469B3A8ADC6AC8EB28E21794C706E08FDE48863828A7B0281AFCA81B17D
+
+[security_association]
+spp 1
+seqid_window 20
+1 AES128 HEX:FAF48EBA01E7C5966A76CB787AED4E7B
+2 AES256 B64:PKTF9VQz94qPaoAzW4eE3JtFoQ8Ov1OTQSojalWyMbs=
+3 SHA256 26 abcdefghijklmnopqrstuvwxyz
+.EE
 
 .SH TIME SCALE USAGE
 
