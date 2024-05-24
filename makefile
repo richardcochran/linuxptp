@@ -44,6 +44,10 @@ incdefs := $(shell CC="$(CC)" $(srcdir)/incdefs.sh)
 version := $(shell $(srcdir)/version.sh $(srcdir))
 VPATH	= $(srcdir)
 
+ifeq (,$(findstring -DUSE_OPENSSL, $(EXTRA_CFLAGS)))
+incdefs := $(filter-out -DHAVE_OPENSSL, $(incdefs))
+endif
+
 ifneq (,$(findstring -DHAVE_NETTLE, $(incdefs)))
 LDLIBS += -lnettle
 SECURITY += sad_nettle.o
@@ -53,6 +57,9 @@ SECURITY += sad_gnutls.o
 else ifneq (,$(findstring -DHAVE_GNUPG, $(incdefs)))
 LDLIBS += -lgcrypt
 SECURITY += sad_gnupg.o
+else ifneq (,$(findstring -DHAVE_OPENSSL, $(incdefs)))
+LDLIBS += -lcrypto
+SECURITY += sad_openssl.o
 endif
 
 prefix	= /usr/local

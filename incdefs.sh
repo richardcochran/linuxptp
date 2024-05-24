@@ -112,6 +112,34 @@ user_flags()
 			fi
 		done
 	done
+
+	# Look for openssl support.
+	for d in $dirs; do
+		sdirs=$(find $d -type d -name "openssl")
+		for s in $sdirs; do
+			have_crypto="0"
+			files=$(find $s -type f -name crypto.h)
+			for f in $files; do
+				if grep -q CRYPTO_memcmp $f; then
+					have_crypto="1"
+					break 1;
+				fi
+			done
+			have_evp="0"
+			files=$(find $s -type f -name evp.h)
+			for f in $files; do
+				if grep -q EVP_MAC_init $f; then
+					have_evp="1"
+					break 1;
+				fi
+			done
+			if [ $have_crypto = "1" ] &&
+			   [ $have_evp = "1" ]; then
+				printf " -DHAVE_OPENSSL"
+				break 2
+			fi
+		done
+	done
 }
 
 #

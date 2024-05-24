@@ -366,7 +366,7 @@ int sad_create(struct config *cfg)
 	}
 
 #if !defined (HAVE_NETTLE) && !defined (HAVE_GNUTLS) && \
-    !defined (HAVE_GNUPG)
+    !defined (HAVE_GNUPG) && !defined (HAVE_OPENSSL)
 	pr_err("sa_file set but security not supported");
 	return -1;
 #endif
