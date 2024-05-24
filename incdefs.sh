@@ -101,6 +101,17 @@ user_flags()
 			done
 		done
 	done
+
+	# Look for gnupg support.
+	for d in $dirs; do
+		files=$(find $d -type f -name gcrypt.h)
+		for f in $files; do
+			if grep -q gcry_mac_open $f; then
+				printf " -DHAVE_GNUPG"
+				break 2
+			fi
+		done
+	done
 }
 
 #

@@ -36,7 +36,8 @@ struct security_association_key {
 	UInteger32 key_id;        /* symmetric key ID */
 };
 
-#if defined (HAVE_NETTLE) || defined (HAVE_GNUTLS)
+#if defined (HAVE_NETTLE) || defined (HAVE_GNUTLS) || \
+    defined (HAVE_GNUPG)
 struct mac_data *sad_init_mac(integrity_alg_type algorithm,
 			      const unsigned char *key, size_t key_len);
 

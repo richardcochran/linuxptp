@@ -50,6 +50,9 @@ SECURITY += sad_nettle.o
 else ifneq (,$(findstring -DHAVE_GNUTLS, $(incdefs)))
 LDLIBS += -lgnutls
 SECURITY += sad_gnutls.o
+else ifneq (,$(findstring -DHAVE_GNUPG, $(incdefs)))
+LDLIBS += -lgcrypt
+SECURITY += sad_gnupg.o
 endif
 
 prefix	= /usr/local
