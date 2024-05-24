@@ -45,6 +45,9 @@ struct config {
 
 	/* unicast master tables */
 	STAILQ_HEAD(ucmtab_head, unicast_master_table) unicast_master_tables;
+
+	/* security association database */
+	STAILQ_HEAD(sa_head, security_association) security_association_database;
 };
 
 int config_read(const char *name, struct config *cfg);

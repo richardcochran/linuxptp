@@ -22,6 +22,7 @@
 
 #include <string.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "address.h"
 #include "ddt.h"
@@ -474,5 +475,31 @@ void parray_extend(void ***a, ...);
  * @return          1 when rate limited, 0 otherwise.
  */
 int rate_limited(int interval, time_t *last);
+
+/**
+ * Get decoded length of a Base64 str in octets. Does not check the
+ * validity of the Base64 str, instead only provides the needed buffer
+ * length needed as a result of a valid base64 decoding.
+ *
+ * @param str       base64 string
+ * @param len       length or zero for null terminated string
+ * @return          size for buffer
+ */
+size_t base64_len(const char *str, size_t len);
+
+/**
+ * Decode Base64 str. The same buffer may be used for input string
+ * and output buffer, as long as the output buffer starts at the
+ * beginning or before the input string.
+ * You can generate with 'openssl rand -base64 <octets>'
+ * Or convert with 'base64 <binary file>'
+ *
+ * @param in_str    base64 string to decode
+ * @param len       length or zero for null terminated input string
+ * @param out       buffer for result
+ * @param out_len   length of buffer, update to actual size of result
+ * @return          true for success
+ */
+bool base64_decode(const char *in_str, size_t in_len, void *out, size_t *out_len);
 
 #endif

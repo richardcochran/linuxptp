@@ -29,6 +29,7 @@
 #include "pi.h"
 #include "print.h"
 #include "raw.h"
+#include "sad.h"
 #include "sk.h"
 #include "transport.h"
 #include "udp6.h"
@@ -195,6 +196,10 @@ int main(int argc, char *argv[])
 	ptp_hdr_ver = config_get_int(cfg, NULL, "ptp_minor_version");
 	ptp_hdr_ver = (ptp_hdr_ver << 4) | PTP_MAJOR_VERSION;
 
+	if (sad_create(cfg)) {
+		goto out;
+	}
+
 	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
@@ -258,6 +263,7 @@ int main(int argc, char *argv[])
 out:
 	if (clock)
 		clock_destroy(clock);
+	sad_destroy(cfg);
 	config_destroy(cfg);
 	return err;
 }
