@@ -72,7 +72,7 @@ all: $(PRG)
 ptp4l: $(OBJ)
 
 nsm: config.o $(FILTERS) hash.o interface.o msg.o nsm.o phc.o print.o \
- rtnl.o sk.o $(TRANSP) tlv.o tsproc.o util.o version.o
+ rtnl.o $(SECURITY) sk.o $(TRANSP) tlv.o tsproc.o util.o version.o
 
 pmc: config.o hash.o interface.o msg.o phc.o pmc.o pmc_common.o print.o \
  $(SECURITY) sk.o tlv.o $(TRANSP) util.o version.o

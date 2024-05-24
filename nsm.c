@@ -29,6 +29,7 @@
 #include "config.h"
 #include "print.h"
 #include "rtnl.h"
+#include "sad.h"
 #include "util.h"
 #include "version.h"
 
@@ -51,6 +52,8 @@ struct nsm {
 	struct PortIdentity	port_identity;
 	UInteger16		sequence_id;
 	const char		*name;
+	int			spp;
+	UInteger32		active_key_id;
 } the_nsm;
 
 static void nsm_help(FILE *fp);
@@ -285,6 +288,11 @@ static int nsm_open(struct nsm *nsm, struct config *cfg)
 	iface = STAILQ_FIRST(&cfg->interfaces);
 	nsm->name = name = interface_name(iface);
 	nsm->cfg = cfg;
+	nsm->spp = config_get_int(cfg, name, "spp");
+	nsm->active_key_id = config_get_uint(cfg, name, "active_key_id");
+	if (sad_readiness_check(nsm->spp, nsm->active_key_id, nsm->cfg)) {
+		return -1;
+	}
 
 	transport = config_get_int(cfg, name, "network_transport");
 
@@ -321,7 +329,7 @@ no_tsproc:
 
 static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 {
-	struct ptp_message *msg;
+	struct ptp_message *msg, *dup = NULL;
 	int cnt, err;
 
 	msg = msg_allocate();
@@ -335,6 +343,12 @@ static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 	if (cnt <= 0) {
 		pr_err("recv message failed");
 		goto failed;
+	}
+	if (nsm->spp >= 0) {
+		dup = msg_duplicate(msg, 0);
+		if (!dup) {
+			goto failed;
+		}
 	}
 	err = msg_post_recv(msg, cnt);
 	if (err) {
@@ -353,10 +367,27 @@ static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 		       msg_type_string(msg_type(msg)));
 		goto failed;
 	}
-
+	err = sad_process_auth(nsm->cfg, nsm->spp, msg, dup);
+	if (err) {
+		switch (err) {
+		case -EBADMSG:
+			pr_err("auth: bad message");
+			break;
+		case -EPROTO:
+			pr_debug("auth: ignoring message");
+			break;
+		}
+		goto failed;
+	}
+	if (dup) {
+		msg_put(dup);
+	}
 	return msg;
 failed:
 	msg_put(msg);
+	if (dup) {
+		msg_put(dup);
+	}
 	return NULL;
 }
 
@@ -407,7 +438,12 @@ static int nsm_request(struct nsm *nsm, char *target)
 	extra->tlv->type = TLV_PTPMON_REQ;
 	extra->tlv->length = 0;
 
-	err = msg_pre_send(msg);
+	if (nsm->spp >= 0) {
+		err = sad_append_auth_tlv(nsm->cfg, nsm->spp,
+					  nsm->active_key_id, msg);
+	} else {
+		err = msg_pre_send(msg);
+	}
 	if (err) {
 		pr_err("msg_pre_send failed");
 		goto out;
@@ -531,6 +567,10 @@ int main(int argc, char *argv[])
 	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
+	if (sad_create(cfg)) {
+		goto out;
+	}
+
 	err = nsm_open(nsm, cfg);
 	if (err) {
 		goto out;
@@ -620,6 +660,7 @@ int main(int argc, char *argv[])
 	nsm_close(nsm);
 out:
 	msg_cleanup();
+	sad_destroy(cfg);
 	config_destroy(cfg);
 	return err;
 }

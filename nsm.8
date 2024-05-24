@@ -1,4 +1,4 @@
-.TH NSM 8 "June 2019" "linuxptp"
+.TH NSM 8 "March 2024" "linuxptp"
 .SH NAME
 nsm \- NetSync Monitor client
 
@@ -85,6 +85,14 @@ options. The name of the section is the name of the configured port (e.g.
 
 .SH PORT OPTIONS
 .TP
+.B active_key_id
+Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
+specify which key from the \fBspp\fR defined Security Association
+should be used for outbound icv calculations. All Security Assocations
+are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
+and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
+inclusive. The default is 0 (disabled).
+.TP
 .B delayAsymmetry
 The time difference in nanoseconds of the transmit and receive
 paths. This value should be positive when the master-to-slave
@@ -95,6 +103,19 @@ is longer. The default is 0 nanoseconds.
 Select the network transport. Possible values are UDPv4 and L2. The default
 is UDPv4.
 .TP
+.B spp
+Specifies the Security Parameters Pointer of the desired Security
+Association to be used for Authentication TLV support for a given port.
+Any port with an assigned spp will attach Authentication TLVs to all
+outbound messages and check for Authentication TLVs on all inbound
+messages in accordance to the corresponding security association
+sourced via the \fBsa_file\fR directive. Outbound Authentication TLVs
+are generated using the key specified by \fBactive_key_id\fR. Not
+compatible with one step ports or advertised versions less then
+PTPv2.1. Requires \fBsa_file\fR and \fBactive_key_id\fR directives.
+Must be in the range of 0 to 255, inclusive.
+The default is -1 (disabled).
+.TP
 .B transportSpecific
 The transport specific field. Must be in the range 0 to 255.
 The default is 0.
@@ -104,6 +125,16 @@ The default is 0.
 .TP
 .B domainNumber
 The domain attribute of the local clock. The default is 0.
+.TP
+.B sa_file
+Specifies the location of the file containing Security Associations
+used for immediate security processing of the Authentication TLV in
+support of the optional security mechanism defined in ieee1588-2019
+ch 14.16. See \fBSECURITY ASSOCIATION OPTIONS\fR for information on how
+this file should be formatted. \fBspp\fR and \fBactive_key_id\fR should
+be specifed for each port to indicate which Security Association from
+the /fBsa_file/fR should be used. The default is an empty string.
+.TP
 .B time_stamping
 The time stamping method. The allowed values are hardware, software and legacy.
 The default is hardware.
