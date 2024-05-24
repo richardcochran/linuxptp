@@ -26,6 +26,19 @@ struct security_association {
 };
 
 /**
+ * Append authentication tlv to outbound messages. Includes
+ * msg_pre_send() to put message in network byte order so the icv can
+ * be calculated.
+ * @param cfg     pointer to config that contains sad
+ * @param spp     security parameters pointer for desired sa
+ * @param key_id  key_id from sa to be used for icv calculation
+ * @param msg     msg that the authentication tlv should be attached
+ * @return        -1 if sa/key is unknown, otherwise 0
+ */
+int sad_append_auth_tlv(struct config *cfg, int spp,
+			size_t key_id, struct ptp_message *msg);
+
+/**
  * Set the last received sequence id for SYNC/FOLLOW_UP
  * @param cfg    pointer to config that contains sad
  * @param spp    security parameters pointer for desired sa

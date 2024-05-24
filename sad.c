@@ -68,6 +68,98 @@ static inline size_t sad_get_auth_tlv_len(struct security_association *sa,
 }
 
 /**
+ * generate and append icv to an outbound message.
+ * when mutable is set, set correction to zero before hash and
+ * replace when done.
+ */
+static int sad_generate_icv(struct security_association *sa,
+			    struct security_association_key *key,
+			    struct ptp_message *msg, void *icv)
+{
+	size_t data_len, icv_len = 0;
+	Integer64 correction = 0;
+
+	/* msg length to start of icv */
+	data_len = (char *) icv - (char *) msg;
+
+	/* set correction to zero if mutable fields are allowed */
+	if (sa->mutable && msg->header.correction != 0) {
+		correction = msg->header.correction;
+		msg->header.correction = 0;
+	}
+
+	/* generate digest */
+	icv_len = sad_hash(key->data, msg, data_len,
+			   icv, key->icv->digest_len);
+
+	if (correction != 0) {
+		msg->header.correction = correction;
+	}
+
+	return icv_len;
+}
+
+/**
+ * append auth tlv to outbound messages. This includes:
+ * 1. retrieve security association, key
+ * 2. append tlv aind fill in all values besides icv
+ * 3. run msg_pre_send to format message to send on wire
+ * 4. generate icv and attach to message
+ */
+int sad_append_auth_tlv(struct config *cfg, int spp,
+			size_t key_id, struct ptp_message *msg)
+{
+	struct tlv_extra *extra;
+	struct authentication_tlv *auth;
+	struct security_association *sa;
+	struct security_association_key *key;
+	void *sequenceNo, *res, *icv;
+	/* immediately return if security is not configured */
+	if (spp < 0 || key_id < 1) {
+		return -1;
+	}
+	/* retrieve sa specified by spp */
+	sa = sad_get_association(cfg, spp);
+	if (!sa) {
+		return -1;
+	}
+	/* retrieve key specified by key_id */
+	key = sad_get_key(sa, key_id);
+	if (!key) {
+		return -1;
+	}
+	/* populate tlv fields */
+	extra = msg_tlv_append(msg, sad_get_auth_tlv_len(sa, key->icv->digest_len));
+	if (!extra) {
+		return -1;
+	}
+	auth = (struct authentication_tlv *) extra->tlv;
+	auth->type = TLV_AUTHENTICATION;
+	auth->length = sad_get_auth_tlv_len(sa, key->icv->digest_len) - 4;
+	auth->spp = sa->spp;
+	auth->secParamIndicator = 0;
+	if (sa->res_ind) {
+		auth->secParamIndicator += 0x1;
+	}
+	if (sa->seqnum_ind) {
+		auth->secParamIndicator += 0x2;
+	}
+	auth->keyID = key->key_id;
+	/* set pointers to extra data used for icv generation */
+	sequenceNo = auth->data;
+	res = sequenceNo + (sa->seqnum_ind ? sa->seqnum_len : 0);
+	icv = res + (sa->res_ind ? sa->res_len : 0);
+	if (msg_pre_send(msg)) {
+		return -1;
+	}
+	if (!sad_generate_icv(sa, key, msg, icv)) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
  * update the last received seqid
  */
 void sad_set_last_seqid(struct config *cfg,
@@ -134,6 +226,14 @@ static int sad_check_seqid(struct ptp_message *msg,
 	return 0;
 }
 
+/**
+ * iterate through attached tlvs on inbound messages and process any auth tlvs
+ * this includes:
+ * 1. confirm received spp, secParamIndictor and key match our expectations
+ * 2. zero mutable fields (correction field) if mutable is set
+ * 3. generate icv of inbound message using key from sa with matching key id
+ * 4. compare our icv with icv attached to message
+ */
 static int sad_check_auth_tlv(struct security_association *sa,
 			      struct ptp_message *msg,
 			      struct ptp_message *raw)

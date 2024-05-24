@@ -677,7 +677,13 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 				 enum transport_event event)
 {
 	int cnt;
-	if (msg_pre_send(msg)) {
+	if (port_has_security(p)) {
+		cnt = sad_append_auth_tlv(clock_config(p->clock), p->spp,
+					  p->active_key_id, msg);
+	} else {
+		cnt = msg_pre_send(msg);
+	}
+	if (cnt) {
 		return -1;
 	}
 	if (msg_unicast(msg)) {
@@ -3293,8 +3299,13 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 			  enum transport_event event)
 {
 	int cnt;
-
-	if (msg_pre_send(msg)) {
+	if (port_has_security(p)) {
+		cnt = sad_append_auth_tlv(clock_config(p->clock), p->spp,
+					  p->active_key_id, msg);
+	} else {
+		cnt = msg_pre_send(msg);
+	}
+	if (cnt) {
 		return -1;
 	}
 	if (msg_unicast(msg)) {
