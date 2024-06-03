@@ -249,8 +249,13 @@ static bool ts2phc_pps_sink_ignore(struct ts2phc_private *priv,
 	source_tmv = tmv_sub(source_tmv, priv->perout_phase);
 	source_ts = tmv_to_timespec(source_tmv);
 
-	ignore_upper = 1000000000 - sink->pulsewidth / 2;
-	ignore_lower = sink->pulsewidth / 2;
+	if (ts2phc_pps_source_get_type(priv->src) == TS2PHC_PPS_SOURCE_NMEA) {
+		ignore_upper = sink->pulsewidth;
+		ignore_lower = 0;
+	} else {
+		ignore_upper = 1000000000 - sink->pulsewidth / 2;
+		ignore_lower = sink->pulsewidth / 2;
+	}
 
 	return source_ts.tv_nsec > ignore_lower &&
 	       source_ts.tv_nsec < ignore_upper;

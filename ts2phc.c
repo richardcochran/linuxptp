@@ -420,9 +420,16 @@ static int ts2phc_pps_source_implicit_tstamp(struct ts2phc_private *priv,
 	 * deduce the timestamp (actually only seconds part, nanoseconds are by
 	 * construction zero) of this edge at the emitter based on the
 	 * emitter's current time.
+	 *
+	 * With an NMEA source assume its messages always follow the pulse, i.e.
+	 * assign the timestamp to the previous pulse instead of nearest pulse.
 	 */
-	if (source_ts.tv_nsec > NS_PER_SEC / 2)
+	if (ts2phc_pps_source_get_type(priv->src) == TS2PHC_PPS_SOURCE_NMEA) {
 		source_ts.tv_sec++;
+	} else {
+		if (source_ts.tv_nsec > NS_PER_SEC / 2)
+			source_ts.tv_sec++;
+	}
 	source_ts.tv_nsec = 0;
 
 	tmv = timespec_to_tmv(source_ts);
