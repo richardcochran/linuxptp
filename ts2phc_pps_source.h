@@ -53,4 +53,11 @@ int ts2phc_pps_source_getppstime(struct ts2phc_pps_source *src, struct timespec 
 
 struct ts2phc_clock *ts2phc_pps_source_get_clock(struct ts2phc_pps_source *src);
 
+/**
+ * Returns the type of the PPS source
+ * @param src    Pointer to a source obtained via @ref ts2phc_pps_source_create().
+ * @return       The type of the clock.
+ */
+enum ts2phc_pps_source_type ts2phc_pps_source_get_type(struct ts2phc_pps_source *src);
+
 #endif

@@ -26,6 +26,8 @@ struct ts2phc_pps_source *ts2phc_pps_source_create(struct ts2phc_private *priv,
 		src = ts2phc_phc_pps_source_create(priv, dev);
 		break;
 	}
+	if (src)
+		src->type = type;
 	return src;
 }
 
@@ -45,4 +47,9 @@ struct ts2phc_clock *ts2phc_pps_source_get_clock(struct ts2phc_pps_source *src)
 		return src->get_clock(src);
 
 	return NULL;
+}
+
+enum ts2phc_pps_source_type ts2phc_pps_source_get_type(struct ts2phc_pps_source *src)
+{
+	return src->type;
 }
