@@ -175,6 +175,8 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	sink->correction = nanoseconds_to_tmv(correction);
 
 	pulsewidth = config_get_int(cfg, device, "ts2phc.pulsewidth");
+	if (pulsewidth > 500000000)
+		pulsewidth = 1000000000 - pulsewidth;
 	pulsewidth /= 2;
 	sink->ignore_upper = 1000000000 - pulsewidth;
 	sink->ignore_lower = pulsewidth;
