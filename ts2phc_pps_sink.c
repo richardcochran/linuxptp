@@ -30,8 +30,7 @@ struct ts2phc_pps_sink {
 	struct ptp_pin_desc pin_desc;
 	unsigned int polarity;
 	tmv_t correction;
-	uint32_t ignore_lower;
-	uint32_t ignore_upper;
+	uint32_t pulsewidth;
 	struct ts2phc_clock *clock;
 };
 
@@ -153,8 +152,8 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	struct config *cfg = priv->cfg;
 	struct ptp_extts_request extts;
 	struct ts2phc_pps_sink *sink;
-	int err, pulsewidth;
 	int32_t correction;
+	int err;
 
 	sink = calloc(1, sizeof(*sink));
 	if (!sink) {
@@ -174,12 +173,9 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	correction = config_get_int(cfg, device, "ts2phc.extts_correction");
 	sink->correction = nanoseconds_to_tmv(correction);
 
-	pulsewidth = config_get_int(cfg, device, "ts2phc.pulsewidth");
-	if (pulsewidth > 500000000)
-		pulsewidth = 1000000000 - pulsewidth;
-	pulsewidth /= 2;
-	sink->ignore_upper = 1000000000 - pulsewidth;
-	sink->ignore_lower = pulsewidth;
+	sink->pulsewidth = config_get_int(cfg, device, "ts2phc.pulsewidth");
+	if (sink->pulsewidth > 500000000)
+		sink->pulsewidth = 1000000000 - sink->pulsewidth;
 
 	sink->clock = ts2phc_clock_add(priv, device);
 	if (!sink->clock) {
@@ -248,12 +244,16 @@ static bool ts2phc_pps_sink_ignore(struct ts2phc_private *priv,
 				   struct timespec source_ts)
 {
 	tmv_t source_tmv = timespec_to_tmv(source_ts);
+	uint32_t ignore_lower, ignore_upper;
 
 	source_tmv = tmv_sub(source_tmv, priv->perout_phase);
 	source_ts = tmv_to_timespec(source_tmv);
 
-	return source_ts.tv_nsec > sink->ignore_lower &&
-	       source_ts.tv_nsec < sink->ignore_upper;
+	ignore_upper = 1000000000 - sink->pulsewidth / 2;
+	ignore_lower = sink->pulsewidth / 2;
+
+	return source_ts.tv_nsec > ignore_lower &&
+	       source_ts.tv_nsec < ignore_upper;
 }
 
 static enum extts_result ts2phc_pps_sink_event(struct ts2phc_private *priv,
