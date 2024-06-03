@@ -171,16 +171,6 @@ with the log level of the message as a number.  The default is an empty string
 argument).
 
 .TP
-.B ts2phc.holdover
-The holdover interval, specified in seconds. When the ToD information stops
-working (e.g. GNSS receiver lost its fix), ts2phc is allowed for the specified
-interval to continue synchronizing the target clock as long as the servo is in
-the SERVO_LOCKED_STABLE state. The servo state needs be enabled by the
-\fBservo_num_offset_values\fP option. The holdover is not supported with the
-\fB-a\fP option and when \fBts2phc.extts_polarity\fP is set to \fIboth\fP.
-The default is 0 (disabled).
-
-.TP
 .B sa_file
 Specifies the location of the file containing Security Associations used
 for immediate security processing of the Authentication TLV in support of
@@ -203,6 +193,26 @@ spp will attempt to attach (outbound) and check (inbound) authentication tlvs
 for all messages in accordance to the corresponding security association
 sourced via the \fBsa_file\fR directive. Not compatible with one step ports.
 Must be in the range of -1 to 255, inclusive. The default is -1 (disabled).
+
+.TP
+.B ts2phc.holdover
+The holdover interval, specified in seconds. When the ToD information stops
+working (e.g. GNSS receiver lost its fix), ts2phc is allowed for the specified
+interval to continue synchronizing the target clock as long as the servo is in
+the SERVO_LOCKED_STABLE state. The servo state needs be enabled by the
+\fBservo_num_offset_values\fP option. The holdover is not supported with the
+\fB-a\fP option and when \fBts2phc.extts_polarity\fP is set to \fIboth\fP.
+The default is 0 (disabled).
+
+.TP
+.B ts2phc.nmea_delay
+Specifies the minimum expected delay of NMEA RMC messages in nanoseconds.
+If the maximum delay is longer than 1 second, or 'ts2phc.pulsewidth'
+if 'ts2phc.extts_polarity' is set to "both", this option needs to be set
+accordingly to allow the timestamps from NMEA messages to be correctly
+assigned to pulses from the PPS signal and wrong PPS edges to be rejected if
+the edge rejection is enabled.
+The default is 0 nanoseconds.
 
 .TP
 .B ts2phc.nmea_remote_host, ts2phc.nmea_remote_port
