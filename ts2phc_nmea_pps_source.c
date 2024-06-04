@@ -88,7 +88,7 @@ static void *monitor_nmea_status(void *arg)
 			}
 		}
 		num = poll(&pfd, 1, NMEA_TMO);
-		clock_gettime(CLOCK_MONOTONIC, &rxtime);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &rxtime);
 		clock_gettime(CLOCK_REALTIME, &rxtime_rt);
 		if (num < 0) {
 			pr_err("poll failed");
@@ -160,7 +160,7 @@ static int ts2phc_nmea_pps_source_getppstime(struct ts2phc_pps_source *src,
 	int64_t utc_time;
 	bool fix_valid;
 
-	clock_gettime(CLOCK_MONOTONIC, &now);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &now);
 	local_t2 = timespec_to_tmv(now);
 
 	pthread_mutex_lock(&m->mutex);
