@@ -187,11 +187,9 @@ static int ts2phc_nmea_pps_source_getppstime(struct ts2phc_pps_source *src,
 		pr_err("nmea: rmc time stamp stale");
 		return -1;
 	}
-	rmc = tmv_add(rmc, duration_since_rmc);
-	rmc = tmv_add(rmc, m->delay_correction);
+
 	utc_time = tmv_to_nanoseconds(rmc);
 	utc_time /= (int64_t) 1000000000;
-	*ts = tmv_to_timespec(rmc);
 
 	result = lstab_utc2tai(m->lstab, utc_time, &tai_offset);
 	switch (result) {
@@ -208,6 +206,10 @@ static int ts2phc_nmea_pps_source_getppstime(struct ts2phc_pps_source *src,
 		pr_err("nmea: utc time stamp is ambiguous");
 		break;
 	}
+
+	rmc = tmv_add(rmc, duration_since_rmc);
+	rmc = tmv_add(rmc, m->delay_correction);
+	*ts = tmv_to_timespec(rmc);
 	ts->tv_sec += tai_offset;
 
 	return lstab_error;
