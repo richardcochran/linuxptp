@@ -171,6 +171,7 @@ int nmea_parse(struct nmea_parser *np, const char *ptr, int buflen,
 	while (buflen) {
 		if (!nmea_parse_symbol(np, *ptr)) {
 			if (!nmea_scan_rmc(np, result)) {
+				nmea_reset(np);
 				*parsed = count + 1;
 				return 0;
 			}
