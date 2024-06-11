@@ -155,6 +155,9 @@ static int nmea_scan_rmc(struct nmea_parser *np, struct nmea_rmc *result)
 	if (cnt != 3) {
 		return -1;
 	}
+	/* Convert an inserted leap second to ambiguous 23:59:59 */
+	if (tm.tm_sec == 60)
+		tm.tm_sec = 59;
 	tm.tm_year += 100;
 	tm.tm_mon--;
 	tm.tm_isdst = 0;
