@@ -181,8 +181,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	uint64_t next_jump;
 	struct portDS *p;
 	struct TLV *tlv;
+	int action, i;
 	uint8_t *buf;
-	int action;
 
 	if (msg_type(msg) == SIGNALING) {
 		pmc_show_signaling(msg, fp);
@@ -449,12 +449,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	case MID_SUBSCRIBE_EVENTS_NP:
 		sen = (struct subscribe_events_np *) mgt->data;
 		fprintf(fp, "SUBSCRIBE_EVENTS_NP "
-			IFMT "duration          %hu"
-			IFMT "NOTIFY_PORT_STATE %s"
-			IFMT "NOTIFY_TIME_SYNC  %s",
+			IFMT "duration               %hu"
+			IFMT "NOTIFY_PORT_STATE      %s"
+			IFMT "NOTIFY_TIME_SYNC       %s"
+			IFMT "NOTIFY_PARENT_DATA_SET %s",
 			sen->duration,
 			event_bitmask_get(sen->bitmask, NOTIFY_PORT_STATE) ? "on" : "off",
-			event_bitmask_get(sen->bitmask, NOTIFY_TIME_SYNC) ? "on" : "off");
+			event_bitmask_get(sen->bitmask, NOTIFY_TIME_SYNC) ? "on" : "off",
+			event_bitmask_get(sen->bitmask, NOTIFY_PARENT_DATA_SET) ? "on" : "off");
 		break;
 	case MID_SYNCHRONIZATION_UNCERTAIN_NP:
 		mtd = (struct management_tlv_datum *) mgt->data;
@@ -591,7 +593,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			"BM", "identity", "address", "state",
 			"clockClass", "clockQuality", "offsetScaledLogVariance",
 			"p1", "p2");
-		for (int i = 0; i < umtn->actual_table_size; i++) {
+		for (i = 0; i < umtn->actual_table_size; i++) {
 			ume = (struct unicast_master_entry *) buf;
 			pmc_show_unicast_master_entry(ume, fp);
 			buf += sizeof(*ume) + ume->address.addressLength;

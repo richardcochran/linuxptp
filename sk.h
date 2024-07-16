@@ -131,6 +131,13 @@ int sk_receive(int fd, void *buf, int buflen,
 	       struct address *addr, struct hw_timestamp *hwts, int flags);
 
 /**
+ * Get and clear a pending socket error.
+ * @param fd      An open socket.
+ * @return        The error.
+ */
+int sk_get_error(int fd);
+
+/**
  * Set DSCP value for socket.
  * @param fd     An open socket.
  * @param family The address family in use: AF_INET or AF_INET6

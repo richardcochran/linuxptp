@@ -27,16 +27,16 @@
 #include "print.h"
 #include "util.h"
 
-#define PMC_UPDATE_INTERVAL (60 * NS_PER_SEC)
-#define PMC_SUBSCRIBE_DURATION 180	/* 3 minutes */
-/* Note that PMC_SUBSCRIBE_DURATION has to be longer than
- * PMC_UPDATE_INTERVAL otherwise subscription will time out before it is
- * renewed.
- */
+/* The subscription duration needs to be longer than the update interval to be
+   able to process the messages in time without losing notifications. Define
+   a minimum interval to avoid renewing the subscription too frequently. */
+#define UPDATES_PER_SUBSCRIPTION 3
+#define MIN_UPDATE_INTERVAL 10
 
 struct pmc_agent {
 	struct pmc *pmc;
 	uint64_t pmc_last_update;
+	uint64_t update_interval;
 
 	struct defaultDS dds;
 	bool dds_valid;
@@ -56,7 +56,7 @@ static void send_subscription(struct pmc_agent *node)
 	struct subscribe_events_np sen;
 
 	memset(&sen, 0, sizeof(sen));
-	sen.duration = PMC_SUBSCRIBE_DURATION;
+	sen.duration = UPDATES_PER_SUBSCRIPTION * node->update_interval;
 	event_bitmask_set(sen.bitmask, NOTIFY_PORT_STATE, TRUE);
 	pmc_send_set_action(node->pmc, MID_SUBSCRIBE_EVENTS_NP, &sen, sizeof(sen));
 }
@@ -391,9 +391,12 @@ void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset)
 	agent->sync_offset = offset;
 }
 
-int pmc_agent_subscribe(struct pmc_agent *node, int timeout)
+int pmc_agent_subscribe(struct pmc_agent *node, int timeout, int interval)
 {
 	node->stay_subscribed = true;
+	if (interval < MIN_UPDATE_INTERVAL)
+		interval = MIN_UPDATE_INTERVAL;
+	node->update_interval = interval * NS_PER_SEC;
 	return renew_subscription(node, timeout);
 }
 
@@ -412,7 +415,7 @@ int pmc_agent_update(struct pmc_agent *node)
 	}
 	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
 
-	if (ts - node->pmc_last_update >= PMC_UPDATE_INTERVAL) {
+	if (ts - node->pmc_last_update >= node->update_interval) {
 		if (node->stay_subscribed) {
 			renew_subscription(node, 0);
 		}
@@ -424,6 +427,22 @@ int pmc_agent_update(struct pmc_agent *node)
 	run_pmc(node, 0, -1, &msg);
 
 	return 0;
+}
+
+int pmc_agent_is_subscribed(struct pmc_agent *agent)
+{
+	struct timespec tp;
+	uint64_t ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &tp)) {
+		pr_err("failed to read clock: %m");
+		return 0;
+	}
+	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
+
+	return agent->pmc_last_update > 0 &&
+		ts - agent->pmc_last_update <= UPDATES_PER_SUBSCRIPTION *
+					       agent->update_interval;
 }
 
 bool pmc_agent_utc_offset_traceable(struct pmc_agent *agent)

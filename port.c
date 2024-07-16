@@ -44,7 +44,6 @@
 #include "unicast_client.h"
 #include "unicast_service.h"
 #include "util.h"
-
 #include "test.h"
 
 #define ALLOWED_LOST_RESPONSES 3
@@ -158,17 +157,17 @@ static int msg_current(struct ptp_message *m, struct timespec now)
 #if PORT
 	fprintf(stderr, "%s\n", __func__);
 #endif
-	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
-	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+	t1 = m->ts.host.tv_sec * NSEC_PER_SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC_PER_SEC + now.tv_nsec;
 
 	if (m->header.logMessageInterval <= -31) {
 		tmo = 0;
 	} else if (m->header.logMessageInterval >= 31) {
 		tmo = INT64_MAX;
 	} else if (m->header.logMessageInterval < 0) {
-		tmo = 4LL * NSEC2SEC / (1 << -m->header.logMessageInterval);
+		tmo = 4LL * NSEC_PER_SEC / (1 << -m->header.logMessageInterval);
 	} else {
-		tmo = 4LL * (1 << m->header.logMessageInterval) * NSEC2SEC;
+		tmo = 4LL * (1 << m->header.logMessageInterval) * NSEC_PER_SEC;
 	}
 
 	return t2 - t1 < tmo;
@@ -286,12 +285,9 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds)
 		for (i = 1, ns = scale * 500000000ULL; i < log_seconds; i++) {
 			ns >>= 1;
 		}
-		tmo.it_value.tv_nsec = ns;
 
-		while (tmo.it_value.tv_nsec >= NS_PER_SEC) {
-			tmo.it_value.tv_nsec -= NS_PER_SEC;
-			tmo.it_value.tv_sec++;
-		}
+		tmo.it_value.tv_sec = ns / NS_PER_SEC;
+		tmo.it_value.tv_nsec = ns % NS_PER_SEC;
 
 	} else
 		tmo.it_value.tv_sec = scale * (1 << log_seconds);
@@ -399,13 +395,13 @@ static void fc_prune(struct foreign_clock *fc)
 
 static int delay_req_current(struct ptp_message *m, struct timespec now)
 {
-	int64_t t1, t2, tmo = 5 * NSEC2SEC;
+	int64_t t1, t2, tmo = 5 * NSEC_PER_SEC;
 
 #if PORT
 	fprintf(stderr, "%s\n", __func__);
 #endif
-	t1 = m->ts.host.tv_sec * NSEC2SEC + m->ts.host.tv_nsec;
-	t2 = now.tv_sec * NSEC2SEC + now.tv_nsec;
+	t1 = m->ts.host.tv_sec * NSEC_PER_SEC + m->ts.host.tv_nsec;
+	t2 = now.tv_sec * NSEC_PER_SEC + now.tv_nsec;
 
 	return t2 - t1 < tmo;
 }
@@ -827,21 +823,21 @@ int port_capable(struct port *p)
 		goto not_capable;
 	}
 
-	if (p->pdr_missing > ALLOWED_LOST_RESPONSES) {
+	if (p->pdr_missing > p->allowedLostResponses) {
 		if (p->asCapable)
 			pr_debug("%s: missed %d peer delay resp, "
 				"resetting asCapable", p->log_name, p->pdr_missing);
 		goto not_capable;
 	}
 
-	if (p->multiple_seq_pdr_count) {
+	if (p->multiple_seq_pdr_count > p->allowedLostResponses) {
 		if (p->asCapable)
-			pr_debug("%s: multiple sequential peer delay resp, "
-				"resetting asCapable", p->log_name);
+			pr_debug("%s: received %d multiple sequential peer delay resp, "
+				"resetting asCapable", p->log_name, p->multiple_seq_pdr_count);
 		goto not_capable;
 	}
 
-	if (!p->peer_portid_valid) {
+	if (!p->peer_portid_valid && p->multiple_pdr_detected == 0) {
 		if (p->asCapable)
 			pr_debug("%s: invalid peer port id, "
 				"resetting asCapable", p->log_name);
@@ -1387,7 +1383,7 @@ static void port_nrate_initialize(struct port *p)
 	}
 
 	/* We start in the 'incapable' state. */
-	p->pdr_missing = ALLOWED_LOST_RESPONSES + 1;
+	p->pdr_missing = p->allowedLostResponses + 1;
 
 	p->peer_portid_valid = 0;
 
@@ -1527,7 +1523,9 @@ static void port_synchronize(struct port *p,
 #if PORT
 	fprintf(stderr, "%s\n", __func__);
 #endif
-	port_set_sync_rx_tmo(p);
+	if (port_set_sync_rx_tmo(p) < 0) {
+		pr_err("Failed to set sync rx timeout timer: %s", strerror(errno));
+	}
 
 	t1 = timestamp_to_tmv(origin_ts);
 	t2 = ingress_ts;
@@ -1725,13 +1723,12 @@ static int port_pdelay_request(struct port *p)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = PDELAY_REQ | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct pdelay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.correction         = -p->asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
-	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = port_is_ieee8021as(p) ?
 		p->logPdelayReqInterval : 0x7f;
 
@@ -1792,13 +1789,12 @@ int port_delay_request(struct port *p)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = DELAY_REQ | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct delay_req_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.correction         = -p->asymmetry;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.delayreq++;
-	msg->header.control            = CTL_DELAY_REQ;
 	msg->header.logMessageInterval = 0x7f;
 
 	if (p->hybrid_e2e) {
@@ -1848,12 +1844,11 @@ int port_tx_announce(struct port *p, struct address *dst, uint16_t sequence_id)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = ANNOUNCE | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct announce_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = sequence_id;
-	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = p->logAnnounceInterval;
 
 	msg->header.flagField[1] = tp.flags;
@@ -1934,12 +1929,11 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = SYNC | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct sync_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = sequence_id;
-	msg->header.control            = CTL_SYNC;
 	msg->header.logMessageInterval = p->logSyncInterval;
 
 	if (p->timestamping != TS_ONESTEP && p->timestamping != TS_P2P1STEP) {
@@ -1973,12 +1967,11 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	fup->hwts.type = p->timestamping;
 
 	fup->header.tsmt               = FOLLOW_UP | p->transportSpecific;
-	fup->header.ver                = PTP_VERSION;
+	fup->header.ver                = ptp_hdr_ver;
 	fup->header.messageLength      = sizeof(struct follow_up_msg);
 	fup->header.domainNumber       = clock_domain_number(p->clock);
 	fup->header.sourcePortIdentity = p->portIdentity;
 	fup->header.sequenceId         = sequence_id;
-	fup->header.control            = CTL_FOLLOW_UP;
 	fup->header.logMessageInterval = p->logSyncInterval;
 
 	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
@@ -2358,13 +2351,12 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->hwts.type = p->timestamping;
 
 	msg->header.tsmt               = DELAY_RESP | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct delay_resp_msg);
 	msg->header.domainNumber       = m->header.domainNumber;
 	msg->header.correction         = m->header.correction;
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = m->header.sequenceId;
-	msg->header.control            = CTL_DELAY_RESP;
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
 	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
@@ -2565,12 +2557,11 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	rsp->hwts.type = p->timestamping;
 
 	rsp->header.tsmt               = PDELAY_RESP | p->transportSpecific;
-	rsp->header.ver                = PTP_VERSION;
+	rsp->header.ver                = ptp_hdr_ver;
 	rsp->header.messageLength      = sizeof(struct pdelay_resp_msg);
 	rsp->header.domainNumber       = m->header.domainNumber;
 	rsp->header.sourcePortIdentity = p->portIdentity;
 	rsp->header.sequenceId         = m->header.sequenceId;
-	rsp->header.control            = CTL_OTHER;
 	rsp->header.logMessageInterval = 0x7f;
 
 	/*
@@ -2615,13 +2606,12 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 	fup->hwts.type = p->timestamping;
 
 	fup->header.tsmt               = PDELAY_RESP_FOLLOW_UP | p->transportSpecific;
-	fup->header.ver                = PTP_VERSION;
+	fup->header.ver                = ptp_hdr_ver;
 	fup->header.messageLength      = sizeof(struct pdelay_resp_fup_msg);
 	fup->header.domainNumber       = m->header.domainNumber;
 	fup->header.correction         = m->header.correction;
 	fup->header.sourcePortIdentity = p->portIdentity;
 	fup->header.sequenceId         = m->header.sequenceId;
-	fup->header.control            = CTL_OTHER;
 	fup->header.logMessageInterval = 0x7f;
 
 	fup->pdelay_resp_fup.requestingPortIdentity = m->header.sourcePortIdentity;
@@ -2705,7 +2695,13 @@ static void port_peer_delay(struct port *p)
 	t3 = timestamp_to_tmv(fup->ts.pdu);
 	c2 = correction_to_tmv(fup->header.correction);
 calc:
-	t3c = tmv_add(t3, tmv_add(c1, c2));
+	/* 802.1AS specifies the peer delay computation differently than 1588. Do
+	 * the 802.1AS computation if transportSpecific matches 802.1AS profile. */
+	if (p->transportSpecific == TS_IEEE_8021AS) {
+		t3c = tmv_add(t3, tmv_sub(c2, c1));
+	} else {
+		t3c = tmv_add(t3, tmv_add(c1, c2));
+	}
 
 	if (p->follow_up_info)
 		port_nrate_calculate(p, t3c, t4);
@@ -2743,18 +2739,17 @@ int process_pdelay_resp(struct port *p, struct ptp_message *m)
 	fprintf(stderr, "%s\n", __func__);
 #endif
 	if (p->peer_delay_resp) {
-		if (!source_pid_eq(p->peer_delay_resp, m)) {
-			pr_err("%s: multiple peer responses", p->log_name);
-			if (!p->multiple_pdr_detected) {
-				p->multiple_pdr_detected = 1;
-				p->multiple_seq_pdr_count++;
-			}
-			if (p->multiple_seq_pdr_count >= 3) {
-				p->last_fault_type = FT_BAD_PEER_NETWORK;
-				return -1;
-			}
-		}
-	}
+                if (!p->multiple_pdr_detected) {
+                        pr_err("%s: multiple peer responses", p->log_name);
+                        p->multiple_pdr_detected = 1;
+                        p->multiple_seq_pdr_count++;
+                }
+                if (p->multiple_seq_pdr_count > p->allowedLostResponses) {
+                        p->last_fault_type = FT_BAD_PEER_NETWORK;
+                        return -1;
+                }
+        }
+
 	if (!p->peer_delay_req) {
 		pr_err("%s: rogue peer delay response", p->log_name);
 		return -1;
@@ -3048,7 +3043,7 @@ static void bc_dispatch(struct port *p, enum fsm_event event, int mdiff)
 		port_e2e_transition(p, p->state);
 	}
 
-	if (p->jbod && p->state == PS_UNCALIBRATED) {
+	if (p->jbod && p->state == PS_UNCALIBRATED && p->phc_index >= 0 ) {
 		if (clock_switch_phc(p->clock, p->phc_index)) {
 			p->last_fault_type = FT_SWITCH_PHC;
 			port_dispatch(p, EV_FAULT_DETECTED, 0);
@@ -3065,6 +3060,7 @@ static void port_change_phc(struct port *p)
 	/* Try to switch only if the interface is up, it has HW time stamping
 	   using a non-vclock PHC, and the PHC actually changed. */
 	if (!(p->link_status & LINK_UP) ||
+	    p->phc_index < 0 ||
 	    !interface_tsinfo_valid(p->iface) ||
 	    interface_get_vclock(p->iface) >= 0 ||
 	    interface_phc_index(p->iface) < 0 ||
@@ -3546,12 +3542,11 @@ port_management_construct(struct PortIdentity pid, struct port *ingress,
 	msg->hwts.type = ingress->timestamping;
 
 	msg->header.tsmt               = MANAGEMENT | ingress->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct management_msg);
 	msg->header.domainNumber       = clock_domain_number(ingress->clock);
 	msg->header.sourcePortIdentity = pid;
 	msg->header.sequenceId         = sequenceId;
-	msg->header.control            = CTL_MANAGEMENT;
 	msg->header.logMessageInterval = 0x7f;
 
 	if (targetPortIdentity)
@@ -3761,6 +3756,7 @@ struct port *port_open(const char *phc_device,
 	p->pwr.totalTimeInaccuracy =
 		config_get_int(cfg, p->name, "power_profile.2017.totalTimeInaccuracy");
 	p->slave_event_monitor = clock_slave_monitor(clock);
+	p->allowedLostResponses = config_get_int(cfg, p->name, "allowedLostResponses");
 
 	if (!port_is_uds(p) && unicast_client_initialize(p)) {
 		goto err_transport;
@@ -3784,7 +3780,7 @@ struct port *port_open(const char *phc_device,
 		pr_err("%s: E2E TC needs E2E ports", p->log_name);
 		goto err_uc_service;
 	}
-	if (p->hybrid_e2e && p->delayMechanism != DM_E2E) {
+	if (!port_is_uds(p) && p->hybrid_e2e && p->delayMechanism != DM_E2E) {
 		pr_warning("%s: hybrid_e2e only works with E2E", p->log_name);
 	}
 	if (p->net_sync_monitor && !p->hybrid_e2e) {

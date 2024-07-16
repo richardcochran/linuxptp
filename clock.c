@@ -869,9 +869,14 @@ static enum servo_state clock_no_adjust(struct clock *c, tmv_t ingress,
 	return state;
 }
 
+static int clock_compare_pds(struct parentDS *pds1, struct parentDS *pds2)
+{
+	return memcmp(pds1, pds2, sizeof (*pds1));
+}
+
 static void clock_update_grandmaster(struct clock *c)
 {
-	struct parentDS *pds = &c->dad.pds;
+	struct parentDS *pds = &c->dad.pds, old_pds = *pds;
 #if CLOCK
 	fprintf(stderr, "%s\n", __func__);
 #endif
@@ -889,11 +894,14 @@ static void clock_update_grandmaster(struct clock *c)
 	c->tds.currentUtcOffset                 = c->utc_offset;
 	c->tds.flags                            = c->time_flags;
 	c->tds.timeSource                       = c->time_source;
+
+	if (clock_compare_pds(&old_pds, pds))
+		clock_notify_event(c, NOTIFY_PARENT_DATA_SET);
 }
 
 static void clock_update_slave(struct clock *c)
 {
-	struct parentDS *pds = &c->dad.pds;
+	struct parentDS *pds = &c->dad.pds, old_pds = *pds;
 	struct timePropertiesDS tds;
 	struct ptp_message *msg;
 
@@ -920,6 +928,9 @@ static void clock_update_slave(struct clock *c)
 		pr_warning("running in a temporal vortex");
 	}
 	clock_update_time_properties(c, tds);
+
+	if (clock_compare_pds(&old_pds, pds))
+		clock_notify_event(c, NOTIFY_PARENT_DATA_SET);
 }
 
 static int clock_utc_correct(struct clock *c, tmv_t ingress)
@@ -1717,7 +1728,7 @@ static void clock_forward_mgmt_msg(struct clock *c, struct port *p, struct ptp_m
 				       port_log_name(piter));
 		}
 		if (clock_do_forward_mgmt(c, p, c->uds_rw_port, msg, &msg_ready))
-			pr_err("uds port: management forward failed");
+			pr_debug("uds port: management forward failed");
 		if (msg_ready) {
 			msg_post_recv(msg, pdulen);
 			msg->management.boundaryHops++;
@@ -1859,16 +1870,25 @@ int clock_manage(struct clock *c, struct port *p, struct ptp_message *msg)
 void clock_notify_event(struct clock *c, enum notification event)
 {
 	struct port *uds = c->uds_rw_port;
-	struct PortIdentity pid = port_identity(uds);
+	struct PortIdentity pid;
 	struct ptp_message *msg;
 	int id;
 
 #if CLOCK
 	fprintf(stderr, "%s\n", __func__);
 #endif
+	/* A notification may come before UDS is created */
+	if (!uds)
+		return;
+
+	pid = port_identity(uds);
+
 	switch (event) {
 	case NOTIFY_TIME_SYNC:
 		id = MID_TIME_STATUS_NP;
+		break;
+	case NOTIFY_PARENT_DATA_SET:
+		id = MID_PARENT_DATA_SET;
 		break;
 	default:
 		return;
@@ -1943,8 +1963,10 @@ int clock_poll(struct clock *c)
 			if (cur[i].revents & (POLLIN|POLLPRI|POLLERR)) {
 				prior_state = port_state(p);
 				if (cur[i].revents & POLLERR) {
-					pr_err("%s: unexpected socket error",
-					       port_log_name(p));
+					int error = sk_get_error(cur[i].fd);
+					pr_err("%s: error on fda[%d]: %s",
+					       port_log_name(p), i,
+					       strerror(error));
 					event = EV_FAULT_DETECTED;
 				} else {
 					event = port_event(p, i);
@@ -2285,7 +2307,12 @@ void clock_sync_interval(struct clock *c, int n)
 	}
 	c->fest.max_count = (1U << shift);
 
-	shift = c->stats_interval - n;
+	/* In free-running mode stats accumulate once per freq_est_interval */
+	if (c->free_running)
+		shift = c->stats_interval - n - shift;
+	else
+		shift = c->stats_interval - n;
+
 	if (shift < 0)
 		shift = 0;
 	else if (shift >= sizeof(int) * 8) {

@@ -44,6 +44,7 @@ static inline bool event_bitmask_get(uint8_t *bitmask, unsigned int event)
 enum notification {
 	NOTIFY_PORT_STATE,
 	NOTIFY_TIME_SYNC,
+	NOTIFY_PARENT_DATA_SET,
 };
 
 #endif

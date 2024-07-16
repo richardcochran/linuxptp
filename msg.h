@@ -45,6 +45,9 @@
 
 #define MAJOR_VERSION_MASK	0x0f
 
+/* Values for the transportSpecific field */
+#define TS_IEEE_8021AS (1<<4)
+
 /* Values for the messageType field */
 #define SYNC                  0x0
 #define DELAY_REQ             0x1
@@ -91,15 +94,6 @@ struct hw_timestamp {
 	tmv_t sw;
 };
 
-enum controlField {
-	CTL_SYNC,
-	CTL_DELAY_REQ,
-	CTL_FOLLOW_UP,
-	CTL_DELAY_RESP,
-	CTL_MANAGEMENT,
-	CTL_OTHER,
-};
-
 struct ptp_header {
 	uint8_t             tsmt; /* transportSpecific | messageType */
 	uint8_t             ver;  /* minorVersionPTP   | versionPTP  */
@@ -132,6 +126,7 @@ struct announce_msg {
 struct sync_msg {
 	struct ptp_header   hdr;
 	struct Timestamp    originTimestamp;
+	uint8_t             suffix[0];
 } PACKED;
 
 struct delay_req_msg {
@@ -157,12 +152,14 @@ struct pdelay_req_msg {
 	struct ptp_header   hdr;
 	struct Timestamp    originTimestamp;
 	struct PortIdentity reserved;
+	uint8_t             suffix[0];
 } PACKED;
 
 struct pdelay_resp_msg {
 	struct ptp_header   hdr;
 	struct Timestamp    requestReceiptTimestamp;
 	struct PortIdentity requestingPortIdentity;
+	uint8_t             suffix[0];
 } PACKED;
 
 struct pdelay_resp_fup_msg {
@@ -451,6 +448,11 @@ static inline Boolean msg_unicast(struct ptp_message *m)
 {
 	return field_is_set(m, 0, UNICAST);
 }
+
+/**
+ * Work around HW assuming PTP message version 2.0
+ */
+extern uint8_t ptp_hdr_ver;
 
 /**
  * Work around buggy 802.1AS switches.

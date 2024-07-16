@@ -21,11 +21,15 @@
  * Since there can be at most two leap seconds per year, this allows
  * for at least one hundred years.
  *
- * The table data are available from
+ * Information about leap seconds is published by the IERS in the
+ * bulletin:
+ * https://hpiers.obspm.fr/iers/bul/bulc/bulletinc.dat
  *
- * https://www.ietf.org/timezones/data/leap-seconds.list
+ * The table data is available from
+ * https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list
  *
- * ftp://ftp.nist.gov/pub/time/leap-seconds.list
+ * Backup source:
+ * https://data.iana.org/time-zones/tzdb/leapseconds
  *
  * When updating this table, do not forget to set N_HISTORICAL_LEAPS
  * and the expiration date.
@@ -51,7 +55,7 @@ struct lstab {
 	int length;
 };
 
-static const uint64_t expiration_date_ntp = 3896899200ULL; /* 28 June 2023 */
+static const uint64_t expiration_date_ntp = 3928521600ULL; /* 24 June 2024 */
 
 static const uint64_t offset_table[N_LEAPS * 2] = {
 	2272060800ULL,	10,	/* 1 Jan 1972 */

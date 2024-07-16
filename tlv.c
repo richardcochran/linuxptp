@@ -444,7 +444,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		umtn->actual_table_size =
 			ntohs(umtn->actual_table_size);
 		buf = (uint8_t *) umtn->unicast_masters;
-		for (int i = 0; i < umtn->actual_table_size; i++) {
+		for (i = 0; i < umtn->actual_table_size; i++) {
 			len += sizeof(struct unicast_master_entry);
 			if (data_len < len)
 				goto bad_length;
@@ -643,7 +643,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	case MID_UNICAST_MASTER_TABLE_NP:
 		umtn = (struct unicast_master_table_np *)m->data;
 		buf = (uint8_t *) umtn->unicast_masters;
-		for (int i = 0; i < umtn->actual_table_size; i++) {
+		for (i = 0; i < umtn->actual_table_size; i++) {
 			ume = (struct unicast_master_entry *) buf;
 			// update pointer before the conversion
 			buf += sizeof(*ume) + ume->address.addressLength;

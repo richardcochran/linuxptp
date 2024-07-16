@@ -33,6 +33,8 @@
 #define MAX_PRINT_BYTES 16
 #define BIN_BUF_SIZE (MAX_PRINT_BYTES * 3 + 1)
 
+#define NSEC_PER_SEC 1000000000LL
+
 /**
  * Table of human readable strings, one for each port state.
  */

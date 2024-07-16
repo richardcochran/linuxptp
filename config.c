@@ -236,6 +236,7 @@ static struct config_enum bmca_enu[] = {
 };
 
 struct config_item config_tab[] = {
+	PORT_ITEM_INT("allowedLostResponses", 3, 1, 255),
 	PORT_ITEM_INT("announceReceiptTimeout", 3, 2, UINT8_MAX),
 	PORT_ITEM_ENU("asCapable", AS_CAPABLE_AUTO, as_capable_enu),
 	GLOB_ITEM_INT("assume_two_step", 0, 0, 1),
@@ -310,15 +311,16 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_DBL("pi_proportional_norm_max", 0.7, DBL_MIN, 1.0),
 	GLOB_ITEM_DBL("pi_proportional_scale", 0.0, 0.0, DBL_MAX),
 	PORT_ITEM_ENU("power_profile.version", IEEE_C37_238_VERSION_NONE, ieee_c37_238_enu),
-	PORT_ITEM_INT("power_profile.2011.grandmasterTimeInaccuracy", 0xFFFFFFFF, 0, INT_MAX),
-	PORT_ITEM_INT("power_profile.2011.networkTimeInaccuracy", 0, 0, INT_MAX),
-	PORT_ITEM_INT("power_profile.2017.totalTimeInaccuracy", 0xFFFFFFFF, 0, INT_MAX),
+	PORT_ITEM_INT("power_profile.2011.grandmasterTimeInaccuracy", 0xFFFFFFFF, -1, INT_MAX),
+	PORT_ITEM_INT("power_profile.2011.networkTimeInaccuracy", 0xFFFFFFFF, -1, INT_MAX),
+	PORT_ITEM_INT("power_profile.2017.totalTimeInaccuracy", 0xFFFFFFFF, -1, INT_MAX),
 	PORT_ITEM_INT("power_profile.grandmasterID", 0, 0, 0xFFFF),
 	GLOB_ITEM_INT("priority1", 128, 0, UINT8_MAX),
 	GLOB_ITEM_INT("priority2", 128, 0, UINT8_MAX),
 	GLOB_ITEM_STR("productDescription", ";;"),
 	PORT_ITEM_STR("ptp_dst_mac", "01:1B:19:00:00:00"),
 	PORT_ITEM_STR("p2p_dst_mac", "01:80:C2:00:00:0E"),
+	GLOB_ITEM_INT("ptp_minor_version", 1, 0, 1),
 	GLOB_ITEM_STR("refclock_sock_address", "/var/run/refclock.ptp.sock"),
 	GLOB_ITEM_STR("revisionData", ";;"),
 	GLOB_ITEM_INT("sanity_freq_limit", 200000000, 0, INT_MAX),

@@ -57,9 +57,10 @@ void print_set_verbose(int value)
 
 void print(int level, char const *format, ...)
 {
+	char buf[1024], tag[128], *s;
 	struct timespec ts;
+	const char *v;
 	va_list ap;
-	char buf[1024];
 	FILE *f;
 
 	if (level > print_level)
@@ -71,19 +72,27 @@ void print(int level, char const *format, ...)
 	vsnprintf(buf, sizeof(buf), format, ap);
 	va_end(ap);
 
+	if (message_tag) {
+		snprintf(tag, sizeof(tag), "%s ", message_tag);
+		v = "{level}";
+		s = strstr(tag, v);
+		if (s) {
+			*s = '0' + level;
+			memmove(s + 1, s + strlen(v), strlen(s + strlen(v)) + 1);
+		}
+	} else {
+		tag[0] = '\0';
+	}
+
 	if (verbose) {
 		f = level >= LOG_NOTICE ? stdout : stderr;
-		fprintf(f, "%s[%lld.%03ld]: %s%s%s\n",
+		fprintf(f, "%s[%lld.%03ld]: %s%s\n",
 			progname ? progname : "",
-			(long long)ts.tv_sec, ts.tv_nsec / 1000000,
-			message_tag ? message_tag : "", message_tag ? " " : "",
-			buf);
+			(long long)ts.tv_sec, ts.tv_nsec / 1000000, tag, buf);
 		fflush(f);
 	}
 	if (use_syslog) {
-		syslog(level, "[%lld.%03ld] %s%s%s",
-		       (long long)ts.tv_sec, ts.tv_nsec / 1000000,
-		       message_tag ? message_tag : "", message_tag ? " " : "",
-		       buf);
+		syslog(level, "[%lld.%03ld] %s%s",
+		       (long long)ts.tv_sec, ts.tv_nsec / 1000000, tag, buf);
 	}
 }

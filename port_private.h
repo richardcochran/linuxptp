@@ -28,8 +28,7 @@
 #include "msg.h"
 #include "power_profile.h"
 #include "tmv.h"
-
-#define NSEC2SEC 1000000000LL
+#include "util.h"
 
 enum syfu_state {
 	SF_EMPTY,
@@ -146,6 +145,7 @@ struct port {
 	UInteger8           versionNumber; /* UInteger4 */
 	UInteger8	    delay_response_counter;
 	UInteger8	    delay_response_timeout;
+	UInteger8	    allowedLostResponses;
 	bool		    iface_rate_tlv;
 	Integer64	    portAsymmetry;
 	struct PortStats    stats;

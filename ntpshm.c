@@ -69,6 +69,9 @@ static void ntpshm_destroy(struct servo *servo)
 {
 	struct ntpshm_servo *s = container_of(servo, struct ntpshm_servo, servo);
 
+	/* Invalidate the SHM data before exiting */
+	s->shm->valid = 0;
+
 	shmdt(s->shm);
 	free(s);
 }

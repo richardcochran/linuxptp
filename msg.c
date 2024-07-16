@@ -31,6 +31,7 @@
 #include "test.h"
 
 int assume_two_step = 0;
+uint8_t ptp_hdr_ver = PTP_VERSION;
 
 /*
  * Head room fits a VLAN Ethernet header, and 'msg' is 64 bit aligned.
@@ -117,13 +118,13 @@ static uint8_t *msg_suffix(struct ptp_message *m)
 #endif
 	switch (msg_type(m)) {
 	case SYNC:
-		return NULL;
+		return m->sync.suffix;
 	case DELAY_REQ:
 		return m->delay_req.suffix;
 	case PDELAY_REQ:
-		return NULL;
+		return m->pdelay_req.suffix;
 	case PDELAY_RESP:
-		return NULL;
+		return m->pdelay_resp.suffix;
 	case FOLLOW_UP:
 		return m->follow_up.suffix;
 	case DELAY_RESP:

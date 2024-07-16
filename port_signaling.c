@@ -46,7 +46,6 @@ struct ptp_message *port_signaling_construct(struct port *p,
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
 	msg->header.sequenceId         = p->seqnum.signaling++;
-	msg->header.control            = CTL_OTHER;
 	msg->header.logMessageInterval = 0x7F;
 	msg->signaling.targetPortIdentity = *tpid;
 

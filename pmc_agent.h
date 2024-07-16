@@ -138,9 +138,12 @@ void pmc_agent_set_sync_offset(struct pmc_agent *agent, int offset);
  * Subscribes to push notifications of changes in port state.
  * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
  * @param timeout  Transmit and receive timeout in milliseconds.
+ * @param interval Maximum expected interval between @ref pmc_agent_update()
+ *                 calls in seconds. This value controls the ptp4l subscription
+ *                 duration.
  * @return         Zero on success, negative error code otherwise.
  */
-int pmc_agent_subscribe(struct pmc_agent *agent, int timeout);
+int pmc_agent_subscribe(struct pmc_agent *agent, int timeout, int interval);
 
 /**
  * Polls for push notifications from the local ptp4l service.
@@ -162,6 +165,14 @@ int pmc_agent_subscribe(struct pmc_agent *agent, int timeout);
  * @return       Zero on success, negative error code otherwise.
  */
 int pmc_agent_update(struct pmc_agent *agent);
+
+/**
+ * Checks if last successful subscription did not run out, i.e. ptp4l is still
+ * responding (assuming pmc_agent_update() is called frequently enough).
+ * @param agent  Pointer to a PMC instance obtained via @ref pmc_agent_create().
+ * @return       True if subscribed, false otherwise.
+ */
+int pmc_agent_is_subscribed(struct pmc_agent *agent);
 
 /**
  * Tests whether the current UTC offset is traceable.

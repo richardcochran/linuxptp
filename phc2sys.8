@@ -199,7 +199,12 @@ the direction of the clock synchronization. Not compatible with the
 option.
 .TP
 .BI \-n " domain-number"
-Specify the domain number used by ptp4l. The default is 0.
+Specify the domain number used by ptp4l. This option can be used up to 16 times
+to specify different domain numbers for different sockets specified by the
+.B \-z
+option. The domain numbers are assigned according to the order of the options
+on the command line.
+The default is 0.
 .TP
 .B \-x
 When a leap second is announced, don't apply it in the kernel by stepping the
@@ -209,7 +214,10 @@ clock frequency (unless the
 option is used).
 .TP
 .BI \-z " uds-address"
-Specifies the address of the server's UNIX domain socket.
+Specifies the address of the server's UNIX domain socket. This option can be
+used up to 16 times in the automatic mode to synchronize clocks between multiple
+.B ptp4l
+instances.
 The default is /var/run/ptp4l.
 .TP
 .BI \-l " print-level"
@@ -315,7 +323,9 @@ The default is 6 (LOG_INFO). Same as option
 .TP
 .B message_tag
 The tag which is added to all messages printed to the standard output
-or system log. The default is an empty string (which cannot be set in
+or system log. If the tag contains the string "{level}", it will be replaced
+with the log level of the message as a number.
+The default is an empty string (which cannot be set in
 the configuration file as the option requires an argument).
 Same as option
 .B \-t

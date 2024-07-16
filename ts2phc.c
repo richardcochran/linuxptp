@@ -38,7 +38,8 @@ static void ts2phc_cleanup(struct ts2phc_private *priv)
 	if (priv->cfg)
 		config_destroy(priv->cfg);
 
-	pmc_agent_destroy(priv->agent);
+	if (priv->agent)
+		pmc_agent_destroy(priv->agent);
 
 	/*
 	 * Clocks are destroyed by the cleanup methods of the individual
@@ -278,7 +279,7 @@ static int ts2phc_auto_init_ports(struct ts2phc_private *priv)
 		return -1;
 	}
 
-	err = pmc_agent_subscribe(priv->agent, 1000);
+	err = pmc_agent_subscribe(priv->agent, 1000, 1);
 	if (err) {
 		pr_err("failed to subscribe");
 		return -1;
@@ -576,6 +577,7 @@ int main(int argc, char *argv[])
 		ts2phc_cleanup(&priv);
 		return -1;
 	}
+	priv.cfg = cfg;
 	priv.agent = pmc_agent_create();
 	if (!priv.agent) {
 		ts2phc_cleanup(&priv);
@@ -661,7 +663,6 @@ int main(int argc, char *argv[])
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
 	STAILQ_INIT(&priv.sinks);
-	priv.cfg = cfg;
 
 	snprintf(uds_local, sizeof(uds_local), "/var/run/ts2phc.%d",
 		 getpid());

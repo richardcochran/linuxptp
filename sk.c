@@ -74,10 +74,21 @@ static int hwts_init(int fd, const char *device, int rx_filter,
 #endif
 	init_ifreq(&ifreq, &cfg, device);
 
+	/* Test if VLAN over bond is supported. */
 	cfg.flags = HWTSTAMP_FLAG_BONDED_PHC_INDEX;
-	/* Fall back without flag if user run new build on old kernel */
-	if (ioctl(fd, SIOCGHWTSTAMP, &ifreq) == -EINVAL)
-		init_ifreq(&ifreq, &cfg, device);
+	err = ioctl(fd, SIOCGHWTSTAMP, &ifreq);
+	if (err < 0) {
+		/*
+		 * Fall back without flag if user runs new build on old kernel
+		 * or if driver does not support SIOCGHWTSTAMP ioctl.
+		 */
+		if (errno == EINVAL || errno == EOPNOTSUPP) {
+			init_ifreq(&ifreq, &cfg, device);
+		} else {
+			pr_err("ioctl SIOCGHWTSTAMP failed: %m");
+			return err;
+		}
+	}
 
 	switch (sk_hwts_filter_mode) {
 	case HWTS_FILTER_CHECK:
@@ -486,12 +497,16 @@ int sk_receive(int fd, void *buf, int buflen,
 		/* Retry once on EINTR to avoid logging errors before exit */
 		if (res < 0 && errno == EINTR)
 			res = poll(&pfd, 1, sk_tx_timeout);
-		if (res < 1) {
-			pr_err(res ? "poll for tx timestamp failed: %m" :
-			             "timed out while polling for tx timestamp");
-			pr_err("increasing tx_timestamp_timeout may correct "
-			       "this issue, but it is likely caused by a driver bug");
+		if (res < 0) {
+			pr_err("poll for tx timestamp failed: %m");
 			return -errno;
+		} else if (!res) {
+			pr_err("timed out while polling for tx timestamp");
+			pr_err("increasing tx_timestamp_timeout or increasing "
+			       "kworker priority may correct this issue, "
+			       "but a driver bug likely causes it");
+			errno = ETIME;
+			return -1;
 		} else if (!(pfd.revents & sk_revents)) {
 			pr_err("poll for tx timestamp woke up on non ERR event");
 			return -1;
@@ -560,6 +575,20 @@ int sk_receive(int fd, void *buf, int buflen,
 	fprintf(stderr, "sk_recive-->cnt: %d\n", cnt < 0 ? -errno : cnt);
 #endif
 	return cnt < 0 ? -errno : cnt;
+}
+
+int sk_get_error(int fd)
+{
+	socklen_t len;
+	int error;
+
+	len = sizeof (error);
+	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+		pr_err("getsockopt SO_ERROR failed: %m");
+		return -1;
+	}
+
+	return error;
 }
 
 int sk_set_priority(int fd, int family, uint8_t dscp)

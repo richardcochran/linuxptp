@@ -365,22 +365,21 @@ the interface, or the device specified by the \fB-p\fP option.
 Specifies the time inaccuracy of the GM in nanoseconds.  Relevant only
 when power_profile.version is 2011.  This value may be changed
 dynamically using the POWER_PROFILE_SETTINGS_NP management message.
-The default is 0xFFFFFFFF.
+The default is -1 meaning unknown inaccuracy.
 
 .TP
 .B power_profile.2011.networkTimeInaccuracy
 Specifies the time inaccuracy of the network in nanoseconds.  Relevant
 only when power_profile.version is 2011.  This value may be changed
 dynamically using the POWER_PROFILE_SETTINGS_NP management message.
-The default is 0xFFFFFFFF.
+The default is -1 meaning unknown inaccuracy.
 
 .TP
 .B power_profile.2017.totalTimeInaccuracy
 Specifies the sum of the GM, network, and local node inaccuracies in
 nanoseconds.  Relevant only when power_profile.version is 2017.  This
 value may be changed dynamically using the POWER_PROFILE_SETTINGS_NP
-management message.  The default is 0xFFFFFFFF meaning unknown
-inaccuracy.
+management message.  The default is -1 meaning unknown inaccuracy.
 
 .TP
 .B power_profile.grandmasterID
@@ -706,7 +705,8 @@ The default value is 255.
 .TP
 .B message_tag
 The tag which is added to all messages printed to the standard output or system
-log.
+log. If the tag contains the string "{level}", it will be replaced with the log
+level of the message as a number.
 The default is an empty string (which cannot be set in the configuration file
 as the option requires an argument).
 
@@ -809,6 +809,11 @@ The priority2 attribute of the local clock. It is used in the PTP server
 selection algorithm, lower values take precedence. Must be in the range 0 to
 255.
 The default is 128.
+
+.TP
+.B ptp_minor_version
+This option sets the minorVersionPTP in the common PTP message header.
+The default is 1.
 
 .TP
 .B refclock_sock_address
@@ -1032,6 +1037,46 @@ is the domain server using hardware time stamping, it is up to
 to maintain the correct offset between UTC and PTP times. See
 .BR phc2sys (8)
 manual page for more details.
+
+.SH KTHREAD PRIORITY
+
+In case of following log,
+
+.RS
+.I timed out while polling for tx timestamp
+.I increasing tx_timestamp_timeout or increasing
+.I kworker priority may correct this issue,
+.I but a driver bug likely causes it
+.RE
+
+one possible cause is that the kworker which processes timestamps is
+being starved.  The system admin might try manually increasing the
+priority of the kworker.
+
+Many device drivers use kworker threads created by the PTP stack.
+Such kworkers are named:
+.RS
+.I ptp<decimal number of clock>
+.RE
+
+The system admin can manually bump the priority of the kworker process
+using chrt.
+
+Example:
+.RS
+\f(CWpgrep \-f "ptp[0-9]+" | xargs \-I {} sudo chrt \-f \-\-pid 75 {}\fP
+.RE
+
+Intel ice driver may create multiple kworkers for one physical NIC and
+names those processes differently.
+
+Example for Intel E810 card:
+.RS
+\f(CWpgrep \-f ice-ptp | xargs \-I {} sudo chrt \-f \-\-pid 75 {}\fP
+.RE
+
+Assigning priority needs careful consideration as assigning too high
+priority to any task might make system unstable.
 
 .SH SEE ALSO
 .BR pmc (8),

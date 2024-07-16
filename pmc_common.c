@@ -178,6 +178,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	struct port_ds_np pnp;
 	char onoff_port_state[4] = "off";
 	char onoff_time_status[4] = "off";
+	char onoff_parent_data_set[4] = "off";
 	char display_name[11] = {0};
 	uint64_t jump;
 	uint8_t key;
@@ -303,12 +304,14 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 		cnt = sscanf(str, " %*s %*s "
 			     "duration          %hu "
 			     "NOTIFY_PORT_STATE %3s "
-			     "NOTIFY_TIME_SYNC  %3s ",
+			     "NOTIFY_TIME_SYNC  %3s "
+			     "NOTIFY_PARENT_DATA_SET %3s ",
 			     &sen.duration,
 			     onoff_port_state,
-			     onoff_time_status);
-		if (cnt != 3) {
-			fprintf(stderr, "%s SET needs 3 values\n",
+			     onoff_time_status,
+			     onoff_parent_data_set);
+		if (cnt != 4) {
+			fprintf(stderr, "%s SET needs 4 values\n",
 				idtab[index].name);
 			break;
 		}
@@ -317,6 +320,10 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 		}
 		if (!strcasecmp(onoff_time_status, "on")) {
 			event_bitmask_set(sen.bitmask, NOTIFY_TIME_SYNC, TRUE);
+		}
+		if (!strcasecmp(onoff_parent_data_set, "on")) {
+			event_bitmask_set(sen.bitmask, NOTIFY_PARENT_DATA_SET,
+					  TRUE);
 		}
 		pmc_send_set_action(pmc, code, &sen, sizeof(sen));
 		break;
@@ -486,13 +493,17 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       int zero_datalen)
 {
 	struct pmc *pmc;
+	UInteger32 proc_id;
 
 	pmc = calloc(1, sizeof *pmc);
 	if (!pmc)
 		return NULL;
 
 	if (transport_type == TRANS_UDS) {
-		pmc->port_identity.portNumber = getpid();
+		proc_id = getpid();
+		pmc->port_identity.clockIdentity.id[6] = (proc_id & 0xFF000000) >> 24;
+		pmc->port_identity.clockIdentity.id[7] = (proc_id & 0x00FF0000) >> 16;
+		pmc->port_identity.portNumber = proc_id & 0xFFFF;
 	} else {
 		if (generate_clock_identity(&pmc->port_identity.clockIdentity,
 					    iface_name)) {
@@ -563,7 +574,6 @@ static struct ptp_message *pmc_message(struct pmc *pmc, uint8_t action)
 	msg->header.domainNumber       = pmc->domain_number;
 	msg->header.sourcePortIdentity = pmc->port_identity;
 	msg->header.sequenceId         = pmc->sequence_id++;
-	msg->header.control            = CTL_MANAGEMENT;
 	msg->header.logMessageInterval = 0x7f;
 
 	msg->management.targetPortIdentity = pmc->target;
