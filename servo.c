@@ -32,8 +32,6 @@
 
 #include "test.h"
 
-#define NSEC_PER_SEC 1000000000
-
 struct servo *servo_create(struct config *cfg, enum servo_type type,
 			   double fadj, int max_ppb, int sw_ts)
 {
