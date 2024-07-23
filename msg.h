@@ -39,6 +39,7 @@
 
 /* Values for the transportSpecific field */
 #define TS_IEEE_8021AS (1<<4)
+#define TS_CMLDS       (2<<4)
 
 /* Values for the messageType field */
 #define SYNC                  0x0

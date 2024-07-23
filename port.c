@@ -796,6 +796,15 @@ static int port_ignore(struct port *p, struct ptp_message *m)
 	if (path_trace_ignore(p, m)) {
 		return 1;
 	}
+	if (port_is_ieee8021as(p)) {
+		if (msg_transport_specific(m) != TS_IEEE_8021AS &&
+		    msg_transport_specific(m) != TS_CMLDS) {
+			pr_debug("%s: received %s with invalid transport specific value %d "
+				"for IEEE8021as", p->log_name, msg_type_string(msg_type(m)),
+				msg_transport_specific(m)>>4);
+			return 1;
+		}
+	}
 	if (p->match_transport_specific &&
 	    msg_transport_specific(m) != p->transportSpecific) {
 		return 1;
