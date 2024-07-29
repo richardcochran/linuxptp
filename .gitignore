@@ -7,7 +7,6 @@
 /pmc
 /ptp4l
 /phc_ctl
-/snmp4lptp
 /timemaster
 /ts2phc
 /tz2alt
