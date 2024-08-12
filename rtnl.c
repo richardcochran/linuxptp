@@ -24,7 +24,9 @@
 #endif
 #include <linux/rtnetlink.h>
 #include <linux/genetlink.h>
+#ifdef HAVE_IF_TEAM
 #include <linux/if_team.h>
+#endif
 #include <net/if.h>
 #include <stdio.h>
 #include <stdlib.h>

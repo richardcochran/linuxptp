@@ -154,6 +154,7 @@ kernel_flags()
 	prefix=""
 	tstamp=/usr/include/linux/net_tstamp.h
 	ptp_clock=/usr/include/linux/ptp_clock.h
+	if_team=/usr/include/linux/if_team.h
 
 	if [ "x$KBUILD_OUTPUT" != "x" ]; then
 		# With KBUILD_OUTPUT set, we are building against
@@ -184,6 +185,10 @@ kernel_flags()
 
 	if grep -q adjust_phase ${prefix}${ptp_clock}; then
 		printf " -DHAVE_PTP_CAPS_ADJUST_PHASE"
+	fi
+
+	if grep -q -s TEAM_GENL_NAME ${prefix}${if_team}; then
+		printf " -DHAVE_IF_TEAM"
 	fi
 }
 
