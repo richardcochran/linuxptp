@@ -120,7 +120,7 @@ static int nmea_scan_rmc(struct nmea_parser *np, struct nmea_rmc *result)
 	int cnt, i, msec = 0;
 	char *ptr, status;
 	uint8_t checksum;
-	struct tm tm;
+	struct tm tm = {0};
 
 	pr_debug("nmea sentence: %s", np->sentence);
 	cnt = sscanf(np->payload_checksum, "%02hhx", &checksum);
