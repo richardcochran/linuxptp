@@ -283,7 +283,7 @@ The holdover interval, specified in seconds. When the ToD information stops
 working (e.g. GNSS receiver lost its fix), ts2phc is allowed for the specified
 interval to continue synchronizing the target clock as long as the servo is in
 the SERVO_LOCKED_STABLE state. The servo state needs be enabled by the
-\fBservo_num_offset_values\fP option. The holdover is not supported with the
+\fBservo_offset_threshold\fP option. The holdover is not supported with the
 \fB-a\fP option and when \fBts2phc.extts_polarity\fP is set to \fIboth\fP.
 The default is 0 (disabled).
 
