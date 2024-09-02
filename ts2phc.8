@@ -127,6 +127,16 @@ and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
 inclusive. The default is 0 (disabled).
 
 .TP
+.B clock_servo
+The servo which is used to synchronize the local clock. Valid values
+are "pi" for a PI controller, "linreg" for an adaptive controller
+using linear regression, "ntpshm" and "refclock_sock" for the NTP SHM and
+chrony SOCK reference clocks respectively to allow another process to
+synchronize the local clock, and "nullf" for a servo that always dials
+frequency offset zero (for use in SyncE nodes).
+The default is "pi".
+
+.TP
 .B first_step_threshold
 The maximum offset, specified in seconds, that the servo will correct by
 changing the clock frequency (phase when using nullf servo) instead of stepping
@@ -171,12 +181,85 @@ with the log level of the message as a number.  The default is an empty string
 argument).
 
 .TP
+.B ntpshm_segment
+The number of the SHM segment used by ntpshm servo.
+The default is 0.
+
+.TP
+.B pi_integral_const
+The integral constant of the PI controller. When set to 0.0, the
+integral constant will be set by the following formula from the current
+sync interval.
+The default is 0.0.
+
+ki = min(ki_scale * sync^ki_exponent, ki_norm_max / sync)
+
+.TP
+.B pi_integral_exponent
+The ki_exponent constant in the formula used to set the integral constant of
+the PI controller from the sync interval.
+The default is 0.4.
+
+.TP
+.B pi_integral_norm_max
+The ki_norm_max constant in the formula used to set the integral constant of
+the PI controller from the sync interval.
+The default is 0.3.
+
+.TP
+.B pi_integral_scale
+The ki_scale constant in the formula used to set the integral constant of
+the PI controller from the sync interval.
+The default is 0.3.
+
+.TP
+.B pi_proportional_const
+The proportional constant of the PI controller. When set to 0.0, the
+proportional constant will be set by the following formula from the current
+sync interval.
+The default is 0.0.
+
+kp = min(kp_scale * sync^kp_exponent, kp_norm_max / sync)
+
+.TP
+.B pi_proportional_exponent
+The kp_exponent constant in the formula used to set the proportional constant of
+the PI controller from the sync interval.
+The default is \-0.3.
+
+.TP
+.B pi_proportional_norm_max
+The kp_norm_max constant in the formula used to set the proportional constant of
+the PI controller from the sync interval.
+The default is 0.7
+
+.TP
+.B pi_proportional_scale
+The kp_scale constant in the formula used to set the proportional constant of
+the PI controller from the sync interval.
+The default is 0.7.
+
 .B sa_file
 Specifies the location of the file containing Security Associations used
 for immediate security processing of the Authentication TLV in support of
 the optional security mechanism defined in ieee1588-2019 ch 14.16. See
 \fBSECURITY ASSOCIATION OPTIONS\fR for more info on file contents.
 The default is an empty string. (disabled).
+
+.TP
+.B servo_num_offset_values
+The number of offset values considered in order to transition from the
+SERVO_LOCKED to the SERVO_LOCKED_STABLE state.
+The transition occurs once the last 'servo_num_offset_values' offsets
+are all below the 'servo_offset_threshold' value.
+The default value is 10.
+
+.TP
+.B servo_offset_threshold
+The offset threshold used in order to transition from the SERVO_LOCKED
+to the SERVO_LOCKED_STABLE state.  The transition occurs once the
+last 'servo_num_offset_values' offsets are all below the threshold value.
+The default value of offset_threshold is 0 (disabled).
 
 .TP
 .B step_threshold
