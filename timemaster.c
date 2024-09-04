@@ -1240,11 +1240,17 @@ static int create_vclocks(struct phc_vclocks **phc_vclocks)
 {
 	struct phc_vclocks **vclocks;
 
+	if (!*phc_vclocks)
+		return 0;
+
 	for (vclocks = phc_vclocks; *vclocks; vclocks++) {
 		if (set_phc_n_vclocks((*vclocks)->pclock_index,
 				      (*vclocks)->vclocks))
 			return 1;
 	}
+
+	/* Wait for udev to set up the new /dev/ptp* devices */
+	usleep(100000);
 
 	return 0;
 }
