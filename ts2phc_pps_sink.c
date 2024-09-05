@@ -392,6 +392,9 @@ int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 	while (!all_sinks_have_events) {
 		struct ts2phc_pps_sink *sink;
 
+		if (!is_running())
+			return 0;
+
 		cnt = poll(polling_array->pfd, priv->n_sinks, 2000);
 		if (cnt < 0) {
 			if (errno == EINTR) {
