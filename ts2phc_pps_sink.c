@@ -406,6 +406,14 @@ int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 		}
 
 		for (i = 0; i < priv->n_sinks; i++) {
+			if (polling_array->pfd[i].revents & POLLERR) {
+				sink = polling_array->sink[i];
+
+				pr_err("%s: error polling on pfd[%d]\n",
+				       sink->name, i);
+				return -EIO;
+			}
+
 			if (polling_array->pfd[i].revents & (POLLIN|POLLPRI)) {
 				enum extts_result result;
 
