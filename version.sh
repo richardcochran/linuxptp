@@ -5,7 +5,7 @@
 # Adapted from scripts/setlocalversion in the Linux kernel sources.
 #
 major=4
-minor=3
+minor=4
 extra=
 
 usage() {
