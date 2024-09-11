@@ -146,7 +146,7 @@ See UNICAST DISCOVERY OPTIONS, below.
 .B active_key_id
 Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
 specify which key from the \fBspp\fR defined Security Association
-should be used for outbound icv calculations. All Security Assocations
+should be used for outbound icv calculations. All Security Associations
 are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
 and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
 inclusive. The default is 0 (disabled).
@@ -612,7 +612,7 @@ The default is 248.
 
 .TP
 .B clock_class_threshold
-The maximum clock class value from master, acceptible to sub-ordinate
+The maximum clock class value from master, acceptable to subordinate
 clock beyond which it moves out of lock state.
 The default value is 248.
 
@@ -622,7 +622,7 @@ The clockIdentity attribute of the local clock.
 The clockIdentity is an 8-octet array and should in this configuration be
 written in textual form, see default. It should be unique since it is used to
 identify the specific clock.
-If default is used or if not set at all, the clockIdentity will be automtically
+If default is used or if not set at all, the clockIdentity will be automatically
 generated.
 The default is "000000.0000.000000"
 
@@ -738,8 +738,8 @@ The default is 0.
 
 .TP
 .B interface_rate_tlv
-When the client and server are operating are operating at different interface rate,
-delay asymmetry caused due to different interface rate needs to be compensated.
+When the client and server are operating at different interface rates, delay
+asymmetry caused by different interface rates needs to be compensated for.
 The server sends its interface rate using interface rate TLV
 as per G.8275.2 Annex D.
 The default is 0 (does not support interface rate tlv).
@@ -921,7 +921,7 @@ used for immediate security processing of the Authentication TLV in
 support of the optional security mechanism defined in ieee1588-2019
 ch 14.16. See \fBSECURITY ASSOCIATION OPTIONS\fR for information on how
 this file should be formatted. \fBspp\fR and \fBactive_key_id\fR should
-be specifed for each port to indicate which Security Association from
+be specified for each port to indicate which Security Association from
 the /fBsa_file/fR should be used. The default is an empty string.
 
 .TP
@@ -1155,7 +1155,7 @@ entries should use the format 'id type length value'.
               as a hexadecimal number with the "HEX:" prefix or as a
               Base64 encoded string with the "B64:" prefix. If no
               prefix is included, ASCII is assumed. Key values should
-              be randomally generated if possible. Ciphers (AES)
+              be randomly generated if possible. Ciphers (AES)
               require the key length to match the cipher length
               (ie AES-128 requires key of 128 bits or 16 bytes).
 
@@ -1233,7 +1233,7 @@ Example for Intel E810 card:
 \f(CWpgrep \-f ice-ptp | xargs \-I {} sudo chrt \-f \-\-pid 75 {}\fP
 .RE
 
-Assigning priority needs careful consideration as assigning too high
+Assigning priority needs careful consideration as assigning too high a
 priority to any task might make system unstable.
 
 .SH SEE ALSO
