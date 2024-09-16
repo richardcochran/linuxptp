@@ -89,7 +89,7 @@ timemaster: phc.o print.o rtnl.o sk.o timemaster.o util.o version.o
 
 ts2phc: config.o clockadj.o hash.o interface.o msg.o phc.o pmc_agent.o \
  pmc_common.o print.o $(SECURITY) $(SERVOS) sk.o $(TS2PHC) tlv.o transport.o \
- raw.o udp.o udp6.o uds.o util.o version.o
+ $(TRANSP) util.o version.o
 
 tz2alt: config.o hash.o interface.o lstab.o msg.o phc.o pmc_common.o print.o \
  $(SECURITY) sk.o tlv.o $(TRANSP) tz2alt.o util.o version.o
