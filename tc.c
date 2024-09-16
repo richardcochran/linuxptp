@@ -453,7 +453,7 @@ int tc_fwd_sync(struct port *q, struct ptp_message *msg)
 		if (!fup) {
 			return -1;
 		}
-		fup->header.tsmt               = FOLLOW_UP | (msg->header.tsmt & 0xf0);
+		fup->header.tsmt               = FOLLOW_UP | msg_transport_specific(msg);
 		fup->header.ver                = msg->header.ver;
 		fup->header.messageLength      = htons(sizeof(struct follow_up_msg));
 		fup->header.domainNumber       = msg->header.domainNumber;

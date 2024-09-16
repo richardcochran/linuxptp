@@ -2494,8 +2494,7 @@ int process_pdelay_req(struct port *p, struct ptp_message *m)
 
 	rsp->hwts.type = p->timestamping;
 
-	rsp->header.tsmt               = m->header.tsmt & 0xf0;
-	rsp->header.tsmt               |= PDELAY_RESP;
+	rsp->header.tsmt               = PDELAY_RESP | msg_transport_specific(m);
 	rsp->header.ver                = ptp_hdr_ver;
 	rsp->header.messageLength      = sizeof(struct pdelay_resp_msg);
 	rsp->header.domainNumber       = m->header.domainNumber;
