@@ -42,7 +42,7 @@ enum {
  * @return   A @ref port_state value as the recommended state.
  */
 enum port_state bmc_state_decision(struct clock *c, struct port *r,
-				   int (*comapre)(struct dataset *a, struct dataset *b));
+				   int (*compare)(struct dataset *a, struct dataset *b));
 
 /**
  * Compare two data sets using the algorithm defined in IEEE 1588.
