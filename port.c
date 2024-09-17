@@ -1985,6 +1985,7 @@ void port_disable(struct port *p)
 	flush_peer_delay(p);
 
 	p->best = NULL;
+	unicast_service_clear_clients(p);
 	free_foreign_masters(p);
 	transport_close(p->trp, &p->fda);
 

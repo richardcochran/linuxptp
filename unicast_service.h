@@ -87,4 +87,10 @@ void unicast_service_remove(struct port *p, struct ptp_message *m,
  */
 int unicast_service_timer(struct port *p);
 
+/**
+ * Clears unicast clients on a given port.
+ * @param p      The port in question.
+ */
+void unicast_service_clear_clients(struct port *p);
+
 #endif

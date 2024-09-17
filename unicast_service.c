@@ -571,3 +571,24 @@ int unicast_service_timer(struct port *p)
 	}
 	return err;
 }
+
+void unicast_service_clear_clients(struct port *p)
+{
+	struct unicast_client_address *client, *temp;
+	struct unicast_service_interval *interval;
+
+	if (!p->unicast_service) {
+		return;
+	}
+
+	while ((interval = pqueue_extract(p->unicast_service->queue)) != NULL) {
+
+		LIST_REMOVE(interval, list);
+
+		LIST_FOREACH_SAFE(client, &interval->clients, list, temp) {
+			LIST_REMOVE(client, list);
+			free(client);
+		}
+		free(interval);
+	}
+}
