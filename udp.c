@@ -44,6 +44,7 @@ struct udp {
 	struct transport t;
 	struct address ip;
 	struct address mac;
+	struct in_addr mcast_addr[2];
 };
 
 static int mcast_bind(int fd, int index)
@@ -146,8 +147,6 @@ no_socket:
 
 enum { MC_PRIMARY, MC_PDELAY };
 
-static struct in_addr mcast_addr[2];
-
 static int udp_open(struct transport *t, struct interface *iface,
 		    struct fdarray *fda, enum timestamp_type ts_type)
 {
@@ -165,22 +164,22 @@ static int udp_open(struct transport *t, struct interface *iface,
 	sk_interface_addr(name, AF_INET, &udp->ip);
 
 	str = config_get_string(t->cfg, name, "ptp_dst_ipv4");
-	if (!inet_aton(str, &mcast_addr[MC_PRIMARY])) {
+	if (!inet_aton(str, &udp->mcast_addr[MC_PRIMARY])) {
 		pr_err("invalid ptp_dst_ipv4 %s", str);
 		return -1;
 	}
 
 	str = config_get_string(t->cfg, name, "p2p_dst_ipv4");
-	if (!inet_aton(str, &mcast_addr[MC_PDELAY])) {
+	if (!inet_aton(str, &udp->mcast_addr[MC_PDELAY])) {
 		pr_err("invalid p2p_dst_ipv4 %s", str);
 		return -1;
 	}
 
-	efd = open_socket(name, mcast_addr, EVENT_PORT, ttl);
+	efd = open_socket(name, udp->mcast_addr, EVENT_PORT, ttl);
 	if (efd < 0)
 		goto no_event;
 
-	gfd = open_socket(name, mcast_addr, GENERAL_PORT, ttl);
+	gfd = open_socket(name, udp->mcast_addr, GENERAL_PORT, ttl);
 	if (gfd < 0)
 		goto no_general;
 
@@ -223,6 +222,7 @@ static int udp_send(struct transport *t, struct fdarray *fda,
 		    enum transport_event event, int peer, void *buf, int len,
 		    struct address *addr, struct hw_timestamp *hwts)
 {
+	struct udp *udp = container_of(t, struct udp, t);
 	struct address addr_buf;
 	unsigned char junk[1600];
 	ssize_t cnt;
@@ -243,8 +243,8 @@ static int udp_send(struct transport *t, struct fdarray *fda,
 	if (!addr) {
 		memset(&addr_buf, 0, sizeof(addr_buf));
 		addr_buf.sin.sin_family = AF_INET;
-		addr_buf.sin.sin_addr = peer ? mcast_addr[MC_PDELAY] :
-					       mcast_addr[MC_PRIMARY];
+		addr_buf.sin.sin_addr = peer ? udp->mcast_addr[MC_PDELAY] :
+					       udp->mcast_addr[MC_PRIMARY];
 		addr_buf.len = sizeof(addr_buf.sin);
 		addr = &addr_buf;
 	}
