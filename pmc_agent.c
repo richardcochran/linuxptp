@@ -37,6 +37,7 @@ struct pmc_agent {
 	struct pmc *pmc;
 	uint64_t pmc_last_update;
 	uint64_t update_interval;
+	int update_phase;
 
 	struct defaultDS dds;
 	bool dds_valid;
@@ -427,15 +428,26 @@ int pmc_agent_update(struct pmc_agent *node)
 	ts = tp.tv_sec * NS_PER_SEC + tp.tv_nsec;
 
 	if (ts - node->pmc_last_update >= node->update_interval) {
-		if (node->stay_subscribed) {
-			renew_subscription(node, 0);
-		}
-		if (!pmc_agent_query_utc_offset(node, 0)) {
+		switch (node->update_phase) {
+		case 0:
+			if (node->stay_subscribed &&
+			    renew_subscription(node, 0))
+				break;
+			node->update_phase++;
+			/* Fall through */
+		case 1:
+			if (pmc_agent_query_utc_offset(node, 0))
+				break;
+			node->update_phase++;
+			/* Fall through */
+		default:
 			node->pmc_last_update = ts;
+			node->update_phase = 0;
+			break;
 		}
+	} else {
+		run_pmc(node, 0, -1, &msg);
 	}
-
-	run_pmc(node, 0, -1, &msg);
 
 	return 0;
 }
