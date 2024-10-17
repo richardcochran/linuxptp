@@ -962,6 +962,12 @@ static int auto_init_ports(struct domain *domain)
 		return -1;
 	}
 
+	while (!pmc_agent_is_subscribed(domain->agent)) {
+		usleep(10000);
+		if (pmc_agent_update(domain->agent) < 0)
+			return -1;
+	}
+
 	for (i = 1; i <= number_ports; i++) {
 		err = pmc_agent_query_port_properties(domain->agent, 1000, i,
 						      &state, &timestamping,
