@@ -117,10 +117,13 @@ should no longer be used.
 .TP
 .BI \-c " device"
 Specify the time sink by device (e.g. /dev/ptp1) or interface (e.g. eth1) or
-by  name. The default is CLOCK_REALTIME (the system clock). Not compatible
-with the
+by name. If used together with the
 .B \-a
-option. This option may be given up to 128 times.
+option, it is an additional sink clock added to the clocks provided by the
+first ptp4l instance (if
+.B \-z
+is specified multiple times). Duplicated clocks are allowed. The default is
+CLOCK_REALTIME (the system clock). This option may be given up to 128 times.
 .TP
 .BI \-E " servo"
 Specify which clock servo should be used. Valid values are pi for a PI

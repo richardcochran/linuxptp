@@ -79,6 +79,7 @@ struct clock {
 	int dest_only;
 	int state;
 	int new_state;
+	int static_state;
 	int sync_offset;
 	int leap_set;
 	int utc_offset_set;
@@ -391,6 +392,18 @@ static struct clock *find_dst_clock(struct domain *domain,
 	return c;
 }
 
+static struct clock *find_nonstatic_clock(struct domain *domain,
+					  int phc_index)
+{
+	struct clock *c = NULL;
+	LIST_FOREACH(c, &domain->clocks, list) {
+		if (!c->static_state && c->phc_index == phc_index) {
+			break;
+		}
+	}
+	return c;
+}
+
 static int reconfigure_domain(struct domain *domain)
 {
 	struct clock *c, *src = NULL, *dup = NULL;
@@ -422,6 +435,17 @@ static int reconfigure_domain(struct domain *domain)
 			c->new_state = 0;
 		}
 
+		/* Ignore the clock if its state is not following ptp4l and has
+		   the same PHC index as a clock that is following ptp4l */
+		if (c->static_state) {
+			dup = find_nonstatic_clock(domain, c->phc_index);
+			if (dup) {
+				pr_info("skipping static %s: %s has the same clock",
+					c->device, dup->device);
+				continue;
+			}
+		}
+
 		switch (c->state) {
 		case PS_FAULTY:
 		case PS_DISABLED:
@@ -436,6 +460,8 @@ static int reconfigure_domain(struct domain *domain)
 				dst_cnt++;
 				LIST_INSERT_HEAD(&domain->dst_clocks,
 						 c, dst_list);
+				if (c->sanity_check)
+					clockcheck_reset(c->sanity_check);
 			} else {
 				pr_info("skipping %s: %s has the same clock "
 					"and is already selected",
@@ -1128,6 +1154,7 @@ static int phc2sys_static_dst_configuration(struct domain *domain,
 		return -1;
 	}
 	dst->state = PS_MASTER;
+	dst->static_state = 1;
 	LIST_INSERT_HEAD(&domain->dst_clocks, dst, dst_list);
 
 	return 0;
@@ -1407,7 +1434,7 @@ int main(int argc, char *argv[])
 		dst_names[dst_cnt++] = "CLOCK_REALTIME";
 	}
 
-	if (autocfg && (src_name || dst_cnt > 0 || hardpps_configured(pps_fd) ||
+	if (autocfg && (src_name || hardpps_configured(pps_fd) ||
 			wait_sync || settings.forced_sync_offset)) {
 		fprintf(stderr,
 			"autoconfiguration cannot be mixed with manual config options.\n");
@@ -1506,6 +1533,14 @@ int main(int argc, char *argv[])
 			if (auto_init_ports(&domains[i]) < 0)
 				goto end;
 		}
+
+		for (i = 0; i < dst_cnt; i++) {
+			r = phc2sys_static_dst_configuration(&domains[0],
+							     dst_names[i]);
+			if (r)
+				goto end;
+		}
+
 		r = do_loop(domains, n_domains);
 		goto end;
 	}
