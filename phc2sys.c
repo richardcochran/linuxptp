@@ -161,7 +161,7 @@ static struct servo *servo_add(struct domain *domain,
 static struct clock *clock_add(struct domain *domain, const char *device,
 			       int phc_index)
 {
-	struct clock *c;
+	struct clock *c, *c2;
 	clockid_t clkid = CLOCK_INVALID;
 	char phc_device[19];
 
@@ -217,7 +217,19 @@ static struct clock *clock_add(struct domain *domain, const char *device,
 		c->sysoff_method = sysoff_probe(CLOCKID_TO_FD(clkid),
 						domain->phc_readings);
 
-	LIST_INSERT_HEAD(&domain->clocks, c, list);
+	/* Add the clock to the end of the list to keep them in the
+	   command-line or ptp4l order */
+	if (LIST_EMPTY(&domain->clocks)) {
+		LIST_INSERT_HEAD(&domain->clocks, c, list);
+	} else {
+		LIST_FOREACH(c2, &domain->clocks, list) {
+			if (LIST_NEXT(c2, list))
+				continue;
+			LIST_INSERT_AFTER(c2, c, list);
+			break;
+		}
+	}
+
 	return c;
 }
 
