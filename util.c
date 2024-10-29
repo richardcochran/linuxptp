@@ -894,3 +894,18 @@ bool base64_decode(const char *in_str, size_t in_len, void *out, size_t *out_len
 	*out_len = *out_len - len;
 	return true;
 }
+
+int str2prid(const char *s, struct ProfileIdentity *result)
+{
+	struct ProfileIdentity prid;
+	int c;
+
+	c = sscanf(s, " %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+		   &prid.id[0], &prid.id[1], &prid.id[2],
+		   &prid.id[3], &prid.id[4], &prid.id[5]);
+	if (c == 6) {
+		*result = prid;
+		return 0;
+	}
+	return -1;
+}

@@ -896,6 +896,7 @@ static void port_management_send_error(struct port *p, struct port *ingress,
 		pr_err("%s: management error failed", p->log_name);
 }
 
+static const Octet profile_id_none[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const Octet profile_id_drr[] = {0x00, 0x1B, 0x19, 0x00, 0x01, 0x00};
 static const Octet profile_id_p2p[] = {0x00, 0x1B, 0x19, 0x00, 0x02, 0x00};
 static const Octet profile_id_8275_1[] = {0x00, 0x19, 0xA7, 0x01, 0x02, 0x03};
@@ -994,7 +995,10 @@ static int port_management_fill_response(struct port *target,
 		ptp_text_copy(cd->userDescription, &desc->userDescription);
 		buf += sizeof(struct PTPText) + cd->userDescription->length;
 
-		if (target->delayMechanism == DM_P2P ||
+		if (memcmp(target->profileIdentity.id, profile_id_none,
+				sizeof(profile_id_none)) != 0) {
+			memcpy(buf, target->profileIdentity.id, PROFILE_ID_LEN);
+		} else if (target->delayMechanism == DM_P2P ||
 		    target->delayMechanism == DM_COMMON_P2P) {
 			memcpy(buf, profile_id_p2p, PROFILE_ID_LEN);
 		} else {
@@ -3658,6 +3662,12 @@ struct port *port_open(const char *phc_device,
 	p->allowedLostResponses = config_get_int(cfg, p->name, "allowedLostResponses");
 	p->spp = config_get_int(cfg, p->name, "spp");
 	p->active_key_id = config_get_uint(cfg, p->name, "active_key_id");
+
+	if (str2prid(config_get_string(cfg, p->name, "profileIdentity"),
+			&p->profileIdentity)) {
+		pr_err("failed to set profile identity");
+		goto err_transport;
+	}
 
 	if (!port_is_uds(p) && unicast_client_initialize(p)) {
 		goto err_transport;

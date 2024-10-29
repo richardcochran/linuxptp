@@ -130,4 +130,8 @@ struct unicast_master_entry {
 	struct PortAddress      address;
 } PACKED;
 
+struct ProfileIdentity {
+	Octet id[6];
+} PACKED;
+
 #endif

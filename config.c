@@ -344,6 +344,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("priority1", 128, 0, UINT8_MAX),
 	GLOB_ITEM_INT("priority2", 128, 0, UINT8_MAX),
 	GLOB_ITEM_STR("productDescription", ";;"),
+	PORT_ITEM_STR("profileIdentity", "00:00:00:00:00:00"),
 	PORT_ITEM_STR("ptp_dst_ipv4", "224.0.1.129"),
 	PORT_ITEM_STR("ptp_dst_ipv6", "FF0E:0:0:0:0:0:0:181"),
 	PORT_ITEM_STR("ptp_dst_mac", "01:1B:19:00:00:00"),

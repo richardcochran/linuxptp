@@ -502,4 +502,13 @@ size_t base64_len(const char *str, size_t len);
  */
 bool base64_decode(const char *in_str, size_t in_len, void *out, size_t *out_len);
 
+/**
+ * Scan a string containing a profile ID and convert it into binary form.
+ *
+ * @param s       String in human readable form.
+ * @param result  Pointer to a buffer to hold the result.
+ * @return        Zero on success, or -1 if the string is incorrectly formatted.
+ */
+int str2prid(const char *s, struct ProfileIdentity *result);
+
 #endif

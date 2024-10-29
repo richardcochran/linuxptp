@@ -173,6 +173,7 @@ struct port {
 		struct pmc *pmc;
 		int port;
 	} cmlds;
+	struct ProfileIdentity profileIdentity;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
