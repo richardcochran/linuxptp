@@ -1594,7 +1594,7 @@ int main(int argc, char *argv[])
 
 		if (domains[0].forced_sync_offset ||
 		    !phc2sys_using_systemclock(&domains[0]) ||
-		    hardpps_configured(pps_fd)) {
+		    (hardpps_configured(pps_fd) && !src_name)) {
 			pmc_agent_disable(domains[0].agent);
 		}
 	}
