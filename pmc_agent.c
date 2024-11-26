@@ -33,6 +33,9 @@
 #define UPDATES_PER_SUBSCRIPTION 3
 #define MIN_UPDATE_INTERVAL 10
 
+/* Update interval if the agent not subscribed, just polling the UTC offset */
+#define DEFAULT_UPDATE_INTERVAL 60
+
 struct pmc_agent {
 	struct pmc *pmc;
 	uint64_t pmc_last_update;
@@ -253,6 +256,7 @@ int init_pmc_node(struct config *cfg, struct pmc_agent *node, const char *uds,
 	}
 	node->recv_subscribed = recv_subscribed;
 	node->recv_context = context;
+	node->update_interval = DEFAULT_UPDATE_INTERVAL * NS_PER_SEC;
 
 	return 0;
 }
