@@ -164,7 +164,10 @@ minimize the error caused by random delays in scheduling and bus utilization.
 The default is 5.
 .TP
 .BI \-O " offset"
-Specify the offset between the sink and source times in seconds. Not
+Specify the offset between the sink and source times in seconds. If not
+specified, the offset will be set according to the currentUtcOffset value
+obtained from ptp4l and the direction of synchronization, assuming the system
+clock is keeping time in UTC and all used PHCs keep time in TAI. Not
 compatible with the
 .B \-a
 option.  See

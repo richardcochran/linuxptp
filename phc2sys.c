@@ -1452,12 +1452,6 @@ int main(int argc, char *argv[])
 		goto bad_usage;
 	}
 
-	if (!autocfg && !wait_sync && !settings.forced_sync_offset) {
-		fprintf(stderr,
-			"time offset must be specified using -w or -O\n");
-		goto bad_usage;
-	}
-
 	if (hardpps_configured(pps_fd) && (dst_cnt != 1 ||
 	    strcmp(dst_names[0], "CLOCK_REALTIME"))) {
 		fprintf(stderr,
@@ -1559,7 +1553,7 @@ int main(int argc, char *argv[])
 
 	r = -1;
 
-	if (wait_sync) {
+	if (wait_sync || !domains[0].forced_sync_offset) {
 		snprintf(uds_local, sizeof(uds_local),
 			 "/var/run/phc2sys.%d", getpid());
 
@@ -1574,7 +1568,7 @@ int main(int argc, char *argv[])
 				  phc2sys_recv_subscribed, &domains[0]))
 			goto end;
 
-		while (is_running()) {
+		while (wait_sync && is_running()) {
 			r = run_pmc_wait_sync(domains[0].agent, 1000);
 			if (r < 0)
 				goto end;
