@@ -599,6 +599,7 @@ static int sad_config_security_association_key(size_t key_id, const char *icv_st
 	struct security_association_key *key;
 	struct integrity_alg_info *icv;
 	size_t key_len = 0;
+	int i;
 
 	if (!current_sa) {
 		pr_err("sa_file: line %zu: missing spp - ignoring",
@@ -653,7 +654,7 @@ static int sad_config_security_association_key(size_t key_id, const char *icv_st
 			free(key);
 			return -1;
 		}
-		for (int i = 0; i < key_len; i += 2) {
+		for (i = 0; i < key_len; i += 2) {
 			const char hex_pair[3] = { key_str[i], key_str[i + 1], '\0' };
 			long value = strtol(hex_pair, NULL, 16);
 			key_str[i / 2] = (char) value;
