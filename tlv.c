@@ -164,6 +164,7 @@ static void alttime_offset_pre_send(struct tlv_extra *extra)
 static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 			 struct tlv_extra *extra)
 {
+	struct external_grandmaster_properties_np *egpn;
 	struct alternate_time_offset_properties *atop;
 	struct alternate_time_offset_name *aton;
 	struct ieee_c37_238_settings_np *pwr;
@@ -490,6 +491,12 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		NTOHL(cmlds->scaledNeighborRateRatio);
 		NTOHL(cmlds->as_capable);
 		break;
+	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		if (data_len != sizeof(struct external_grandmaster_properties_np))
+			goto bad_length;
+		egpn = (struct external_grandmaster_properties_np *) m->data;
+		NTOHS(egpn->stepsRemoved);
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -513,6 +520,7 @@ bad_length:
 
 static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 {
+	struct external_grandmaster_properties_np *egpn;
 	struct alternate_time_offset_properties *atop;
 	struct ieee_c37_238_settings_np *pwr;
 	struct unicast_master_table_np *umtn;
@@ -687,6 +695,10 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 		host2net64_unaligned(&cmlds->meanLinkDelay);
 		HTONL(cmlds->scaledNeighborRateRatio);
 		HTONL(cmlds->as_capable);
+		break;
+	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		egpn = (struct external_grandmaster_properties_np *)m->data;
+		HTONS(egpn->stepsRemoved);
 		break;
 	}
 }

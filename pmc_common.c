@@ -132,6 +132,7 @@ struct management_id idtab[] = {
 	{ "GRANDMASTER_SETTINGS_NP", MID_GRANDMASTER_SETTINGS_NP, do_set_action },
 	{ "SUBSCRIBE_EVENTS_NP", MID_SUBSCRIBE_EVENTS_NP, do_set_action },
 	{ "SYNCHRONIZATION_UNCERTAIN_NP", MID_SYNCHRONIZATION_UNCERTAIN_NP, do_set_action },
+	{ "EXTERNAL_GRANDMASTER_PROPERTIES_NP", MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP, do_set_action },
 /* Port management ID values */
 	{ "NULL_MANAGEMENT", MID_NULL_MANAGEMENT, null_management },
 	{ "CLOCK_DESCRIPTION", MID_CLOCK_DESCRIPTION, do_get_action },
@@ -172,6 +173,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 {
 	int cnt, code = idtab[index].code, freq_traceable, leap_59, leap_61,
 		ptp_timescale, time_traceable, utc_off_valid;
+	struct external_grandmaster_properties_np egpn;
 	struct alternate_time_offset_properties atop;
 	struct ieee_c37_238_settings_np pwr;
 	struct grandmaster_settings_np gsn;
@@ -183,6 +185,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	char onoff_parent_data_set[4] = "off";
 	char onoff_cmlds[4] = "off";
 	char display_name[11] = {0};
+	char identity[19];
 	uint64_t jump;
 	uint8_t key;
 	int enable;
@@ -399,6 +402,19 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 				IEEE_C37_238_VERSION_2011,
 				IEEE_C37_238_VERSION_2017);
 		}
+		break;
+	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "gmIdentity   %18s "
+			     "stepsRemoved %hu ",
+			     identity,
+			     &egpn.stepsRemoved);
+		if (cnt != 2 || str2cid(identity, &egpn.gmIdentity)) {
+			fprintf(stderr, "%s SET needs 2 values\n",
+				idtab[index].name);
+			break;
+		}
+		pmc_send_set_action(pmc, code, &egpn, sizeof(egpn));
 		break;
 	}
 }
@@ -703,6 +719,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_POWER_PROFILE_SETTINGS_NP:
 		len += sizeof(struct ieee_c37_238_settings_np);
+		break;
+	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		len += sizeof(struct external_grandmaster_properties_np);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 	case MID_ANNOUNCE_RECEIPT_TIMEOUT:

@@ -158,6 +158,7 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 
 static void pmc_show(struct ptp_message *msg, FILE *fp)
 {
+	struct external_grandmaster_properties_np *egpn;
 	struct alternate_time_offset_properties *atop;
 	struct alternate_time_offset_name *aton;
 	struct ieee_c37_238_settings_np *pwr;
@@ -474,6 +475,14 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		mtd = (struct management_tlv_datum *) mgt->data;
 		fprintf(fp, "SYNCHRONIZATION_UNCERTAIN_NP "
 			IFMT "uncertain %hhu", mtd->val);
+		break;
+	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		egpn = (struct external_grandmaster_properties_np *) mgt->data;
+		fprintf(fp, "EXTERNAL_GRANDMASTER_PROPERTIES_NP "
+			IFMT "gmIdentity   %s"
+			IFMT "stepsRemoved %hu",
+			cid2str(&egpn->gmIdentity),
+			egpn->stepsRemoved);
 		break;
 	case MID_PORT_DATA_SET:
 		p = (struct portDS *) mgt->data;

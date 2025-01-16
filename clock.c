@@ -422,6 +422,7 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 					  struct ptp_message *req,
 					  struct ptp_message *rsp, int id)
 {
+	struct external_grandmaster_properties_np *egpn;
 	struct alternate_time_offset_properties *atop;
 	struct alternate_time_offset_name *aton;
 	struct grandmaster_settings_np *gsn;
@@ -582,6 +583,12 @@ static int clock_management_fill_response(struct clock *c, struct port *p,
 		mtd->val = c->local_sync_uncertain;
 		datalen = sizeof(*mtd);
 		break;
+	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		egpn = (struct external_grandmaster_properties_np *) tlv->data;
+		egpn->gmIdentity = c->ext_gm_identity;
+		egpn->stepsRemoved = c->ext_gm_steps_removed;
+		datalen = sizeof(*egpn);
+		break;
 	default:
 		/* The caller should *not* respond to this message. */
 		tlv_extra_recycle(extra);
@@ -620,6 +627,7 @@ static int clock_management_get_response(struct clock *c, struct port *p,
 static int clock_management_set(struct clock *c, struct port *p,
 				int id, struct ptp_message *req, int *changed)
 {
+	struct external_grandmaster_properties_np *egpn;
 	struct alternate_time_offset_properties *atop;
 	struct alternate_time_offset_name *aton;
 	struct grandmaster_settings_np *gsn;
@@ -709,6 +717,13 @@ static int clock_management_set(struct clock *c, struct port *p,
 			respond = 1;
 			break;
 		}
+		break;
+	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		egpn = (struct external_grandmaster_properties_np *) tlv->data;
+		c->ext_gm_identity = egpn->gmIdentity;
+		c->ext_gm_steps_removed = egpn->stepsRemoved;
+		*changed = 1;
+		respond = 1;
 		break;
 	}
 	if (respond && !clock_management_get_response(c, p, id, req))
