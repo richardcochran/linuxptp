@@ -148,6 +148,8 @@ struct clock {
 	int step_window_counter;
 	int step_window;
 	struct time_zone tz[MAX_TIME_ZONES];
+	struct ClockIdentity ext_gm_identity;
+	int ext_gm_steps_removed;
 };
 
 struct clock the_clock;
@@ -830,13 +832,22 @@ static int clock_compare_pds(struct parentDS *pds1, struct parentDS *pds2)
 static void clock_update_grandmaster(struct clock *c)
 {
 	struct parentDS *pds = &c->dad.pds, old_pds = *pds;
+	struct ClockIdentity gm_identity, nul_identity;
+
+	memset(&nul_identity, 0, sizeof(nul_identity));
 	memset(&c->cur, 0, sizeof(c->cur));
 	memset(c->ptl, 0, sizeof(c->ptl));
 
+	if (!cid_eq(&nul_identity, &c->ext_gm_identity))
+		gm_identity = c->ext_gm_identity;
+	else
+		gm_identity = c->dds.clockIdentity;
+
+	c->cur.stepsRemoved                     = c->ext_gm_steps_removed;
 	pds->parentPortIdentity.clockIdentity   = c->dds.clockIdentity;
 	/* Follow IEEE 1588 Table 30: Updates for state decision code M1 and M2 */
 	pds->parentPortIdentity.portNumber      = 0;
-	pds->grandmasterIdentity                = c->dds.clockIdentity;
+	pds->grandmasterIdentity                = gm_identity;
 	pds->grandmasterClockQuality            = c->dds.clockQuality;
 	pds->grandmasterPriority1               = c->dds.priority1;
 	pds->grandmasterPriority2               = c->dds.priority2;
