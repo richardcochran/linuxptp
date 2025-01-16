@@ -174,6 +174,7 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 	struct mgmt_clock_description *cd;
 	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
+	struct port_corrections_np *pcn;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
 	struct timePropertiesDS *tp;
@@ -497,6 +498,14 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		egpn = (struct external_grandmaster_properties_np *) m->data;
 		NTOHS(egpn->stepsRemoved);
 		break;
+	case MID_PORT_CORRECTIONS_NP:
+		if (data_len != sizeof(struct port_corrections_np))
+			goto bad_length;
+		pcn = (struct port_corrections_np *) m->data;
+		net2host64(pcn->egressLatency);
+		net2host64(pcn->ingressLatency);
+		net2host64(pcn->delayAsymmetry);
+		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:
 	case MID_INITIALIZE:
@@ -529,6 +538,7 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	struct mgmt_clock_description *cd;
 	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
+	struct port_corrections_np *pcn;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
 	struct cmlds_info_np *cmlds;
@@ -699,6 +709,12 @@ static void mgt_pre_send(struct management_tlv *m, struct tlv_extra *extra)
 	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
 		egpn = (struct external_grandmaster_properties_np *)m->data;
 		HTONS(egpn->stepsRemoved);
+		break;
+	case MID_PORT_CORRECTIONS_NP:
+		pcn = (struct port_corrections_np *)m->data;
+		host2net64(pcn->egressLatency);
+		host2net64(pcn->ingressLatency);
+		host2net64(pcn->delayAsymmetry);
 		break;
 	}
 }

@@ -913,6 +913,7 @@ static int port_management_fill_response(struct port *target,
 	struct management_tlv_datum *mtd;
 	struct unicast_master_entry *ume;
 	struct clock_description *desc;
+	struct port_corrections_np *pcn;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
 	struct cmlds_info_np *cmlds;
@@ -1170,6 +1171,13 @@ static int port_management_fill_response(struct port *target,
 		cmlds->as_capable = target->asCapable;
 		datalen = sizeof(*cmlds);
 		break;
+	case MID_PORT_CORRECTIONS_NP:
+		pcn = (struct port_corrections_np *)tlv->data;
+		pcn->egressLatency = target->tx_timestamp_offset;
+		pcn->ingressLatency = target->rx_timestamp_offset;
+		pcn->delayAsymmetry = target->asymmetry;
+		datalen = sizeof(*pcn);
+		break;
 	default:
 		/* The caller should *not* respond to this message. */
 		tlv_extra_recycle(extra);
@@ -1212,6 +1220,7 @@ static int port_management_set(struct port *target,
 			       struct ptp_message *req)
 {
 	struct ieee_c37_238_settings_np *pwr;
+	struct port_corrections_np *pcn;
 	struct management_tlv *tlv;
 	struct port_ds_np *pdsnp;
 	int respond = 0;
@@ -1234,6 +1243,13 @@ static int port_management_set(struct port *target,
 			respond = 1;
 			break;
 		}
+		break;
+	case MID_PORT_CORRECTIONS_NP:
+		pcn = (struct port_corrections_np *) tlv->data;
+		target->tx_timestamp_offset = pcn->egressLatency;
+		target->rx_timestamp_offset = pcn->ingressLatency;
+		target->asymmetry = pcn->delayAsymmetry;
+		respond = 1;
 		break;
 	}
 	if (respond && !port_management_get_response(target, ingress, id, req))

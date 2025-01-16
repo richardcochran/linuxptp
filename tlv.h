@@ -131,6 +131,7 @@ enum management_action {
 #define MID_PORT_HWCLOCK_NP				0xC009
 #define MID_POWER_PROFILE_SETTINGS_NP			0xC00A
 #define MID_CMLDS_INFO_NP				0xC00B
+#define MID_PORT_CORRECTIONS_NP				0xC00C
 
 /* Management error ID values */
 #define MID_RESPONSE_TOO_BIG				0x0001
@@ -493,6 +494,12 @@ struct msg_interface_rate_tlv {
 struct external_grandmaster_properties_np {
 	struct ClockIdentity gmIdentity;
 	UInteger16 stepsRemoved;
+} PACKED;
+
+struct port_corrections_np {
+	Integer64 egressLatency;
+	Integer64 ingressLatency;
+	Integer64 delayAsymmetry;
 } PACKED;
 
 /**

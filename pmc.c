@@ -169,6 +169,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct management_tlv_datum *mtd;
 	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
+	struct port_corrections_np *pcn;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
 	struct cmlds_info_np *cmlds;
@@ -653,6 +654,16 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			cmlds->meanLinkDelay >> 16,
 			cmlds->scaledNeighborRateRatio,
 			cmlds->as_capable);
+		break;
+	case MID_PORT_CORRECTIONS_NP:
+		pcn = (struct port_corrections_np *) mgt->data;
+		fprintf(fp, "PORT_CORRECTIONS_NP "
+			IFMT "egressLatency  %"PRId64" "
+			IFMT "ingressLatency %"PRId64" "
+			IFMT "delayAsymmetry %"PRId64" ",
+			pcn->egressLatency >> 16,
+			pcn->ingressLatency >> 16,
+			pcn->delayAsymmetry >> 16);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;

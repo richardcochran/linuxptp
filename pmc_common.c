@@ -159,6 +159,7 @@ struct management_id idtab[] = {
 	{ "PORT_HWCLOCK_NP", MID_PORT_HWCLOCK_NP, do_get_action },
 	{ "POWER_PROFILE_SETTINGS_NP", MID_POWER_PROFILE_SETTINGS_NP, do_set_action },
 	{ "CMLDS_INFO_NP", MID_CMLDS_INFO_NP, do_get_action },
+	{ "PORT_CORRECTIONS_NP", MID_PORT_CORRECTIONS_NP, do_set_action },
 };
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str)
@@ -179,6 +180,7 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 	struct grandmaster_settings_np gsn;
 	struct management_tlv_datum mtd;
 	struct subscribe_events_np sen;
+	struct port_corrections_np pcn;
 	struct port_ds_np pnp;
 	char onoff_port_state[4] = "off";
 	char onoff_time_status[4] = "off";
@@ -415,6 +417,24 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			break;
 		}
 		pmc_send_set_action(pmc, code, &egpn, sizeof(egpn));
+		break;
+	case MID_PORT_CORRECTIONS_NP:
+		cnt = sscanf(str, " %*s %*s "
+			     "egressLatency  %"SCNd64" "
+			     "ingressLatency %"SCNd64" "
+			     "delayAsymmetry %"SCNd64" ",
+			     &pcn.egressLatency,
+			     &pcn.ingressLatency,
+			     &pcn.delayAsymmetry);
+		if (cnt != 3) {
+			fprintf(stderr, "%s SET needs 3 values\n",
+				idtab[index].name);
+			break;
+		}
+		pcn.egressLatency <<= 16;
+		pcn.ingressLatency <<= 16;
+		pcn.delayAsymmetry <<= 16;
+		pmc_send_set_action(pmc, code, &pcn, sizeof(pcn));
 		break;
 	}
 }
@@ -722,6 +742,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
 		len += sizeof(struct external_grandmaster_properties_np);
+		break;
+	case MID_PORT_CORRECTIONS_NP:
+		len += sizeof(struct port_corrections_np);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 	case MID_ANNOUNCE_RECEIPT_TIMEOUT:
