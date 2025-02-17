@@ -112,7 +112,7 @@ struct management_id idtab[] = {
 	{ "DOMAIN", MID_DOMAIN, do_get_action },
 	{ "SLAVE_ONLY", MID_SLAVE_ONLY, do_get_action },
 	{ "TIME", MID_TIME, not_supported },
-	{ "CLOCK_ACCURACY", MID_CLOCK_ACCURACY, do_get_action },
+	{ "CLOCK_ACCURACY", MID_CLOCK_ACCURACY, do_set_action },
 	{ "UTC_PROPERTIES", MID_UTC_PROPERTIES, not_supported },
 	{ "TRACEABILITY_PROPERTIES", MID_TRACEABILITY_PROPERTIES, do_get_action },
 	{ "TIMESCALE_PROPERTIES", MID_TIMESCALE_PROPERTIES, do_get_action },
@@ -216,6 +216,20 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 			fprintf(stderr, "%s SET needs 1 value\n",
 				idtab[index].name);
 			break;
+		}
+		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
+		break;
+	case MID_CLOCK_ACCURACY:
+		cnt = sscanf(str,  " %*s %*s 0x%hhx", &mtd.val);
+		if (cnt != 1) {
+			/* work around case sensitivity of sscanf() */
+			cnt = sscanf(str,  " %*s %*s 0X%hhx", &mtd.val);
+			if (cnt != 1) {
+				fprintf(stderr,
+					"%s SET needs 1 hexadecimal value, prefixed with \"0x\"\n",
+					idtab[index].name);
+				break;
+			}
 		}
 		pmc_send_set_action(pmc, code, &mtd, sizeof(mtd));
 		break;
