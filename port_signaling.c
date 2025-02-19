@@ -41,7 +41,7 @@ struct ptp_message *port_signaling_construct(struct port *p,
 	}
 	msg->hwts.type                 = p->timestamping;
 	msg->header.tsmt               = SIGNALING | p->transportSpecific;
-	msg->header.ver                = PTP_VERSION;
+	msg->header.ver                = ptp_hdr_ver;
 	msg->header.messageLength      = sizeof(struct signaling_msg);
 	msg->header.domainNumber       = clock_domain_number(p->clock);
 	msg->header.sourcePortIdentity = p->portIdentity;
