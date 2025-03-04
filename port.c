@@ -1995,6 +1995,20 @@ static int port_cmlds_initialize(struct port *p)
 	return port_cmlds_renew(p, now.tv_sec);
 }
 
+static void port_rtnl_initialize(struct port *p)
+{
+	/* Reopen the socket to get rid of buffered messages */
+	if (p->fda.fd[FD_RTNL] >= 0) {
+		rtnl_close(p->fda.fd[FD_RTNL]);
+	}
+	p->fda.fd[FD_RTNL] = rtnl_open();
+	if (p->fda.fd[FD_RTNL] >= 0) {
+		rtnl_link_query(p->fda.fd[FD_RTNL], interface_name(p->iface));
+	}
+
+	clock_fda_changed(p->clock);
+}
+
 void port_disable(struct port *p)
 {
 	int i;
@@ -2108,13 +2122,8 @@ int port_initialize(struct port *p)
 		if (p->bmca == BMCA_NOOP) {
 			port_set_delay_tmo(p);
 		}
-		if (p->fda.fd[FD_RTNL] == -1) {
-			p->fda.fd[FD_RTNL] = rtnl_open();
-		}
-		if (p->fda.fd[FD_RTNL] >= 0) {
-			const char *ifname = interface_name(p->iface);
-			rtnl_link_query(p->fda.fd[FD_RTNL], ifname);
-		}
+
+		port_rtnl_initialize(p);
 	}
 
 	port_nrate_initialize(p);
@@ -3794,6 +3803,13 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 		if (port_link_status_get(p) && clear_fault_asap(&i)) {
 			pr_notice("%s: clearing fault immediately", p->log_name);
 			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
+		} else if (event == EV_FAULT_DETECTED) {
+			/*
+			 * Reopen the netlink socket and refresh the link
+			 * status in case the fault was triggered by a missed
+			 * netlink message (ENOBUFS).
+			 */
+			port_rtnl_initialize(p);
 		}
 	}
 
