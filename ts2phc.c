@@ -480,6 +480,16 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 		double adj;
 		tmv_t ts;
 
+		if (c->clkid == CLOCK_REALTIME) {
+			struct timespec real_time_ts;
+			if (clock_gettime(CLOCK_REALTIME, &real_time_ts) == -1) {
+				return;
+			}
+			c->last_ts.ns = tmv_to_nanoseconds(timespec_to_tmv(real_time_ts));
+			c->is_ts_available = true;
+			c->is_target = true;
+		}
+
 		if (!c->is_target)
 			continue;
 
@@ -813,7 +823,7 @@ int main(int argc, char *argv[])
 			pr_err("poll failed");
 			break;
 		}
-		if (err > 0) {
+		if (err >= 0) {
 			err = ts2phc_collect_pps_source_tstamp(&priv);
 			if (err) {
 				pr_err("failed to collect PPS source tstamp");

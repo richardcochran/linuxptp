@@ -187,6 +187,9 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	pr_debug("PPS sink %s has ptp index %d", device,
 		 sink->clock->phc_index);
 
+	if (sink->clock->clkid == CLOCK_REALTIME)
+		return sink;
+
 	if (phc_number_pins(sink->clock->clkid) > 0) {
 		err = phc_pin_setfunc(sink->clock->clkid, &sink->pin_desc);
 		if (err < 0) {
@@ -228,12 +231,16 @@ static void ts2phc_pps_sink_destroy(struct ts2phc_pps_sink *sink)
 {
 	struct ptp_extts_request extts;
 
+	if (sink->clock->clkid == CLOCK_REALTIME)
+		goto destroy;
+
 	memset(&extts, 0, sizeof(extts));
 	extts.index = sink->pin_desc.chan;
 	extts.flags = 0;
 	if (ioctl(sink->clock->fd, PTP_EXTTS_REQUEST2, &extts)) {
 		pr_err(PTP_EXTTS_REQUEST_FAILED);
 	}
+destroy:
 	ts2phc_clock_destroy(sink->clock);
 	free(sink->name);
 	free(sink);
@@ -343,6 +350,8 @@ int ts2phc_pps_sink_arm(struct ts2phc_private *priv)
 	memset(&extts, 0, sizeof(extts));
 
 	STAILQ_FOREACH(sink, &priv->sinks, list) {
+		if (sink->clock->clkid == CLOCK_REALTIME)
+			continue;
 		extts.index = sink->pin_desc.chan;
 		extts.flags = sink->polarity | PTP_ENABLE_FEATURE;
 		err = ioctl(sink->clock->fd, PTP_EXTTS_REQUEST2, &extts);
