@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <arpa/inet.h>
@@ -60,9 +62,9 @@ static char *bin2str(Octet *data, int len)
 	((uint64_t)ts.seconds_lsb) | (((uint64_t)ts.seconds_msb) << 32), ts.nanoseconds
 
 static void pmc_show_delay_timing(struct slave_delay_timing_record *record,
-				  FILE *fp)
+				  int fd)
 {
-	fprintf(fp,
+	dprintf(fd,
 		IFMT "sequenceId                 %hu"
 		IFMT "delayOriginTimestamp       %" PRId64 ".%09u"
 		IFMT "totalCorrectionField       %" PRId64
@@ -74,9 +76,9 @@ static void pmc_show_delay_timing(struct slave_delay_timing_record *record,
 }
 
 static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
-				    FILE *fp)
+				    int fd)
 {
-	fprintf(fp,
+	dprintf(fd,
 		IFMT "sequenceId                 %hu"
 		IFMT "syncOriginTimestamp        %" PRId64 ".%09u"
 		IFMT "totalCorrectionField       %" PRId64
@@ -91,9 +93,9 @@ static void pmc_show_rx_sync_timing(struct slave_rx_sync_timing_record *record,
 
 
 static void pmc_show_unicast_master_entry(struct unicast_master_entry *entry,
-				    FILE *fp)
+				    int fd)
 {
-	fprintf(fp,
+	dprintf(fd,
 		IFMT "%s %-24s %-34s %-9s %-10hhu 0x%02hhx         0x%04hx                  %-3hhu %-3hhu",
 		entry->selected ? "yes" : "no ",
 		pid2str(&entry->port_identity),
@@ -107,7 +109,7 @@ static void pmc_show_unicast_master_entry(struct unicast_master_entry *entry,
 	);
 }
 
-static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
+static void pmc_show_signaling(struct ptp_message *msg, int fd)
 {
 	struct slave_rx_sync_timing_record *sync_record;
 	struct slave_delay_timing_record *delay_record;
@@ -116,7 +118,7 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 	struct tlv_extra *extra;
 	int i, cnt;
 
-	fprintf(fp, "\t%s seq %hu %s ",
+	dprintf(fd, "\t%s seq %hu %s ",
 		pid2str(&msg->header.sourcePortIdentity),
 		msg->header.sequenceId, "SIGNALING");
 
@@ -126,12 +128,12 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 			srstd = (struct slave_rx_sync_timing_data_tlv *) extra->tlv;
 			cnt = (srstd->length - sizeof(srstd->sourcePortIdentity)) /
 				sizeof(*sync_record);
-			fprintf(fp, "SLAVE_RX_SYNC_TIMING_DATA N %d "
+				dprintf(fd, "SLAVE_RX_SYNC_TIMING_DATA N %d "
 				IFMT "sourcePortIdentity         %s",
 				cnt, pid2str(&srstd->sourcePortIdentity));
 			sync_record = srstd->record;
 			for (i = 0; i < cnt; i++) {
-				pmc_show_rx_sync_timing(sync_record, fp);
+				pmc_show_rx_sync_timing(sync_record, fd);
 				sync_record++;
 			}
 			break;
@@ -139,12 +141,12 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 			sdtdt = (struct slave_delay_timing_data_tlv *) extra->tlv;
 			cnt = (sdtdt->length - sizeof(sdtdt->sourcePortIdentity)) /
 				sizeof(*delay_record);
-			fprintf(fp, "SLAVE_DELAY_TIMING_DATA_NP N %d "
+				dprintf(fd, "SLAVE_DELAY_TIMING_DATA_NP N %d "
 				IFMT "sourcePortIdentity         %s",
 				cnt, pid2str(&sdtdt->sourcePortIdentity));
 			delay_record = sdtdt->record;
 			for (i = 0; i < cnt; i++) {
-				pmc_show_delay_timing(delay_record, fp);
+				pmc_show_delay_timing(delay_record, fd);
 				delay_record++;
 			}
 			break;
@@ -152,11 +154,11 @@ static void pmc_show_signaling(struct ptp_message *msg, FILE *fp)
 			break;
 		}
 	}
-	fprintf(fp, "\n");
-	fflush(fp);
+	dprintf(fd, "\n");
+	// fflush(fp);
 }
 
-static void pmc_show(struct ptp_message *msg, FILE *fp)
+static void pmc_show(struct ptp_message *msg, int fd)
 {
 	struct external_grandmaster_properties_np *egpn;
 	struct alternate_time_offset_properties *atop;
@@ -189,7 +191,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	uint8_t *buf;
 
 	if (msg_type(msg) == SIGNALING) {
-		pmc_show_signaling(msg, fp);
+		pmc_show_signaling(msg, fd);
 		return;
 	}
 	if (msg_type(msg) != MANAGEMENT) {
@@ -199,7 +201,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	if (action < GET || action > ACKNOWLEDGE) {
 		return;
 	}
-	fprintf(fp, "\t%s seq %hu %s ",
+	dprintf(fd, "\t%s seq %hu %s ",
 		pid2str(&msg->header.sourcePortIdentity),
 		msg->header.sequenceId, pmc_action_string(action));
 	switch (msg_tlv_count(msg)) {
@@ -216,23 +218,23 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	extra = TAILQ_FIRST(&msg->tlv_list);
 	tlv = (struct TLV *) msg->management.suffix;
 	if (tlv->type == TLV_MANAGEMENT) {
-		fprintf(fp, "MANAGEMENT ");
+		dprintf(fd, "MANAGEMENT ");
 	} else if (tlv->type == TLV_MANAGEMENT_ERROR_STATUS) {
-		fprintf(fp, "MANAGEMENT_ERROR_STATUS ");
+		dprintf(fd, "MANAGEMENT_ERROR_STATUS ");
 		goto out;
 	} else {
-		fprintf(fp, "unknown-tlv ");
+		dprintf(fd, "unknown-tlv ");
 		goto out;
 	}
 	mgt = (struct management_tlv *) msg->management.suffix;
 	if (mgt->length == 2 && mgt->id != MID_NULL_MANAGEMENT) {
-		fprintf(fp, "empty-tlv ");
+		dprintf(fd, "empty-tlv ");
 		goto out;
 	}
 	switch (mgt->id) {
 	case MID_CLOCK_DESCRIPTION:
 		cd = &extra->cd;
-		fprintf(fp, "CLOCK_DESCRIPTION "
+		dprintf(fd, "CLOCK_DESCRIPTION "
 			IFMT "clockType             0x%hx"
 			IFMT "physicalLayerProtocol %s"
 			IFMT "physicalAddress       %s"
@@ -243,25 +245,25 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 				align16(&cd->physicalAddress->length)),
 			align16(&cd->protocolAddress->networkProtocol),
 			portaddr2str(cd->protocolAddress));
-		fprintf(fp, IFMT "manufacturerId        %s"
+		dprintf(fd, IFMT "manufacturerId        %s"
 			IFMT "productDescription    %s",
 			bin2str(cd->manufacturerIdentity, OUI_LEN),
 			text2str(cd->productDescription));
-		fprintf(fp, IFMT "revisionData          %s",
+		dprintf(fd, IFMT "revisionData          %s",
 			text2str(cd->revisionData));
-		fprintf(fp, IFMT "userDescription       %s"
+		dprintf(fd, IFMT "userDescription       %s"
 			IFMT "profileId             %s",
 			text2str(cd->userDescription),
 			bin2str(cd->profileIdentity, PROFILE_ID_LEN));
 		break;
 	case MID_USER_DESCRIPTION:
-		fprintf(fp, "USER_DESCRIPTION "
+		dprintf(fd, "USER_DESCRIPTION "
 			IFMT "userDescription  %s",
 			text2str(extra->cd.userDescription));
 		break;
 	case MID_DEFAULT_DATA_SET:
 		dds = (struct defaultDS *) mgt->data;
-		fprintf(fp, "DEFAULT_DATA_SET "
+		dprintf(fd, "DEFAULT_DATA_SET "
 			IFMT "twoStepFlag             %d"
 			IFMT "slaveOnly               %d"
 			IFMT "numberPorts             %hu"
@@ -285,7 +287,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_CURRENT_DATA_SET:
 		cds = (struct currentDS *) mgt->data;
-		fprintf(fp, "CURRENT_DATA_SET "
+		dprintf(fd, "CURRENT_DATA_SET "
 			IFMT "stepsRemoved     %hd"
 			IFMT "offsetFromMaster %.1f"
 			IFMT "meanPathDelay    %.1f",
@@ -294,7 +296,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_PARENT_DATA_SET:
 		pds = (struct parentDS *) mgt->data;
-		fprintf(fp, "PARENT_DATA_SET "
+		dprintf(fd, "PARENT_DATA_SET "
 			IFMT "parentPortIdentity                    %s"
 			IFMT "parentStats                           %hhu"
 			IFMT "observedParentOffsetScaledLogVariance 0x%04hx"
@@ -318,7 +320,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_TIME_PROPERTIES_DATA_SET:
 		tp = (struct timePropertiesDS *) mgt->data;
-		fprintf(fp, "TIME_PROPERTIES_DATA_SET "
+		dprintf(fd, "TIME_PROPERTIES_DATA_SET "
 			IFMT "currentUtcOffset      %hd"
 			IFMT "leap61                %d"
 			IFMT "leap59                %d"
@@ -338,32 +340,32 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_PRIORITY1:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "PRIORITY1 "
+		dprintf(fd, "PRIORITY1 "
 			IFMT "priority1 %hhu", mtd->val);
 		break;
 	case MID_PRIORITY2:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "PRIORITY2 "
+		dprintf(fd, "PRIORITY2 "
 			IFMT "priority2 %hhu", mtd->val);
 		break;
 	case MID_DOMAIN:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "DOMAIN "
+		dprintf(fd, "DOMAIN "
 			IFMT "domainNumber %hhu", mtd->val);
 		break;
 	case MID_SLAVE_ONLY:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "SLAVE_ONLY "
+		dprintf(fd, "SLAVE_ONLY "
 			IFMT "slaveOnly %d", mtd->val);
 		break;
 	case MID_CLOCK_ACCURACY:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "CLOCK_ACCURACY "
+		dprintf(fd, "CLOCK_ACCURACY "
 			IFMT "clockAccuracy 0x%02hhx", mtd->val);
 		break;
 	case MID_TRACEABILITY_PROPERTIES:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "TRACEABILITY_PROPERTIES "
+		dprintf(fd, "TRACEABILITY_PROPERTIES "
 			IFMT "timeTraceable      %d"
 			IFMT "frequencyTraceable %d",
 			mtd->val & TIME_TRACEABLE ? 1 : 0,
@@ -371,12 +373,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_TIMESCALE_PROPERTIES:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "TIMESCALE_PROPERTIES "
+		dprintf(fd, "TIMESCALE_PROPERTIES "
 			IFMT "ptpTimescale %d", mtd->val & PTP_TIMESCALE ? 1 : 0);
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_ENABLE:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "ALTERNATE_TIME_OFFSET_ENABLE "
+		dprintf(fd, "ALTERNATE_TIME_OFFSET_ENABLE "
 			IFMT "keyField       %hhu"
 			IFMT "enable         %d",
 			mtd->val,
@@ -384,7 +386,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_ALTERNATE_TIME_OFFSET_NAME:
 		aton = (struct alternate_time_offset_name *) mgt->data;
-		fprintf(fp, "ALTERNATE_TIME_OFFSET_NAME "
+		dprintf(fd, "ALTERNATE_TIME_OFFSET_NAME "
 			IFMT "keyField       %hhu"
 			IFMT "displayName    %s",
 			aton->keyField,
@@ -395,7 +397,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		next_jump = atop->timeOfNextJump.seconds_msb;
 		next_jump <<= 32;
 		next_jump |= atop->timeOfNextJump.seconds_lsb;
-		fprintf(fp, "ALTERNATE_TIME_OFFSET_PROPERTIES "
+		dprintf(fd, "ALTERNATE_TIME_OFFSET_PROPERTIES "
 			IFMT "keyField       %hhu"
 			IFMT "currentOffset  %d"
 			IFMT "jumpSeconds    %d"
@@ -407,12 +409,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_MASTER_ONLY:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "MASTER_ONLY "
+		dprintf(fd, "MASTER_ONLY "
 			IFMT "masterOnly %d", mtd->val);
 		break;
 	case MID_TIME_STATUS_NP:
 		tsn = (struct time_status_np *) mgt->data;
-		fprintf(fp, "TIME_STATUS_NP "
+		dprintf(fd, "TIME_STATUS_NP "
 			IFMT "master_offset              %" PRId64
 			IFMT "ingress_time               %" PRId64
 			IFMT "cumulativeScaledRateOffset %+.9f"
@@ -434,7 +436,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_GRANDMASTER_SETTINGS_NP:
 		gsn = (struct grandmaster_settings_np *) mgt->data;
-		fprintf(fp, "GRANDMASTER_SETTINGS_NP "
+		dprintf(fd, "GRANDMASTER_SETTINGS_NP "
 			IFMT "clockClass              %hhu"
 			IFMT "clockAccuracy           0x%02hhx"
 			IFMT "offsetScaledLogVariance 0x%04hx"
@@ -460,7 +462,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_SUBSCRIBE_EVENTS_NP:
 		sen = (struct subscribe_events_np *) mgt->data;
-		fprintf(fp, "SUBSCRIBE_EVENTS_NP "
+		dprintf(fd, "SUBSCRIBE_EVENTS_NP "
 			IFMT "duration               %hu"
 			IFMT "NOTIFY_PORT_STATE      %s"
 			IFMT "NOTIFY_TIME_SYNC       %s"
@@ -474,12 +476,12 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_SYNCHRONIZATION_UNCERTAIN_NP:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "SYNCHRONIZATION_UNCERTAIN_NP "
+		dprintf(fd, "SYNCHRONIZATION_UNCERTAIN_NP "
 			IFMT "uncertain %hhu", mtd->val);
 		break;
-	case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
+		case MID_EXTERNAL_GRANDMASTER_PROPERTIES_NP:
 		egpn = (struct external_grandmaster_properties_np *) mgt->data;
-		fprintf(fp, "EXTERNAL_GRANDMASTER_PROPERTIES_NP "
+		dprintf(fd, "EXTERNAL_GRANDMASTER_PROPERTIES_NP "
 			IFMT "gmIdentity   %s"
 			IFMT "stepsRemoved %hu",
 			cid2str(&egpn->gmIdentity),
@@ -490,7 +492,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		if (p->portState > PS_SLAVE) {
 			p->portState = 0;
 		}
-		fprintf(fp, "PORT_DATA_SET "
+		dprintf(fd, "PORT_DATA_SET "
 			IFMT "portIdentity            %s"
 			IFMT "portState               %s"
 			IFMT "logMinDelayReqInterval  %hhd"
@@ -510,7 +512,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_PORT_DATA_SET_NP:
 		pnp = (struct port_ds_np *) mgt->data;
-		fprintf(fp, "PORT_DATA_SET_NP "
+		dprintf(fd, "PORT_DATA_SET_NP "
 			IFMT "neighborPropDelayThresh %u"
 			IFMT "asCapable               %d",
 			pnp->neighborPropDelayThresh,
@@ -521,7 +523,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		if (ppn->port_state > PS_SLAVE) {
 			ppn->port_state = 0;
 		}
-		fprintf(fp, "PORT_PROPERTIES_NP "
+		dprintf(fd, "PORT_PROPERTIES_NP "
 			IFMT "portIdentity            %s"
 			IFMT "portState               %s"
 			IFMT "timestamping            %s"
@@ -533,7 +535,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_PORT_STATS_NP:
 		pcp = (struct port_stats_np *) mgt->data;
-		fprintf(fp, "PORT_STATS_NP "
+		dprintf(fd, "PORT_STATS_NP "
 			IFMT "portIdentity              %s"
 			IFMT "rx_Sync                   %" PRIu64
 			IFMT "rx_Delay_Req              %" PRIu64
@@ -579,7 +581,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_PORT_SERVICE_STATS_NP:
 		pssp = (struct port_service_stats_np *) mgt->data;
-		fprintf(fp, "PORT_SERVICE_STATS_NP "
+		dprintf(fd, "PORT_SERVICE_STATS_NP "
 		IFMT "portIdentity              %s"
 		IFMT "announce_timeout          %" PRIu64
 		IFMT "sync_timeout              %" PRIu64
@@ -605,25 +607,25 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_UNICAST_MASTER_TABLE_NP:
 		umtn = (struct unicast_master_table_np *) mgt->data;
-		fprintf(fp, "UNICAST_MASTER_TABLE_NP "
+		dprintf(fd, "UNICAST_MASTER_TABLE_NP "
 			IFMT "actual_table_size %hu",
 			umtn->actual_table_size);
 		buf = (uint8_t *) umtn->unicast_masters;
 		// table header
-		fprintf(fp,
+		dprintf(fd,
 			IFMT "%s  %-24s %-34s %-9s %s %s %s %s  %s",
 			"BM", "identity", "address", "state",
 			"clockClass", "clockQuality", "offsetScaledLogVariance",
 			"p1", "p2");
 		for (i = 0; i < umtn->actual_table_size; i++) {
 			ume = (struct unicast_master_entry *) buf;
-			pmc_show_unicast_master_entry(ume, fp);
+			pmc_show_unicast_master_entry(ume, fd);
 			buf += sizeof(*ume) + ume->address.addressLength;
 		}
 		break;
 	case MID_PORT_HWCLOCK_NP:
 		phn = (struct port_hwclock_np *) mgt->data;
-		fprintf(fp, "PORT_HWCLOCK_NP "
+		dprintf(fd, "PORT_HWCLOCK_NP "
 			IFMT "portIdentity            %s"
 			IFMT "phcIndex                %d"
 			IFMT "flags                   %hhu",
@@ -633,7 +635,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_POWER_PROFILE_SETTINGS_NP:
 		pwr = (struct ieee_c37_238_settings_np *) mgt->data;
-		fprintf(fp, "POWER_PROFILE_SETTINGS_NP "
+		dprintf(fd, "POWER_PROFILE_SETTINGS_NP "
 			IFMT "version                   %hu"
 			IFMT "grandmasterID             0x%04hx"
 			IFMT "grandmasterTimeInaccuracy %u"
@@ -647,7 +649,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_CMLDS_INFO_NP:
 		cmlds = (struct cmlds_info_np *) mgt->data;
-		fprintf(fp, "CMLDS_INFO_NP "
+		dprintf(fd, "CMLDS_INFO_NP "
 			IFMT "meanLinkDelay           %" PRId64
 			IFMT "scaledNeighborRateRatio %" PRId32
 			IFMT "as_capable              %" PRIu32,
@@ -657,7 +659,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_PORT_CORRECTIONS_NP:
 		pcn = (struct port_corrections_np *) mgt->data;
-		fprintf(fp, "PORT_CORRECTIONS_NP "
+		dprintf(fd, "PORT_CORRECTIONS_NP "
 			IFMT "egressLatency  %"PRId64" "
 			IFMT "ingressLatency %"PRId64" "
 			IFMT "delayAsymmetry %"PRId64" ",
@@ -667,38 +669,38 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "LOG_ANNOUNCE_INTERVAL "
+		dprintf(fd, "LOG_ANNOUNCE_INTERVAL "
 			IFMT "logAnnounceInterval %hhd", mtd->val);
 		break;
 	case MID_ANNOUNCE_RECEIPT_TIMEOUT:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "ANNOUNCE_RECEIPT_TIMEOUT "
+		dprintf(fd, "ANNOUNCE_RECEIPT_TIMEOUT "
 			IFMT "announceReceiptTimeout %hhu", mtd->val);
 		break;
 	case MID_LOG_SYNC_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "LOG_SYNC_INTERVAL "
+		dprintf(fd, "LOG_SYNC_INTERVAL "
 			IFMT "logSyncInterval %hhd", mtd->val);
 		break;
 	case MID_VERSION_NUMBER:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "VERSION_NUMBER "
+		dprintf(fd, "VERSION_NUMBER "
 			IFMT "versionNumber %hhu", mtd->val & MAJOR_VERSION_MASK);
 		break;
 	case MID_DELAY_MECHANISM:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "DELAY_MECHANISM "
+		dprintf(fd, "DELAY_MECHANISM "
 			IFMT "delayMechanism %hhu", mtd->val);
 		break;
 	case MID_LOG_MIN_PDELAY_REQ_INTERVAL:
 		mtd = (struct management_tlv_datum *) mgt->data;
-		fprintf(fp, "LOG_MIN_PDELAY_REQ_INTERVAL "
+		dprintf(fd, "LOG_MIN_PDELAY_REQ_INTERVAL "
 			IFMT "logMinPdelayReqInterval %hhd", mtd->val);
 		break;
 	}
 out:
-	fprintf(fp, "\n");
-	fflush(fp);
+	dprintf(fd, "\n");
+	// fflush(fp);
 }
 
 static void usage(char *progname)
@@ -712,6 +714,7 @@ static void usage(char *progname)
 		" -u        UDS local\n\n"
 		" Other Options\n\n"
 		" -b [num]  boundary hops, default 1\n"
+		" -c [path] listen to commands on this socket\n"
 		" -d [num]  domain number, default 0\n"
 		" -f [file] read configuration from 'file'\n"
 		" -h        prints this message and exits\n"
@@ -723,6 +726,51 @@ static void usage(char *progname)
 		" -z        send zero length TLV values with the GET actions\n"
 		"\n",
 		progname);
+}
+
+// handle_nonblock and xread come from git source, gplv2
+int handle_nonblock(int fd, short poll_events, int err)
+{
+    struct pollfd pfd;
+
+    if (err != EAGAIN && err != EWOULDBLOCK) {
+        return 0;
+    }
+
+    pfd.fd = fd;
+    pfd.events = poll_events;
+
+    /*
+     * no need to check for errors, here;
+     * a subsequent read/write will detect unrecoverable errors
+     */
+    poll(&pfd, 1, -1);
+    return 1;
+}
+
+/*
+ * xread() is the same a read(), but it automatically restarts read()
+ * operations with a recoverable error (EAGAIN and EINTR). xread()
+ * DOES NOT GUARANTEE that "len" bytes is read even if the data is available.
+ */
+ssize_t xread(int fd, void* buf, size_t len)
+{
+    ssize_t nr;
+    if (len > 8096) {
+        len = 8096;
+    }
+    while (1) {
+        nr = read(fd, buf, len);
+        if (nr < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            if (handle_nonblock(fd, POLLIN, errno)) {
+                continue;
+            }
+        }
+        return nr;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -737,7 +785,12 @@ int main(int argc, char *argv[])
 	struct ptp_message *msg;
 	struct option *opts;
 	struct config *cfg;
-#define N_FD 2
+	char const *command_socket_path = NULL;
+	int command_socket_fd = -1;
+	bool use_command_socket = false;
+	int remote_fd = -1;
+
+#define N_FD 3
 	struct pollfd pollfd[N_FD];
 
 	handle_term_signals();
@@ -752,7 +805,7 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
-	while (EOF != (c = getopt_long(argc, argv, "246u""b:d:f:hi:s:t:vz",
+	while (EOF != (c = getopt_long(argc, argv, "246u""b:c:d:f:hi:s:t:vz",
 				       opts, &index))) {
 		switch (c) {
 		case 0:
@@ -787,6 +840,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'b':
 			boundary_hops = atoi(optarg);
+			break;
+		case 'c':
+			command_socket_path=optarg;
+			use_command_socket = true;
 			break;
 		case 'd':
 			if (config_set_int(cfg, "domainNumber", atoi(optarg))) {
@@ -870,6 +927,30 @@ int main(int argc, char *argv[])
 	print_set_syslog(1);
 	print_set_verbose(1);
 
+	if (use_command_socket) {
+		if (batch_mode) {
+			pr_emerg("Command socket doesn't make sense in batch mode.\n");
+			return -1;
+		}
+
+		// will communicate with uds at command_socket_path instead of stdin/out
+
+		// remove old socket
+		unlink(command_socket_path);
+
+		// create socket and bind it to provided path
+		command_socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+		struct sockaddr_un sockaddr;
+		memset(&sockaddr, 0, sizeof(struct sockaddr_un));
+		sockaddr.sun_family = AF_UNIX;
+		strncpy(sockaddr.sun_path, command_socket_path, sizeof(sockaddr.sun_path) - 1);
+		int rc = bind(command_socket_fd, (struct sockaddr *)&sockaddr, sizeof(struct sockaddr_un));
+		if (rc<0) {
+			pr_emerg("Failed to create command socket at %s\n", command_socket_path);
+			return -1;
+		}
+	}
+
 	pmc = pmc_create(cfg, transport_type, iface_name,
 			 config_get_string(cfg, NULL, "uds_address"),
 			 boundary_hops, domain_number, transport_specific,
@@ -880,8 +961,38 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	// We poll 3 sockets.
+	// 0 = active command socket or stdin. In batch mode it is disabled
+	// 1 = ptp4l
+	// 2 = listening command socket
+
 	pollfd[0].fd = batch_mode ? -1 : STDIN_FILENO;
 	pollfd[1].fd = pmc_get_transport_fd(pmc);
+
+	pollfd[2].fd = -1; // disable #2 as default
+
+	if (use_command_socket) {
+		// set socket to passive, listening mode
+		ret = listen(command_socket_fd, 20);
+		if (ret == -1) {
+			perror("listen");
+			return -1;
+		}
+
+		// hang here, waiting for remote
+		printf("waiting for remote\n");
+		struct sockaddr_un remote;
+		socklen_t remote_len;
+		remote_fd=accept(command_socket_fd, (struct sockaddr*) &remote, &remote_len);
+		if (remote_fd == -1) {
+            perror("accept");
+			return -1;
+		}
+
+		printf("remote connected, fd=%d\n", remote_fd);
+		pollfd[0].fd = remote_fd;
+		pollfd[2].fd = command_socket_fd;
+	}
 
 	while (is_running()) {
 		if (batch_mode && !command) {
@@ -896,6 +1007,7 @@ int main(int argc, char *argv[])
 
 		pollfd[0].events = 0;
 		pollfd[1].events = POLLIN | POLLPRI;
+		pollfd[2].events = POLLIN;
 
 		if (!batch_mode && !command)
 			pollfd[0].events |= POLLIN | POLLPRI;
@@ -912,21 +1024,59 @@ int main(int argc, char *argv[])
 				break;
 			}
 		} else if (!cnt) {
+			if (use_command_socket) {
+				continue;
+			}
+
 			break;
 		}
+		
 		if (pollfd[0].revents & POLLHUP) {
+			if (use_command_socket) {
+				
+				close(STDERR_FILENO);
+				// hang here and wait for a new connection
+				close(pollfd[0].fd);
+				pollfd[0].fd = -1;
+				printf("target lost .. searching\n");
+				continue;
+			}
+
 			if (tmo == -1) {
 				/* Wait a bit longer for outstanding replies. */
 				tmo = 100;
 				pollfd[0].fd = -1;
 				pollfd[0].events = 0;
-			} else {
+			} else {				
 				break;
 			}
 		}
+
+		if(pollfd[2].revents & POLLIN) {
+			struct sockaddr_un remote;
+			socklen_t remote_len;
+	
+			remote_fd=accept(command_socket_fd, (struct sockaddr*) &remote, &remote_len);
+			if (remote_fd == -1) {
+				perror("accept");
+				return -1;
+			}
+
+			printf("target reaccquired, fd=%d\n", remote_fd);
+			pollfd[0].fd = remote_fd;
+		}
+		
 		if (pollfd[0].revents & (POLLIN|POLLPRI)) {
-			if (!fgets(line, sizeof(line), stdin)) {
-				break;
+			if(use_command_socket) {				
+				ssize_t size_read = xread(pollfd[0].fd, line, sizeof(line));
+				if (size_read < 0) {
+					pr_err("read failed\n");
+				}
+			}
+			else {
+				if (!fgets(line, sizeof(line), stdin)) {
+					break;
+				}
 			}
 			length = strlen(line);
 			if (length < 2) {
@@ -944,7 +1094,13 @@ int main(int argc, char *argv[])
 		if (pollfd[1].revents & (POLLIN|POLLPRI)) {
 			msg = pmc_recv(pmc);
 			if (msg) {
-				pmc_show(msg, stdout);
+				if(use_command_socket) {
+					pmc_show(msg, remote_fd);
+				}
+				else {
+					pmc_show(msg, STDOUT_FILENO);
+				}
+
 				msg_put(msg);
 			}
 		}
