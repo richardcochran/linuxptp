@@ -240,7 +240,7 @@ clockid_t posix_clock_open(const char *device, int *phc_index)
 		return CLOCK_REALTIME;
 	}
 
-	/* if the device name resolves so a plausible filesystem path, we
+	/* if the device name resolves to a plausible filesystem path, we
 	 * assume it is the path to a PHC char device, and treat it as such
 	 */
 	if (realpath(device, phc_device_path)) {
