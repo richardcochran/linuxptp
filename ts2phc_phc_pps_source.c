@@ -29,6 +29,7 @@ static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 	struct ptp_perout_request perout_request;
 	struct ptp_pin_desc desc;
 	int32_t perout_phase;
+	const char *pin_name;
 	int32_t pulsewidth;
 	struct timespec ts;
 	int err;
@@ -37,9 +38,19 @@ static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 
 	s->channel = config_get_int(cfg, dev, "ts2phc.channel");
 
-	desc.index = config_get_int(cfg, dev, "ts2phc.pin_index");
+	pin_name = config_get_string(cfg, dev, "ts2phc.pin_name");
+	if (pin_name[0]) {
+		desc.index = phc_get_pin_index(s->clock->clkid, pin_name);
+		if (desc.index < 0)
+			return -1;
+	} else {
+		desc.index = config_get_int(cfg, dev, "ts2phc.pin_index");
+	}
 	desc.func = PTP_PF_PEROUT;
 	desc.chan = s->channel;
+
+	pr_debug("PPS source %s is using pin %d",
+		 dev, desc.index);
 
 	if (phc_pin_setfunc(s->clock->clkid, &desc)) {
 		pr_warning("Failed to set the pin. Continuing bravely on...");

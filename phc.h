@@ -87,4 +87,15 @@ int phc_has_pps(clockid_t clkid);
  */
 int phc_has_writephase(clockid_t clkid);
 
+/**
+ * Given the name of a programmable pin, get its pin index.
+ *
+ * @param clkid A clock ID obtained using phc_open().
+ *
+ * @param pin_name The name of the programmable pin to look up.
+ *
+ * @return The index of the named programmable pin, or -1 if not found.
+ */
+int phc_get_pin_index(clockid_t clkid, const char *pin_name);
+
 #endif

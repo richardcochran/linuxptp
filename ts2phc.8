@@ -399,7 +399,12 @@ The pin index to be used.
 Some PHC devices feature programmable pins, and this option allows
 configuration of a particular pin for the external time stamping or
 periodic output function.
-The default is pin index 0.
+The default is pin index 0. Ignored if ts2phc.pin_name is set.
+.TP
+.B ts2phc.pin_name
+The pin name to be used.
+Similar to ts2phc.pin_index, but specifies the pin by name instead of index.
+Supersedes the ts2phc.pin_index configuration.
 
 .SH WARNING
 

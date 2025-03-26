@@ -381,6 +381,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_STR("ts2phc.nmea_serialport", "/dev/ttyS0"),
 	PORT_ITEM_INT("ts2phc.perout_phase", -1, 0, 999999999),
 	PORT_ITEM_INT("ts2phc.pin_index", 0, 0, INT_MAX),
+	PORT_ITEM_STR("ts2phc.pin_name", ""),
 	GLOB_ITEM_INT("ts2phc.pulsewidth", 500000000, 1000000, 999000000),
 	GLOB_ITEM_STR("ts2phc.tod_source", "generic"),
 	PORT_ITEM_ENU("tsproc_mode", TSPROC_FILTER, tsproc_enu),

@@ -152,6 +152,7 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	struct config *cfg = priv->cfg;
 	struct ptp_extts_request extts;
 	struct ts2phc_pps_sink *sink;
+	const char *pin_name;
 	int32_t correction;
 	int err;
 
@@ -166,9 +167,6 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 		free(sink);
 		return NULL;
 	}
-	sink->pin_desc.index = config_get_int(cfg, device, "ts2phc.pin_index");
-	sink->pin_desc.func = PTP_PF_EXTTS;
-	sink->pin_desc.chan = config_get_int(cfg, device, "ts2phc.channel");
 	sink->polarity = config_get_int(cfg, device, "ts2phc.extts_polarity");
 	correction = config_get_int(cfg, device, "ts2phc.extts_correction");
 	sink->correction = nanoseconds_to_tmv(correction);
@@ -187,7 +185,23 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	pr_debug("PPS sink %s has ptp index %d", device,
 		 sink->clock->phc_index);
 
+	pin_name = config_get_string(cfg, device, "ts2phc.pin_name");
+	if (pin_name[0]) {
+		sink->pin_desc.index = phc_get_pin_index(sink->clock->clkid,
+							 pin_name);
+		if (sink->pin_desc.index < 0)
+			return NULL;
+	} else {
+		sink->pin_desc.index = config_get_int(cfg, device,
+						      "ts2phc.pin_index");
+	}
+	sink->pin_desc.func = PTP_PF_EXTTS;
+	sink->pin_desc.chan = config_get_int(cfg, device, "ts2phc.channel");
+
 	if (phc_number_pins(sink->clock->clkid) > 0) {
+		pr_debug("PPS sink %s is using pin %d",
+			 device, sink->pin_desc.index);
+
 		err = phc_pin_setfunc(sink->clock->clkid, &sink->pin_desc);
 		if (err < 0) {
 			pr_err("PTP_PIN_SETFUNC request failed");

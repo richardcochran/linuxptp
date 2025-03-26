@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include "phc.h"
+#include "print.h"
 
 /*
  * On 32 bit platforms, the PHC driver's maximum adjustment (type
@@ -136,4 +137,33 @@ int phc_has_writephase(clockid_t clkid)
 		return 0;
 	}
 	return caps.adjust_phase;
+}
+
+int phc_get_pin_index(clockid_t clkid, const char *pin_name)
+{
+	int fd = CLOCKID_TO_FD(clkid), err, i;
+	struct ptp_clock_caps caps;
+	struct ptp_pin_desc desc;
+
+	err = phc_get_caps(clkid, &caps);
+	if (err)
+		return -1;
+
+	for (i = 0; i < caps.n_pins; i++) {
+		memset(&desc, 0, sizeof(desc));
+		desc.index = i;
+
+		err = ioctl(fd, PTP_PIN_GETFUNC, &desc);
+		if (err) {
+			perror("PTP_PIN_GETFUNC");
+			return -1;
+		}
+
+		if (!strcmp(desc.name, pin_name))
+			return desc.index;
+	}
+
+	pr_err("Programmable pin named %s not found.", pin_name);
+
+	return -1;
 }
