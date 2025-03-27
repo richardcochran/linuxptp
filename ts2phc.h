@@ -18,8 +18,6 @@
 
 struct ts2phc_sink_array;
 
-#define SERVO_SYNC_INTERVAL    1.0
-
 struct ts2phc_clock {
 	LIST_ENTRY(ts2phc_clock) list;
 	clockid_t clkid;
@@ -47,6 +45,7 @@ struct ts2phc_private {
 	struct ts2phc_pps_source *src;
 	STAILQ_HEAD(sink_ifaces_head, ts2phc_pps_sink) sinks;
 	unsigned int n_sinks;
+	unsigned int pulse_period;
 	struct ts2phc_sink_array *polling_array;
 	tmv_t perout_phase;
 	struct config *cfg;

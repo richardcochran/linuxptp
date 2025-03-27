@@ -26,11 +26,10 @@ struct ts2phc_phc_pps_source {
 static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 					  struct ts2phc_phc_pps_source *s)
 {
+	int32_t perout_phase, pulserate, pulsewidth;
 	struct ptp_perout_request perout_request;
 	struct ptp_pin_desc desc;
-	int32_t perout_phase;
 	const char *pin_name;
-	int32_t pulsewidth;
 	struct timespec ts;
 	int err;
 
@@ -62,11 +61,19 @@ static int ts2phc_phc_pps_source_activate(struct config *cfg, const char *dev,
 	perout_phase = config_get_int(cfg, dev, "ts2phc.perout_phase");
 	memset(&perout_request, 0, sizeof(perout_request));
 	perout_request.index = s->channel;
-	perout_request.period.sec = 1;
-	perout_request.period.nsec = 0;
+	pulserate = config_get_int(cfg, dev, "ts2phc.pulserate");
+	if (pulserate == 1) {
+		perout_request.period.sec = 1;
+		perout_request.period.nsec = 0;
+	} else {
+		perout_request.period.sec = 0;
+		perout_request.period.nsec = NS_PER_SEC / pulserate;
+	}
 	perout_request.flags = 0;
 	pulsewidth = config_get_int(cfg, dev, "ts2phc.pulsewidth");
 	if (pulsewidth) {
+		if (pulsewidth < 0)
+			pulsewidth = NS_PER_SEC / 2 / pulserate;
 		perout_request.flags |= PTP_PEROUT_DUTY_CYCLE;
 		perout_request.on.sec = pulsewidth / NS_PER_SEC;
 		perout_request.on.nsec = pulsewidth % NS_PER_SEC;

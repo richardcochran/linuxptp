@@ -140,7 +140,7 @@ static struct servo *ts2phc_servo_create(struct ts2phc_private *priv,
 	if (!servo)
 		return NULL;
 
-	servo_sync_interval(servo, SERVO_SYNC_INTERVAL);
+	servo_sync_interval(servo, priv->pulse_period / 1.0e9);
 
 	return servo;
 }
@@ -431,14 +431,23 @@ static int ts2phc_pps_source_implicit_tstamp(struct ts2phc_private *priv,
 	 *
 	 * With an NMEA source assume its messages always follow the pulse, i.e.
 	 * assign the timestamp to the previous pulse instead of nearest pulse.
+	 *
+	 * To support >1Hz PPS signals, work with the 1/rate period instead of
+	 * second.
 	 */
 	if (ts2phc_pps_source_get_type(priv->src) == TS2PHC_PPS_SOURCE_NMEA) {
-		source_ts.tv_sec++;
+		source_ts.tv_nsec += priv->pulse_period;
 	} else {
-		if (source_ts.tv_nsec > NS_PER_SEC / 2)
-			source_ts.tv_sec++;
+		source_ts.tv_nsec += priv->pulse_period / 2;
 	}
-	source_ts.tv_nsec = 0;
+
+	/* Truncate the timestamp to the pulse period boundary */
+	source_ts.tv_nsec /= priv->pulse_period;
+	source_ts.tv_nsec *= priv->pulse_period;
+	if (source_ts.tv_nsec >= NS_PER_SEC) {
+		source_ts.tv_sec++;
+		source_ts.tv_nsec -= NS_PER_SEC;
+	}
 
 	tmv = timespec_to_tmv(source_ts);
 	tmv = tmv_add(tmv, priv->perout_phase);
@@ -706,6 +715,10 @@ int main(int argc, char *argv[])
 	print_set_verbose(config_get_int(cfg, NULL, "verbose"));
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
+
+	/* Set this variable early for added sinks */
+	priv.pulse_period = NSEC_PER_SEC / config_get_int(cfg, NULL,
+							  "ts2phc.pulserate");
 
 	STAILQ_INIT(&priv.sinks);
 

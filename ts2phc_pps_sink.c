@@ -172,8 +172,14 @@ static struct ts2phc_pps_sink *ts2phc_pps_sink_create(struct ts2phc_private *pri
 	sink->correction = nanoseconds_to_tmv(correction);
 
 	sink->pulsewidth = config_get_int(cfg, device, "ts2phc.pulsewidth");
-	if (sink->pulsewidth > 500000000)
-		sink->pulsewidth = 1000000000 - sink->pulsewidth;
+	if ((int32_t)sink->pulsewidth < 0)
+		sink->pulsewidth = priv->pulse_period / 2;
+	if (sink->pulsewidth > priv->pulse_period - 1000000) {
+		pr_err("pulsewidth is too large for configured pulserate");
+		return NULL;
+	}
+	if (sink->pulsewidth > priv->pulse_period / 2)
+		sink->pulsewidth = priv->pulse_period - sink->pulsewidth;
 
 	sink->clock = ts2phc_clock_add(priv, device);
 	if (!sink->clock) {
@@ -267,12 +273,12 @@ static bool ts2phc_pps_sink_ignore(struct ts2phc_private *priv,
 		ignore_upper = sink->pulsewidth;
 		ignore_lower = 0;
 	} else {
-		ignore_upper = 1000000000 - sink->pulsewidth / 2;
+		ignore_upper = priv->pulse_period - sink->pulsewidth / 2;
 		ignore_lower = sink->pulsewidth / 2;
 	}
 
-	return source_ts.tv_nsec > ignore_lower &&
-	       source_ts.tv_nsec < ignore_upper;
+	return source_ts.tv_nsec % priv->pulse_period > ignore_lower &&
+	       source_ts.tv_nsec % priv->pulse_period < ignore_upper;
 }
 
 static enum extts_result ts2phc_pps_sink_event(struct ts2phc_private *priv,

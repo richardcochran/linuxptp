@@ -337,6 +337,19 @@ the same effect, but may not work with drivers that do not support
 starting periodic output at an absolute time.
 
 .TP
+.B ts2phc.pulserate
+The number of pulses per second in the signal received by the PPS sinks. If a
+PHC is specified as the PPS source (by the \fB-s\fR, \fBts2phc.tod_source\fR,
+or \fBts2phc.master\fR option), it will be requested to generate the signal
+with this rate to match the sinks. The supported range is 1 to 128. The rate
+should divide 1 billion to avoid a loss of precision due to rounding of the
+pulse period to nanoseconds. If using the generic (system clock) or NMEA ToD
+source, the higher the pulse rate, the more accurate and stable the ToD source
+needs to be to prevent mislabeled pulses (causing large clock errors), and also
+errors in the edge detection if \fBts2phc.extts_polarity\fR is set to "both".
+The default is 1 pulse per second (1PPS).
+
+.TP
 .B ts2phc.pulsewidth
 The pulse width of the external PPS signal in nanoseconds.
 When 'ts2phc.extts_polarity' is "both", the given pulse width is used
@@ -345,7 +358,8 @@ source is of the PHC kind, an attempt is made to request the kernel to actually
 emit using this pulse width. If this fails, it is assumed that the specified
 pulse width is correct, and the value is used in the edge rejection algorithm.
 The supported range is 1000000 to 990000000 nanoseconds.
-The default is 500000000 nanoseconds.
+The default is 50% of the pulse period given by the \fBts2phc.pulserate\fP
+option, i.e. 500000000 nanoseconds with the default pulse rate of 1.
 
 .TP
 .B ts2phc.tod_source
