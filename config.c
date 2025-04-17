@@ -277,6 +277,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("delayAsymmetry", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_ENU("delay_filter", FILTER_MOVING_MEDIAN, delay_filter_enu),
 	PORT_ITEM_INT("delay_filter_length", 10, 1, INT_MAX),
+	PORT_ITEM_DBL("delay_request_variability", 1.0, 0.0, 1.0),
 	PORT_ITEM_ENU("delay_mechanism", DM_E2E, delay_mech_enu),
 	PORT_ITEM_INT("delay_response_timeout", 0, 0, UINT8_MAX),
 	GLOB_ITEM_INT("dscp_event", 0, 0, 63),

@@ -235,6 +235,13 @@ P2P, and NONE.
 The default is E2E.
 
 .TP
+.B delay_request_variability
+The variability of the interval between transmitted delay requests around the
+minimum mean time interval specified by the \fBlogMinDelayReqInterval\fR
+option. Must be in the range of 0.0 to 1.0.
+The default is 1.0 (i.e. +/- 100% of the mean time interval).
+
+.TP
 .B delay_response_timeout
 The number of delay response messages that may go missing before
 triggering a synchronization fault. Setting this option to zero will

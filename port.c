@@ -1333,7 +1333,9 @@ int port_set_delay_tmo(struct port *p)
 	default:
 		break;
 	}
-	return set_tmo_random(p->fda.fd[FD_DELAY_TIMER], 0, 2,
+	return set_tmo_random(p->fda.fd[FD_DELAY_TIMER],
+			      1.0 - p->delay_request_variability,
+			      2.0 * p->delay_request_variability,
 			      p->logMinDelayReqInterval);
 }
 
@@ -2066,6 +2068,7 @@ int port_initialize(struct port *p)
 	p->operLogPdelayReqInterval = config_get_int(cfg, p->name, "operLogPdelayReqInterval");
 	p->neighborPropDelayThresh = config_get_int(cfg, p->name, "neighborPropDelayThresh");
 	p->min_neighbor_prop_delay = config_get_int(cfg, p->name, "min_neighbor_prop_delay");
+	p->delay_request_variability = config_get_double(cfg, p->name, "delay_request_variability");
 	p->delay_response_timeout  = config_get_int(cfg, p->name, "delay_response_timeout");
 	p->iface_rate_tlv 	   = config_get_int(cfg, p->name, "interface_rate_tlv");
 

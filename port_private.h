@@ -144,6 +144,7 @@ struct port {
 	struct fault_interval flt_interval_pertype[FT_CNT];
 	enum fault_type     last_fault_type;
 	UInteger8           versionNumber; /* UInteger4 */
+	double              delay_request_variability;
 	UInteger8	    delay_response_counter;
 	UInteger8	    delay_response_timeout;
 	UInteger8	    allowedLostResponses;
