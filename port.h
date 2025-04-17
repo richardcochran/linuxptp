@@ -286,11 +286,11 @@ int set_tmo_log(int fd, unsigned int scale, int log_seconds);
  *
  * @param fd A file descriptor previously opened with timerfd_create(2).
  * @param min The minimum value for the timer.
- * @param span The span value for the timer. Must be a positive value.
+ * @param span The span value for the timer. Must be positive or zero.
  * @param log_seconds The exponential factor for the timer.
  * @return Zero on success, non-zero otherwise.
  */
-int set_tmo_random(int fd, int min, int span, int log_seconds);
+int set_tmo_random(int fd, double min, double span, int log_seconds);
 
 /**
  * Utility function for setting or resetting a file descriptor timer.

@@ -268,7 +268,7 @@ int set_tmo_lin(int fd, int seconds)
 	return timerfd_settime(fd, 0, &tmo, NULL);
 }
 
-int set_tmo_random(int fd, int min, int span, int log_seconds)
+int set_tmo_random(int fd, double min, double span, int log_seconds)
 {
 	uint64_t value_ns, min_ns, span_ns;
 	struct itimerspec tmo = {
@@ -276,11 +276,11 @@ int set_tmo_random(int fd, int min, int span, int log_seconds)
 	};
 
 	if (log_seconds >= 0) {
-		min_ns = min * NS_PER_SEC << log_seconds;
-		span_ns = span * NS_PER_SEC << log_seconds;
+		min_ns = (uint64_t)(min * NS_PER_SEC) << log_seconds;
+		span_ns = (uint64_t)(span * NS_PER_SEC) << log_seconds;
 	} else {
-		min_ns = min * NS_PER_SEC >> -log_seconds;
-		span_ns = span * NS_PER_SEC >> -log_seconds;
+		min_ns = (uint64_t)(min * NS_PER_SEC) >> -log_seconds;
+		span_ns = (uint64_t)(span * NS_PER_SEC) >> -log_seconds;
 	}
 
 	value_ns = min_ns + (span_ns * (random() % (1 << 15) + 1) >> 15);
