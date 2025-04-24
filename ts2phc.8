@@ -278,6 +278,16 @@ sourced via the \fBsa_file\fR directive. Not compatible with one step ports.
 Must be in the range of -1 to 255, inclusive. The default is -1 (disabled).
 
 .TP
+.B ts2phc.external_pps
+Enables an external reference with the \fB-a\fP option. If set to 1, ts2phc
+will assume the source of the PPS signal is a different clock from the PHCs
+used by ptp4l (configured with the \fBboundary_clock_jbod\fP option). The use
+case is a holdover using an externally controlled stabilized clock, which is
+expected to be synchronized to the PHC that is synchronized by ptp4l, and
+running free when ptp4l is not synchronizing any of the PHCs. Note that it is a
+different holdover than the one enabled by the \fBts2phc.holdover\fP option
+below. The default is 0 (disabled).
+.TP
 .B ts2phc.holdover
 The holdover interval, specified in seconds. When the ToD information stops
 working (e.g. GNSS receiver lost its fix), ts2phc is allowed for the specified

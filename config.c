@@ -369,6 +369,7 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_ENU("time_stamping", TS_HARDWARE, timestamping_enu),
 	PORT_ITEM_INT("transportSpecific", 0, 0, 0x0F),
 	PORT_ITEM_INT("ts2phc.channel", 0, 0, INT_MAX),
+	GLOB_ITEM_INT("ts2phc.external_pps", 0, 0, 1),
 	PORT_ITEM_INT("ts2phc.extts_correction", 0, INT_MIN, INT_MAX),
 	PORT_ITEM_ENU("ts2phc.extts_polarity", PTP_RISING_EDGE, extts_polarity_enu),
 	PORT_ITEM_INT("ts2phc.holdover", 0, 0, INT_MAX),

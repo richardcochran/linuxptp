@@ -441,6 +441,15 @@ int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 		all_sinks_have_events = true;
 
 		for (i = 0; i < priv->n_sinks; i++) {
+			/*
+			 * In the external PPS mode don't require non-target
+			 * clocks to be receiving PPS to allow switching the
+			 * PPS direction to synchronize the external clock.
+			 */
+			if (priv->external_pps &&
+			    !polling_array->sink[i]->clock->is_target)
+				continue;
+
 			if (!polling_array->collected_events[i]) {
 				all_sinks_have_events = false;
 				break;

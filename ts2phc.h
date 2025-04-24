@@ -52,6 +52,7 @@ struct ts2phc_private {
 	struct config *cfg;
 	struct pmc_agent *agent;
 	struct ts2phc_clock *ref_clock;
+	bool external_pps;
 	bool state_changed;
 	LIST_HEAD(port_head, ts2phc_port) ports;
 	LIST_HEAD(clock_head, ts2phc_clock) clocks;

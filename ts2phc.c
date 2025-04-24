@@ -348,17 +348,25 @@ static void ts2phc_reconfigure(struct ts2phc_private *priv)
 			}
 			num_target_clocks++;
 			break;
-		case PS_UNCALIBRATED:
-			num_ref_clocks++;
-			break;
 		case PS_SLAVE:
 			ref_clk = c;
+			/* Fall through */
+		case PS_UNCALIBRATED:
 			num_ref_clocks++;
+			if (priv->external_pps && c->is_target) {
+				pr_info("unselecting %s for synchronization",
+					c->name);
+				c->is_target = false;
+			}
 			break;
 		default:
 			break;
 		}
 		last = c;
+	}
+	if (priv->external_pps) {
+		pr_info("assuming external reference clock");
+		return;
 	}
 	if (num_target_clocks >= 1 && !ref_clk) {
 		priv->ref_clock = last;
@@ -447,7 +455,7 @@ static void ts2phc_synchronize_clocks(struct ts2phc_private *priv, int autocfg)
 	struct ts2phc_clock *c;
 	int holdover, valid;
 
-	if (autocfg) {
+	if (autocfg && !priv->external_pps) {
 		if (!priv->ref_clock) {
 			pr_debug("no reference clock, skipping");
 			return;
@@ -786,6 +794,8 @@ int main(int argc, char *argv[])
 		ts2phc_cleanup(&priv);
 		return -1;
 	}
+
+	priv.external_pps = config_get_int(cfg, NULL, "ts2phc.external_pps");
 
 	priv.holdover_length = config_get_int(cfg, NULL, "ts2phc.holdover");
 	priv.holdover_start = 0;
