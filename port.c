@@ -942,6 +942,8 @@ static int port_management_fill_response(struct port *target,
 
 	switch (id) {
 	case MID_NULL_MANAGEMENT:
+	case MID_ENABLE_PORT:
+	case MID_DISABLE_PORT:
 		datalen = 0;
 		break;
 	case MID_CLOCK_DESCRIPTION:
@@ -1255,6 +1257,27 @@ static int port_management_set(struct port *target,
 	if (respond && !port_management_get_response(target, ingress, id, req))
 		pr_err("%s: failed to send management set response", target->log_name);
 	return respond ? 1 : 0;
+}
+
+static int port_management_command(struct port *target,
+				   struct port *ingress, int id,
+				   struct ptp_message *req)
+{
+	switch (id) {
+	case MID_ENABLE_PORT:
+		port_dispatch(target, EV_DESIGNATED_ENABLED, 0);
+		break;
+	case MID_DISABLE_PORT:
+		port_dispatch(target, EV_DESIGNATED_DISABLED, 0);
+		break;
+	default:
+		return 0;
+	}
+
+	if (!port_management_get_response(target, ingress, id, req))
+		pr_err("%s: failed to send management acknowledgement",
+		       target->log_name);
+	return 1;
 }
 
 static void port_nrate_calculate(struct port *p, tmv_t origin, tmv_t ingress)
@@ -3404,6 +3427,8 @@ int port_manage(struct port *p, struct port *ingress, struct ptp_message *msg)
 			return 1;
 		break;
 	case COMMAND:
+		if (port_management_command(p, ingress, mgt->id, msg))
+			return 1;
 		break;
 	default:
 		return -1;

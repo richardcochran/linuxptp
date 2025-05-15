@@ -79,6 +79,7 @@
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str);
 static void do_set_action(struct pmc *pmc, int action, int index, char *str);
+static void do_command_action(struct pmc *pmc, int action, int index, char *str);
 static void not_supported(struct pmc *pmc, int action, int index, char *str);
 static void null_management(struct pmc *pmc, int action, int index, char *str);
 
@@ -142,8 +143,8 @@ struct management_id idtab[] = {
 	{ "ANNOUNCE_RECEIPT_TIMEOUT", MID_ANNOUNCE_RECEIPT_TIMEOUT, do_get_action },
 	{ "LOG_SYNC_INTERVAL", MID_LOG_SYNC_INTERVAL, do_get_action },
 	{ "VERSION_NUMBER", MID_VERSION_NUMBER, do_get_action },
-	{ "ENABLE_PORT", MID_ENABLE_PORT, not_supported },
-	{ "DISABLE_PORT", MID_DISABLE_PORT, not_supported },
+	{ "ENABLE_PORT", MID_ENABLE_PORT, do_command_action },
+	{ "DISABLE_PORT", MID_DISABLE_PORT, do_command_action },
 	{ "UNICAST_NEGOTIATION_ENABLE", MID_UNICAST_NEGOTIATION_ENABLE, not_supported },
 	{ "UNICAST_MASTER_TABLE", MID_UNICAST_MASTER_TABLE, not_supported },
 	{ "UNICAST_MASTER_MAX_TABLE_SIZE", MID_UNICAST_MASTER_MAX_TABLE_SIZE, not_supported },
@@ -438,6 +439,19 @@ static void do_set_action(struct pmc *pmc, int action, int index, char *str)
 		pmc_send_set_action(pmc, code, &pcn, sizeof(pcn));
 		break;
 	}
+}
+
+static void do_command_action(struct pmc *pmc, int action, int index, char *str)
+{
+	int code = idtab[index].code;
+
+	if (action != COMMAND) {
+		fprintf(stderr, "%s only allows COMMAND\n",
+			idtab[index].name);
+		return;
+	}
+
+	pmc_send_command_action(pmc, code);
 }
 
 static void not_supported(struct pmc *pmc, int action, int index, char *str)
@@ -898,6 +912,31 @@ int pmc_send_set_aton(struct pmc *pmc, int id, uint8_t key, const char *name)
 	aton->keyField = key;
 	ptp_text_set(&aton->displayName, name);
 
+	pmc_send(pmc, msg);
+	msg_put(msg);
+
+	return 0;
+}
+
+int pmc_send_command_action(struct pmc *pmc, int id)
+{
+	struct management_tlv *mgt;
+	struct ptp_message *msg;
+	struct tlv_extra *extra;
+
+	msg = pmc_message(pmc, COMMAND);
+	if (!msg) {
+		return -1;
+	}
+	extra = msg_tlv_append(msg, sizeof(*mgt));
+	if (!extra) {
+		msg_put(msg);
+		return -ENOMEM;
+	}
+	mgt = (struct management_tlv *) extra->tlv;
+	mgt->type = TLV_MANAGEMENT;
+	mgt->length = 2;
+	mgt->id = id;
 	pmc_send(pmc, msg);
 	msg_put(msg);
 
