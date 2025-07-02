@@ -465,37 +465,44 @@ are of the form 00:00:00:00:00:00.
 If the default 00:00:00:00:00:00 is used or if not set at all, the
 profileIdentity will be detected from the configuration or set to the Default
 profile (00:1B:19:00:01:00).
+The default OUI value of 00:1B:19 represent the IEEE P1588 standard.
 
 .TP
 .B ptp_dst_ipv4
 The IPv4 address to which PTP messages should be sent.
 Relevant only with UDPv4 transport. The default is 224.0.1.129.
+The default follows IEEE P1588, IPv4 multicast addresses, 'PTP-primary'.
 
 .TP
 .B p2p_dst_ipv4
 The IPv4 address to which peer delay messages should be sent.
 Relevant only with UDPv4 transport. The default is 224.0.0.107.
+The default follows IEEE P1588, IPv4 multicast addresses, 'PTP-pdelay'.
 
 .TP
 .B ptp_dst_ipv6
 The IPv6 address to which PTP messages should be sent.
 The second byte of the address is substituted with udp6_scope.
 Relevant only with UDPv6 transport. The default is FF0E:0:0:0:0:0:0:181.
+The default follows IEEE P1588, IPv6 multicast addresses, 'PTP-primary' with 'Global scope'.
 
 .TP
 .B p2p_dst_ipv6
 The IPv6 address to which peer delay messages should be sent.
 Relevant only with UDPv6 transport. The default is FF02:0:0:0:0:0:0:6B.
+The default follows IEEE P1588, IPv6 multicast addresses, 'PTP-pdelay'.
 
 .TP
 .B ptp_dst_mac
 The MAC address to which PTP messages should be sent.
 Relevant only with L2 transport. The default is 01:1B:19:00:00:00.
+The default follows IEEE P1588, Multicast MAC addresses, 'All except peer-to-peer delay'.
 
 .TP
 .B p2p_dst_mac
 The MAC address to which peer delay messages should be sent.
 Relevant only with L2 transport. The default is 01:80:C2:00:00:0E.
+The default follows IEEE P1588, Multicast MAC addresses, 'Peer-to-peer delay'.
 
 .TP
 .B serverOnly
