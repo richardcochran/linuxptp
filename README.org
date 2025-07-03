@@ -28,7 +28,9 @@
 
   - Transport over UDP/IPv4, UDP/IPv6, and raw Ethernet (Layer 2).
 
-  - Supports IEEE 802.1AS-2011 in the role of end station.
+  - Supports IEEE 802.1AS-2011 and 802.1AS-2020 in the role of end
+    station. 802.1AS-2020 support includes multi-time domain operation
+    with Common Mean Link Delay Service (CMLDS).
 
   - Modular design allowing painless addition of new transports and
     clock servos.
@@ -44,6 +46,8 @@
     - The enterprise profile.
 
     - The telecom profiles G.8265.1, G.8275.1, and G.8275.2.
+
+    - The IEEE 802.1AS/gPTP profiles, with and without CMLDS support.
 
   - Supports the NetSync Monitor protocol.
 

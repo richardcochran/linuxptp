@@ -1269,6 +1269,61 @@ Example for Intel E810 card:
 Assigning priority needs careful consideration as assigning too high a
 priority to any task might make system unstable.
 
+.SH EXAMPLES
+.SS IEEE 802.1AS-2020 Multi-Time Domain Operation with CMLDS
+
+This setup involves time domains 0 and 1 with CMLDS support, running on a
+single end station using virtual clocks in a gPTP-aware network.
+
+1. Identify the PTP Hardware Clock (PHC) device associated with the network
+   interface:
+
+.nf
+   ethtool -T eth0
+   PTP Hardware Clock: 0
+.fi
+
+2. Create virtual clocks (vclocks) associated with the PHC.
+   For example, to create 4 vclocks:
+
+.nf
+   echo 4 > /sys/class/net/eth0/device/ptp/ptp0/n_vclocks
+.fi
+
+   Check dmesg output to confirm:
+
+.nf
+   dmesg | tail -n 5
+.fi
+.nf
+   ...
+   ptp ptp0: new virtual clock ptp3
+   ptp ptp0: new virtual clock ptp4
+   ptp ptp0: new virtual clock ptp5
+.fi
+
+3. Assign virtual clocks for different time domains:
+
+   - Assign \fBptp4\fP for domain 0
+   - Assign \fBptp5\fP for domain 1
+
+4. Start the CMLDS server for domain 0:
+
+.nf
+   ptp4l -f configs/gPTP_CMLDS_server.cfg -i eth0 -m
+.fi
+
+5. Start \fBptp4l\fP for each time domain using its corresponding
+   configuration:
+
+.nf
+   ptp4l -f configs/gPTP_CMLDS_domain0.cfg -i eth0 -m  # domain 0
+   ptp4l -f configs/gPTP_CMLDS_domain1.cfg -i eth0 -m  # domain 1
+.fi
+
+   Ensure each domain configuration file sets the appropriate domainNumber
+   and \fBphc_index\fP for its assigned virtual clock.
+
 .SH SEE ALSO
 .BR pmc (8),
 .BR phc2sys (8)
