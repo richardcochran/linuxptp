@@ -697,7 +697,7 @@ int main(int argc, char *argv[])
 		case 'h':
 			ts2phc_cleanup(&priv);
 			usage(progname);
-			return -1;
+			return 0;
 		case '?':
 		default:
 			ts2phc_cleanup(&priv);
