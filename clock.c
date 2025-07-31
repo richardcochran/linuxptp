@@ -24,6 +24,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 
 #include "address.h"
 #include "bmc.h"
@@ -1104,6 +1105,16 @@ int clock_required_modes(struct clock *c)
 	return required_modes;
 }
 
+static void create_symlink(const char *target, const char *path)
+{
+	struct stat st;
+
+	if (!lstat(path, &st) && (st.st_mode & S_IFMT) == S_IFLNK)
+		return;
+	if (symlink(target, path))
+		pr_warning("failed to create symlink %s->%s: %m", path, target);
+}
+
 struct clock *clock_create(enum clock_type type, struct config *config,
 			   const char *phc_device)
 {
@@ -1268,9 +1279,14 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		}
 	}
 
-	/* Configure the UDS. */
+	/*
+	 * Configure the UDS ports. If using the new default server addresses,
+	 * create also symlinks for compatibility with older clients.
+	 */
 
 	uds_ifname = config_get_string(config, NULL, "uds_address");
+	if (!strcmp(uds_ifname, "/var/run/ptp/ptp4l"))
+		create_symlink("ptp/ptp4l", "/var/run/ptp4l");
 	c->uds_rw_if = interface_create(uds_ifname, NULL);
 	if (config_set_section_int(config, interface_name(c->uds_rw_if),
 				   "announceReceiptTimeout", 0)) {
@@ -1291,6 +1307,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 	uds_ifname = config_get_string(config, NULL, "uds_ro_address");
 	c->uds_ro_if = interface_create(uds_ifname, NULL);
+	if (!strcmp(uds_ifname, "/var/run/ptp/ptp4lro"))
+		create_symlink("ptp/ptp4lro", "/var/run/ptp4lro");
 	if (config_set_section_int(config, interface_name(c->uds_ro_if),
 				   "announceReceiptTimeout", 0)) {
 		return NULL;
