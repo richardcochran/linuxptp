@@ -1053,7 +1053,7 @@ Specifies the address of the UNIX domain socket for receiving local
 management messages. The directory containing the socket will be created on
 start if it does not exist, with owner set to the user specified by the
 .B user
-option. The default is /var/run/ptp4l.
+option. The default is /var/run/ptp/ptp4l.
 
 .TP
 .B uds_file_mode
@@ -1066,7 +1066,7 @@ should start with a 0 literal. The default mode is 0660.
 Specifies the address of the second UNIX domain socket for receiving local
 management messages, which is restricted to GET actions and does not forward
 messages to other ports. Access to this socket can be given to untrusted
-applications for monitoring purposes. The default is /var/run/ptp4lro.
+applications for monitoring purposes. The default is /var/run/ptp/ptp4lro.
 
 .TP
 .B uds_ro_file_mode

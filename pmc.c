@@ -717,7 +717,7 @@ static void usage(char *progname)
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
 		"           for network and 'pmc.$pid' for UDS.\n"
-		" -s [path] server address for UDS, default '/var/run/ptp4l'.\n"
+		" -s [path] server address for UDS, default '/var/run/ptp/ptp4l'.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
 		" -v        prints the software version and exits\n"
 		" -z        send zero length TLV values with the GET actions\n"

@@ -1202,7 +1202,7 @@ static void usage(char *progname)
 		" -u [num]       number of clock updates in summary stats (0)\n"
 		" -n [num]       domain number (0)\n"
 		" -x             apply leap seconds by servo instead of kernel\n"
-		" -z [path]      server address for UDS (/var/run/ptp4l)\n"
+		" -z [path]      server address for UDS (/var/run/ptp/ptp4l)\n"
 		" -l [num]       set the logging level to 'num' (6)\n"
 		" -t [tag]       add tag to log messages\n"
 		" -m             print messages to stdout\n"
