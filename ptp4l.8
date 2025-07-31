@@ -1050,7 +1050,10 @@ is only relevant with IPv6 transport.  See RFC 4291.  The default is
 .TP
 .B uds_address
 Specifies the address of the UNIX domain socket for receiving local
-management messages. The default is /var/run/ptp4l.
+management messages. The directory containing the socket will be created on
+start if it does not exist, with owner set to the user specified by the
+.B user
+option. The default is /var/run/ptp4l.
 
 .TP
 .B uds_file_mode
@@ -1098,6 +1101,19 @@ This option enables using the "write phase" feature of a PTP Hardware
 Clock.  If supported by the device, this mode uses the hardware's
 built in phase offset control instead of frequency offset control.
 The default value is 0 (disabled).
+.TP
+.B user
+The name of the user to which should
+.B ptp4l
+switch after start in order to drop the root privileges. By default,
+.B ptp4l
+will keep the identity of the user under which it is started. With the
+.B boundary_clock_jbod
+option, or if using a bonded interface, the non-root user must have permissions
+to open the PHC devices to be able to switch between them. If using the ntpshm
+or refclock_sock servo, the user must have also permissions to attach to the
+shared memory segment if it already exists or connect to the refclock socket
+respectively.
 
 .SH UNICAST DISCOVERY OPTIONS
 

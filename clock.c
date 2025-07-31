@@ -1109,7 +1109,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 {
 	int conf_phc_index, i, max_adj = 0, phc_index, required_modes = 0, sfl, sw_ts;
 	enum servo_type servo = config_get_int(config, NULL, "clock_servo");
-	char ts_label[IF_NAMESIZE], phc[32], *tmp;
+	char ts_label[IF_NAMESIZE], phc[32], *tmp, *user;
 	enum timestamp_type timestamping;
 	struct clock *c = &the_clock;
 	const char *uds_ifname;
@@ -1429,6 +1429,12 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 
+	user = config_get_string(config, NULL, "user");
+	create_uds_directory(config_get_string(config, NULL, "uds_address"),
+			     user);
+	create_uds_directory(config_get_string(config, NULL, "uds_ro_address"),
+			     user);
+
 	/* Create the UDS interfaces. */
 
 	c->uds_rw_port = port_open(phc_device, phc_index, timestamping, 0,
@@ -1458,6 +1464,18 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 			return NULL;
 		}
 	}
+
+	/*
+	 * Drop the root privileges if configured to do so. It needs to be done
+	 * after opening the ports as generic netlink sockets (whose binding
+	 * requires CAP_SYS_ADMIN) are used to detect virtual clocks. The port
+	 * sockets will be bound and HW timestamping configured later when
+	 * handling the port INITIALIZING state. The process keeps
+	 * CAP_NET_ADMIN, CAP_NET_BIND_SERVICE, and CAP_NET_RAW to be able to
+	 * do that.
+	 */
+	if (drop_root_privileges(user))
+		return NULL;
 
 	c->dds.numberPorts = c->nports;
 

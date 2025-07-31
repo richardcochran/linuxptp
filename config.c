@@ -396,6 +396,7 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("unicast_master_table", 0, 0, INT_MAX),
 	PORT_ITEM_INT("unicast_req_duration", 3600, 10, INT_MAX),
 	GLOB_ITEM_INT("use_syslog", 1, 0, 1),
+	GLOB_ITEM_STR("user", ""),
 	GLOB_ITEM_STR("userDescription", ""),
 	GLOB_ITEM_INT("utc_offset", CURRENT_UTC_OFFSET, 0, INT_MAX),
 	GLOB_ITEM_INT("verbose", 0, 0, 1),
