@@ -97,19 +97,20 @@ static int uds_open(struct transport *t, struct interface *iface, struct fdarray
 	uds->address.sun = sa;
 	uds->address.len = sizeof(sa);
 
-	chmod(name, file_mode);
-
 	/*
 	 * In the client, copy the ownership of the server's socket if it runs
 	 * under a non-root user to allow it to send a response to the client
 	 * running under root.  Avoid following a symlink if the socket is
-	 * replaced (e.g. by compromised ptp4l process).
+	 * replaced (e.g. by compromised ptp4l process).  The server just sets
+	 * the permissions on its socket per configuration.
 	 */
 	if (uds_path[0] != '\0') {
 		if (!lstat(uds_path, &st) && (st.st_uid || st.st_gid) &&
 		    lchown(name, st.st_uid, st.st_gid)) {
 			pr_err("uds: failed to change socket ownership: %m");
 		}
+	} else {
+		chmod(name, file_mode);
 	}
 
 	fda->fd[FD_EVENT] = -1;
