@@ -81,8 +81,9 @@ Specify the boundary hops value in sent messages. The default is 1.
 Specify the domain number in sent messages. The default is 0.
 .TP
 .BI \-i " interface"
-Specify the network interface. The default is /var/run/pmc.$pid for the Unix Domain
-Socket transport and eth0 for the other transports.
+Specify the network interface. The default is pmc.$pid for the Unix Domain
+Socket transport and eth0 for the other transports. A relative path of the Unix
+Domain socket is relative to the directory of the server's socket.
 .TP
 .BI \-s " uds-address"
 Specifies the address of the server's UNIX domain socket.

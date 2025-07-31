@@ -18,6 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <errno.h>
+#include <libgen.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -535,12 +536,38 @@ struct pmc {
 	UInteger8 allow_unauth;
 };
 
+static int complete_uds_address(struct config *cfg, const char *iface,
+				char *uds, size_t len)
+{
+	char buf[MAX_IFNAME_SIZE + 1];
+
+	/* Don't change absolute paths */
+	if (iface[0] == '/') {
+		if (snprintf(uds, len, "%s", iface) >= len) {
+			pr_err("UDS path too long");
+			return -1;
+		}
+		return 0;
+	}
+
+	/* Relative paths are relative to the directory of the server socket */
+	if (snprintf(buf, sizeof(buf), "%s", config_get_string(cfg, NULL,
+					     "uds_address")) >= sizeof(buf) ||
+	    snprintf(uds, len, "%s/%s", dirname(buf), iface) >= len) {
+		pr_err("UDS path too long");
+		return -1;
+	}
+
+	return 0;
+}
+
 struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       const char *iface_name, const char *remote_address,
 		       UInteger8 boundary_hops, UInteger8 domain_number,
 		       UInteger8 transport_specific, UInteger8 allow_unauth,
 		       int zero_datalen)
 {
+	char uds[MAX_IFNAME_SIZE + 1];
 	struct pmc *pmc;
 	UInteger32 proc_id;
 
@@ -553,6 +580,9 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		pmc->port_identity.clockIdentity.id[6] = (proc_id & 0xFF000000) >> 24;
 		pmc->port_identity.clockIdentity.id[7] = (proc_id & 0x00FF0000) >> 16;
 		pmc->port_identity.portNumber = proc_id & 0xFFFF;
+		if (complete_uds_address(cfg, iface_name, uds, sizeof(uds)))
+			goto failed;
+		iface_name = uds;
 	} else {
 		if (generate_clock_identity(&pmc->port_identity.clockIdentity,
 					    iface_name)) {

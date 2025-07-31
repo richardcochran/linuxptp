@@ -1512,7 +1512,7 @@ int main(int argc, char *argv[])
 			}
 
 			snprintf(uds_local, sizeof(uds_local),
-				 "/var/run/phc2sys.%d.%d", getpid(), i);
+				 "phc2sys.%d.%d", getpid(), i);
 
 			if (uds_remote_cnt > i)
 				config_set_string(cfg, "uds_address",
@@ -1554,8 +1554,7 @@ int main(int argc, char *argv[])
 	r = -1;
 
 	if (wait_sync || !domains[0].forced_sync_offset) {
-		snprintf(uds_local, sizeof(uds_local),
-			 "/var/run/phc2sys.%d", getpid());
+		snprintf(uds_local, sizeof(uds_local), "phc2sys.%d", getpid());
 
 		if (uds_remote_cnt > 0)
 			config_set_string(cfg, "uds_address",

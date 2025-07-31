@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
 	print_set_progname(progname);
 	print_set_tag(config_get_string(cfg, NULL, "message_tag"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
-	snprintf(uds_local, sizeof(uds_local), "/var/run/tztool.%d", getpid());
+	snprintf(uds_local, sizeof(uds_local), "tztool.%d", getpid());
 
 	err = do_tztool(timezone);
 out:

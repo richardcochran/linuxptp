@@ -715,8 +715,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	snprintf(uds_local, sizeof(uds_local), "/var/run/ts2phc.%d",
-		 getpid());
+	snprintf(uds_local, sizeof(uds_local), "ts2phc.%d", getpid());
 
 	if (autocfg) {
 		err = init_pmc_node(cfg, priv.agent, uds_local,

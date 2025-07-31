@@ -716,7 +716,7 @@ static void usage(char *progname)
 		" -f [file] read configuration from 'file'\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use, default 'eth0'\n"
-		"           for network and '/var/run/pmc.$pid' for UDS.\n"
+		"           for network and 'pmc.$pid' for UDS.\n"
 		" -s [path] server address for UDS, default '/var/run/ptp4l'.\n"
 		" -t [hex]  transport specific field, default 0x0\n"
 		" -v        prints the software version and exits\n"
@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
 	if (!iface_name) {
 		if (transport_type == TRANS_UDS) {
 			snprintf(uds_local, sizeof(uds_local),
-				 "/var/run/pmc.%d", getpid());
+				 "pmc.%d", getpid());
 			iface_name = uds_local;
 		} else {
 			iface_name = "eth0";
