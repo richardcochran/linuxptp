@@ -511,4 +511,24 @@ bool base64_decode(const char *in_str, size_t in_len, void *out, size_t *out_len
  */
 int str2prid(const char *s, struct ProfileIdentity *result);
 
+/*
+ * Create directory for a UDS address owned by the specified user.
+ * Don't do anything if it already exists, even if it has a different owner.
+ *
+ * @param address   UDS address.
+ * @param user      Name of the user.
+ */
+void create_uds_directory(const char *address, const char *user);
+
+/**
+ * Change the user/group ID in order to drop the root privileges. Initialize
+ * supplementary groups of the user. Keep only capabilities needed to set
+ * and adjust clocks, bind to a privileged port, enable and configure HW
+ * timestamping, and open a raw socket.
+ *
+ * @param user      Name of the user.
+ * @return          0 on success, -1 on error.
+ */
+int drop_root_privileges(const char *user);
+
 #endif

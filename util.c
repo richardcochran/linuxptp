@@ -19,13 +19,25 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <linux/limits.h>
+#include <libgen.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#ifdef HAVE_LIBCAP
+#include <grp.h>
+#include <pwd.h>
+#include <sys/prctl.h>
+#include <sys/capability.h>
+#include <unistd.h>
+#endif
 
 #include "address.h"
+#include "interface.h"
 #include "phc.h"
 #include "print.h"
 #include "sk.h"
@@ -908,4 +920,103 @@ int str2prid(const char *s, struct ProfileIdentity *result)
 		return 0;
 	}
 	return -1;
+}
+
+void create_uds_directory(const char *address, const char *user)
+{
+	char path[MAX_IFNAME_SIZE + 1], *dir;
+#ifdef HAVE_LIBCAP
+	struct passwd *pw;
+#endif
+
+	if (snprintf(path, sizeof(path), "%s", address) >= sizeof(path)) {
+		pr_err("path too long for UDS");
+		return;
+	}
+
+	dir = dirname(path);
+
+	/* Don't do anything if it already exists or cannot be created */
+	if (mkdir(dir, 0775)) {
+		if (errno != EEXIST)
+			pr_err("failed to create %s: %m", dir);
+		return;
+	}
+
+#ifdef HAVE_LIBCAP
+	if (user[0] == '\0')
+		return;
+
+	pw = getpwnam(user);
+	if (!pw) {
+		pr_err("failed to get user/group ID of %s", user);
+		rmdir(dir);
+		return;
+	}
+
+	if (lchown(dir, pw->pw_uid, pw->pw_gid)) {
+		pr_err("failed to change owner of %s: %m", dir);
+		rmdir(dir);
+		return;
+	}
+#endif
+}
+
+int drop_root_privileges(const char *user)
+{
+#ifdef HAVE_LIBCAP
+	struct passwd *pw;
+	cap_t cap;
+#endif
+
+	if (user[0] == '\0')
+		return 0;
+
+#ifdef HAVE_LIBCAP
+	pw = getpwnam(user);
+	if (!pw) {
+		pr_err("failed to get user/group ID of %s", user);
+		return -1;
+	}
+
+	if (prctl(PR_SET_KEEPCAPS, 1)) {
+		pr_err("failed to set KEEPCAPS flag");
+		return -1;
+	}
+
+	if (initgroups(user, pw->pw_gid)) {
+		pr_err("failed to init supplementary groups");
+		return -1;
+	}
+
+	if (setgid(pw->pw_gid)) {
+		pr_err("failed to set group ID");
+		return -1;
+	}
+
+	if (setuid(pw->pw_uid)) {
+		pr_err("failed to set user ID");
+		return -1;
+	}
+
+	cap = cap_from_text("cap_sys_time,cap_net_admin,"
+			    "cap_net_bind_service,cap_net_raw=ep");
+	if (!cap) {
+		pr_err("failed to initialize capabilities");
+		return -1;
+	}
+
+	if (cap_set_proc(cap)) {
+		pr_err("failed to set process capabilities");
+		cap_free(cap);
+		return -1;
+	}
+
+	cap_free(cap);
+
+	return 0;
+#else
+	pr_err("cannot drop root privileges without libcap");
+	return -1;
+#endif
 }

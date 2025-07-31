@@ -62,6 +62,10 @@ LDLIBS += -lcrypto
 SECURITY += sad_openssl.o
 endif
 
+ifneq (,$(findstring -DHAVE_LIBCAP,$(incdefs)))
+LDLIBS += -lcap
+endif
+
 prefix	= /usr/local
 sbindir	= $(prefix)/sbin
 mandir	= $(prefix)/man

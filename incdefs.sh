@@ -140,6 +140,14 @@ user_flags()
 			fi
 		done
 	done
+
+	# Look for libcap support.
+	for d in $dirs; do
+		if test -e $d/sys/capability.h; then
+			printf " -DHAVE_LIBCAP"
+			break
+		fi
+	done
 }
 
 #
