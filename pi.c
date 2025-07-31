@@ -207,24 +207,25 @@ struct servo *pi_servo_create(struct config *cfg, double fadj, int sw_ts)
 	s->configured_pi_ki_norm_max =
 		config_get_double(cfg, NULL, "pi_integral_norm_max");
 
-	if (s->configured_pi_kp && s->configured_pi_ki) {
+	if (s->configured_pi_kp) {
 		/* Use the constants as configured by the user without
 		   adjusting for sync interval unless they make the servo
 		   unstable. */
 		s->configured_pi_kp_scale = s->configured_pi_kp;
-		s->configured_pi_ki_scale = s->configured_pi_ki;
 		s->configured_pi_kp_exponent = 0.0;
-		s->configured_pi_ki_exponent = 0.0;
 		s->configured_pi_kp_norm_max = MAX_KP_NORM_MAX;
+	} else if (!s->configured_pi_kp_scale) {
+		s->configured_pi_kp_scale =
+			sw_ts ? SWTS_KP_SCALE : HWTS_KP_SCALE;
+	}
+
+	if (s->configured_pi_ki) {
+		s->configured_pi_ki_scale = s->configured_pi_ki;
+		s->configured_pi_ki_exponent = 0.0;
 		s->configured_pi_ki_norm_max = MAX_KI_NORM_MAX;
-	} else if (!s->configured_pi_kp_scale || !s->configured_pi_ki_scale) {
-		if (sw_ts) {
-			s->configured_pi_kp_scale = SWTS_KP_SCALE;
-			s->configured_pi_ki_scale = SWTS_KI_SCALE;
-		} else {
-			s->configured_pi_kp_scale = HWTS_KP_SCALE;
-			s->configured_pi_ki_scale = HWTS_KI_SCALE;
-		}
+	} else if (!s->configured_pi_ki_scale) {
+		s->configured_pi_ki_scale =
+			sw_ts ? SWTS_KI_SCALE : HWTS_KI_SCALE;
 	}
 
 	return &s->servo;
