@@ -8,6 +8,7 @@
 #define HAVE_SAD_PRIVATE_H
 
 #define MAX_DIGEST_LENGTH 32
+#define WOLFSSL_CMAC 1
 
 #include <sys/queue.h>
 
