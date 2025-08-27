@@ -1,8 +1,8 @@
 
 /**
- * @file sad_nettle.c
- * @brief Security Association Database nettle functions
- * @note Copyright (C) 2024 IBM Corporation, Clay Kaiser <Clay.Kaiser@ibm.com>
+ * @file sad_wolfcrypt.c
+ * @brief Security Association Database wolfcrypt functions
+ * @note Copyright (C) 2025 Alex Gebhard <alexander.gebhard@marquette.edu>
  * @note SPDX-License-Identifier: GPL-2.0+
  */
 #include <wolfssl/options.h>
