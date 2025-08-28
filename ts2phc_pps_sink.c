@@ -401,10 +401,11 @@ void ts2phc_pps_sink_cleanup(struct ts2phc_private *priv)
 int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 {
 	struct ts2phc_sink_array *polling_array = priv->polling_array;
+	bool first_poll = true, ignore_any = false;
 	bool all_sinks_have_events = false;
-	bool ignore_any = false;
+	struct timespec first_ts = {0}, ts;
+	int cnt, timeout;
 	unsigned int i;
-	int cnt;
 
 	for (i = 0; i < priv->n_sinks; i++)
 		polling_array->collected_events[i] = 0;
@@ -415,7 +416,22 @@ int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 		if (!is_running())
 			return 0;
 
-		cnt = poll(polling_array->pfd, priv->n_sinks, 2000);
+		/*
+		 * Collect only events within a third of the pulse period to
+		 * avoid mixing events corresponding to different pulses.
+		 */
+		if (first_poll) {
+			timeout = 2 * priv->pulse_period / 1000000;
+		} else {
+			clock_gettime(CLOCK_MONOTONIC, &ts);
+			timeout = priv->pulse_period / (3 * 1000000);
+			timeout -= (ts.tv_sec - first_ts.tv_sec) * 1000 +
+				   (ts.tv_nsec - first_ts.tv_nsec) / 1000000;
+			if (timeout < 0)
+				timeout = 0;
+		}
+
+		cnt = poll(polling_array->pfd, priv->n_sinks, timeout);
 		if (cnt < 0) {
 			if (errno == EINTR) {
 				return 0;
@@ -426,6 +442,11 @@ int ts2phc_pps_sink_poll(struct ts2phc_private *priv)
 		} else if (!cnt) {
 			pr_debug("poll returns zero, no events");
 			return 0;
+		}
+
+		if (first_poll) {
+			clock_gettime(CLOCK_MONOTONIC, &first_ts);
+			first_poll = false;
 		}
 
 		for (i = 0; i < priv->n_sinks; i++) {
