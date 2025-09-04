@@ -60,6 +60,9 @@ SECURITY += sad_gnupg.o
 else ifneq (,$(findstring -DHAVE_OPENSSL, $(incdefs)))
 LDLIBS += -lcrypto
 SECURITY += sad_openssl.o
+else ifneq (,$(findstring -DHAVE_WOLFCRYPT, $(incdefs)))
+LDLIBS += -lwolfssl
+SECURITY += sad_wolfcrypt.o
 endif
 
 ifneq (,$(findstring -DHAVE_LIBCAP,$(incdefs)))
