@@ -832,9 +832,6 @@ static int port_nsm_reply(struct port *p, struct ptp_message *m)
 	if (!p->net_sync_monitor) {
 		return 0;
 	}
-	if (!p->hybrid_e2e) {
-		return 0;
-	}
 	if (!msg_unicast(m)) {
 		return 0;
 	}
@@ -2369,7 +2366,7 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
-	if (p->hybrid_e2e && msg_unicast(m)) {
+	if ( (p->hybrid_e2e || nsm) && msg_unicast(m)) {
 		msg->address = m->address;
 		msg->header.flagField[0] |= UNICAST;
 		msg->header.logMessageInterval = 0x7f;
@@ -3746,9 +3743,6 @@ struct port *port_open(const char *phc_device,
 	}
 	if (!port_is_uds(p) && p->hybrid_e2e && p->delayMechanism != DM_E2E) {
 		pr_warning("%s: hybrid_e2e only works with E2E", p->log_name);
-	}
-	if (p->net_sync_monitor && !p->hybrid_e2e) {
-		pr_warning("%s: net_sync_monitor needs hybrid_e2e", p->log_name);
 	}
 	if (sad_readiness_check(p->spp, p->active_key_id, clock_config(p->clock))) {
 		pr_err("%s: security readiness check failed", p->log_name);
