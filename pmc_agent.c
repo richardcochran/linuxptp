@@ -136,16 +136,16 @@ static int run_pmc_err2errno(int code)
 }
 
 static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
-		   struct ptp_message **msg)
+		   int recv_only, struct ptp_message **msg)
 {
 #define N_FD 1
 	struct pollfd pollfd[N_FD];
-	int cnt, res;
+	int cnt, res, req_sent = 0;
 
 	while (1) {
 		pollfd[0].fd = pmc_get_transport_fd(node->pmc);
 		pollfd[0].events = POLLIN|POLLPRI;
-		if (!node->pmc_ds_requested && ds_id >= 0)
+		if (!recv_only && !req_sent && ds_id >= 0)
 			pollfd[0].events |= POLLOUT;
 
 		cnt = poll(pollfd, N_FD, timeout);
@@ -154,8 +154,7 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 			return RUN_PMC_INTR;
 		}
 		if (!cnt) {
-			/* Request the data set again in the next run. */
-			node->pmc_ds_requested = 0;
+			pr_debug("poll timeout");
 			return RUN_PMC_TMO;
 		}
 
@@ -171,6 +170,7 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 				break;
 			}
 			node->pmc_ds_requested = 1;
+			req_sent = 1;
 		}
 
 		if (!(pollfd[0].revents & (POLLIN|POLLPRI)))
@@ -209,7 +209,7 @@ static int renew_subscription(struct pmc_agent *node, int timeout)
 	struct ptp_message *msg;
 	int res;
 
-	res = run_pmc(node, timeout, MID_SUBSCRIBE_EVENTS_NP, &msg);
+	res = run_pmc(node, timeout, MID_SUBSCRIBE_EVENTS_NP, 0, &msg);
 	if (is_run_pmc_error(res)) {
 		return run_pmc_err2errno(res);
 	}
@@ -221,11 +221,11 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 {
 	struct ptp_message *msg;
 	Enumeration8 portState;
+	int res, recv_only = 0;
 	void *data;
-	int res;
 
 	while (1) {
-		res = run_pmc(node, timeout, MID_PORT_DATA_SET, &msg);
+		res = run_pmc(node, timeout, MID_PORT_DATA_SET, recv_only, &msg);
 		if (res <= 0)
 			return res;
 
@@ -239,7 +239,7 @@ int run_pmc_wait_sync(struct pmc_agent *node, int timeout)
 			return 1;
 		}
 		/* try to get more data sets (for other ports) */
-		node->pmc_ds_requested = 1;
+		recv_only = 1;
 	}
 }
 
@@ -307,7 +307,7 @@ int pmc_agent_query_dds(struct pmc_agent *node, int timeout)
 	struct defaultDS *dds;
 	int res;
 
-	res = run_pmc(node, timeout, MID_DEFAULT_DATA_SET, &msg);
+	res = run_pmc(node, timeout, MID_DEFAULT_DATA_SET, 0, &msg);
 	if (is_run_pmc_error(res)) {
 		return run_pmc_err2errno(res);
 	}
@@ -325,11 +325,12 @@ int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
 	struct ptp_message *msg;
-	int res, len;
+	int res, len, recv_only = 1;
 
 	pmc_target_port(node->pmc, port);
-	while (1) {
-		res = run_pmc(node, timeout, MID_PORT_PROPERTIES_NP, &msg);
+	for (recv_only = 0; ; recv_only = 1) {
+		res = run_pmc(node, timeout, MID_PORT_PROPERTIES_NP, recv_only,
+			      &msg);
 		if (is_run_pmc_error(res)) {
 			goto out;
 		}
@@ -350,8 +351,9 @@ int pmc_agent_query_port_properties(struct pmc_agent *node, int timeout,
 		msg_put(msg);
 		break;
 	}
-	while (1) {
-		res = run_pmc(node, timeout, MID_PORT_HWCLOCK_NP, &msg);
+	for (recv_only = 0; ; recv_only = 1) {
+		res = run_pmc(node, timeout, MID_PORT_HWCLOCK_NP, recv_only,
+			      &msg);
 		if (is_run_pmc_error(res)) {
 			goto out;
 		}
@@ -377,7 +379,7 @@ int pmc_agent_query_utc_offset(struct pmc_agent *node, int timeout)
 	struct ptp_message *msg;
 	int res;
 
-	res = run_pmc(node, timeout, MID_TIME_PROPERTIES_DATA_SET, &msg);
+	res = run_pmc(node, timeout, MID_TIME_PROPERTIES_DATA_SET, 0, &msg);
 	if (is_run_pmc_error(res)) {
 		return run_pmc_err2errno(res);
 	}
@@ -450,7 +452,7 @@ int pmc_agent_update(struct pmc_agent *node)
 			break;
 		}
 	} else {
-		run_pmc(node, 0, -1, &msg);
+		run_pmc(node, 0, -1, 1, &msg);
 	}
 
 	return 0;
