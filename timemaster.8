@@ -81,6 +81,12 @@ Specify the directory where should be generated \fBchronyd\fR, \fBntpd\fR and
 it doesn't exist. The default value is \fB/var/run/timemaster\fR.
 
 .TP
+.B user
+Specify the user under which the \fBptp4l\fR instances should be running in
+order to drop the root privileges. By default, the user identity is not
+changed.
+
+.TP
 .B first_shm_segment
 Specify the first number in a sequence of SHM segments that will be used by
 \fBptp4l\fR and \fBphc2sys\fR. The default value is 0. Increasing the number
@@ -340,6 +346,7 @@ ptp4l_option delay_mechanism P2P
 [timemaster]
 ntp_program chronyd
 rundir /var/run/timemaster
+user ptp
 first_shm_segment 1
 restart_processes 0
 use_vclocks 0

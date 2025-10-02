@@ -112,6 +112,7 @@ struct timemaster_config {
 	struct source **sources;
 	enum ntp_program ntp_program;
 	char *rundir;
+	char *user;
 	int first_shm_segment;
 	int restart_processes;
 	int use_vclocks;
@@ -132,6 +133,8 @@ struct phc_vclocks {
 };
 
 struct script {
+	char *rundir;
+	char *rundir_owner;
 	struct phc_vclocks **vclocks;
 	struct config_file **configs;
 	char ***commands;
@@ -399,6 +402,8 @@ static int parse_timemaster_settings(char **settings,
 			}
 		} else if (!strcasecmp(name, "rundir")) {
 			replace_string(value, &config->rundir);
+		} else if (!strcasecmp(name, "user")) {
+			replace_string(value, &config->user);
 		} else if (!strcasecmp(name, "first_shm_segment")) {
 			r = parse_int(value, &config->first_shm_segment);
 		} else if (!strcasecmp(name, "restart_processes")) {
@@ -529,6 +534,7 @@ static void config_destroy(struct timemaster_config *config)
 	free_program_config(&config->ptp4l);
 
 	free(config->rundir);
+	free(config->user);
 	free(config);
 }
 
@@ -557,6 +563,7 @@ static struct timemaster_config *config_parse(char *path)
 	config->sources = (struct source **)parray_new();
 	config->ntp_program = DEFAULT_NTP_PROGRAM;
 	config->rundir = xstrdup(DEFAULT_RUNDIR);
+	config->user = xstrdup("");
 	config->first_shm_segment = DEFAULT_FIRST_SHM_SEGMENT;
 	config->restart_processes = DEFAULT_RESTART_PROCESSES;
 	config->use_vclocks = DEFAULT_USE_VCLOCKS;
@@ -920,6 +927,9 @@ static int add_ptp_source(struct ptp_domain *source,
 			       "message_tag %s\n",
 			       source->domain, uds_path, uds_path2,
 			       message_tag);
+		if (config->user[0] != '\0')
+			string_appendf(&config_file->content,
+				       "user %s\n", config->user);
 
 		if (phcs[i] >= 0) {
 			/* HW time stamping */
@@ -1042,6 +1052,9 @@ static void script_destroy(struct script *script)
 	struct config_file *config, **configs;
 	struct phc_vclocks **vclocks;
 
+	free(script->rundir);
+	free(script->rundir_owner);
+
 	for (vclocks = script->vclocks; *vclocks; vclocks++)
 		free(*vclocks);
 	free(script->vclocks);
@@ -1076,6 +1089,8 @@ static struct script *script_create(struct timemaster_config *config)
 	int **allocated_phcs = (int **)parray_new();
 	int ret = 0, refclock_id = 0, command_group = 0;
 
+	script->rundir = xstrdup(config->rundir);
+	script->rundir_owner = xstrdup(config->user);
 	script->vclocks = (struct phc_vclocks **)parray_new();
 	script->configs = (struct config_file **)parray_new();
 	script->commands = (char ***)parray_new();
@@ -1169,20 +1184,8 @@ static int create_config_files(struct config_file **configs)
 {
 	struct config_file *config;
 	FILE *file;
-	char *tmp, *dir;
-	struct stat st;
 
 	for (; (config = *configs); configs++) {
-		tmp = xstrdup(config->path);
-		dir = dirname(tmp);
-		if (stat(dir, &st) < 0 && errno == ENOENT &&
-		    mkdir(dir, 0755) < 0) {
-			pr_err("failed to create %s: %m", dir);
-			free(tmp);
-			return 1;
-		}
-		free(tmp);
-
 		pr_debug("creating %s", config->path);
 
 		file = fopen(config->path, "w");
@@ -1327,6 +1330,7 @@ static int script_run(struct script *script)
 	siginfo_t info;
 	pid_t pid, *pids;
 	int i, group, num_commands, status, quit = 0, ret = 0;
+	char *path;
 
 	for (num_commands = 0; script->commands[num_commands]; num_commands++)
 		;
@@ -1335,6 +1339,10 @@ static int script_run(struct script *script)
 		/* nothing to do */
 		return 0;
 	}
+
+	path = string_newf("%s/socket", script->rundir);
+	create_uds_directory(path, script->rundir_owner);
+	free(path);
 
 	if (create_config_files(script->configs))
 		return 1;
