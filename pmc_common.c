@@ -631,11 +631,10 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		goto failed;
 	}
 
-	if (transport_open(pmc->transport, pmc->iface,
-			   &pmc->fdarray, TS_SOFTWARE)) {
-		pr_err("failed to open transport");
+	pmc->fdarray.fd[FD_GENERAL] = -1;
+	if (pmc_reopen_transport(pmc))
 		goto no_trans_open;
-	}
+
 	pmc->zero_length_gets = zero_datalen ? 1 : 0;
 
 	return pmc;
@@ -647,6 +646,23 @@ failed:
 		transport_destroy(pmc->transport);
 	free(pmc);
 	return NULL;
+}
+
+int pmc_reopen_transport(struct pmc *pmc)
+{
+	pr_debug("(re)opening transport");
+
+	if (pmc_get_transport_fd(pmc) >= 0)
+		transport_close(pmc->transport, &pmc->fdarray);
+	pmc->fdarray.fd[FD_GENERAL] = -1;
+
+	if (transport_open(pmc->transport, pmc->iface,
+			   &pmc->fdarray, TS_SOFTWARE)) {
+		pr_err("failed to open transport");
+		return -1;
+	}
+
+	return 0;
 }
 
 void pmc_destroy(struct pmc *pmc)

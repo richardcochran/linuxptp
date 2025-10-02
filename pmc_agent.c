@@ -144,6 +144,12 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 
 	while (1) {
 		pollfd[0].fd = pmc_get_transport_fd(node->pmc);
+		if (pollfd[0].fd < 0) {
+			if (pmc_reopen_transport(node->pmc))
+				return RUN_PMC_NODEV;
+			continue;
+		}
+
 		pollfd[0].events = POLLIN|POLLPRI;
 		if (!recv_only && !req_sent && ds_id >= 0)
 			pollfd[0].events |= POLLOUT;
@@ -161,6 +167,12 @@ static int run_pmc(struct pmc_agent *node, int timeout, int ds_id,
 		/* Send a new request if there are no pending messages. */
 		if ((pollfd[0].revents & POLLOUT) &&
 		    !(pollfd[0].revents & (POLLIN|POLLPRI))) {
+			/* Reopen the transport if a response was missed. */
+			if (node->pmc_ds_requested) {
+				if (pmc_reopen_transport(node->pmc))
+					return RUN_PMC_NODEV;
+			}
+
 			switch (ds_id) {
 			case MID_SUBSCRIBE_EVENTS_NP:
 				send_subscription(node);

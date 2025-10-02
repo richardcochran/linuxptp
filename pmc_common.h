@@ -34,6 +34,8 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 		       UInteger8 transport_specific, UInteger8 allow_unauth,
 		       int zero_datalen);
 
+int pmc_reopen_transport(struct pmc *pmc);
+
 void pmc_destroy(struct pmc *pmc);
 
 int pmc_get_transport_fd(struct pmc *pmc);
