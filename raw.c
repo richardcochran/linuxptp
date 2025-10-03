@@ -241,13 +241,23 @@ static int open_socket(const char *name, int event, unsigned char *local_addr,
 	struct sockaddr_ll addr;
 	int fd, index;
 
-	fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	fd = socket(AF_PACKET, SOCK_RAW, 0);
 	if (fd < 0) {
 		pr_err("socket failed: %m");
 		goto no_socket;
 	}
 	index = sk_interface_index(fd, name);
 	if (index < 0)
+		goto no_option;
+
+	if (socket_priority > 0 &&
+	    setsockopt(fd, SOL_SOCKET, SO_PRIORITY, &socket_priority,
+		       sizeof(socket_priority))) {
+		pr_err("setsockopt SO_PRIORITY failed: %m");
+		goto no_option;
+	}
+	if (raw_configure(fd, event, index, local_addr, ptp_dst_mac,
+			  p2p_dst_mac, 1))
 		goto no_option;
 
 	memset(&addr, 0, sizeof(addr));
@@ -262,16 +272,6 @@ static int open_socket(const char *name, int event, unsigned char *local_addr,
 		pr_err("setsockopt SO_BINDTODEVICE failed: %m");
 		goto no_option;
 	}
-
-	if (socket_priority > 0 &&
-	    setsockopt(fd, SOL_SOCKET, SO_PRIORITY, &socket_priority,
-		       sizeof(socket_priority))) {
-		pr_err("setsockopt SO_PRIORITY failed: %m");
-		goto no_option;
-	}
-	if (raw_configure(fd, event, index, local_addr, ptp_dst_mac,
-			  p2p_dst_mac, 1))
-		goto no_option;
 
 	return fd;
 no_option:
