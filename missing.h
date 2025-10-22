@@ -271,7 +271,7 @@ struct ptp_sys_offset_extended {
 
 #endif /* PTP_SYS_OFFSET_EXTENDED */
 
-#ifndef PTP_PIN_SETFUNC
+#if !defined(PTP_PIN_GETFUNC) || !defined(PTP_PIN_SETFUNC)
 
 enum ptp_pin_function {
 	PTP_PF_NONE,
@@ -288,9 +288,17 @@ struct ptp_pin_desc {
 	unsigned int rsv[5];
 };
 
+#define PTP_PIN_GETFUNC    _IOWR(PTP_CLK_MAGIC, 6, struct ptp_pin_desc)
 #define PTP_PIN_SETFUNC    _IOW(PTP_CLK_MAGIC, 7, struct ptp_pin_desc)
 
-#endif /*!PTP_PIN_SETFUNC*/
+#endif /*!PTP_PIN_[GS]ETFUNC*/
+
+#ifdef PTP_PIN_GETFUNC2
+#define PTP_PIN_GETFUNC_FAILED "PTP_PIN_GETFUNC2 failed: %m"
+#else
+#define PTP_PIN_GETFUNC_FAILED "PTP_PIN_GETFUNC failed: %m"
+#define PTP_PIN_GETFUNC2 PTP_PIN_GETFUNC
+#endif
 
 #ifdef PTP_PIN_SETFUNC2
 #define PTP_PIN_SETFUNC_FAILED "PTP_PIN_SETFUNC2 failed: %m"
