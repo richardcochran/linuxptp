@@ -280,7 +280,7 @@ sets the program options. This is the only used option.
 .B active_key_id
 Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
 specify which key from the \fBspp\fR defined Security Association
-should be used for outbound icv calculations. All Security Assocations
+should be used for outbound icv calculations. All Security Associations
 are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
 and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
 inclusive. The default is 0 (disabled).
@@ -406,8 +406,8 @@ Same as option
 .TP
 .B spp
 Specifies the security parameters pointer for the desired security association
-to be used for authentication tlv support. If specified, the port owning the
-spp will attempt to attach (outbound) and check (inbound) authentication tlvs
+to be used for authentication TLV support. If specified, the port owning the
+spp will attempt to attach (outbound) and check (inbound) authentication TLVs
 for all messages in accordance to the corresponding security association
 sourced via the \fBsa_file\fR directive. Not compatible with one step ports.
 Must be in the range of -1 to 255, inclusive. The default is -1 (disabled).
@@ -462,7 +462,7 @@ is in effect or from command line when
 .B \-O
 is supplied.  Failure to maintain the correct offset can result in the
 local system clock being offset some whole number of seconds from the
-domain server's clock when in client mode, or incorect PTP time
+domain server's clock when in client mode, or incorrect PTP time
 announced to the network in case the host is the domain server.
 
 .SH EXAMPLES
@@ -538,7 +538,7 @@ phc2sys, is specified to a non-default value in the configuration file
 (p.e., for ptp4l), then this non-default value applies also for phc2sys. This
 might be not what is expected.
 
-It is recommended to use seperate configuration files for ptp4l and
+It is recommended to use separate configuration files for ptp4l and
 phc2sys in order to avoid any unexpected behavior.
 
 .SH SEE ALSO

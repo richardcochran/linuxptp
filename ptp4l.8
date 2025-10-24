@@ -198,7 +198,7 @@ The default is 2.
 .B cmlds.port
 Specifies the port number of local Common Mean Link Delay Service from
 which to accept delay measurements.  The range of valid port numbers
-is one to 65535, but the special value zero configures the port number
+is one to 65535, but the special value "0" configures the port number
 of the port requesting the measurements.
 The default is 0, meaning the requesting port number.
 
@@ -244,7 +244,7 @@ The default is 1.0 (i.e. +/- 100% of the mean time interval).
 .TP
 .B delay_response_timeout
 The number of delay response messages that may go missing before
-triggering a synchronization fault. Setting this option to zero will
+triggering a synchronization fault. Setting this option to "0" will
 disable the delay response timeout.
 The default is 0 or disabled.
 
@@ -328,7 +328,7 @@ need to calculate offset from client. The default is 0 (disabled).
 .B inhibit_multicast_service
 Some unicast mode profiles insist that no multicast message are ever
 transmitted.  Setting this option inhibits multicast transmission.
-The default is 0 (mutlicast enabled).
+The default is 0 (multicast enabled).
 
 .TP
 .B logAnnounceInterval
@@ -460,7 +460,7 @@ The default is "none".
 .B profileIdentity
 The profile identity is a 6-octet array in the clock description
 referencing the PTP profile currently configured on the port. This value
-should reflect the identitifers assigned to each profile. Allowed values
+should reflect the identifiers assigned to each profile. Allowed values
 are of the form 00:00:00:00:00:00.
 If the default 00:00:00:00:00:00 is used or if not set at all, the
 profileIdentity will be detected from the configuration or set to the Default
@@ -524,7 +524,7 @@ The default is -1 (disabled).
 The number of sync/follow up messages that may go missing before
 triggering a Best Master Clock election. This option is used for
 running in gPTP mode according to the 802.1AS-2011 standard. Setting
-this option to zero will disable the sync message timeout.
+this option to "0" will disable the sync message timeout.
 The default is 0 or disabled.
 
 .TP
@@ -759,7 +759,7 @@ When the client and server are operating at different interface rates, delay
 asymmetry caused by different interface rates needs to be compensated for.
 The server sends its interface rate using interface rate TLV
 as per G.8275.2 Annex D.
-The default is 0 (does not support interface rate tlv).
+The default is 0 (does not support interface rate TLV).
 
 .TP
 .B hwts_filter
@@ -884,7 +884,7 @@ The default is \-0.3.
 .B pi_proportional_norm_max
 The kp_norm_max constant in the formula used to set the proportional constant of
 the PI controller from the sync interval.
-The default is 0.7
+The default is 0.7.
 
 .TP
 .B pi_proportional_scale
@@ -1012,7 +1012,7 @@ square (RMS), maximum absolute offset, frequency offset mean and standard
 deviation, and path delay mean and standard deviation. The units are
 nanoseconds and parts per billion (ppb). If there is only one clock update in
 the interval, the sample will be printed instead of the statistics. The
-messages are printed at the LOG_INFO level.
+messages are printed at the "LOG_INFO" level.
 The default is 0 (1 second).
 
 .TP
@@ -1031,9 +1031,9 @@ advertised when the clock becomes grand master.
 
 .TP
 .B time_stamping
-The time stamping method to be used.  The allowed values are hardware,
-software, legacy, onestep, and p2p1step.
-The default is hardware.
+The time stamping method to be used.  The allowed values are "hardware",
+"software", "legacy", "onestep", and "p2p1step".
+The default is "hardware".
 
 .TP
 .B twoStepFlag
@@ -1172,7 +1172,7 @@ value is 3.
 .TP
 .B allow_mutable
 This option allows for mutable correction fields if on path
-authentication tlv support is not possible. This option is NOT
+authentication TLV support is not possible. This option is NOT
 recommended as it leaves the correction field unprotected.
 The default value is 0 (disabled).
 
