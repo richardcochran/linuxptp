@@ -754,7 +754,8 @@ int sad_create(struct config *cfg)
 	}
 
 #if !defined (HAVE_NETTLE) && !defined (HAVE_GNUTLS) && \
-    !defined (HAVE_GNUPG) && !defined (HAVE_OPENSSL)
+    !defined (HAVE_GNUPG) && !defined (HAVE_OPENSSL) && \
+	!defined (HAVE_WOLFCRYPT)
 	pr_err("sa_file set but security not supported");
 	return -1;
 #endif
@@ -812,7 +813,8 @@ int sad_readiness_check(int spp, size_t active_key_id, struct config *cfg)
                 return 0;
         }
 #if !defined (HAVE_NETTLE) && !defined (HAVE_GNUTLS) && \
-    !defined (HAVE_GNUPG) && !defined (HAVE_OPENSSL)
+    !defined (HAVE_GNUPG) && !defined (HAVE_OPENSSL) && \
+	!defined (HAVE_WOLFCRYPT)
         if (spp >= 0 || active_key_id > 0) {
                 pr_err("spp or active_key_id set but security not supported");
                 return -1;

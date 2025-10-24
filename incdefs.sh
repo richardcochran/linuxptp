@@ -113,6 +113,17 @@ user_flags()
 		done
 	done
 
+	# Look for wolfcrypt support.
+	for d in $dirs; do
+		files=$(find $d -type f -name hmac.h)
+		for f in $files; do
+			if grep -q wc_HmacSetKey $f; then
+				printf " -DHAVE_WOLFCRYPT"
+				break 2
+			fi
+		done
+	done
+
 	# Look for openssl support.
 	for d in $dirs; do
 		sdirs=$(find $d -type d -name "openssl")
