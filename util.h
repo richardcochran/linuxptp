@@ -96,7 +96,8 @@ char *cid2str(struct ClockIdentity *id);
  * @param b  Second clock identity.
  * @return   1 if identities are equal, 0 otherwise.
  */
-static inline int cid_eq(struct ClockIdentity *a, struct ClockIdentity *b)
+static inline int cid_eq(const struct ClockIdentity *a,
+			 const struct ClockIdentity *b)
 {
 	return memcmp(a, b, sizeof(*a)) == 0;
 }
