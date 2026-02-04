@@ -160,6 +160,32 @@ static inline int pid_eq(const struct PortIdentity *a,
 }
 
 /**
+ * Compare two port identities for PortIdentity.clockIdentity equality.
+ *
+ * @param a  First port identity.
+ * @param b  Second port identity.
+ * @return   1 if identities are equal, 0 otherwise.
+ */
+static inline int pid_cid_eq(const struct PortIdentity *a,
+			     const struct PortIdentity *b)
+{
+	return cid_eq(&a->clockIdentity, &b->clockIdentity);
+}
+
+/**
+ * Compare two port identities for PortIdentity.portNumber equality.
+ *
+ * @param a  First port identity.
+ * @param b  Second port identity.
+ * @return   1 if identities are equal, 0 otherwise.
+ */
+static inline int pid_pn_eq(const struct PortIdentity *a,
+			    const struct PortIdentity *b)
+{
+	return a->portNumber == b->portNumber;
+}
+
+/**
  * Convert a string containing a network address into binary form.
  * @param type  The network transport type of the address.
  * @param s     String in human readable form.

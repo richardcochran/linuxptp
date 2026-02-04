@@ -151,8 +151,10 @@ int process_signaling(struct port *p, struct ptp_message *m)
 	}
 
 	/* Ignore signaling messages not addressed to this port. */
-	if (!pid_eq(&m->signaling.targetPortIdentity, &p->portIdentity) &&
-	    !pid_eq(&m->signaling.targetPortIdentity, &wildcard_pid)) {
+	if ((!pid_cid_eq(&m->signaling.targetPortIdentity, &p->portIdentity) &&
+	     !pid_cid_eq(&m->signaling.targetPortIdentity, &wildcard_pid)) ||
+	    (!pid_pn_eq(&m->signaling.targetPortIdentity, &p->portIdentity) &&
+	     !pid_pn_eq(&m->signaling.targetPortIdentity, &wildcard_pid))) {
 		return 0;
 	}
 
