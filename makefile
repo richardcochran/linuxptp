@@ -12,10 +12,10 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+# with this program.
 
 KBUILD_OUTPUT ?=
+DPDK	?= 0
 
 DEBUG	=
 CC	= $(CROSS_COMPILE)gcc
@@ -26,7 +26,7 @@ PRG	= ptp4l hwstamp_ctl nsm phc2sys phc_ctl pmc timemaster ts2phc tz2alt
 SECURITY = sad.o
 FILTERS	= filter.o mave.o mmedian.o
 SERVOS	= linreg.o ntpshm.o nullf.o pi.o refclock_sock.o servo.o
-TRANSP	= raw.o transport.o udp.o udp6.o uds.o
+TRANSP	= dpdk.o dpdk_glue_scaffold.o raw.o transport.o udp.o udp6.o uds.o
 TS2PHC	= ts2phc.o lstab.o nmea.o serial.o sock.o ts2phc_generic_pps_source.o \
  ts2phc_nmea_pps_source.o ts2phc_phc_pps_source.o ts2phc_pps_sink.o ts2phc_pps_source.o
 OBJ	= bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
@@ -43,6 +43,22 @@ srcdir	:= $(dir $(lastword $(MAKEFILE_LIST)))
 incdefs := $(shell CC="$(CC)" $(srcdir)/incdefs.sh)
 version := $(shell $(srcdir)/version.sh $(srcdir))
 VPATH	= $(srcdir)
+
+ifeq ($(DPDK),1)
+DPDK_PKGCONF ?= pkg-config
+DPDK_CFLAGS ?= $(shell $(DPDK_PKGCONF) --cflags libdpdk 2>/dev/null)
+DPDK_LIBS ?= $(shell $(DPDK_PKGCONF) --libs libdpdk 2>/dev/null)
+DPDK_LIBDIR ?= $(shell $(DPDK_PKGCONF) --variable=libdir libdpdk 2>/dev/null)
+ifneq ($(strip $(DPDK_LIBS)),)
+EXTRA_CFLAGS += -DPTP4D_HAVE_DPDK $(DPDK_CFLAGS)
+EXTRA_LDFLAGS += $(DPDK_LIBS)
+ifneq ($(strip $(DPDK_LIBDIR)),)
+EXTRA_LDFLAGS += -Wl,-rpath,$(DPDK_LIBDIR)
+endif
+else
+$(warning DPDK=1 requested, but libdpdk metadata was not found; building with DPDK glue stubs. Set DPDK_CFLAGS/DPDK_LIBS or PKG_CONFIG_PATH for full DPDK.)
+endif
+endif
 
 ifeq (,$(findstring -DUSE_OPENSSL, $(EXTRA_CFLAGS)))
 incdefs := $(filter-out -DHAVE_OPENSSL, $(incdefs))

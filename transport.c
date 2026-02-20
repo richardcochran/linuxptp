@@ -21,6 +21,7 @@
 
 #include "transport.h"
 #include "transport_private.h"
+#include "dpdk.h"
 #include "raw.h"
 #include "udp.h"
 #include "udp6.h"
@@ -114,6 +115,9 @@ struct transport *transport_create(struct config *cfg,
 		break;
 	case TRANS_IEEE_802_3:
 		t = raw_transport_create();
+		break;
+	case TRANS_DPDK:
+		t = dpdk_transport_create();
 		break;
 	case TRANS_DEVICENET:
 	case TRANS_CONTROLNET:

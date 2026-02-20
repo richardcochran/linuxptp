@@ -118,6 +118,7 @@ int addreq(enum transport_type type, struct address *a, struct address *b)
 		len = sizeof(a->sin6.sin6_addr);
 		break;
 	case TRANS_IEEE_802_3:
+	case TRANS_DPDK:
 		bufa = &a->sll.sll_addr;
 		bufb = &b->sll.sll_addr;
 		len = MAC_LEN;
@@ -326,6 +327,7 @@ int str2addr(enum transport_type type, const char *s, struct address *addr)
 		addr->len = sizeof(addr->sin6);
 		break;
 	case TRANS_IEEE_802_3:
+	case TRANS_DPDK:
 		if (str2mac(s, mac)) {
 			pr_err("bad Layer-2 address");
 			return -1;

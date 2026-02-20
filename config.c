@@ -219,6 +219,7 @@ static struct config_enum nw_trans_enu[] = {
 	{ "L2",    TRANS_IEEE_802_3 },
 	{ "UDPv4", TRANS_UDP_IPV4   },
 	{ "UDPv6", TRANS_UDP_IPV6   },
+	{ "DPDK",  TRANS_DPDK       },
 	{ NULL, 0 },
 };
 

@@ -128,6 +128,7 @@ static void address_to_portaddress(struct address *addr,
 		memcpy(paddr->address, &addr->sin6.sin6_addr.s6_addr, len);
 		break;
 	case TRANS_IEEE_802_3:
+	case TRANS_DPDK:
 		len = MAC_LEN;
 		memcpy(paddr->address, &addr->sll.sll_addr, len);
 		break;
@@ -957,6 +958,7 @@ static int port_management_fill_response(struct port *target,
 		case TRANS_UDP_IPV4:
 		case TRANS_UDP_IPV6:
 		case TRANS_IEEE_802_3:
+		case TRANS_DPDK:
 			ptp_text_set(cd->physicalLayerProtocol, "IEEE 802.3");
 			break;
 		default:
@@ -1008,7 +1010,8 @@ static int port_management_fill_response(struct port *target,
 			struct config *cfg = clock_config(target->clock);
 			if (config_get_int(cfg, NULL, "dataset_comparison") ==
 			    DS_CMP_G8275) {
-				if (transport_type(target->trp) == TRANS_IEEE_802_3) {
+				if (transport_type(target->trp) == TRANS_IEEE_802_3 ||
+				    transport_type(target->trp) == TRANS_DPDK) {
 					memcpy(buf, profile_id_8275_1, PROFILE_ID_LEN);
 				} else {
 					memcpy(buf, profile_id_8275_2, PROFILE_ID_LEN);
@@ -2138,8 +2141,8 @@ int port_initialize(struct port *p)
 		goto no_tmo;
 	}
 
-	/* No need to open rtnl socket on UDS port. */
-	if (!port_is_uds(p)) {
+	/* No need to open rtnl socket on UDS or DPDK ports. */
+	if (!port_is_uds(p) && transport_type(p->trp) != TRANS_DPDK) {
 		/*
 		 * The delay timer is usually started when the device
 		 * transitions to PS_LISTENING. But, we are skipping the state
@@ -2176,8 +2179,9 @@ static int port_renew_transport(struct port *p)
 		return 0;
 	}
 
-	/* Closing and binding of raw sockets is too slow and unnecessary */
-	if (transport_type(p->trp) == TRANS_IEEE_802_3) {
+	/* Closing and rebinding transport can be unnecessary and disruptive */
+	if (transport_type(p->trp) == TRANS_IEEE_802_3 ||
+	    transport_type(p->trp) == TRANS_DPDK) {
 		return 0;
 	}
 
@@ -3219,6 +3223,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 
 	cnt = transport_recv(p->trp, fd, msg);
 	if (cnt < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			msg_put(msg);
+			return EV_NONE;
+		}
 		pr_err("%s: recv message failed", p->log_name);
 		msg_put(msg);
 		return EV_FAULT_DETECTED;
@@ -3831,7 +3839,9 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 		if (port_link_status_get(p) && clear_fault_asap(&i)) {
 			pr_notice("%s: clearing fault immediately", p->log_name);
 			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
-		} else if (event == EV_FAULT_DETECTED) {
+		} else if (event == EV_FAULT_DETECTED &&
+			   !port_is_uds(p) &&
+			   transport_type(p->trp) != TRANS_DPDK) {
 			/*
 			 * Reopen the netlink socket and refresh the link
 			 * status in case the fault was triggered by a missed

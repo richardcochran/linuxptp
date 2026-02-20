@@ -747,6 +747,7 @@ static int nsm_resp_post_recv(struct tlv_extra *extra)
 		expected = 16;
 		break;
 	case TRANS_IEEE_802_3:
+	case TRANS_DPDK:
 		expected = 6;
 		break;
 	default:
