@@ -710,6 +710,7 @@ static void usage(char *progname)
 		" -4        UDP IPV4 (default)\n"
 		" -6        UDP IPV6\n"
 		" -u        UDS local\n\n"
+		"           DPDK via --network_transport DPDK\n\n"
 		" Other Options\n\n"
 		" -b [num]  boundary hops, default 1\n"
 		" -d [num]  domain number, default 0\n"

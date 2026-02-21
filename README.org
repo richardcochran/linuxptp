@@ -148,6 +148,29 @@ Hardware Receive Filter Modes: none
       directories by setttings the variables prefix, sbindir, mandir,
       and man8dir on the make command line.
 
+** Optional DPDK Transport Build
+
+  The project can be built with an optional DPDK transport backend.
+  When enabled, select it at runtime using the configuration option
+  ~network_transport DPDK~.
+
+  Build with DPDK support:
+
+#+BEGIN_EXAMPLE
+  PKG_CONFIG_PATH=/path/to/dpdk/lib64/pkgconfig:/path/to/dpdk/lib/pkgconfig \
+  make DPDK=1
+#+END_EXAMPLE
+
+  If ~pkg-config~ can resolve ~libdpdk~, the makefile adds the
+  required compile/link flags and embeds the discovered DPDK
+  library directory as an rpath, so running binaries do not require
+  setting ~LD_LIBRARY_PATH~.
+
+  If ~libdpdk~ metadata is not available, the build continues with
+  DPDK glue stubs and prints a warning. In this mode, the DPDK
+  transport backend is not fully functional until valid DPDK flags
+  are provided.
+
 * Getting Involved
 
   The software development is hosted at Source Forge.
