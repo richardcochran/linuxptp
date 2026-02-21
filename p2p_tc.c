@@ -150,6 +150,10 @@ enum fsm_event p2p_event(struct port *p, int fd_index)
 
 	cnt = transport_recv(p->trp, fd, msg);
 	if (cnt <= 0) {
+		if (cnt < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+			msg_put(msg);
+			return EV_NONE;
+		}
 		pr_err("%s: recv message failed", p->log_name);
 		msg_put(msg);
 		return EV_FAULT_DETECTED;

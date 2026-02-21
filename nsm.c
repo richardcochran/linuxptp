@@ -341,6 +341,8 @@ static struct ptp_message *nsm_recv(struct nsm *nsm, int fd)
 
 	cnt = transport_recv(nsm->trp, fd, msg);
 	if (cnt <= 0) {
+		if (cnt < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+			goto failed;
 		pr_err("recv message failed");
 		goto failed;
 	}
@@ -494,6 +496,7 @@ static void usage(char *progname)
 		" -f [file] read configuration from 'file'\n"
 		" -h        prints this message and exits\n"
 		" -i [dev]  interface device to use\n"
+		"           DPDK via --network_transport DPDK\n"
 		" -v        prints the software version and exits\n"
 		"\n",
 		progname);

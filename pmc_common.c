@@ -957,6 +957,8 @@ struct ptp_message *pmc_recv(struct pmc *pmc)
 	msg->hwts.type = TS_SOFTWARE;
 	cnt = transport_recv(pmc->transport, pmc_get_transport_fd(pmc), msg);
 	if (cnt <= 0) {
+		if (cnt < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+			goto failed;
 		pr_err("recv message failed");
 		goto failed;
 	}
