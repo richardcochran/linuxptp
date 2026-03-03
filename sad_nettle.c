@@ -7,6 +7,7 @@
 #include <nettle/hmac.h>
 #include <nettle/memops.h>
 #include <nettle/nettle-meta.h>
+#include <nettle/version.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/queue.h>
@@ -116,6 +117,7 @@ int sad_hash(struct mac_data *mac_data,
 	     const void *data, size_t data_len,
 	     unsigned char *mac, size_t mac_len)
 {
+	unsigned char digest_buf[MAX_DIGEST_LENGTH];
 	size_t digest_len;
 
 	/* confirm mac length is within library support */
@@ -125,15 +127,22 @@ int sad_hash(struct mac_data *mac_data,
 		return 0;
 	}
 
-	/* confirm mac length is within buffer size */
-	if (mac_len > MAX_DIGEST_LENGTH) {
-		pr_err("BUG: mac_len larger than buffer");
+	/* confirm digest length is within buffer size */
+	if (digest_len > MAX_DIGEST_LENGTH) {
+		pr_err("BUG: digest_len larger than buffer");
 		return 0;
 	}
 
 	/* update data and retrieve mac */
 	mac_data->nettle_mac->update(mac_data->context, data_len, data);
-	mac_data->nettle_mac->digest(mac_data->context, mac_len, mac);
+	mac_data->nettle_mac->digest(mac_data->context,
+#if NETTLE_VERSION_MAJOR < 4
+				     digest_len,
+#endif
+				     digest_buf);
+
+	/* move mac to desired location */
+	memcpy(mac, digest_buf, mac_len);
 
 	return mac_len;
 }
