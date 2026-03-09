@@ -145,7 +145,7 @@ Hardware Receive Filter Modes: none
 
    3. In order to install the programs and man pages into /usr/local,
       run the 'make install' target. You can change the installation
-      directories by setttings the variables prefix, sbindir, mandir,
+      directories by settings the variables prefix, sbindir, mandir,
       and man8dir on the make command line.
 
 * Getting Involved
@@ -180,7 +180,7 @@ Hardware Receive Filter Modes: none
       need to understand why you did what you did.
 
    4. *Sign-Off* each commit, so the changes can be properly attributed to
-      you and you explicitely give your agreement for distribution under
+      you and you explicitly give your agreement for distribution under
       linuxptp's license. Signing-off is as simple as:
 
       #+BEGIN_EXAMPLE
