@@ -1974,6 +1974,7 @@ static void flush_peer_delay(struct port *p)
 	if (p->peer_delay_req) {
 		msg_put(p->peer_delay_req);
 		p->peer_delay_req = NULL;
+		p->peer_delay_req_flushed = 1; 
 	}
 	if (p->peer_delay_resp) {
 		msg_put(p->peer_delay_resp);
@@ -2723,9 +2724,17 @@ int process_pdelay_resp(struct port *p, struct ptp_message *m)
         }
 
 	if (!p->peer_delay_req) {
+		if (p->peer_delay_req_flushed) {
+			pr_notice("%s: peer delay response ignored because of previous flush", p->log_name);
+			p->peer_delay_req_flushed = 0;
+			return 0;
+		}
 		pr_err("%s: rogue peer delay response", p->log_name);
 		return -1;
+	} else {
+		p->peer_delay_req_flushed = 0;
 	}
+
 	if (p->peer_portid_valid) {
 		if (!pid_eq(&p->peer_portid, &m->header.sourcePortIdentity)) {
 			pr_err("%s: received pdelay_resp msg with "
