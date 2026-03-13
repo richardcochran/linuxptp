@@ -63,7 +63,7 @@ argument is provided, it will attempt to read the current frequency and report
 it.
 .TP
 .BI phase " seconds"
-Pass an amount in seconds to the PHC clock's phase control keyword. This
+Pass an amount in seconds to the PHC clock's phase control. This
 argument is required.
 .TP
 .BI cmp
@@ -72,6 +72,9 @@ Compare the PHC clock device to CLOCK_REALTIME, using the best method available.
 .BI caps
 Display the device capabilities. This is the default command if no commands are
 provided.
+.TP
+.BI pins
+Display the device configurable pins description.
 .TP
 .BI wait " seconds"
 Sleep the process for the specified period of time, waking up and resuming

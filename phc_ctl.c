@@ -110,10 +110,11 @@ static void usage(const char *progname)
 		"  get              get PHC time\n"
 		"  adj   <seconds>  adjust PHC time by offset\n"
 		"  freq  [ppb]      adjust PHC frequency (default returns current offset)\n"
-		"  phase <seconds>  pass offset to PHC phase control keyword\n"
+		"  phase <seconds>  pass offset to PHC phase control\n"
 		"  cmp              compare PHC offset to CLOCK_REALTIME\n"
 		"  caps             display device capabilities (default if no command given)\n"
-		"  wait <seconds>   pause between commands\n"
+		"  pins             display device configurable pins\n"
+		"  wait  <seconds>  pause between commands\n"
 		"\n",
 		progname);
 }
@@ -310,8 +311,7 @@ static int do_phase(clockid_t clkid, int cmdc, char *cmdv[])
 	clockadj_init(clkid);
 	clockadj_set_phase(clkid, nsecs);
 
-	pr_notice("offset of %lf seconds provided to PHC phase control keyword",
-		  offset_arg);
+	pr_notice("offset of %lf seconds provided to PHC phase control", offset_arg);
 
 	/* phase offset always consumes one argument */
 	return 1;
@@ -322,12 +322,12 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 	struct ptp_clock_caps caps;
 
 	if (clkid == CLOCK_REALTIME) {
-		pr_warning("CLOCK_REALTIME is not a PHC device.");
+		pr_warning("caps: CLOCK_REALTIME is not a PHC device.");
 		return 0;
 	}
 
 	if (ioctl(CLOCKID_TO_FD(clkid), PTP_CLOCK_GETCAPS, &caps)) {
-		pr_err("get capabilities failed: %s",
+		pr_err("caps: get capabilities failed: %s",
 			strerror(errno));
 		return -1;
 	}
@@ -359,6 +359,60 @@ static int do_caps(clockid_t clkid, int cmdc, char *cmdv[])
 	if (caps.max_phase_adj)
 		pr_notice("  %d maximum offset adjustment (ns)\n", caps.max_phase_adj);
 
+	return 0;
+}
+
+static int do_pins(clockid_t clkid, int cmdc, char *cmdv[])
+{
+	int i, fd = CLOCKID_TO_FD(clkid);
+	struct ptp_clock_caps caps = { 0 };
+
+	if (clkid == CLOCK_REALTIME) {
+		pr_warning("pins: CLOCK_REALTIME is not a PHC device.");
+		return 0;
+	}
+
+	if (ioctl(fd, PTP_CLOCK_GETCAPS, &caps)) {
+		pr_err("pins: get capabilities failed: %s",
+			strerror(errno));
+		return -1;
+	}
+	if (caps.n_pins == 0) {
+		pr_warning("pins: device has no configurable pins");
+		return 0;
+	}
+
+	pr_notice("\ndevice has %d configurable input/output pins:\n", caps.n_pins);
+
+	for (i = 0; i < caps.n_pins; i++) {
+		const char *dfunc = NULL;
+		struct ptp_pin_desc desc = { .index = i };
+
+		if (ioctl(fd, PTP_PIN_GETFUNC, &desc) == -1) {
+			pr_err("pins: PTP_PIN_GETFUNC failed: %s", strerror(errno));
+			return -1;
+		}
+
+		switch (desc.func) {
+		case PTP_PF_NONE:
+			pr_notice(" pin %d [%s] not configured\n", i, desc.name);
+			break;
+		case PTP_PF_EXTTS:
+			dfunc = "external timestamping";
+			break;
+		case PTP_PF_PEROUT:
+			dfunc = "periodic output";
+			break;
+		case PTP_PF_PHYSYNC:
+			dfunc = "physical synchronization";
+			break;
+		default:
+			pr_err("pins: unknown function %d", desc.func);
+			return -1;
+		}
+		if (dfunc != NULL)
+			pr_notice(" pin %d [%s] %s on channel %d\n", i, desc.name, dfunc, desc.chan);
+	}
 	return 0;
 }
 
@@ -446,6 +500,7 @@ static const struct cmd_t all_commands[] = {
 	{ "phase", &do_phase },
 	{ "cmp", &do_cmp },
 	{ "caps", &do_caps },
+	{ "pins", &do_pins },
 	{ "wait", &do_wait },
 	{ 0, 0 }
 };
