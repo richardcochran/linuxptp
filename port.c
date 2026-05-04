@@ -3084,7 +3084,7 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	 * A port going down can affect the BMCA result.
 	 * Force a state decision event.
 	 */
-	if (p->link_status & LINK_DOWN)
+	if (p->link_status & LINK_STATE_CHANGED && p->link_status & LINK_DOWN)
 		clock_set_sde(p->clock, 1);
 }
 
