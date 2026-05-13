@@ -61,7 +61,7 @@ and driver implementation.
 Read the clocks to synchronize from running
 .B ptp4l
 and follow changes in the port states, adjusting the synchronization
-direction automatically. The system clock (CLOCK_REALTIME) is not
+direction automatically. The system clock is not
 synchronized, unless the
 .B \-r
 option is also specified.
@@ -71,11 +71,20 @@ Only valid together with the
 .B \-a
 option. Instructs
 .B phc2sys
-to also synchronize the system clock (CLOCK_REALTIME). By default, the
+to also synchronize the system clock (CLOCK_REALTIME or a different system clock
+selected by the
+.B \-C
+option). By default, the
 system clock is not considered as a possible time source. If you want the
 system clock to be eligible to become a time source, specify the
 .B \-r
 option twice.
+.TP
+.BI \-C " name"
+Specify the system clock to be used in the automatic mode enabled by the
+.B \-a
+option. The default is CLOCK_REALTIME. The other supported system clocks are
+auxiliary clocks CLOCK_AUX0-CLOCK_AUX7.
 .TP
 .BI \-f " config"
 Read configuration from the specified file. No configuration file is read by
@@ -94,8 +103,8 @@ option.
 .TP
 .BI \-s " device"
 Specify the source clock by device (e.g. /dev/ptp0) or interface (e.g. eth0) or
-by name (e.g. CLOCK_REALTIME for the system clock). When this option is used
-together with the
+by name (e.g. CLOCK_REALTIME for the realtime system clock, or CLOCK_AUX0 for
+the first auxiliary system clock). When this option is used together with the
 .B \-d
 option, the source clock is used only to correct the offset by whole number of
 seconds, which cannot be fixed with PPS alone. Not compatible with the

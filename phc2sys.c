@@ -74,6 +74,7 @@ struct clock {
 	LIST_ENTRY(clock) dst_list;
 	clockid_t clkid;
 	int phc_index;
+	clockid_t sysoff_clkid;
 	int sysoff_method;
 	int is_utc;
 	int dest_only;
@@ -110,7 +111,7 @@ struct domain {
 	int kernel_leap;
 	int state_changed;
 	int free_running;
-	int has_rt_clock;
+	int has_sys_clock;
 	struct pmc_agent *agent;
 	int agent_subscribed;
 	LIST_HEAD(port_head, port) ports;
@@ -136,9 +137,10 @@ static struct servo *servo_add(struct domain *domain,
 
 	clockadj_init(clock->clkid);
 	ppb = clockadj_get_freq(clock->clkid);
-	if (clock->clkid == CLOCK_REALTIME) {
-		sysclk_set_leap(0);
-		max_ppb = sysclk_max_freq();
+	if (is_sys_clock(clock->clkid)) {
+		if (clock->clkid == CLOCK_REALTIME)
+			sysclk_set_leap(0);
+		max_ppb = clockadj_max_freq(clock->clkid);
 	} else {
 		max_ppb = phc_max_adj(clock->clkid);
 		if (!max_ppb) {
@@ -188,9 +190,10 @@ static struct clock *clock_add(struct domain *domain, const char *device,
 	c->servo_state = SERVO_UNLOCKED;
 	c->device = device ? strdup(device) : NULL;
 
-	if (c->clkid == CLOCK_REALTIME) {
+	if (is_sys_clock(c->clkid)) {
 		c->source_label = "sys";
-		c->is_utc = 1;
+		if (c->clkid == CLOCK_REALTIME)
+			c->is_utc = 1;
 	} else {
 		c->source_label = "phc";
 	}
@@ -214,10 +217,9 @@ static struct clock *clock_add(struct domain *domain, const char *device,
 		}
 	}
 
-	if (clkid != CLOCK_INVALID && clkid != CLOCK_REALTIME)
-		c->sysoff_method = sysoff_probe(CLOCKID_TO_FD(clkid),
-						CLOCK_REALTIME,
-						domain->phc_readings);
+	/* Set an invalid value to force probing on the first sysoff attempt */
+	c->sysoff_clkid = -1;
+	c->sysoff_method = SYSOFF_RUN_TIME_MISSING;
 
 	/* Add the clock to the end of the list to keep them in the
 	   command-line or ptp4l order */
@@ -417,13 +419,13 @@ static int reconfigure_domain(struct domain *domain)
 		LIST_REMOVE(LIST_FIRST(&domain->dst_clocks), dst_list);
 	}
 
-	if (!domain->has_rt_clock && !domain->agent_subscribed) {
+	if (!domain->has_sys_clock && !domain->agent_subscribed) {
 		domain->src_clock = NULL;
 		return 0;
 	}
 
 	LIST_FOREACH(c, &domain->clocks, list) {
-		if (c->clkid == CLOCK_REALTIME) {
+		if (is_sys_clock(c->clkid)) {
 			/* If present, it can always be a sink clock */
 			LIST_INSERT_HEAD(&domain->dst_clocks, c, dst_list);
 			domain->src_clock = c->dest_only ? NULL : c;
@@ -522,7 +524,7 @@ static int compare_domains(struct domain *a, struct domain *b)
 
 static void reconfigure(struct domain *domains, int n_domains)
 {
-	struct domain *src_domain = NULL, *rt_domain = NULL;
+	struct domain *src_domain = NULL, *sys_domain = NULL;
 	int i;
 
 	pr_info("reconfiguring after port state change");
@@ -538,20 +540,20 @@ static void reconfigure(struct domain *domains, int n_domains)
 			src_domain = &domains[i];
 		}
 
-		if (domains[i].has_rt_clock)
-			rt_domain = &domains[i];
+		if (domains[i].has_sys_clock)
+			sys_domain = &domains[i];
 	}
 
 	if (n_domains <= 1 || !src_domain) {
 		return;
 	}
 
-	if (rt_domain && src_domain != rt_domain) {
-		pr_info("selecting CLOCK_REALTIME for synchronization");
+	if (sys_domain && src_domain != sys_domain) {
+		pr_info("selecting system clock for synchronization");
 	}
-	if (src_domain == rt_domain) {
-		pr_info("selecting CLOCK_REALTIME as source clock");
-	} else if (n_domains - !!rt_domain > 1) {
+	if (src_domain == sys_domain) {
+		pr_info("selecting system clock as source clock");
+	} else if (n_domains - !!sys_domain > 1) {
 		pr_info("selecting %s as out-of-domain source clock",
 			src_domain->src_clock->device);
 	}
@@ -775,7 +777,7 @@ static int do_pps_loop(struct domain *domain, struct clock *clock,
 
 static int update_needed(struct clock *c)
 {
-	if (c->clkid == CLOCK_REALTIME)
+	if (is_sys_clock(c->clkid))
 		return 1;
 
 	switch (c->state) {
@@ -791,6 +793,22 @@ static int update_needed(struct clock *c)
 		break;
 	}
 	return 0;
+}
+
+static int is_sysoff_usable(struct clock *src, struct clock *dst,
+			    int phc_readings)
+{
+	if (!is_sys_clock(dst->clkid) || is_sys_clock(src->clkid))
+		return 0;
+
+	/* Update the method if the system clock changed */
+	if (src->sysoff_clkid != dst->clkid) {
+		src->sysoff_method = sysoff_probe(CLOCKID_TO_FD(src->clkid),
+						  dst->clkid, phc_readings);
+		src->sysoff_clkid = dst->clkid;
+	}
+
+	return src->sysoff_method >= 0;
 }
 
 static int update_domain_clocks(struct domain *domain)
@@ -811,19 +829,19 @@ static int update_domain_clocks(struct domain *domain)
 		    !strcmp(clock->device, domain->src_clock->device))
 			continue;
 
-		if (clock->clkid == CLOCK_REALTIME &&
-		    domain->src_clock->sysoff_method >= 0) {
+		if (is_sysoff_usable(domain->src_clock, clock,
+				     domain->phc_readings)) {
 			/* use sysoff */
 			err = sysoff_measure(CLOCKID_TO_FD(domain->src_clock->clkid),
-					     CLOCK_REALTIME,
+					     clock->clkid,
 					     domain->src_clock->sysoff_method,
 					     domain->phc_readings,
 					     &offset, &ts, &delay);
-		} else if (domain->src_clock->clkid == CLOCK_REALTIME &&
-			   clock->sysoff_method >= 0) {
+		} else if (is_sysoff_usable(clock, domain->src_clock,
+					    domain->phc_readings)) {
 			/* use reversed sysoff */
 			err = sysoff_measure(CLOCKID_TO_FD(clock->clkid),
-					     CLOCK_REALTIME,
+					     domain->src_clock->clkid,
 					     clock->sysoff_method,
 					     domain->phc_readings,
 					     &offset, &ts, &delay);
@@ -871,7 +889,7 @@ static int do_loop(struct domain *domains, int n_domains)
 			prev_sub = domain->agent_subscribed;
 			domain->agent_subscribed =
 				pmc_agent_is_subscribed(domain->agent);
-			if (!domain->has_rt_clock && !domain->agent_subscribed) {
+			if (!domain->has_sys_clock && !domain->agent_subscribed) {
 				if (prev_sub) {
 					pr_err("Lost connection to ptp4l #%d", i + 1);
 					state_changed = 1;
@@ -1049,16 +1067,17 @@ static int auto_init_ports(struct domain *domain)
 	return 0;
 }
 
-static int auto_init_rt(struct domain *domain, int dest_only)
+static int auto_init_sys(struct domain *domain, const char *sys_clock,
+			 int dest_only)
 {
 	struct clock *clock;
 
-	clock = clock_add(domain, "CLOCK_REALTIME", -1);
+	clock = clock_add(domain, sys_clock, -1);
 	if (!clock)
 		return -1;
 	clock->dest_only = dest_only;
 	domain->src_priority = 0;
-	domain->has_rt_clock = 1;
+	domain->has_sys_clock = 1;
 	return 0;
 }
 
@@ -1070,7 +1089,7 @@ static int clock_handle_leap(struct domain *domain, struct clock *clock,
 	struct pmc_agent *agent;
 
 	/* The system clock's domain doesn't have a subscribed agent */
-	agent = domain->has_rt_clock ? domain->src_domain->agent : domain->agent;
+	agent = domain->has_sys_clock ? domain->src_domain->agent : domain->agent;
 
 	node_leap = pmc_agent_get_leap(agent);
 	clock->sync_offset = pmc_agent_get_sync_offset(agent);
@@ -1104,7 +1123,7 @@ static int clock_handle_leap(struct domain *domain, struct clock *clock,
 						&clock->sync_offset);
 
 		if (clock->leap_set != clock_leap) {
-			/* Only the system clock can leap. */
+			/* Only the realtime system clock can leap. */
 			if (clock->clkid == CLOCK_REALTIME &&
 			    domain->kernel_leap)
 				sysclk_set_leap(clock_leap);
@@ -1168,7 +1187,7 @@ static bool phc2sys_using_systemclock(struct domain *domain)
 	struct clock *c;
 
 	LIST_FOREACH(c, &domain->clocks, list) {
-		if (c->clkid == CLOCK_REALTIME) {
+		if (is_sys_clock(c->clkid)) {
 			return true;
 		}
 	}
@@ -1183,8 +1202,9 @@ static void usage(char *progname)
 		"\n"
 		" automatic configuration:\n"
 		" -a             turn on autoconfiguration\n"
-		" -r             synchronize system (realtime) clock\n"
+		" -r             synchronize system clock\n"
 		"                repeat -r to consider it also as a time source\n"
+		" -C [name]      system clock to synchronize with -r (CLOCK_REALTIME)\n"
 		" manual configuration:\n"
 		" -c [dev|name]  time sink device (CLOCK_REALTIME)\n"
 		" -d [dev]       time source PPS device\n"
@@ -1220,6 +1240,7 @@ int main(int argc, char *argv[])
 {
 	char *config = NULL, *progname, *src_name = NULL;
 	const char *dst_names[MAX_DST_CLOCKS], *uds_remotes[MAX_DOMAINS];
+	const char *auto_sys_clock = "CLOCK_REALTIME";
 	char uds_local[MAX_IFNAME_SIZE + 1];
 	int domain_numbers[MAX_DOMAINS], domain_number_cnt = 0;
 	int i, autocfg = 0, c, index, ntpshm_segment, offset = 0;
@@ -1233,6 +1254,7 @@ int main(int argc, char *argv[])
 		.phc_readings = 5,
 		.phc_interval = 1.0,
 	};
+	clockid_t clkid;
 	int n_domains = 0;
 
 	memset(domains, 0, sizeof (domains));
@@ -1253,7 +1275,7 @@ int main(int argc, char *argv[])
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
 	while (EOF != (c = getopt_long(argc, argv,
-				"arc:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh",
+				"arC:c:d:f:s:E:P:I:S:F:R:N:O:L:M:i:u:wn:xz:l:t:mqvh",
 				opts, &index))) {
 		switch (c) {
 		case 0:
@@ -1266,6 +1288,20 @@ int main(int argc, char *argv[])
 			break;
 		case 'r':
 			rt++;
+			break;
+		case 'C':
+			clkid = posix_clock_open(optarg, &i);
+			if (clkid == CLOCK_INVALID) {
+				fprintf(stderr, "invalid clock %s\n", optarg);
+				goto end;
+			}
+			posix_clock_close(clkid);
+			if (!is_sys_clock(clkid)) {
+				fprintf(stderr,
+					"invalid system clock %s\n", optarg);
+				goto end;
+			}
+			auto_sys_clock = optarg;
 			break;
 		case 'c':
 			if (dst_cnt == MAX_DST_CLOCKS) {
@@ -1508,8 +1544,8 @@ int main(int argc, char *argv[])
 	if (autocfg) {
 		for (i = 0; i < n_domains; i++) {
 			if (rt && i + 1 == n_domains) {
-				if (auto_init_rt(&domains[n_domains - 1],
-						 rt == 1) < 0)
+				if (auto_init_sys(&domains[n_domains - 1],
+						  auto_sys_clock, rt == 1) < 0)
 					goto end;
 				continue;
 			}
@@ -1532,6 +1568,12 @@ int main(int argc, char *argv[])
 		}
 
 		for (i = 0; i < dst_cnt; i++) {
+			if (!strncasecmp("CLOCK_", dst_names[i], 6)) {
+				fprintf(stderr, "additional system clocks not"
+				       " supported in automatic mode\n");
+				goto end;
+			}
+
 			r = phc2sys_static_dst_configuration(&domains[0],
 							     dst_names[i]);
 			if (r)
