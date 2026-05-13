@@ -133,6 +133,21 @@ const char *ustate2str(enum unicast_state ustate);
 enum port_state port_state_normalize(enum port_state state);
 
 /**
+ * Checks if a clock ID is an auxiliary system clock (CLOCK_AUX*).
+ * @param clock  A clock ID.
+ * @return       1 if it is an auxiliary clock, 0 otherwise.
+ */
+int is_aux_clock(clockid_t clock);
+
+/**
+ * Checks if a clock ID is the system realtime clock (CLOCK_REALTIME) or an
+ * auxiliary system clock (CLOCK_AUX*).
+ * @param clock  A clock ID.
+ * @return       1 if it is the realtime or an auxiliary clock, 0 otherwise.
+ */
+int is_sys_clock(clockid_t clock);
+
+/**
  * Closes a dynamic posix clock.
  * @param clock  A clock ID obtained via posix_clock_close().
  */

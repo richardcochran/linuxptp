@@ -482,6 +482,15 @@ enum {
 
 #endif /* HAVE_VCLOCKS */
 
+#ifndef MAX_CLOCKS
+#define MAX_CLOCKS                      16
+#endif
+#ifndef CLOCK_AUX
+#define CLOCK_AUX                       MAX_CLOCKS
+#define MAX_AUX_CLOCKS                  8
+#define CLOCK_AUX_LAST                  (CLOCK_AUX + MAX_AUX_CLOCKS - 1)
+#endif /* CLOCK_AUX */
+
 #ifdef __UCLIBC__
 
 #if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && \

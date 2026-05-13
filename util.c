@@ -232,9 +232,19 @@ enum port_state port_state_normalize(enum port_state state)
 	}
 }
 
+int is_aux_clock(clockid_t clock)
+{
+	return clock >= CLOCK_AUX && clock <= CLOCK_AUX_LAST;
+}
+
+int is_sys_clock(clockid_t clock)
+{
+	return clock == CLOCK_REALTIME || is_aux_clock(clock);
+}
+
 void posix_clock_close(clockid_t clock)
 {
-	if (clock == CLOCK_REALTIME) {
+	if (is_sys_clock(clock)) {
 		return;
 	}
 	phc_close(clock);
@@ -245,11 +255,27 @@ clockid_t posix_clock_open(const char *device, int *phc_index)
 	char phc_device_path[PATH_MAX];
 	struct sk_ts_info ts_info;
 	char phc_device[19];
+	struct timespec ts;
 	int clkid;
 
 	/* check if device is CLOCK_REALTIME */
 	if (!strcasecmp(device, "CLOCK_REALTIME")) {
 		return CLOCK_REALTIME;
+	}
+
+	/* auxiliary system clocks supported in Linux >= 6.17 */
+	if (!strncasecmp(device, "CLOCK_AUX", strlen("CLOCK_AUX"))) {
+		if (get_ranged_int(device + strlen("CLOCK_AUX"), &clkid, 0,
+				   MAX_AUX_CLOCKS - 1) != PARSED_OK) {
+			pr_err("%s is invalid clock", device);
+			return CLOCK_INVALID;
+		}
+		clkid += CLOCK_AUX;
+		if (clock_gettime(clkid, &ts) < 0) {
+			pr_err("%s is not available: %m", device);
+			return CLOCK_INVALID;
+		}
+		return clkid;
 	}
 
 	/* if the device name resolves so a plausible filesystem path, we
