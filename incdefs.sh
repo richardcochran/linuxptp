@@ -195,6 +195,11 @@ kernel_flags()
 		printf " -DHAVE_PTP_CAPS_ADJUST_PHASE"
 	fi
 
+	if grep -A 4 '^struct ptp_sys_offset_extended' ${prefix}${ptp_clock} | \
+			grep -q 'clockid_t clockid'; then
+		printf " -DHAVE_PTP_SYSOFF_EXTENDED_CLOCKID"
+	fi
+
 	if grep -q -s TEAM_GENL_NAME ${prefix}${if_team}; then
 		printf " -DHAVE_IF_TEAM"
 	fi

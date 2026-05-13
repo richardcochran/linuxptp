@@ -99,12 +99,17 @@ static int64_t sysoff_estimate(struct ptp_clock_time *pct, int extended,
 	return best_offset;
 }
 
-static int sysoff_extended(int fd, int n_samples,
+static int sysoff_extended(int fd, clockid_t sys_clock, int n_samples,
 			   int64_t *result, uint64_t *ts, int64_t *delay)
 {
 	struct ptp_sys_offset_extended pso;
 	memset(&pso, 0, sizeof(pso));
 	pso.n_samples = n_samples;
+#ifdef HAVE_PTP_SYSOFF_EXTENDED_CLOCKID
+	pso.clockid = sys_clock;
+#else
+	pso.rsv[0] = sys_clock;
+#endif
 	if (ioctl(fd, PTP_SYS_OFFSET_EXTENDED, &pso)) {
 		print_ioctl_error("PTP_SYS_OFFSET_EXTENDED");
 		return -errno;
@@ -127,22 +132,27 @@ static int sysoff_basic(int fd, int n_samples,
 	return 0;
 }
 
-int sysoff_measure(int fd, int method, int n_samples,
+int sysoff_measure(int fd, clockid_t sys_clock, int method, int n_samples,
 		   int64_t *result, uint64_t *ts, int64_t *delay)
 {
 	switch (method) {
 	case SYSOFF_PRECISE:
+		if (sys_clock != CLOCK_REALTIME)
+			return -EOPNOTSUPP;
 		*delay = 0;
 		return sysoff_precise(fd, result, ts);
 	case SYSOFF_EXTENDED:
-		return sysoff_extended(fd, n_samples, result, ts, delay);
+		return sysoff_extended(fd, sys_clock, n_samples,
+				       result, ts, delay);
 	case SYSOFF_BASIC:
+		if (sys_clock != CLOCK_REALTIME)
+			return -EOPNOTSUPP;
 		return sysoff_basic(fd, n_samples, result, ts, delay);
 	}
 	return -EOPNOTSUPP;
 }
 
-int sysoff_probe(int fd, int n_samples)
+int sysoff_probe(int fd, clockid_t sys_clock, int n_samples)
 {
 	int64_t junk, delay;
 	int i, j, err;
@@ -157,8 +167,8 @@ int sysoff_probe(int fd, int n_samples)
 
 	for (i = 0; i < SYSOFF_LAST; i++) {
 		for (j = 0; j < 3; j++) {
-			err = sysoff_measure(fd, i, n_samples, &junk, &ts,
-					     &delay);
+			err = sysoff_measure(fd, sys_clock, i,
+					     n_samples, &junk, &ts, &delay);
 			if (err == -EBUSY)
 				continue;
 			if (err)

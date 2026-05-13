@@ -426,9 +426,9 @@ static int do_cmp(clockid_t clkid, int cmdc, char *cmdv[])
 
 	fd = CLOCKID_TO_FD(clkid);
 
-	method = sysoff_probe(fd, N_SAMPLES);
+	method = sysoff_probe(fd, CLOCK_REALTIME, N_SAMPLES);
 
-	if (method >= 0 && sysoff_measure(fd, method, N_SAMPLES,
+	if (method >= 0 && sysoff_measure(fd, CLOCK_REALTIME, method, N_SAMPLES,
 					  &sys_offset, &sys_ts, &delay) >= 0) {
 		pr_notice("offset from CLOCK_REALTIME is %"PRId64"ns\n",
 			  sys_offset);

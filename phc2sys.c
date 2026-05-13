@@ -216,6 +216,7 @@ static struct clock *clock_add(struct domain *domain, const char *device,
 
 	if (clkid != CLOCK_INVALID && clkid != CLOCK_REALTIME)
 		c->sysoff_method = sysoff_probe(CLOCKID_TO_FD(clkid),
+						CLOCK_REALTIME,
 						domain->phc_readings);
 
 	/* Add the clock to the end of the list to keep them in the
@@ -814,6 +815,7 @@ static int update_domain_clocks(struct domain *domain)
 		    domain->src_clock->sysoff_method >= 0) {
 			/* use sysoff */
 			err = sysoff_measure(CLOCKID_TO_FD(domain->src_clock->clkid),
+					     CLOCK_REALTIME,
 					     domain->src_clock->sysoff_method,
 					     domain->phc_readings,
 					     &offset, &ts, &delay);
@@ -821,6 +823,7 @@ static int update_domain_clocks(struct domain *domain)
 			   clock->sysoff_method >= 0) {
 			/* use reversed sysoff */
 			err = sysoff_measure(CLOCKID_TO_FD(clock->clkid),
+					     CLOCK_REALTIME,
 					     clock->sysoff_method,
 					     domain->phc_readings,
 					     &offset, &ts, &delay);
