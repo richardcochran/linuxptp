@@ -25,13 +25,15 @@
 
 /**
  * Initialize state needed when adjusting or reading the clock.
- * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
+ * @param clkid A clock ID obtained using phc_open(), CLOCK_REALTIME, or
+ * CLOCK_AUX*.
  */
 void clockadj_init(clockid_t clkid);
 
 /**
  * Set clock's frequency offset.
- * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
+ * @param clkid A clock ID obtained using phc_open(), CLOCK_REALTIME, or
+ *              CLOCK_AUX*.
  * @param freq  The frequency offset in parts per billion (ppb).
  * @return      0 on success, -1 on failure
  */
@@ -39,7 +41,8 @@ int clockadj_set_freq(clockid_t clkid, double freq);
 
 /**
  * Read clock's frequency offset.
- * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
+ * @param clkid A clock ID obtained using phc_open(), CLOCK_REALTIME, or
+ *              CLOCK_AUX*.
  * @return      The frequency offset in parts per billion (ppb).
  */
 double clockadj_get_freq(clockid_t clkid);
@@ -54,7 +57,8 @@ int clockadj_set_phase(clockid_t clkid, long offset);
 
 /**
  * Step clock's time.
- * @param clkid A clock ID obtained using phc_open() or CLOCK_REALTIME.
+ * @param clkid A clock ID obtained using phc_open(), CLOCK_REALTIME, or
+ *              CLOCK_AUX*.
  * @param step  The time step in nanoseconds.
  * @return      0 on success, -1 on failure
  */
@@ -68,8 +72,10 @@ int clockadj_max_freq(clockid_t clkid);
 
 /**
  * Compare offset between two clocks
- * @param clkid     A clock ID obtained using phc_open() or CLOCK_REALTIME
- * @param sysclk    A clock ID obtained using phc_open() or CLOCK_REALTIME
+ * @param clkid     A clock ID obtained using phc_open(), CLOCK_REALTIME, or
+ *                  CLOCK_AUX*
+ * @param sysclk    A clock ID obtained using phc_open(), CLOCK_REALTIME, or
+ *                  CLOCK_AUX*
  * @param readings  Number of readings to try
  * @param offset    On return, the nanoseconds offset between the clocks
  * @param ts        On return, the time of sysclk in nanoseconds that was used
@@ -85,14 +91,14 @@ int clockadj_compare(clockid_t clkid, clockid_t sysclk, int readings,
 		     int64_t *offset, uint64_t *ts, int64_t *delay);
 
 /**
- * Set the system clock to insert/delete leap second at midnight.
+ * Set CLOCK_REALTIME to insert/delete leap second at midnight.
  * @param leap  +1 to insert leap second, -1 to delete leap second,
  *              0 to reset the leap state.
  */
 void sysclk_set_leap(int leap);
 
 /**
- * Set the TAI offset of the system clock to have correct CLOCK_TAI.
+ * Set the TAI offset of CLOCK_REALTIME to have correct CLOCK_TAI.
  * @param offset The TAI-UTC offset in seconds.
  */
 void sysclk_set_tai_offset(int offset);
@@ -104,7 +110,7 @@ void sysclk_set_tai_offset(int offset);
 int sysclk_max_freq(void);
 
 /**
- * Mark the system clock as synchronized to let the kernel synchronize
+ * Mark CLOCK_REALTIME as synchronized to let the kernel synchronize
  * the real-time clock (RTC) to it.
  */
 void sysclk_set_sync(void);

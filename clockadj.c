@@ -30,13 +30,14 @@
 #define NS_PER_SEC 1000000000LL
 
 static int realtime_leap_bit;
+/* The hz and tick apply to all system clocks (not only CLOCK_REALTIME). */
 static long realtime_hz;
 static long realtime_nominal_tick;
 
 void clockadj_init(clockid_t clkid)
 {
 #ifdef _SC_CLK_TCK
-	if (clkid == CLOCK_REALTIME) {
+	if (is_sys_clock(clkid)) {
 		/* This is USER_HZ in the kernel. */
 		realtime_hz = sysconf(_SC_CLK_TCK);
 		if (realtime_hz > 0) {
@@ -54,7 +55,7 @@ int clockadj_set_freq(clockid_t clkid, double freq)
 	memset(&tx, 0, sizeof(tx));
 
 	/* With system clock set also the tick length. */
-	if (clkid == CLOCK_REALTIME && realtime_nominal_tick) {
+	if (is_sys_clock(clkid) && realtime_nominal_tick) {
 		tx.modes |= ADJ_TICK;
 		tx.tick = round(freq / 1e3 / realtime_hz) + realtime_nominal_tick;
 		freq -= 1e3 * realtime_hz * (tx.tick - realtime_nominal_tick);
@@ -79,7 +80,7 @@ double clockadj_get_freq(clockid_t clkid)
 		exit(1);
 	} else {
 		f = tx.freq / 65.536;
-		if (clkid == CLOCK_REALTIME && realtime_nominal_tick && tx.tick)
+		if (is_sys_clock(clkid) && realtime_nominal_tick && tx.tick)
 			f += 1e3 * realtime_hz * (tx.tick - realtime_nominal_tick);
 	}
 	return f;
@@ -143,8 +144,8 @@ int clockadj_max_freq(clockid_t clkid)
 	 * it only if the overall frequency of the clock can be adjusted
 	 * continuously with the tick and freq fields (i.e. hz <= 1000).
 	 */
-	if (clkid == CLOCK_REALTIME && (realtime_nominal_tick && 2 * f >=
-					1000 * realtime_hz))
+	if (is_sys_clock(clkid) && (realtime_nominal_tick &&
+				    2 * f >= 1000 * realtime_hz))
 		f = realtime_nominal_tick / 10 * 1000 * realtime_hz;
 
 	return f;
