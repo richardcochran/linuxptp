@@ -82,6 +82,7 @@ struct port {
 	struct ptp_message *last_syncfup;
 	TAILQ_HEAD(delay_req, ptp_message) delay_req;
 	struct ptp_message *peer_delay_req;
+	unsigned int peer_delay_req_flushed;
 	struct ptp_message *peer_delay_resp;
 	struct ptp_message *peer_delay_fup;
 	int peer_portid_valid;
