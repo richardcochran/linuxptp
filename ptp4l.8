@@ -706,7 +706,8 @@ This option used to be called
 
 .TP
 .B free_running
-Don't adjust the local clock if enabled.
+Don't adjust the local clock if enabled. The measured offset and frequency will
+be printed at an interval limited by the \fBfreq_est_interval\fR option.
 The default is 0 (disabled).
 
 .TP
