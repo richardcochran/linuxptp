@@ -586,8 +586,10 @@ struct pmc *pmc_create(struct config *cfg, enum transport_type transport_type,
 	UInteger32 proc_id;
 
 	pmc = calloc(1, sizeof *pmc);
-	if (!pmc)
+	if (!pmc) {
+		pr_err("low memory");
 		return NULL;
+	}
 
 	if (transport_type == TRANS_UDS) {
 		proc_id = getpid();
