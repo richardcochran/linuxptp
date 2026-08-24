@@ -64,22 +64,15 @@
 
 * Getting the Code
 
-  You can download the latest released version at Source Forge.
+  You can download the latest released version at Network Time Foundation.
 
-  http://sourceforge.net/projects/linuxptp/files/latest/download
+  https://downloads.nwtime.org/linuxptp/
 
   The source code is managed using the git version control system. To
   get your own copy of the project sources, use the following command.
 
 #+BEGIN_EXAMPLE
-  git clone git://git.code.sf.net/p/linuxptp/code linuxptp
-#+END_EXAMPLE
-
-  If the git protocol is blocked by your local area network, then you
-  can use the alternative HTTP protocol instead.
-
-#+BEGIN_EXAMPLE
-  git clone http://git.code.sf.net/p/linuxptp/code linuxptp
+  git clone https://github.com/richardcochran/linuxptp.git linuxptp
 #+END_EXAMPLE
 
 * System Requirements
@@ -150,9 +143,9 @@ Hardware Receive Filter Modes: none
 
 * Getting Involved
 
-  The software development is hosted at Source Forge.
+  The software development is hosted at Network Time Foundation.
 
-  https://sourceforge.net/projects/linuxptp/
+  https://linuxptp.nwtime.org/
 
 ** Reporting Bugs
 
