@@ -121,7 +121,7 @@ command line option.
 .B active_key_id
 Used in conjunction with \fBspp\fR and \fBsa_file\fR directives to
 specify which key from the \fBspp\fR defined Security Association
-should be used for outbound icv calculations. All Security Assocations
+should be used for outbound icv calculations. All Security Associations
 are read from the file specified by \fBsa_file\fR. Requires \fBspp\fR
 and \fBsa_file\fR directives. Must be in the range of 1 to 2^32-1,
 inclusive. The default is 0 (disabled).
@@ -271,8 +271,8 @@ The default is 0.0.
 .TP
 .B spp
 Specifies the security parameters pointer for the desired security association
-to be used for authentication tlv support. If specified, the port owning the
-spp will attempt to attach (outbound) and check (inbound) authentication tlvs
+to be used for authentication TLV support. If specified, the port owning the
+spp will attempt to attach (outbound) and check (inbound) authentication TLVs
 for all messages in accordance to the corresponding security association
 sourced via the \fBsa_file\fR directive. Not compatible with one step ports.
 Must be in the range of -1 to 255, inclusive. The default is -1 (disabled).
@@ -345,7 +345,7 @@ with this rate to match the sinks. The supported range is 1 to 128. The rate
 should divide 1 billion to avoid a loss of precision due to rounding of the
 pulse period to nanoseconds. If using the generic (system clock) or NMEA ToD
 source, the higher the pulse rate, the more accurate and stable the ToD source
-needs to be to prevent mislabeled pulses (causing large clock errors), and also
+needs to be to prevent mislabelled pulses (causing large clock errors), and also
 errors in the edge detection if \fBts2phc.extts_polarity\fR is set to "both".
 The default is 1 pulse per second (1PPS).
 
