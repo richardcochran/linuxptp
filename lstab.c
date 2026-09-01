@@ -55,7 +55,7 @@ struct lstab {
 	int length;
 };
 
-static const uint64_t expiration_date_ntp = 3944332800ULL; /* 24 Dec 2024 */
+static const uint64_t expiration_date_ntp = 3960057600ULL; /* 28 Jun 2025 */
 
 static const uint64_t offset_table[N_LEAPS * 2] = {
 	2272060800ULL,	10,	/* 1 Jan 1972 */
