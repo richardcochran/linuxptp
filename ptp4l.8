@@ -283,6 +283,13 @@ value will be added to egress time stamps obtained from the hardware.
 The default is 0.
 
 .TP
+.B externalPortConfigurationPortDS.desiredState
+The state of this port when \fBexternalPortConfigurationEnabled\fR is set.
+One of \fBMASTER\fR, \fBSLAVE\fR, \fBPASSIVE\fR, \fBUNCALIBRATED\fR,
+\fBPRE_MASTER\fR, \fBLISTENING\fR or \fBDISABLED\fR.
+The default is PASSIVE.
+
+.TP
 .B fault_badpeernet_interval
 The time in seconds between the detection of a peer network misconfiguration
 and the fault being reset. The port is disabled for the duration of the
@@ -757,6 +764,15 @@ general messages. Must be a value between 0 and 63. There are several media
 streaming standards out there that recommend specific values for this option.
 For example 34 (AF41 PHB) in AES67 or 46 (EF PHB) in RAVENNA. The default
 is 0.
+
+.TP
+.B externalPortConfigurationEnabled
+Set the state of every port from its
+\fBexternalPortConfigurationPortDS.desiredState\fR instead of by the BMCA, as
+specified in IEEE 1588-2019 17.6. The Announce receipt timeout is not used,
+and only ports in the SLAVE or UNCALIBRATED state process Announce messages.
+A fault still takes a port to FAULTY. Cannot be combined with \fBBMCA\fR noop.
+The default is 0 (disabled).
 
 .TP
 .B first_step_threshold

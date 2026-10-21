@@ -245,6 +245,17 @@ static struct config_enum as_capable_enu[] = {
 	{ NULL, 0 },
 };
 
+static struct config_enum desired_state_enu[] = {
+	{ "DISABLED",     PS_DISABLED     },
+	{ "LISTENING",    PS_LISTENING    },
+	{ "PRE_MASTER",   PS_PRE_MASTER   },
+	{ "MASTER",       PS_MASTER       },
+	{ "PASSIVE",      PS_PASSIVE      },
+	{ "UNCALIBRATED", PS_UNCALIBRATED },
+	{ "SLAVE",        PS_SLAVE        },
+	{ NULL, 0 },
+};
+
 static struct config_enum bmca_enu[] = {
 	{ "ptp",  BMCA_PTP  },
 	{ "noop", BMCA_NOOP },
@@ -290,6 +301,9 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("dscp_general", 0, 0, 63),
 	GLOB_ITEM_INT("domainNumber", 0, 0, 255),
 	PORT_ITEM_INT("egressLatency", 0, INT_MIN, INT_MAX),
+	GLOB_ITEM_INT("externalPortConfigurationEnabled", 0, 0, 1),
+	PORT_ITEM_ENU("externalPortConfigurationPortDS.desiredState",
+		      PS_PASSIVE, desired_state_enu),
 	PORT_ITEM_INT("fault_badpeernet_interval", 16, INT32_MIN, INT32_MAX),
 	PORT_ITEM_INT("fault_reset_interval", 4, INT8_MIN, INT8_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),

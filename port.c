@@ -28,6 +28,7 @@
 #include "bmc.h"
 #include "clock.h"
 #include "designated_fsm.h"
+#include "external_fsm.h"
 #include "filter.h"
 #include "fine_ts.h"
 #include "missing.h"
@@ -1358,6 +1359,10 @@ static void port_nrate_initialize(struct port *p)
 
 int port_set_announce_tmo(struct port *p)
 {
+	if (p->external_port_config) {
+		/* 17.6.5.3 */
+		return 0;
+	}
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
 			      p->announceReceiptTimeout,
 			      p->announce_span, p->logAnnounceInterval);
@@ -2303,9 +2308,17 @@ int process_announce(struct port *p, struct ptp_message *m)
 	case PS_PRE_MASTER:
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		result = add_foreign_master(p, m);
+		/* 17.6.5.5 */
+		if (!p->external_port_config) {
+			result = add_foreign_master(p, m);
+		}
 		break;
 	case PS_PASSIVE:
+		/* 17.6.5.4 b) names only SLAVE and UNCALIBRATED. */
+		if (p->external_port_config) {
+			break;
+		}
+		/* fall through */
 	case PS_UNCALIBRATED:
 	case PS_SLAVE:
 		result = update_current_master(p, m);
@@ -3698,6 +3711,37 @@ static int port_asymmetry_correction_init(struct port *p, struct config *cfg)
 	return 0;
 }
 
+/*
+ * BMCA noop would also own the port state, so it is refused.  17.6.5.3
+ * only says serverOnly and clientOnly should be FALSE.
+ */
+static int port_external_config_init(struct port *p, struct config *cfg)
+{
+	if (port_is_uds(p)) {
+		return 0;
+	}
+	p->external_port_config =
+		config_get_int(cfg, NULL, "externalPortConfigurationEnabled");
+	p->desiredState = config_get_int(cfg, p->name,
+			"externalPortConfigurationPortDS.desiredState");
+	if (!p->external_port_config) {
+		return 0;
+	}
+	if (p->bmca == BMCA_NOOP) {
+		pr_err("%s: BMCA noop and externalPortConfigurationEnabled "
+		       "both decide the port state", p->log_name);
+		return -1;
+	}
+	if (p->master_only || config_get_int(cfg, NULL, "clientOnly")) {
+		pr_warning("%s: serverOnly and clientOnly do not determine "
+			   "the port state when external port configuration "
+			   "is enabled", p->log_name);
+	}
+	pr_info("%s: port state configured externally, desiredState %s",
+		p->log_name, ps_str[p->desiredState]);
+	return 0;
+}
+
 struct port *port_open(const char *phc_device,
 		       int phc_index,
 		       enum timestamp_type timestamping,
@@ -3800,6 +3844,9 @@ struct port *port_open(const char *phc_device,
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
 	if (port_asymmetry_correction_init(p, cfg)) {
+		goto err_transport;
+	}
+	if (port_external_config_init(p, cfg)) {
 		goto err_transport;
 	}
 	p->announce_span = port_is_uds(p) ? 0 : ANNOUNCE_SPAN;
@@ -3938,16 +3985,25 @@ enum delay_mechanism port_delay_mechanism(struct port *port)
 	return port->delayMechanism;
 }
 
+static enum port_state port_next_state(struct port *p, enum port_state state,
+				       enum fsm_event event, int mdiff)
+{
+	if (p->external_port_config) {
+		return external_fsm(state, event, p->desiredState);
+	}
+	return p->state_machine(state, event, mdiff);
+}
+
 int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 {
-	enum port_state next = p->state_machine(p->state, event, mdiff);
+	enum port_state next = port_next_state(p, p->state, event, mdiff);
 
 	if (PS_FAULTY == next) {
 		struct fault_interval i;
 		fault_interval(p, last_fault_type(p), &i);
 		if (port_link_status_get(p) && clear_fault_asap(&i)) {
 			pr_notice("%s: clearing fault immediately", p->log_name);
-			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
+			next = port_next_state(p, next, EV_FAULT_CLEARED, 0);
 		} else if (event == EV_FAULT_DETECTED) {
 			/*
 			 * Reopen the netlink socket and refresh the link
@@ -3972,7 +4028,7 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 		} else {
 			event = EV_INIT_COMPLETE;
 		}
-		next = p->state_machine(next, event, 0);
+		next = port_next_state(p, next, event, 0);
 	}
 
 	if (mdiff) {

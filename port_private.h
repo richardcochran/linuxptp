@@ -103,6 +103,9 @@ struct port {
 	unsigned int multiple_pdr_detected;
 	enum port_state (*state_machine)(enum port_state state,
 					 enum fsm_event event, int mdiff);
+	/* externalPortConfigurationPortDS */
+	int                 external_port_config;
+	enum port_state     desiredState;
 	int bmca;
 	int inhibit_announce;
 	int ignore_source_id;
