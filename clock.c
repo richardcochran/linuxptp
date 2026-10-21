@@ -1982,6 +1982,11 @@ void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 		stats_add_value(c->stats.delay, tmv_dbl(c->path_delay));
 }
 
+tmv_t clock_mean_delay(struct clock *c)
+{
+	return c->path_delay;
+}
+
 void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 		      double nrr)
 {

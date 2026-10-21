@@ -365,6 +365,18 @@ void delay_req_prune(struct port *p)
 	}
 }
 
+/* 16.8.3, recomputed whenever the mean delay is updated. */
+static void port_update_delay_asymmetry(struct port *p, tmv_t mean_delay)
+{
+	tmv_t medium;
+
+	if (!p->asymmetryCorrectionEnable) {
+		return;
+	}
+	medium = dbl_tmv(tmv_dbl(mean_delay) * p->delayFactor);
+	p->asymmetry = p->constantAsymmetry + tmv_to_TimeInterval(medium);
+}
+
 void ts_add(tmv_t *ts, Integer64 correction)
 {
 	if (!correction) {
@@ -2346,6 +2358,7 @@ static int process_cmlds(struct port *p)
 		if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 			const tmv_t tx = tmv_zero();
 			clock_peer_delay(p->clock, p->peer_delay, tx, tx, p->nrate.ratio);
+			port_update_delay_asymmetry(p, p->peer_delay);
 		}
 		break;
 	case MID_SUBSCRIBE_EVENTS_NP:
@@ -2458,6 +2471,7 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 		      m->header.sequenceId, t3, c3, t4);
 
 	clock_path_delay(p->clock, t3, t4c);
+	port_update_delay_asymmetry(p, clock_mean_delay(p->clock));
 
 	TAILQ_REMOVE(&p->delay_req, req, list);
 	msg_put(req);
@@ -2733,6 +2747,7 @@ calc:
 		return;
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
+	port_update_delay_asymmetry(p, p->peer_delay);
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, t1, t2,
@@ -3646,6 +3661,43 @@ err:
 	msg_put(msg);
 }
 
+/* Only one mechanism may own portDS.delayAsymmetry. */
+static int port_asymmetry_correction_init(struct port *p, struct config *cfg)
+{
+	double alpha;
+
+	if (port_is_uds(p)) {
+		return 0;
+	}
+	p->asymmetryCorrectionEnable =
+		config_get_int(cfg, p->name, "asymmetryCorrectionPortDS.enable");
+	if (!p->asymmetryCorrectionEnable) {
+		return 0;
+	}
+	if (p->asymmetry) {
+		pr_err("%s: delayAsymmetry and asymmetryCorrectionPortDS both "
+		       "set delayAsymmetry; put the constant part in "
+		       "asymmetryCorrectionPortDS.constantAsymmetry",
+		       p->log_name);
+		return -1;
+	}
+	if (config_get_int(cfg, p->name, "interface_rate_tlv")) {
+		pr_err("%s: interface_rate_tlv and asymmetryCorrectionPortDS "
+		       "both compute delayAsymmetry", p->log_name);
+		return -1;
+	}
+
+	p->constantAsymmetry = config_get_int(cfg, p->name,
+			"asymmetryCorrectionPortDS.constantAsymmetry");
+	p->constantAsymmetry <<= 16;
+
+	alpha = config_get_double(cfg, p->name,
+			"asymmetryCorrectionPortDS.delayCoefficient");
+	p->delayFactor = alpha / (alpha + 2.0);
+	p->asymmetry = p->constantAsymmetry;
+	return 0;
+}
+
 struct port *port_open(const char *phc_device,
 		       int phc_index,
 		       enum timestamp_type timestamping,
@@ -3747,6 +3799,9 @@ struct port *port_open(const char *phc_device,
 	p->iface = interface;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
+	if (port_asymmetry_correction_init(p, cfg)) {
+		goto err_transport;
+	}
 	p->announce_span = port_is_uds(p) ? 0 : ANNOUNCE_SPAN;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");

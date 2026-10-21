@@ -164,6 +164,26 @@ expires.
 The default is 3.
 
 .TP
+.B asymmetryCorrectionPortDS.constantAsymmetry
+The constant part, in nanoseconds, of the delay asymmetry computed when
+\fBasymmetryCorrectionPortDS.enable\fR is set.
+The default is 0.
+
+.TP
+.B asymmetryCorrectionPortDS.delayCoefficient
+The delay coefficient alpha of the medium, as in t_ms = (1 + alpha) * t_sm,
+in the range \-1.0 to 1.0.
+The default is 0.0 (a symmetric medium).
+
+.TP
+.B asymmetryCorrectionPortDS.enable
+Compute the delay asymmetry as constantAsymmetry + alpha / (alpha + 2) times
+the mean delay, each time the mean delay is updated, as specified in
+IEEE 1588-2019 16.8. Cannot be combined with a nonzero \fBdelayAsymmetry\fR
+or with \fBinterface_rate_tlv\fR.
+The default is 0 (disabled).
+
+.TP
 .B boundary_clock_jbod
 When running as a boundary clock (that is, when more than one network
 interface is configured), ptp4l performs a sanity check to make sure

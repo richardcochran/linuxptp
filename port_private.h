@@ -111,6 +111,10 @@ struct port {
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
 	Integer64           asymmetry;
+	/* asymmetryCorrectionPortDS */
+	Integer64           constantAsymmetry;
+	double              delayFactor;
+	int                 asymmetryCorrectionEnable;
 	enum as_capable     asCapable;
 	Integer8            logMinDelayReqInterval;
 	TimeInterval        peerMeanPathDelay;

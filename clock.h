@@ -246,6 +246,13 @@ struct PortIdentity clock_parent_identity(struct clock *c);
 void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx);
 
 /**
+ * Obtain the mean path delay last measured.
+ * @param c  The clock instance.
+ * @return   The mean path delay.
+ */
+tmv_t clock_mean_delay(struct clock *c);
+
+/**
  * Provide the estimated peer delay from a slave port.
  * @param c           The clock instance.
  * @param ppd         The peer delay as measured on a slave port.
