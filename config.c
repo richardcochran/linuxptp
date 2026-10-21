@@ -287,6 +287,8 @@ struct config_item config_tab[] = {
 	PORT_ITEM_INT("fault_badpeernet_interval", 16, INT32_MIN, INT32_MAX),
 	PORT_ITEM_INT("fault_reset_interval", 4, INT8_MIN, INT8_MAX),
 	GLOB_ITEM_DBL("first_step_threshold", 0.00002, 0.0, DBL_MAX),
+	GLOB_ITEM_STR("fine_ts_provider", ""),
+	GLOB_ITEM_INT("fine_ts_timeout", 10, 1, 1000),
 	PORT_ITEM_INT("follow_up_info", 0, 0, 1),
 	GLOB_ITEM_INT("free_running", 0, 0, 1),
 	PORT_ITEM_INT("freq_est_interval", 1, INT_MIN, INT_MAX),

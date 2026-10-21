@@ -25,6 +25,7 @@
 
 #include "clock.h"
 #include "config.h"
+#include "fine_ts.h"
 #include "ntpshm.h"
 #include "pi.h"
 #include "print.h"
@@ -193,6 +194,10 @@ int main(int argc, char *argv[])
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 	sk_hwts_filter_mode = config_get_int(cfg, NULL, "hwts_filter");
 
+	if (fine_ts_init(cfg)) {
+		goto out;
+	}
+
 	ptp_hdr_ver = config_get_int(cfg, NULL, "ptp_minor_version");
 	ptp_hdr_ver = (ptp_hdr_ver << 4) | PTP_MAJOR_VERSION;
 
@@ -263,6 +268,7 @@ int main(int argc, char *argv[])
 out:
 	if (clock)
 		clock_destroy(clock);
+	fine_ts_cleanup();
 	sad_destroy(cfg);
 	config_destroy(cfg);
 	return err;

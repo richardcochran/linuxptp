@@ -705,6 +705,19 @@ This option used to be called
 .BR pi_f_offset_const .
 
 .TP
+.B fine_ts_provider
+Path of a UNIX domain datagram socket of a process that supplies the
+sub-nanosecond part of each event time stamp. If the provider does not
+answer, the kernel time stamp is used unchanged.
+The default is the empty string (no provider).
+
+.TP
+.B fine_ts_timeout
+The time in milliseconds to wait for a reply from the
+\fBfine_ts_provider\fR before giving up on one time stamp.
+The default is 10.
+
+.TP
 .B free_running
 Don't adjust the local clock if enabled. The measured offset and frequency will
 be printed at an interval limited by the \fBfreq_est_interval\fR option.

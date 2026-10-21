@@ -139,6 +139,7 @@ struct port {
 	int                 tc_spanning_tree;
 	Integer64           rx_timestamp_offset;
 	Integer64           tx_timestamp_offset;
+	unsigned int        ifindex;
 	int                 unicast_req_duration;
 	enum link_state     link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];

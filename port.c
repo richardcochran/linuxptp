@@ -29,6 +29,7 @@
 #include "clock.h"
 #include "designated_fsm.h"
 #include "filter.h"
+#include "fine_ts.h"
 #include "missing.h"
 #include "msg.h"
 #include "phc.h"
@@ -676,6 +677,10 @@ static void port_stats_inc_tx(struct port *p, const struct ptp_message *msg)
 static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 				 enum transport_event event)
 {
+	/* Taken before msg_pre_send() byte swaps the header. */
+	struct PortIdentity fine_ts_pid = msg->header.sourcePortIdentity;
+	UInteger16 fine_ts_seqid = msg->header.sequenceId;
+	uint8_t fine_ts_type = msg_type(msg);
 	int cnt;
 	if (port_has_security(p)) {
 		cnt = sad_append_auth_tlv(clock_config(p->clock), p->spp,
@@ -696,6 +701,8 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 	}
 	port_stats_inc_tx(p, msg);
 	if (msg_sots_valid(msg)) {
+		fine_ts_apply(p->ifindex, FINE_TS_EGRESS, fine_ts_type,
+			      fine_ts_seqid, &fine_ts_pid, &msg->hwts.ts);
 		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
 	return 0;
@@ -3293,6 +3300,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		return EV_NONE;
 	}
 	if (msg_sots_valid(msg)) {
+		fine_ts_apply(p->ifindex, FINE_TS_INGRESS,
+			      msg_type(msg), msg->header.sequenceId,
+			      &msg->header.sourcePortIdentity,
+			      &msg->hwts.ts);
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
 		if (p->state == PS_SLAVE) {
 			clock_check_ts(p->clock,
@@ -3374,6 +3385,10 @@ int port_forward_to(struct port *p, struct ptp_message *msg)
 int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 			  enum transport_event event)
 {
+	/* Taken before msg_pre_send() byte swaps the header. */
+	struct PortIdentity fine_ts_pid = msg->header.sourcePortIdentity;
+	UInteger16 fine_ts_seqid = msg->header.sequenceId;
+	uint8_t fine_ts_type = msg_type(msg);
 	int cnt;
 	if (port_has_security(p)) {
 		cnt = sad_append_auth_tlv(clock_config(p->clock), p->spp,
@@ -3394,6 +3409,8 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 	}
 	port_stats_inc_tx(p, msg);
 	if (msg_sots_valid(msg)) {
+		fine_ts_apply(p->ifindex, FINE_TS_EGRESS, fine_ts_type,
+			      fine_ts_seqid, &fine_ts_pid, &msg->hwts.ts);
 		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
 	return 0;
@@ -3618,6 +3635,7 @@ struct port *port_open(const char *phc_device,
 		p->log_name = NULL;
 		goto err_port;
 	}
+	p->ifindex = if_nametoindex(p->name);
 
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
