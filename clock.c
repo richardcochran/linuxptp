@@ -1518,6 +1518,19 @@ struct dataset *clock_best_foreign(struct clock *c)
 	return c->best ? &c->best->dataset : NULL;
 }
 
+void clock_forget_best(struct clock *c, struct port *p)
+{
+	/*
+	 * c->best points into the foreign master list of the port that
+	 * heard it.  Clearing it also makes the next state decision see a
+	 * new best and reset the time stamp history, rather than leave
+	 * that to whether malloc hands back the same address.
+	 */
+	if (c->best && c->best->port == p) {
+		c->best = NULL;
+	}
+}
+
 struct port *clock_best_port(struct clock *c)
 {
 	return c->best ? c->best->port : NULL;

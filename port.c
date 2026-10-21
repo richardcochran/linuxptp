@@ -2040,6 +2040,7 @@ void port_disable(struct port *p)
 	flush_delay_req(p);
 	flush_peer_delay(p);
 
+	clock_forget_best(p->clock, p);
 	p->best = NULL;
 	unicast_service_clear_clients(p);
 	free_foreign_masters(p);

@@ -68,6 +68,14 @@ struct dataset *clock_best_foreign(struct clock *c);
 struct port *clock_best_port(struct clock *c);
 
 /**
+ * Drop the cached best foreign master if it belongs to a given port.  The
+ * port must call this before it frees its foreign masters.
+ * @param c  The clock instance.
+ * @param p  The port whose foreign masters are going away.
+ */
+void clock_forget_best(struct clock *c, struct port *p);
+
+/**
  * Obtain the clockClass attribute from a clock.
  * @param c  The clock instance.
  * @return   The value of the clock's class.
