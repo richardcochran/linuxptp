@@ -287,8 +287,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		cds = (struct currentDS *) mgt->data;
 		fprintf(fp, "CURRENT_DATA_SET "
 			IFMT "stepsRemoved     %hd"
-			IFMT "offsetFromMaster %.1f"
-			IFMT "meanPathDelay    %.1f",
+			IFMT "offsetFromMaster %.3f"
+			IFMT "meanPathDelay    %.3f",
 			cds->stepsRemoved, cds->offsetFromMaster / 65536.0,
 			cds->meanPathDelay / 65536.0);
 		break;

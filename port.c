@@ -1906,6 +1906,8 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	fup->header.logMessageInterval = p->logSyncInterval;
 
 	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
+	/* 9.5.10: the fraction of t1 goes in the correctionField. */
+	fup->header.correction += tmv_frac(msg->hwts.ts);
 
 	if (dst) {
 		fup->address = *dst;
@@ -2364,6 +2366,8 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
 	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
+	/* 11.3.2 d) 2): subtract, the requester computes t4 - cf. */
+	msg->header.correction -= tmv_frac(m->hwts.ts);
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
