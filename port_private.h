@@ -24,6 +24,7 @@
 #include "as_capable.h"
 #include "clock.h"
 #include "fsm.h"
+#include "l1_state.h"
 #include "l1sync.h"
 #include "monitor.h"
 #include "msg.h"
@@ -180,6 +181,7 @@ struct port {
 	/* L1SyncBasicPortDS */
 	struct l1sync_basic_port_ds l1sync;
 	int                 l1sync_reset;
+	struct l1_state     l1state;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)

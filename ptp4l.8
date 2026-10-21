@@ -1051,6 +1051,21 @@ shaping. This option is only available with the IEEE 802.3 transport (the
 transports. Must be in the range of 0 to 15, inclusive. The default is 0.
 
 .TP
+.B l1_state_provider
+Path of a UNIX domain datagram socket of a process that applies and reports
+the layer 1 relationships of IEEE 1588-2019 Annex L. It is asked to apply
+them on entry to CONFIG_MATCH, to release them on leaving L1_SYNC_UP or
+CONFIG_MATCH, and queried once per L1Sync interval. Without an answer the
+port reports no coherency and L1Sync waits in CONFIG_MATCH.
+The default is the empty string (no provider).
+
+.TP
+.B l1_state_timeout
+The time in milliseconds to wait for a reply from the
+\fBl1_state_provider\fR to one query.
+The default is 100.
+
+.TP
 .B step_threshold
 The maximum offset the servo will correct by changing the clock frequency (phase
 when using nullf servo) instead of stepping the clock. When set to 0.0, the

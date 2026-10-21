@@ -307,6 +307,8 @@ struct config_item config_tab[] = {
 	GLOB_ITEM_INT("initial_delay", 0, 0, INT_MAX),
 	PORT_ITEM_INT("interface_rate_tlv", 0, 0, 1),
 	GLOB_ITEM_INT("kernel_leap", 1, 0, 1),
+	GLOB_ITEM_STR("l1_state_provider", ""),
+	GLOB_ITEM_INT("l1_state_timeout", 100, 1, 1000),
 	PORT_ITEM_INT("L1SyncEnabled", 0, 0, 1),
 	PORT_ITEM_INT("L1SyncReceiptTimeout", 3, 2, UINT8_MAX),
 	GLOB_ITEM_STR("leapfile", NULL),

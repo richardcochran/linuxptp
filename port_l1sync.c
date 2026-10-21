@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "contain.h"
+#include "l1_state.h"
 #include "l1sync_fsm.h"
 #include "port.h"
 #include "port_private.h"
@@ -75,18 +76,18 @@ static void l1sync_derive(struct port *p)
 		return;
 	}
 
-	bds->isTxCoherent = FALSE;
-	bds->isRxCoherent = FALSE;
+	bds->isTxCoherent = p->l1state.isTxCoherent;
+	bds->isRxCoherent = p->l1state.isRxCoherent;
 
-	/* L.5.3.4 NOTE 2 */
+	/* L.5.3.4 NOTE 2, and the provider must agree. */
 	switch (p->state) {
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		bds->isCongruent = bds->isTxCoherent;
+		bds->isCongruent = bds->isTxCoherent && p->l1state.isCongruent;
 		break;
 	case PS_UNCALIBRATED:
 	case PS_SLAVE:
-		bds->isCongruent = bds->isRxCoherent;
+		bds->isCongruent = bds->isRxCoherent && p->l1state.isCongruent;
 		break;
 	default:
 		bds->isCongruent = FALSE;
@@ -129,14 +130,29 @@ out:
 	return err;
 }
 
+/* Table L.4 requests the relationship in CONFIG_MATCH and L1_SYNC_UP. */
+static int l1sync_requests_relationship(enum l1sync_state state)
+{
+	return state == L1S_CONFIG_MATCH || state == L1S_L1_SYNC_UP;
+}
+
 static void l1sync_transition(struct port *p, enum l1sync_state next)
 {
 	struct l1sync_basic_port_ds *bds = &p->l1sync;
+	enum l1sync_state prev = bds->L1SyncState;
 
 	pr_notice("%s: L1Sync %s to %s", p->log_name,
-		  l1sync_state_name(bds->L1SyncState),
-		  l1sync_state_name(next));
+		  l1sync_state_name(prev), l1sync_state_name(next));
 	bds->L1SyncState = next;
+
+	if (!l1sync_requests_relationship(prev) &&
+	    l1sync_requests_relationship(next)) {
+		l1_state_command(p->ifindex, L1_CMD_ENABLE);
+	} else if (l1sync_requests_relationship(prev) &&
+		   !l1sync_requests_relationship(next)) {
+		l1_state_command(p->ifindex, L1_CMD_DISABLE);
+		memset(&p->l1state, 0, sizeof(p->l1state));
+	}
 
 	switch (next) {
 	case L1S_DISABLED:
@@ -279,6 +295,8 @@ void port_l1sync_recv(struct port *p, struct ptp_message *m)
 enum fsm_event port_l1sync_tx_timeout(struct port *p)
 {
 	l1sync_set_tx_tmo(p);
+	l1_state_query(p->ifindex, &p->l1state);
+	port_l1sync_update(p);
 	return l1sync_tx(p) ? EV_FAULT_DETECTED : EV_NONE;
 }
 
