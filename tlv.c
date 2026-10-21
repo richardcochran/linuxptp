@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "l1sync.h"
 #include "port.h"
 #include "tlv.h"
 #include "msg.h"
@@ -505,6 +506,10 @@ static int mgt_post_recv(struct management_tlv *m, uint16_t data_len,
 		net2host64(pcn->egressLatency);
 		net2host64(pcn->ingressLatency);
 		net2host64(pcn->delayAsymmetry);
+		break;
+	case MID_L1SYNC_BASIC_PORT_DS_NP:
+		if (data_len != sizeof(struct l1sync_basic_port_ds))
+			goto bad_length;
 		break;
 	case MID_SAVE_IN_NON_VOLATILE_STORAGE:
 	case MID_RESET_NON_VOLATILE_STORAGE:

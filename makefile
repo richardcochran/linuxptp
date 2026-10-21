@@ -31,7 +31,7 @@ TS2PHC	= ts2phc.o lstab.o nmea.o serial.o sock.o ts2phc_generic_pps_source.o \
  ts2phc_nmea_pps_source.o ts2phc_phc_pps_source.o ts2phc_pps_sink.o ts2phc_pps_source.o
 OBJ	= bmc.o clock.o clockadj.o clockcheck.o config.o designated_fsm.o \
  e2e_tc.o fault.o $(FILTERS) fsm.o hash.o interface.o monitor.o msg.o phc.o \
- fine_ts.o provider.o \
+ fine_ts.o l1sync_fsm.o l1sync_msg.o port_l1sync.o provider.o \
  pmc_common.o port.o port_signaling.o pqueue.o print.o ptp4l.o p2p_tc.o rtnl.o \
  $(SECURITY) $(SERVOS) sk.o stats.o tc.o $(TRANSP) telecom.o tlv.o tsproc.o \
  unicast_client.o unicast_fsm.o unicast_service.o util.o version.o
@@ -79,7 +79,7 @@ ptp4l: $(OBJ)
 nsm: config.o $(FILTERS) hash.o interface.o msg.o nsm.o phc.o print.o \
  rtnl.o $(SECURITY) sk.o $(TRANSP) tlv.o tsproc.o util.o version.o
 
-pmc: config.o hash.o interface.o msg.o phc.o pmc.o pmc_common.o print.o \
+pmc: config.o hash.o interface.o l1sync_msg.o msg.o phc.o pmc.o pmc_common.o print.o \
  $(SECURITY) sk.o tlv.o $(TRANSP) util.o version.o
 
 phc2sys: clockadj.o clockcheck.o config.o hash.o interface.o msg.o \

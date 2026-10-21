@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "l1sync.h"
 #include "notification.h"
 #include "print.h"
 #include "sad.h"
@@ -162,6 +163,7 @@ struct management_id idtab[] = {
 	{ "POWER_PROFILE_SETTINGS_NP", MID_POWER_PROFILE_SETTINGS_NP, do_set_action },
 	{ "CMLDS_INFO_NP", MID_CMLDS_INFO_NP, do_get_action },
 	{ "PORT_CORRECTIONS_NP", MID_PORT_CORRECTIONS_NP, do_set_action },
+	{ "L1SYNC_BASIC_PORT_DS_NP", MID_L1SYNC_BASIC_PORT_DS_NP, do_get_action },
 };
 
 static void do_get_action(struct pmc *pmc, int action, int index, char *str)
@@ -805,6 +807,9 @@ static int pmc_tlv_datalen(struct pmc *pmc, int id)
 		break;
 	case MID_PORT_CORRECTIONS_NP:
 		len += sizeof(struct port_corrections_np);
+		break;
+	case MID_L1SYNC_BASIC_PORT_DS_NP:
+		len += sizeof(struct l1sync_basic_port_ds);
 		break;
 	case MID_LOG_ANNOUNCE_INTERVAL:
 	case MID_ANNOUNCE_RECEIPT_TIMEOUT:

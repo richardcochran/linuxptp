@@ -674,8 +674,8 @@ static void port_stats_inc_tx(struct port *p, const struct ptp_message *msg)
 	p->stats.txMsgType[msg_type(msg)]++;
 }
 
-static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
-				 enum transport_event event)
+int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
+			  enum transport_event event)
 {
 	/* Taken before msg_pre_send() byte swaps the header. */
 	struct PortIdentity fine_ts_pid = msg->header.sourcePortIdentity;
@@ -1183,6 +1183,10 @@ static int port_management_fill_response(struct port *target,
 		pcn->ingressLatency = target->rx_timestamp_offset;
 		pcn->delayAsymmetry = target->asymmetry;
 		datalen = sizeof(*pcn);
+		break;
+	case MID_L1SYNC_BASIC_PORT_DS_NP:
+		memcpy(tlv->data, &target->l1sync, sizeof(target->l1sync));
+		datalen = sizeof(target->l1sync);
 		break;
 	default:
 		/* The caller should *not* respond to this message. */
@@ -2049,6 +2053,7 @@ void port_disable(struct port *p)
 	flush_delay_req(p);
 	flush_peer_delay(p);
 
+	port_l1sync_disable(p);
 	clock_forget_best(p->clock, p);
 	p->best = NULL;
 	unicast_service_clear_clients(p);
@@ -2101,6 +2106,21 @@ int port_initialize(struct port *p)
 	p->delay_request_variability = config_get_double(cfg, p->name, "delay_request_variability");
 	p->delay_response_timeout  = config_get_int(cfg, p->name, "delay_response_timeout");
 	p->iface_rate_tlv 	   = config_get_int(cfg, p->name, "interface_rate_tlv");
+
+	p->l1sync.L1SyncEnabled = config_get_int(cfg, p->name, "L1SyncEnabled");
+	p->l1sync.txCoherentIsRequired =
+		config_get_int(cfg, p->name, "txCoherentIsRequired");
+	p->l1sync.rxCoherentIsRequired =
+		config_get_int(cfg, p->name, "rxCoherentIsRequired");
+	p->l1sync.congruentIsRequired =
+		config_get_int(cfg, p->name, "congruentIsRequired");
+	p->l1sync.optParamsEnabled =
+		config_get_int(cfg, p->name, "optParamsEnabled");
+	p->l1sync.logL1SyncInterval =
+		config_get_int(cfg, p->name, "logL1SyncInterval");
+	p->l1sync.L1SyncReceiptTimeout =
+		config_get_int(cfg, p->name, "L1SyncReceiptTimeout");
+	l1sync_reset_dynamic(&p->l1sync);
 
 	if (config_get_int(cfg, p->name, "asCapable") == AS_CAPABLE_TRUE) {
 		p->asCapable = ALWAYS_CAPABLE;
@@ -2160,6 +2180,7 @@ int port_initialize(struct port *p)
 	}
 
 	port_nrate_initialize(p);
+	port_l1sync_initialize(p);
 
 	clock_fda_changed(p->clock);
 	return 0;
@@ -3102,6 +3123,8 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	/* Switch the clock if needed */
 	port_change_phc(p);
 
+	port_l1sync_link_status(p, linkup);
+
 	/*
 	 * A port going down can affect the BMCA result.
 	 * Force a state decision event.
@@ -3214,6 +3237,14 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		p->service_stats.unicast_request_timeout++;
 		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
+	case FD_L1SYNC_TX_TIMER:
+		pr_debug("%s: L1Sync tx timeout", p->log_name);
+		return port_l1sync_tx_timeout(p);
+
+	case FD_L1SYNC_RX_TIMER:
+		pr_debug("%s: L1Sync receipt timeout", p->log_name);
+		return port_l1sync_rx_timeout(p);
+
 	case FD_CMLDS:
 		pr_debug("%s: CMLDS push notification", p->log_name);
 		return process_cmlds(p) ? EV_FAULT_DETECTED : EV_NONE;
@@ -3309,6 +3340,10 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 			clock_check_ts(p->clock,
 				       tmv_to_nanoseconds(msg->hwts.ts));
 		}
+	}
+
+	if (p->l1sync.L1SyncEnabled) {
+		port_l1sync_recv(p, msg);
 	}
 
 	switch (msg_type(msg)) {
@@ -3891,6 +3926,7 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 	if (next != p->state) {
 		port_show_transition(p, next, event);
 		p->state = next;
+		port_l1sync_update(p);
 		port_notify_event(p, NOTIFY_PORT_STATE);
 		p->unicast_state_dirty = true;
 		return 1;

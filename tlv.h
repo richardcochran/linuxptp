@@ -132,6 +132,7 @@ enum management_action {
 #define MID_POWER_PROFILE_SETTINGS_NP			0xC00A
 #define MID_CMLDS_INFO_NP				0xC00B
 #define MID_PORT_CORRECTIONS_NP				0xC00C
+#define MID_L1SYNC_BASIC_PORT_DS_NP			0xC00E
 
 /* Management error ID values */
 #define MID_RESPONSE_TOO_BIG				0x0001

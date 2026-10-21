@@ -210,6 +210,13 @@ Delay Service, for use with the "COMMON_P2P" delay mechanism.
 The default is /var/run/cmlds_server.
 
 .TP
+.B congruentIsRequired
+Require the flows of layer 1 syntonization and of PTP synchronization to be
+congruent, per IEEE 1588-2019 Annex L. Has no effect unless
+\fBL1SyncEnabled\fR is set.
+The default is 0.
+
+.TP
 .B delayAsymmetry
 The time difference in nanoseconds of the transmit and receive
 paths. This value should be positive when the server-to-client
@@ -331,12 +338,31 @@ transmitted.  Setting this option inhibits multicast transmission.
 The default is 0 (mutlicast enabled).
 
 .TP
+.B L1SyncEnabled
+Enable the layer 1 based synchronization performance enhancement of
+IEEE 1588-2019 Annex L. The port exchanges the L1_SYNC TLV with its peer
+in Signaling messages and runs the L1Sync state machine.
+The default is 0 (disabled).
+
+.TP
+.B L1SyncReceiptTimeout
+The number of L1Sync intervals without an L1_SYNC TLV from the peer after
+which the link is no longer considered alive.
+The default is 3.
+
+.TP
 .B logAnnounceInterval
 The mean time interval between Announce messages. A shorter interval makes
 ptp4l react faster to the changes in the client/server hierarchy. The interval
 should be the same in the whole domain. It's specified as a power of two in
 seconds.
 The default is 1 (2 seconds).
+
+.TP
+.B logL1SyncInterval
+The mean time interval between L1_SYNC TLV transmissions, specified as a
+power of two in seconds.
+The default is 0 (1 second).
 
 .TP
 .B logMinDelayReqInterval
@@ -403,6 +429,12 @@ set, then the local client port will request the remote server to
 switch to the given message rate via a signaling message containing a
 Message interval request TLV.  This option is specified as a power of
 two in seconds, and default value is 0 (1 second).
+
+.TP
+.B optParamsEnabled
+The optional parameters of the L1_SYNC TLV are not implemented, so the
+only accepted value is 0. Extended TLVs from a peer are still accepted.
+The default is 0.
 
 .TP
 .B path_trace_enabled
@@ -504,6 +536,12 @@ Relevant only with L2 transport. The default is 01:80:C2:00:00:0E.
 The default follows IEEE P1588, Multicast MAC addresses, 'Peer-to-peer delay'.
 
 .TP
+.B rxCoherentIsRequired
+Require the layer 1 receive clock to be coherent with the local PTP clock,
+per IEEE 1588-2019 Annex L. Has no effect unless \fBL1SyncEnabled\fR is set.
+The default is 0.
+
+.TP
 .B serverOnly
 Setting this option to one (1) prevents the port from entering the
 client state. In addition, the local clock will ignore Announce
@@ -546,6 +584,12 @@ well when the rate of sync messages (logSyncInterval) is similar to the rate of
 delay messages (logMinDelayReqInterval or logMinPdelayReqInterval). Weighting
 is useful with larger network jitters (e.g. software time stamping).
 The default is filter.
+
+.TP
+.B txCoherentIsRequired
+Require the layer 1 transmit clock to be coherent with the local PTP clock,
+per IEEE 1588-2019 Annex L. Has no effect unless \fBL1SyncEnabled\fR is set.
+The default is 0.
 
 .TP
 .B udp_ttl
