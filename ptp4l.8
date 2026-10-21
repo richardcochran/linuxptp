@@ -1095,6 +1095,14 @@ messages are printed at the LOG_INFO level.
 The default is 0 (1 second).
 
 .TP
+.B syntonized
+Take the ratio of the local clock frequency to the master's as exactly one
+instead of estimating it. Only has an effect with \fBfree_running\fR. Set
+this only when the physical layer is syntonized to the master, for example
+when L1Sync reaches L1_SYNC_UP with \fBrxCoherentIsRequired\fR.
+The default is 0.
+
+.TP
 .B tc_spanning_tree
 When running as a Transparent Clock, increment the "stepsRemoved"
 field of Announce messages that pass through the switch.  Enabling

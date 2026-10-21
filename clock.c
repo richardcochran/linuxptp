@@ -114,6 +114,7 @@ struct clock {
 	int last_port_number;
 	int sde;
 	int free_running;
+	int syntonized;
 	int freq_est_interval;
 	int local_sync_uncertain;
 	int write_phase_mode;
@@ -1324,6 +1325,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 
 	c->config = config;
 	c->free_running = config_get_int(config, NULL, "free_running");
+	c->syntonized = config_get_int(config, NULL, "syntonized");
 	c->freq_est_interval = config_get_int(config, NULL, "freq_est_interval");
 	c->local_sync_uncertain = SYNC_UNCERTAIN_DONTCARE;
 	c->write_phase_mode = config_get_int(config, NULL, "write_phase_mode");
@@ -2389,6 +2391,13 @@ void clock_check_ts(struct clock *c, uint64_t ts)
 double clock_rate_ratio(struct clock *c)
 {
 	if (c->free_running) {
+		/*
+		 * The estimate is noise on a syntonized link, and wrong
+		 * when an external servo is steering the clock.
+		 */
+		if (c->syntonized) {
+			return 1.0;
+		}
 		return c->master_local_rr;
 	}
 	return servo_rate_ratio(c->servo);
