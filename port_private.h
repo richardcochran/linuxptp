@@ -24,6 +24,8 @@
 #include "as_capable.h"
 #include "clock.h"
 #include "fsm.h"
+#include "l1_state.h"
+#include "l1sync.h"
 #include "monitor.h"
 #include "msg.h"
 #include "pmc_common.h"
@@ -101,6 +103,9 @@ struct port {
 	unsigned int multiple_pdr_detected;
 	enum port_state (*state_machine)(enum port_state state,
 					 enum fsm_event event, int mdiff);
+	/* externalPortConfigurationPortDS */
+	int                 external_port_config;
+	enum port_state     desiredState;
 	int bmca;
 	int inhibit_announce;
 	int ignore_source_id;
@@ -109,6 +114,10 @@ struct port {
 	struct PortIdentity portIdentity;
 	enum port_state     state; /*portState*/
 	Integer64           asymmetry;
+	/* asymmetryCorrectionPortDS */
+	Integer64           constantAsymmetry;
+	double              delayFactor;
+	int                 asymmetryCorrectionEnable;
 	enum as_capable     asCapable;
 	Integer8            logMinDelayReqInterval;
 	TimeInterval        peerMeanPathDelay;
@@ -139,6 +148,7 @@ struct port {
 	int                 tc_spanning_tree;
 	Integer64           rx_timestamp_offset;
 	Integer64           tx_timestamp_offset;
+	unsigned int        ifindex;
 	int                 unicast_req_duration;
 	enum link_state     link_status;
 	struct fault_interval flt_interval_pertype[FT_CNT];
@@ -175,6 +185,10 @@ struct port {
 		int port;
 	} cmlds;
 	struct ProfileIdentity profileIdentity;
+	/* L1SyncBasicPortDS */
+	struct l1sync_basic_port_ds l1sync;
+	int                 l1sync_reset;
+	struct l1_state     l1state;
 };
 
 #define portnum(p) (p->portIdentity.portNumber)
@@ -190,6 +204,8 @@ void delay_req_prune(struct port *p);
 void fc_clear(struct foreign_clock *fc);
 void flush_delay_req(struct port *p);
 void flush_last_sync(struct port *p);
+int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
+			  enum transport_event event);
 int port_capable(struct port *p);
 int port_clr_tmo(int fd);
 int port_delay_request(struct port *p);
@@ -199,6 +215,13 @@ int port_is_enabled(struct port *p);
 void port_link_status(void *ctx, int index, int linkup);
 int port_set_announce_tmo(struct port *p);
 int port_set_delay_tmo(struct port *p);
+void port_l1sync_disable(struct port *p);
+void port_l1sync_initialize(struct port *p);
+void port_l1sync_link_status(struct port *p, int linkup);
+void port_l1sync_recv(struct port *p, struct ptp_message *m);
+enum fsm_event port_l1sync_rx_timeout(struct port *p);
+enum fsm_event port_l1sync_tx_timeout(struct port *p);
+void port_l1sync_update(struct port *p);
 int port_set_qualification_tmo(struct port *p);
 int port_set_sync_rx_tmo(struct port *p);
 void port_show_transition(struct port *p, enum port_state next,

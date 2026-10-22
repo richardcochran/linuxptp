@@ -20,7 +20,7 @@
 #ifndef HAVE_FD_H
 #define HAVE_FD_H
 
-#define N_TIMER_FDS 8
+#define N_TIMER_FDS 10
 
 /*
  * The order matters here.  The DELAY timer must appear before the
@@ -39,6 +39,8 @@ enum {
 	FD_SYNC_TX_TIMER,
 	FD_UNICAST_REQ_TIMER,
 	FD_UNICAST_SRV_TIMER,
+	FD_L1SYNC_TX_TIMER,
+	FD_L1SYNC_RX_TIMER,
 	FD_CMLDS,
 	FD_RTNL,
 	N_POLLFD,

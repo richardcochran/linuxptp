@@ -28,6 +28,7 @@
 
 #include "ds.h"
 #include "fsm.h"
+#include "l1sync.h"
 #include "notification.h"
 #include "pmc_common.h"
 #include "print.h"
@@ -169,6 +170,7 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 	struct management_tlv_datum *mtd;
 	struct unicast_master_entry *ume;
 	struct subscribe_events_np *sen;
+	struct l1sync_basic_port_ds *l1b;
 	struct port_corrections_np *pcn;
 	struct port_properties_np *ppn;
 	struct port_hwclock_np *phn;
@@ -287,8 +289,8 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 		cds = (struct currentDS *) mgt->data;
 		fprintf(fp, "CURRENT_DATA_SET "
 			IFMT "stepsRemoved     %hd"
-			IFMT "offsetFromMaster %.1f"
-			IFMT "meanPathDelay    %.1f",
+			IFMT "offsetFromMaster %.3f"
+			IFMT "meanPathDelay    %.3f",
 			cds->stepsRemoved, cds->offsetFromMaster / 65536.0,
 			cds->meanPathDelay / 65536.0);
 		break;
@@ -654,6 +656,46 @@ static void pmc_show(struct ptp_message *msg, FILE *fp)
 			cmlds->meanLinkDelay >> 16,
 			cmlds->scaledNeighborRateRatio,
 			cmlds->as_capable);
+		break;
+	case MID_L1SYNC_BASIC_PORT_DS_NP:
+		l1b = (struct l1sync_basic_port_ds *) mgt->data;
+		fprintf(fp, "L1SYNC_BASIC_PORT_DS_NP "
+			IFMT "L1SyncEnabled            %hhu"
+			IFMT "txCoherentIsRequired     %hhu"
+			IFMT "rxCoherentIsRequired     %hhu"
+			IFMT "congruentIsRequired      %hhu"
+			IFMT "optParamsEnabled         %hhu"
+			IFMT "logL1SyncInterval        %hhd"
+			IFMT "L1SyncReceiptTimeout     %hhu"
+			IFMT "L1SyncState              %s"
+			IFMT "L1SyncLinkAlive          %hhu"
+			IFMT "isTxCoherent             %hhu"
+			IFMT "isRxCoherent             %hhu"
+			IFMT "isCongruent              %hhu"
+			IFMT "peerTxCoherentIsRequired %hhu"
+			IFMT "peerRxCoherentIsRequired %hhu"
+			IFMT "peerCongruentIsRequired  %hhu"
+			IFMT "peerIsTxCoherent         %hhu"
+			IFMT "peerIsRxCoherent         %hhu"
+			IFMT "peerIsCongruent          %hhu",
+			l1b->L1SyncEnabled,
+			l1b->txCoherentIsRequired,
+			l1b->rxCoherentIsRequired,
+			l1b->congruentIsRequired,
+			l1b->optParamsEnabled,
+			l1b->logL1SyncInterval,
+			l1b->L1SyncReceiptTimeout,
+			l1sync_state_name(l1b->L1SyncState),
+			l1b->L1SyncLinkAlive,
+			l1b->isTxCoherent,
+			l1b->isRxCoherent,
+			l1b->isCongruent,
+			l1b->peerTxCoherentIsRequired,
+			l1b->peerRxCoherentIsRequired,
+			l1b->peerCongruentIsRequired,
+			l1b->peerIsTxCoherent,
+			l1b->peerIsRxCoherent,
+			l1b->peerIsCongruent);
 		break;
 	case MID_PORT_CORRECTIONS_NP:
 		pcn = (struct port_corrections_np *) mgt->data;

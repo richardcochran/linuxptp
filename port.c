@@ -28,7 +28,9 @@
 #include "bmc.h"
 #include "clock.h"
 #include "designated_fsm.h"
+#include "external_fsm.h"
 #include "filter.h"
+#include "fine_ts.h"
 #include "missing.h"
 #include "msg.h"
 #include "phc.h"
@@ -364,6 +366,18 @@ void delay_req_prune(struct port *p)
 	}
 }
 
+/* 16.8.3, recomputed whenever the mean delay is updated. */
+static void port_update_delay_asymmetry(struct port *p, tmv_t mean_delay)
+{
+	tmv_t medium;
+
+	if (!p->asymmetryCorrectionEnable) {
+		return;
+	}
+	medium = dbl_tmv(tmv_dbl(mean_delay) * p->delayFactor);
+	p->asymmetry = p->constantAsymmetry + tmv_to_TimeInterval(medium);
+}
+
 void ts_add(tmv_t *ts, Integer64 correction)
 {
 	if (!correction) {
@@ -673,9 +687,13 @@ static void port_stats_inc_tx(struct port *p, const struct ptp_message *msg)
 	p->stats.txMsgType[msg_type(msg)]++;
 }
 
-static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
-				 enum transport_event event)
+int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
+			  enum transport_event event)
 {
+	/* Taken before msg_pre_send() byte swaps the header. */
+	struct PortIdentity fine_ts_pid = msg->header.sourcePortIdentity;
+	UInteger16 fine_ts_seqid = msg->header.sequenceId;
+	uint8_t fine_ts_type = msg_type(msg);
 	int cnt;
 	if (port_has_security(p)) {
 		cnt = sad_append_auth_tlv(clock_config(p->clock), p->spp,
@@ -696,6 +714,8 @@ static int peer_prepare_and_send(struct port *p, struct ptp_message *msg,
 	}
 	port_stats_inc_tx(p, msg);
 	if (msg_sots_valid(msg)) {
+		fine_ts_apply(p->ifindex, FINE_TS_EGRESS, fine_ts_type,
+			      fine_ts_seqid, &fine_ts_pid, &msg->hwts.ts);
 		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
 	return 0;
@@ -1177,6 +1197,10 @@ static int port_management_fill_response(struct port *target,
 		pcn->delayAsymmetry = target->asymmetry;
 		datalen = sizeof(*pcn);
 		break;
+	case MID_L1SYNC_BASIC_PORT_DS_NP:
+		memcpy(tlv->data, &target->l1sync, sizeof(target->l1sync));
+		datalen = sizeof(target->l1sync);
+		break;
 	default:
 		/* The caller should *not* respond to this message. */
 		tlv_extra_recycle(extra);
@@ -1335,6 +1359,10 @@ static void port_nrate_initialize(struct port *p)
 
 int port_set_announce_tmo(struct port *p)
 {
+	if (p->external_port_config) {
+		/* 17.6.5.3 */
+		return 0;
+	}
 	return set_tmo_random(p->fda.fd[FD_ANNOUNCE_TIMER],
 			      p->announceReceiptTimeout,
 			      p->announce_span, p->logAnnounceInterval);
@@ -1906,6 +1934,8 @@ int port_tx_sync(struct port *p, struct address *dst, uint16_t sequence_id)
 	fup->header.logMessageInterval = p->logSyncInterval;
 
 	fup->follow_up.preciseOriginTimestamp = tmv_to_Timestamp(msg->hwts.ts);
+	/* 9.5.10: the fraction of t1 goes in the correctionField. */
+	fup->header.correction += tmv_frac(msg->hwts.ts);
 
 	if (dst) {
 		fup->address = *dst;
@@ -2040,6 +2070,8 @@ void port_disable(struct port *p)
 	flush_delay_req(p);
 	flush_peer_delay(p);
 
+	port_l1sync_disable(p);
+	clock_forget_best(p->clock, p);
 	p->best = NULL;
 	unicast_service_clear_clients(p);
 	free_foreign_masters(p);
@@ -2091,6 +2123,21 @@ int port_initialize(struct port *p)
 	p->delay_request_variability = config_get_double(cfg, p->name, "delay_request_variability");
 	p->delay_response_timeout  = config_get_int(cfg, p->name, "delay_response_timeout");
 	p->iface_rate_tlv 	   = config_get_int(cfg, p->name, "interface_rate_tlv");
+
+	p->l1sync.L1SyncEnabled = config_get_int(cfg, p->name, "L1SyncEnabled");
+	p->l1sync.txCoherentIsRequired =
+		config_get_int(cfg, p->name, "txCoherentIsRequired");
+	p->l1sync.rxCoherentIsRequired =
+		config_get_int(cfg, p->name, "rxCoherentIsRequired");
+	p->l1sync.congruentIsRequired =
+		config_get_int(cfg, p->name, "congruentIsRequired");
+	p->l1sync.optParamsEnabled =
+		config_get_int(cfg, p->name, "optParamsEnabled");
+	p->l1sync.logL1SyncInterval =
+		config_get_int(cfg, p->name, "logL1SyncInterval");
+	p->l1sync.L1SyncReceiptTimeout =
+		config_get_int(cfg, p->name, "L1SyncReceiptTimeout");
+	l1sync_reset_dynamic(&p->l1sync);
 
 	if (config_get_int(cfg, p->name, "asCapable") == AS_CAPABLE_TRUE) {
 		p->asCapable = ALWAYS_CAPABLE;
@@ -2150,6 +2197,7 @@ int port_initialize(struct port *p)
 	}
 
 	port_nrate_initialize(p);
+	port_l1sync_initialize(p);
 
 	clock_fda_changed(p->clock);
 	return 0;
@@ -2260,9 +2308,17 @@ int process_announce(struct port *p, struct ptp_message *m)
 	case PS_PRE_MASTER:
 	case PS_MASTER:
 	case PS_GRAND_MASTER:
-		result = add_foreign_master(p, m);
+		/* 17.6.5.5 */
+		if (!p->external_port_config) {
+			result = add_foreign_master(p, m);
+		}
 		break;
 	case PS_PASSIVE:
+		/* 17.6.5.4 b) names only SLAVE and UNCALIBRATED. */
+		if (p->external_port_config) {
+			break;
+		}
+		/* fall through */
 	case PS_UNCALIBRATED:
 	case PS_SLAVE:
 		result = update_current_master(p, m);
@@ -2315,6 +2371,7 @@ static int process_cmlds(struct port *p)
 		if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 			const tmv_t tx = tmv_zero();
 			clock_peer_delay(p->clock, p->peer_delay, tx, tx, p->nrate.ratio);
+			port_update_delay_asymmetry(p, p->peer_delay);
 		}
 		break;
 	case MID_SUBSCRIBE_EVENTS_NP:
@@ -2363,6 +2420,8 @@ static int process_delay_req(struct port *p, struct ptp_message *m)
 	msg->header.logMessageInterval = p->logMinDelayReqInterval;
 
 	msg->delay_resp.receiveTimestamp = tmv_to_Timestamp(m->hwts.ts);
+	/* 11.3.2 d) 2): subtract, the requester computes t4 - cf. */
+	msg->header.correction -= tmv_frac(m->hwts.ts);
 
 	msg->delay_resp.requestingPortIdentity = m->header.sourcePortIdentity;
 
@@ -2425,6 +2484,7 @@ void process_delay_resp(struct port *p, struct ptp_message *m)
 		      m->header.sequenceId, t3, c3, t4);
 
 	clock_path_delay(p->clock, t3, t4c);
+	port_update_delay_asymmetry(p, clock_mean_delay(p->clock));
 
 	TAILQ_REMOVE(&p->delay_req, req, list);
 	msg_put(req);
@@ -2700,6 +2760,7 @@ calc:
 		return;
 
 	p->peerMeanPathDelay = tmv_to_TimeInterval(p->peer_delay);
+	port_update_delay_asymmetry(p, p->peer_delay);
 
 	if (p->state == PS_UNCALIBRATED || p->state == PS_SLAVE) {
 		clock_peer_delay(p->clock, p->peer_delay, t1, t2,
@@ -3090,6 +3151,8 @@ void port_link_status(void *ctx, int linkup, int ts_index)
 	/* Switch the clock if needed */
 	port_change_phc(p);
 
+	port_l1sync_link_status(p, linkup);
+
 	/*
 	 * A port going down can affect the BMCA result.
 	 * Force a state decision event.
@@ -3202,6 +3265,14 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		p->service_stats.unicast_request_timeout++;
 		return unicast_client_timer(p) ? EV_FAULT_DETECTED : EV_NONE;
 
+	case FD_L1SYNC_TX_TIMER:
+		pr_debug("%s: L1Sync tx timeout", p->log_name);
+		return port_l1sync_tx_timeout(p);
+
+	case FD_L1SYNC_RX_TIMER:
+		pr_debug("%s: L1Sync receipt timeout", p->log_name);
+		return port_l1sync_rx_timeout(p);
+
 	case FD_CMLDS:
 		pr_debug("%s: CMLDS push notification", p->log_name);
 		return process_cmlds(p) ? EV_FAULT_DETECTED : EV_NONE;
@@ -3288,11 +3359,19 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 		return EV_NONE;
 	}
 	if (msg_sots_valid(msg)) {
+		fine_ts_apply(p->ifindex, FINE_TS_INGRESS,
+			      msg_type(msg), msg->header.sequenceId,
+			      &msg->header.sourcePortIdentity,
+			      &msg->hwts.ts);
 		ts_add(&msg->hwts.ts, -p->rx_timestamp_offset);
 		if (p->state == PS_SLAVE) {
 			clock_check_ts(p->clock,
 				       tmv_to_nanoseconds(msg->hwts.ts));
 		}
+	}
+
+	if (p->l1sync.L1SyncEnabled) {
+		port_l1sync_recv(p, msg);
 	}
 
 	switch (msg_type(msg)) {
@@ -3369,6 +3448,10 @@ int port_forward_to(struct port *p, struct ptp_message *msg)
 int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 			  enum transport_event event)
 {
+	/* Taken before msg_pre_send() byte swaps the header. */
+	struct PortIdentity fine_ts_pid = msg->header.sourcePortIdentity;
+	UInteger16 fine_ts_seqid = msg->header.sequenceId;
+	uint8_t fine_ts_type = msg_type(msg);
 	int cnt;
 	if (port_has_security(p)) {
 		cnt = sad_append_auth_tlv(clock_config(p->clock), p->spp,
@@ -3389,6 +3472,8 @@ int port_prepare_and_send(struct port *p, struct ptp_message *msg,
 	}
 	port_stats_inc_tx(p, msg);
 	if (msg_sots_valid(msg)) {
+		fine_ts_apply(p->ifindex, FINE_TS_EGRESS, fine_ts_type,
+			      fine_ts_seqid, &fine_ts_pid, &msg->hwts.ts);
 		ts_add(&msg->hwts.ts, p->tx_timestamp_offset);
 	}
 	return 0;
@@ -3589,6 +3674,74 @@ err:
 	msg_put(msg);
 }
 
+/* Only one mechanism may own portDS.delayAsymmetry. */
+static int port_asymmetry_correction_init(struct port *p, struct config *cfg)
+{
+	double alpha;
+
+	if (port_is_uds(p)) {
+		return 0;
+	}
+	p->asymmetryCorrectionEnable =
+		config_get_int(cfg, p->name, "asymmetryCorrectionPortDS.enable");
+	if (!p->asymmetryCorrectionEnable) {
+		return 0;
+	}
+	if (p->asymmetry) {
+		pr_err("%s: delayAsymmetry and asymmetryCorrectionPortDS both "
+		       "set delayAsymmetry; put the constant part in "
+		       "asymmetryCorrectionPortDS.constantAsymmetry",
+		       p->log_name);
+		return -1;
+	}
+	if (config_get_int(cfg, p->name, "interface_rate_tlv")) {
+		pr_err("%s: interface_rate_tlv and asymmetryCorrectionPortDS "
+		       "both compute delayAsymmetry", p->log_name);
+		return -1;
+	}
+
+	p->constantAsymmetry = config_get_int(cfg, p->name,
+			"asymmetryCorrectionPortDS.constantAsymmetry");
+	p->constantAsymmetry <<= 16;
+
+	alpha = config_get_double(cfg, p->name,
+			"asymmetryCorrectionPortDS.delayCoefficient");
+	p->delayFactor = alpha / (alpha + 2.0);
+	p->asymmetry = p->constantAsymmetry;
+	return 0;
+}
+
+/*
+ * BMCA noop would also own the port state, so it is refused.  17.6.5.3
+ * only says serverOnly and clientOnly should be FALSE.
+ */
+static int port_external_config_init(struct port *p, struct config *cfg)
+{
+	if (port_is_uds(p)) {
+		return 0;
+	}
+	p->external_port_config =
+		config_get_int(cfg, NULL, "externalPortConfigurationEnabled");
+	p->desiredState = config_get_int(cfg, p->name,
+			"externalPortConfigurationPortDS.desiredState");
+	if (!p->external_port_config) {
+		return 0;
+	}
+	if (p->bmca == BMCA_NOOP) {
+		pr_err("%s: BMCA noop and externalPortConfigurationEnabled "
+		       "both decide the port state", p->log_name);
+		return -1;
+	}
+	if (p->master_only || config_get_int(cfg, NULL, "clientOnly")) {
+		pr_warning("%s: serverOnly and clientOnly do not determine "
+			   "the port state when external port configuration "
+			   "is enabled", p->log_name);
+	}
+	pr_info("%s: port state configured externally, desiredState %s",
+		p->log_name, ps_str[p->desiredState]);
+	return 0;
+}
+
 struct port *port_open(const char *phc_device,
 		       int phc_index,
 		       enum timestamp_type timestamping,
@@ -3613,6 +3766,7 @@ struct port *port_open(const char *phc_device,
 		p->log_name = NULL;
 		goto err_port;
 	}
+	p->ifindex = if_nametoindex(p->name);
 
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
@@ -3689,6 +3843,12 @@ struct port *port_open(const char *phc_device,
 	p->iface = interface;
 	p->asymmetry = config_get_int(cfg, p->name, "delayAsymmetry");
 	p->asymmetry <<= 16;
+	if (port_asymmetry_correction_init(p, cfg)) {
+		goto err_transport;
+	}
+	if (port_external_config_init(p, cfg)) {
+		goto err_transport;
+	}
 	p->announce_span = port_is_uds(p) ? 0 : ANNOUNCE_SPAN;
 	p->follow_up_info = config_get_int(cfg, p->name, "follow_up_info");
 	p->freq_est_interval = config_get_int(cfg, p->name, "freq_est_interval");
@@ -3825,16 +3985,25 @@ enum delay_mechanism port_delay_mechanism(struct port *port)
 	return port->delayMechanism;
 }
 
+static enum port_state port_next_state(struct port *p, enum port_state state,
+				       enum fsm_event event, int mdiff)
+{
+	if (p->external_port_config) {
+		return external_fsm(state, event, p->desiredState);
+	}
+	return p->state_machine(state, event, mdiff);
+}
+
 int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 {
-	enum port_state next = p->state_machine(p->state, event, mdiff);
+	enum port_state next = port_next_state(p, p->state, event, mdiff);
 
 	if (PS_FAULTY == next) {
 		struct fault_interval i;
 		fault_interval(p, last_fault_type(p), &i);
 		if (port_link_status_get(p) && clear_fault_asap(&i)) {
 			pr_notice("%s: clearing fault immediately", p->log_name);
-			next = p->state_machine(next, EV_FAULT_CLEARED, 0);
+			next = port_next_state(p, next, EV_FAULT_CLEARED, 0);
 		} else if (event == EV_FAULT_DETECTED) {
 			/*
 			 * Reopen the netlink socket and refresh the link
@@ -3859,7 +4028,7 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 		} else {
 			event = EV_INIT_COMPLETE;
 		}
-		next = p->state_machine(next, event, 0);
+		next = port_next_state(p, next, event, 0);
 	}
 
 	if (mdiff) {
@@ -3868,6 +4037,7 @@ int port_state_update(struct port *p, enum fsm_event event, int mdiff)
 	if (next != p->state) {
 		port_show_transition(p, next, event);
 		p->state = next;
+		port_l1sync_update(p);
 		port_notify_event(p, NOTIFY_PORT_STATE);
 		p->unicast_state_dirty = true;
 		return 1;

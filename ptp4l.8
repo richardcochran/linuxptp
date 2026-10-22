@@ -164,6 +164,26 @@ expires.
 The default is 3.
 
 .TP
+.B asymmetryCorrectionPortDS.constantAsymmetry
+The constant part, in nanoseconds, of the delay asymmetry computed when
+\fBasymmetryCorrectionPortDS.enable\fR is set.
+The default is 0.
+
+.TP
+.B asymmetryCorrectionPortDS.delayCoefficient
+The delay coefficient alpha of the medium, as in t_ms = (1 + alpha) * t_sm,
+in the range \-1.0 to 1.0.
+The default is 0.0 (a symmetric medium).
+
+.TP
+.B asymmetryCorrectionPortDS.enable
+Compute the delay asymmetry as constantAsymmetry + alpha / (alpha + 2) times
+the mean delay, each time the mean delay is updated, as specified in
+IEEE 1588-2019 16.8. Cannot be combined with a nonzero \fBdelayAsymmetry\fR
+or with \fBinterface_rate_tlv\fR.
+The default is 0 (disabled).
+
+.TP
 .B boundary_clock_jbod
 When running as a boundary clock (that is, when more than one network
 interface is configured), ptp4l performs a sanity check to make sure
@@ -210,6 +230,13 @@ Delay Service, for use with the "COMMON_P2P" delay mechanism.
 The default is /var/run/cmlds_server.
 
 .TP
+.B congruentIsRequired
+Require the flows of layer 1 syntonization and of PTP synchronization to be
+congruent, per IEEE 1588-2019 Annex L. Has no effect unless
+\fBL1SyncEnabled\fR is set.
+The default is 0.
+
+.TP
 .B delayAsymmetry
 The time difference in nanoseconds of the transmit and receive
 paths. This value should be positive when the server-to-client
@@ -254,6 +281,13 @@ Specifies the difference in nanoseconds between the actual transmission
 time at the reference plane and the reported transmit time stamp. This
 value will be added to egress time stamps obtained from the hardware.
 The default is 0.
+
+.TP
+.B externalPortConfigurationPortDS.desiredState
+The state of this port when \fBexternalPortConfigurationEnabled\fR is set.
+One of \fBMASTER\fR, \fBSLAVE\fR, \fBPASSIVE\fR, \fBUNCALIBRATED\fR,
+\fBPRE_MASTER\fR, \fBLISTENING\fR or \fBDISABLED\fR.
+The default is PASSIVE.
 
 .TP
 .B fault_badpeernet_interval
@@ -331,12 +365,31 @@ transmitted.  Setting this option inhibits multicast transmission.
 The default is 0 (mutlicast enabled).
 
 .TP
+.B L1SyncEnabled
+Enable the layer 1 based synchronization performance enhancement of
+IEEE 1588-2019 Annex L. The port exchanges the L1_SYNC TLV with its peer
+in Signaling messages and runs the L1Sync state machine.
+The default is 0 (disabled).
+
+.TP
+.B L1SyncReceiptTimeout
+The number of L1Sync intervals without an L1_SYNC TLV from the peer after
+which the link is no longer considered alive.
+The default is 3.
+
+.TP
 .B logAnnounceInterval
 The mean time interval between Announce messages. A shorter interval makes
 ptp4l react faster to the changes in the client/server hierarchy. The interval
 should be the same in the whole domain. It's specified as a power of two in
 seconds.
 The default is 1 (2 seconds).
+
+.TP
+.B logL1SyncInterval
+The mean time interval between L1_SYNC TLV transmissions, specified as a
+power of two in seconds.
+The default is 0 (1 second).
 
 .TP
 .B logMinDelayReqInterval
@@ -403,6 +456,12 @@ set, then the local client port will request the remote server to
 switch to the given message rate via a signaling message containing a
 Message interval request TLV.  This option is specified as a power of
 two in seconds, and default value is 0 (1 second).
+
+.TP
+.B optParamsEnabled
+The optional parameters of the L1_SYNC TLV are not implemented, so the
+only accepted value is 0. Extended TLVs from a peer are still accepted.
+The default is 0.
 
 .TP
 .B path_trace_enabled
@@ -504,6 +563,12 @@ Relevant only with L2 transport. The default is 01:80:C2:00:00:0E.
 The default follows IEEE P1588, Multicast MAC addresses, 'Peer-to-peer delay'.
 
 .TP
+.B rxCoherentIsRequired
+Require the layer 1 receive clock to be coherent with the local PTP clock,
+per IEEE 1588-2019 Annex L. Has no effect unless \fBL1SyncEnabled\fR is set.
+The default is 0.
+
+.TP
 .B serverOnly
 Setting this option to one (1) prevents the port from entering the
 client state. In addition, the local clock will ignore Announce
@@ -546,6 +611,12 @@ well when the rate of sync messages (logSyncInterval) is similar to the rate of
 delay messages (logMinDelayReqInterval or logMinPdelayReqInterval). Weighting
 is useful with larger network jitters (e.g. software time stamping).
 The default is filter.
+
+.TP
+.B txCoherentIsRequired
+Require the layer 1 transmit clock to be coherent with the local PTP clock,
+per IEEE 1588-2019 Annex L. Has no effect unless \fBL1SyncEnabled\fR is set.
+The default is 0.
 
 .TP
 .B udp_ttl
@@ -695,6 +766,15 @@ For example 34 (AF41 PHB) in AES67 or 46 (EF PHB) in RAVENNA. The default
 is 0.
 
 .TP
+.B externalPortConfigurationEnabled
+Set the state of every port from its
+\fBexternalPortConfigurationPortDS.desiredState\fR instead of by the BMCA, as
+specified in IEEE 1588-2019 17.6. The Announce receipt timeout is not used,
+and only ports in the SLAVE or UNCALIBRATED state process Announce messages.
+A fault still takes a port to FAULTY. Cannot be combined with \fBBMCA\fR noop.
+The default is 0 (disabled).
+
+.TP
 .B first_step_threshold
 The maximum offset the servo will correct by changing the clock frequency (phase
 when using nullf servo) instead of stepping the clock. This is only applied on
@@ -703,6 +783,19 @@ step the clock on start.
 The default is 0.00002 (20 microseconds).
 This option used to be called
 .BR pi_f_offset_const .
+
+.TP
+.B fine_ts_provider
+Path of a UNIX domain datagram socket of a process that supplies the
+sub-nanosecond part of each event time stamp. If the provider does not
+answer, the kernel time stamp is used unchanged.
+The default is the empty string (no provider).
+
+.TP
+.B fine_ts_timeout
+The time in milliseconds to wait for a reply from the
+\fBfine_ts_provider\fR before giving up on one time stamp.
+The default is 10.
 
 .TP
 .B free_running
@@ -994,6 +1087,21 @@ shaping. This option is only available with the IEEE 802.3 transport (the
 transports. Must be in the range of 0 to 15, inclusive. The default is 0.
 
 .TP
+.B l1_state_provider
+Path of a UNIX domain datagram socket of a process that applies and reports
+the layer 1 relationships of IEEE 1588-2019 Annex L. It is asked to apply
+them on entry to CONFIG_MATCH, to release them on leaving L1_SYNC_UP or
+CONFIG_MATCH, and queried once per L1Sync interval. Without an answer the
+port reports no coherency and L1Sync waits in CONFIG_MATCH.
+The default is the empty string (no provider).
+
+.TP
+.B l1_state_timeout
+The time in milliseconds to wait for a reply from the
+\fBl1_state_provider\fR to one query.
+The default is 100.
+
+.TP
 .B step_threshold
 The maximum offset the servo will correct by changing the clock frequency (phase
 when using nullf servo) instead of stepping the clock. When set to 0.0, the
@@ -1021,6 +1129,14 @@ nanoseconds and parts per billion (ppb). If there is only one clock update in
 the interval, the sample will be printed instead of the statistics. The
 messages are printed at the LOG_INFO level.
 The default is 0 (1 second).
+
+.TP
+.B syntonized
+Take the ratio of the local clock frequency to the master's as exactly one
+instead of estimating it. Only has an effect with \fBfree_running\fR. Set
+this only when the physical layer is syntonized to the master, for example
+when L1Sync reaches L1_SYNC_UP with \fBrxCoherentIsRequired\fR.
+The default is 0.
 
 .TP
 .B tc_spanning_tree

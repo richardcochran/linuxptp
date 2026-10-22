@@ -113,7 +113,9 @@ struct clock {
 	int nports; /* does not include the two UDS ports */
 	int last_port_number;
 	int sde;
+	int external_port_config;
 	int free_running;
+	int syntonized;
 	int freq_est_interval;
 	int local_sync_uncertain;
 	int write_phase_mode;
@@ -1323,7 +1325,10 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	c->config = config;
+	c->external_port_config = config_get_int(config, NULL,
+					"externalPortConfigurationEnabled");
 	c->free_running = config_get_int(config, NULL, "free_running");
+	c->syntonized = config_get_int(config, NULL, "syntonized");
 	c->freq_est_interval = config_get_int(config, NULL, "freq_est_interval");
 	c->local_sync_uncertain = SYNC_UNCERTAIN_DONTCARE;
 	c->write_phase_mode = config_get_int(config, NULL, "write_phase_mode");
@@ -1516,6 +1521,19 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 struct dataset *clock_best_foreign(struct clock *c)
 {
 	return c->best ? &c->best->dataset : NULL;
+}
+
+void clock_forget_best(struct clock *c, struct port *p)
+{
+	/*
+	 * c->best points into the foreign master list of the port that
+	 * heard it.  Clearing it also makes the next state decision see a
+	 * new best and reset the time stamp history, rather than leave
+	 * that to whether malloc hands back the same address.
+	 */
+	if (c->best && c->best->port == p) {
+		c->best = NULL;
+	}
 }
 
 struct port *clock_best_port(struct clock *c)
@@ -1967,6 +1985,11 @@ void clock_path_delay(struct clock *c, tmv_t req, tmv_t rx)
 		stats_add_value(c->stats.delay, tmv_dbl(c->path_delay));
 }
 
+tmv_t clock_mean_delay(struct clock *c)
+{
+	return c->path_delay;
+}
+
 void clock_peer_delay(struct clock *c, tmv_t ppd, tmv_t req, tmv_t rx,
 		      double nrr)
 {
@@ -2273,6 +2296,34 @@ void clock_update_time_properties(struct clock *c, struct timePropertiesDS tds)
 	c->tds = tds;
 }
 
+/* 17.6.5.4: Tables 136 and 137 are what these two already write. */
+static void clock_external_update_dataset(struct clock *c)
+{
+	int slave = 0, master = 0;
+	struct port *piter;
+
+	LIST_FOREACH(piter, &c->ports, list) {
+		switch (port_state(piter)) {
+		case PS_SLAVE:
+		case PS_UNCALIBRATED:
+			slave = 1;
+			break;
+		case PS_MASTER:
+		case PS_PRE_MASTER:
+		case PS_PASSIVE:
+			master = 1;
+			break;
+		default:
+			break;
+		}
+	}
+	if (slave) {
+		clock_update_slave(c);
+	} else if (master) {
+		clock_update_grandmaster(c);
+	}
+}
+
 static void handle_state_decision_event(struct clock *c)
 {
 	struct foreign_clock *best = NULL, *fc;
@@ -2308,7 +2359,10 @@ static void handle_state_decision_event(struct clock *c)
 		c->master_local_rr = 1.0;
 		c->nrr = 1.0;
 		fresh_best = 1;
-		if (cid_eq(&best_id, &c->dds.clockIdentity)) {
+		if (c->external_port_config) {
+			pr_notice("parent clock %s",
+				  best ? cid2str(&best_id) : "not present");
+		} else if (cid_eq(&best_id, &c->dds.clockIdentity)) {
 			pr_notice("selected local clock %s as best master",
 					cid2str(&best_id));
 		} else {
@@ -2319,6 +2373,12 @@ static void handle_state_decision_event(struct clock *c)
 
 	c->best = best;
 	c->best_id = best_id;
+
+	if (c->external_port_config) {
+		/* 17.6.5.3: no state decision, only the data set update. */
+		clock_external_update_dataset(c);
+		return;
+	}
 
 	LIST_FOREACH(piter, &c->ports, list) {
 		enum port_state ps;
@@ -2376,6 +2436,13 @@ void clock_check_ts(struct clock *c, uint64_t ts)
 double clock_rate_ratio(struct clock *c)
 {
 	if (c->free_running) {
+		/*
+		 * The estimate is noise on a syntonized link, and wrong
+		 * when an external servo is steering the clock.
+		 */
+		if (c->syntonized) {
+			return 1.0;
+		}
 		return c->master_local_rr;
 	}
 	return servo_rate_ratio(c->servo);
